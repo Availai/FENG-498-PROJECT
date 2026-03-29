@@ -21,7 +21,7 @@ class MapAreaCalculatorScreen extends StatefulWidget {
 
 class _MapAreaCalculatorScreenState extends State<MapAreaCalculatorScreen> {
   final List<LatLng> _polygonPoints = [];
-  Set<Marker> _markers = {};
+  final Set<Marker> _markers = {};
   Set<Polygon> _polygons = {};
   String _calculatedArea = "Alanı Görmek İçin Tarlanın Köşelerini Çizin";
   double _calculatedDekar = 0.0; // Kaydetmek için dekarı hafızada tutuyoruz
@@ -54,7 +54,7 @@ class _MapAreaCalculatorScreenState extends State<MapAreaCalculatorScreen> {
           points: _polygonPoints,
           strokeWidth: 3,
           strokeColor: Colors.green,
-          fillColor: Colors.green.withOpacity(0.3),
+          fillColor: Colors.green.withValues(alpha: 0.3),
         ),
       };
     } else {
@@ -78,7 +78,7 @@ class _MapAreaCalculatorScreenState extends State<MapAreaCalculatorScreen> {
         .map((p) => toolkit.LatLng(p.latitude, p.longitude))
         .toList();
     double areaSqMeters =
-        toolkit.SphericalUtil.computeArea(toolkitPoints) as double;
+        toolkit.SphericalUtil.computeArea(toolkitPoints).toDouble();
 
     _calculatedDekar = areaSqMeters / 1000;
     double hektar = areaSqMeters / 10000;
@@ -113,6 +113,15 @@ Hektar: ${hektar.toStringAsFixed(3)}
       return;
     }
 
+    // Poligonun orta noktasını hesapla
+    double centerLat = 0, centerLng = 0;
+    for (final p in _polygonPoints) {
+      centerLat += p.latitude;
+      centerLng += p.longitude;
+    }
+    centerLat /= _polygonPoints.length;
+    centerLng /= _polygonPoints.length;
+
     String name = '';
     showDialog(
       context: context,
@@ -140,6 +149,9 @@ Hektar: ${hektar.toStringAsFixed(3)}
                   'name':
                       '$name (${_calculatedDekar.toStringAsFixed(1)} Dekar)',
                   'date': DateFormat('dd.MM.yyyy').format(DateTime.now()),
+                  'latitude': centerLat,
+                  'longitude': centerLng,
+                  'area_dekar': _calculatedDekar,
                 });
                 Navigator.pop(ctx);
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -157,6 +169,7 @@ Hektar: ${hektar.toStringAsFixed(3)}
       ),
     );
   }
+
 
   @override
   Widget build(BuildContext context) {
