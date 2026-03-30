@@ -1385,6 +1385,18 @@ Düz metin, JSON kullanma, emoji kullan, somut bilgi ver.
         return {
           'success': true,
           'guide': guide.toString(),
+          'plantingData': {
+            'depth_cm': data["planting_depth_cm"] ?? 3,
+            'row_spacing_cm': data["row_spacing_cm"] ?? 50,
+            'plant_spacing_cm': data["plant_spacing_cm"] ?? 40,
+            'seeds_per_dekar': data["seeds_per_dekar"] ?? 500,
+            'irrigation_type': data["irrigation_type"] ?? "Damla Sulama",
+            'irrigation_line_spacing_cm': data["irrigation_line_spacing_cm"] ?? 70,
+            'irrigation_dripper_spacing_cm': data["irrigation_dripper_spacing_cm"] ?? 30,
+            'fertilizer_band_cm': data["fertilizer_band_cm"] ?? 15,
+            'fertilizer_depth_cm': data["fertilizer_depth_cm"] ?? 10,
+            'fertilizer_type': data["fertilizer_type"] ?? "NPK 15-15-15",
+          },
           'locationInfo':
               '🌡️ $temp°C | 🌿 pH: ${ph.toStringAsFixed(1)} | 💧 Nem: %${hum.toStringAsFixed(0)}',
         };
@@ -1418,7 +1430,13 @@ Aşağıdaki JSON formatında yanıt ver. Markdown KULLANMA, saf JSON:
   "row_spacing_cm": 50,
   "plant_spacing_cm": 40,
   "seeds_per_dekar": 500,
-  "planting_tip": "Ekim ile ilgili 1 cümle pratik bilgi"
+  "planting_tip": "Ekim ile ilgili 1 cümle pratik bilgi",
+  "irrigation_type": "Damla Sulama / Yağmurlama / Karık (birini seç)",
+  "irrigation_line_spacing_cm": 70,
+  "irrigation_dripper_spacing_cm": 30,
+  "fertilizer_band_cm": 15,
+  "fertilizer_depth_cm": 10,
+  "fertilizer_type": "Önerilen gübre türü (Örn: NPK 15-15-15)"
 }
 ''';
 
@@ -1482,6 +1500,12 @@ Aşağıdaki JSON formatında yanıt ver. Markdown KULLANMA, saf JSON:
           'row_spacing_cm': data["row_spacing_cm"] ?? 50,
           'plant_spacing_cm': data["plant_spacing_cm"] ?? 40,
           'seeds_per_dekar': data["seeds_per_dekar"] ?? 500,
+          'irrigation_type': data["irrigation_type"] ?? "Damla Sulama",
+          'irrigation_line_spacing_cm': data["irrigation_line_spacing_cm"] ?? 70,
+          'irrigation_dripper_spacing_cm': data["irrigation_dripper_spacing_cm"] ?? 30,
+          'fertilizer_band_cm': data["fertilizer_band_cm"] ?? 15,
+          'fertilizer_depth_cm': data["fertilizer_depth_cm"] ?? 10,
+          'fertilizer_type': data["fertilizer_type"] ?? "NPK 15-15-15",
         },
         'locationInfo':
             '🌡️ $temp°C | 🌿 pH: ${ph.toStringAsFixed(1)} | 💧 Nem: %${hum.toStringAsFixed(0)}',

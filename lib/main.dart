@@ -1,4 +1,4 @@
-import 'dart:ui';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
@@ -477,7 +477,7 @@ class _AgriDashboardState extends State<AgriDashboard>
     return ClipRRect(
       borderRadius: BorderRadius.circular(20),
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        filter: ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12),
         child: Container(
           padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
@@ -842,7 +842,9 @@ class _PlantingVisualizationState extends State<_PlantingVisualization>
     final depth = (widget.plantingData?['depth_cm'] ?? 3) as num;
     final rowSpacing = (widget.plantingData?['row_spacing_cm'] ?? 50) as num;
     final plantSpacing = (widget.plantingData?['plant_spacing_cm'] ?? 40) as num;
-    final seedsPerDekar = (widget.plantingData?['seeds_per_dekar'] ?? 500) as num;
+    final irrType = widget.plantingData?['irrigation_type']?.toString() ?? 'Damla Sulama';
+    final irrDripperSpacing = (widget.plantingData?['irrigation_dripper_spacing_cm'] ?? 30) as num;
+    final fertType = widget.plantingData?['fertilizer_type']?.toString() ?? 'NPK 15-15-15';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1040,24 +1042,30 @@ class _PlantingVisualizationState extends State<_PlantingVisualization>
             _PlantingStatCard(icon: Icons.space_bar, label: 'Bitki Arası', value: '${plantSpacing}cm', color: Colors.teal),
           ],
         ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            _PlantingStatCard(icon: Icons.water_drop, label: 'Sulama', value: irrType, color: Colors.blue),
+            const SizedBox(width: 8),
+            _PlantingStatCard(icon: Icons.opacity, label: 'Damlatıcı Arası', value: '${irrDripperSpacing}cm', color: Colors.cyan),
+            const SizedBox(width: 8),
+            _PlantingStatCard(icon: Icons.science, label: 'Gübre', value: fertType, color: Colors.orange),
+          ],
+        ),
         const SizedBox(height: 12),
 
-        // Tarla bazlı ekim gösterimi
+        // Tarla bazlı kuşbakışı ekim gösterimi
         if (_fields.isNotEmpty) ...[
-          const Text('📐 Tarlalarıma Göre Ekim Planı',
+          const Text('🗺️ Kuşbakışı Tarla Görünümü',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           ..._fields.map((f) {
             final dekar = (f['area_dekar'] as num?)?.toDouble() ?? 1.0;
-            final totalSeeds = (seedsPerDekar * dekar).round();
-            final totalRows = (dekar * 10000 / (rowSpacing * 100)).round(); // yaklaşık sıra sayısı
-            return _FieldPlantingCard(
+            return _TopDownFieldView(
               fieldName: f['name'] ?? 'Tarla',
               areaDekar: dekar,
-              totalSeeds: totalSeeds,
-              totalRows: totalRows,
-              cropEmoji: _cropEmoji,
-              seedsPerDekar: seedsPerDekar.toInt(),
+              plantingData: widget.plantingData,
+              cropName: widget.cropName,
             );
           }),
         ],
@@ -1117,6 +1125,276 @@ class _RootPainter extends CustomPainter {
   bool shouldRepaint(covariant _RootPainter old) => old.progress != progress;
 }
 
+// ─── Kuşbakışı Tarla Çizici ───
+class _TopDownFieldPainter extends CustomPainter {
+  final double phase; // 0.0–1.0
+  final double rowSpacingCm;
+  final double plantSpacingCm;
+  final double irrigationLineSpacingCm;
+  final double irrigationDripperSpacingCm;
+  final double fertilizerBandCm;
+  final bool showPlanting, showIrrigation, showFertilizer;
+
+  _TopDownFieldPainter({
+    required this.phase,
+    required this.rowSpacingCm,
+    required this.plantSpacingCm,
+    required this.irrigationLineSpacingCm,
+    required this.irrigationDripperSpacingCm,
+    required this.fertilizerBandCm,
+    this.showPlanting = true,
+    this.showIrrigation = true,
+    this.showFertilizer = true,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // ── Temsili alan: 5m genişlik x 3m yükseklik ──
+    const fieldW = 500.0; // cm
+    const fieldH = 300.0; // cm
+    const margin = 40.0; // px kenar boşluğu
+    final drawW = size.width - margin * 2;
+    final drawH = size.height - margin * 2;
+    final scaleX = drawW / fieldW;
+    final ox = margin; // origin x
+    final oy = margin; // origin y
+
+    // Faz hesaplamaları
+    final fieldPhase = (phase / 0.15).clamp(0.0, 1.0);
+    final rowPhase = ((phase - 0.15) / 0.20).clamp(0.0, 1.0);
+    final plantPhase = ((phase - 0.35) / 0.25).clamp(0.0, 1.0);
+    final irrPhase = ((phase - 0.60) / 0.20).clamp(0.0, 1.0);
+    final fertPhase = ((phase - 0.80) / 0.20).clamp(0.0, 1.0);
+
+    // ── FAZ 1: Tarla çerçevesi ──
+    if (fieldPhase > 0) {
+      final borderPaint = Paint()
+        ..color = Colors.brown.shade400.withValues(alpha: fieldPhase)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.5;
+      final fillPaint = Paint()
+        ..color = Colors.brown.shade50.withValues(alpha: fieldPhase * 0.5);
+      final fieldRect = Rect.fromLTWH(ox, oy, drawW, drawH);
+      final rrect = RRect.fromRectAndRadius(fieldRect, const Radius.circular(6));
+      canvas.drawRRect(rrect, fillPaint);
+      canvas.drawRRect(rrect, borderPaint);
+
+      // Ölçek etiketi
+      if (fieldPhase > 0.5) {
+        _drawLabel(canvas, '5m x 3m temsili bölüm', Offset(ox + drawW / 2, oy + drawH + 16),
+            Colors.brown.shade600, 10, true);
+      }
+    }
+
+    // Sıra konumlarını hesapla
+    final rowCount = (fieldH / rowSpacingCm).floor().clamp(1, 10);
+    final List<double> rowYs = [];
+    for (int r = 0; r < rowCount; r++) {
+      rowYs.add(oy + (r + 0.5) * (drawH / rowCount));
+    }
+
+    // ── FAZ 2: Sıra çizgileri ──
+    if (showPlanting && rowPhase > 0) {
+      final rowPaint = Paint()
+        ..color = Colors.green.shade200.withValues(alpha: rowPhase * 0.7)
+        ..strokeWidth = 1
+        ..style = PaintingStyle.stroke;
+
+      for (int r = 0; r < rowYs.length; r++) {
+        final animLen = drawW * rowPhase;
+        // Kesikli çizgi
+        double dx = ox;
+        while (dx < ox + animLen) {
+          final end = (dx + 8).clamp(0.0, ox + animLen);
+          canvas.drawLine(Offset(dx, rowYs[r]), Offset(end, rowYs[r]), rowPaint);
+          dx += 14;
+        }
+      }
+
+      // Sıra arası ölçü oku (ilk iki sıra arası)
+      if (rowPhase > 0.8 && rowYs.length >= 2) {
+        _drawDimensionArrow(canvas, Offset(ox - 8, rowYs[0]), Offset(ox - 8, rowYs[1]),
+            '${rowSpacingCm.round()}cm', Colors.green.shade700);
+      }
+    }
+
+    // ── FAZ 3: Bitkiler ──
+    if (showPlanting && plantPhase > 0) {
+      final plantsPerRow = (fieldW / plantSpacingCm).floor().clamp(1, 15);
+      final totalPlants = rowCount * plantsPerRow;
+      final visiblePlants = (totalPlants * plantPhase).round();
+
+      int plantIdx = 0;
+      for (int r = 0; r < rowCount && plantIdx < visiblePlants; r++) {
+        for (int p = 0; p < plantsPerRow && plantIdx < visiblePlants; p++) {
+          final px = ox + (p + 0.5) * (drawW / plantsPerRow);
+          final py = rowYs[r];
+          final scale = ((plantIdx < visiblePlants) ? 1.0 : 0.0);
+
+          final plantPaint = Paint()
+            ..color = Colors.green.shade600.withValues(alpha: scale)
+            ..style = PaintingStyle.fill;
+          canvas.drawCircle(Offset(px, py), 4.5 * scale, plantPaint);
+
+          // Küçük yaprak
+          final leafPaint = Paint()
+            ..color = Colors.green.shade400.withValues(alpha: scale * 0.8)
+            ..style = PaintingStyle.fill;
+          canvas.drawCircle(Offset(px + 3, py - 3), 2.5 * scale, leafPaint);
+
+          plantIdx++;
+        }
+      }
+
+      // Bitki arası ölçü oku (ilk sırada ilk iki bitki arası)
+      if (plantPhase > 0.8 && plantsPerRow >= 2) {
+        final px1 = ox + 0.5 * (drawW / plantsPerRow);
+        final px2 = ox + 1.5 * (drawW / plantsPerRow);
+        _drawDimensionArrow(canvas, Offset(px1, rowYs[0] - 16), Offset(px2, rowYs[0] - 16),
+            '${plantSpacingCm.round()}cm', Colors.green.shade800);
+      }
+    }
+
+    // ── FAZ 4: Sulama hatları ──
+    if (showIrrigation && irrPhase > 0) {
+      final irrLineCount = (fieldH / irrigationLineSpacingCm).floor().clamp(1, 10);
+      final irrPaint = Paint()
+        ..color = Colors.blue.shade500.withValues(alpha: irrPhase * 0.8)
+        ..strokeWidth = 2.5
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round;
+      final dripPaint = Paint()
+        ..color = Colors.blue.shade300.withValues(alpha: irrPhase)
+        ..style = PaintingStyle.fill;
+
+      for (int i = 0; i < irrLineCount; i++) {
+        final ly = oy + (i + 0.5) * (drawH / irrLineCount);
+        final animLen = drawW * irrPhase;
+
+        // Ana sulama hattı
+        canvas.drawLine(Offset(ox, ly), Offset(ox + animLen, ly), irrPaint);
+
+        // Damlatıcı noktaları
+        final dripCount = (animLen / (irrigationDripperSpacingCm * scaleX)).floor();
+        for (int d = 0; d < dripCount; d++) {
+          final dx = ox + (d + 0.5) * irrigationDripperSpacingCm * scaleX;
+          if (dx < ox + animLen) {
+            canvas.drawCircle(Offset(dx, ly), 3, dripPaint);
+            // Su damlası efekti
+            final dropPaint = Paint()
+              ..color = Colors.blue.shade200.withValues(alpha: irrPhase * 0.4)
+              ..style = PaintingStyle.fill;
+            canvas.drawCircle(Offset(dx, ly + 6), 5, dropPaint);
+          }
+        }
+      }
+
+      // Sulama hattı arası ölçü oku
+      if (irrPhase > 0.8 && irrLineCount >= 2) {
+        final ly1 = oy + 0.5 * (drawH / irrLineCount);
+        final ly2 = oy + 1.5 * (drawH / irrLineCount);
+        _drawDimensionArrow(canvas, Offset(ox + drawW + 8, ly1), Offset(ox + drawW + 8, ly2),
+            '${irrigationLineSpacingCm.round()}cm', Colors.blue.shade700);
+      }
+
+      // Damlatıcı arası ölçü oku
+      if (irrPhase > 0.8) {
+        final ly = oy + 0.5 * (drawH / irrLineCount);
+        final dx1 = ox + 0.5 * irrigationDripperSpacingCm * scaleX;
+        final dx2 = ox + 1.5 * irrigationDripperSpacingCm * scaleX;
+        if (dx2 < ox + drawW) {
+          _drawDimensionArrow(canvas, Offset(dx1, ly + 14), Offset(dx2, ly + 14),
+              '${irrigationDripperSpacingCm.round()}cm', Colors.blue.shade600);
+        }
+      }
+    }
+
+    // ── FAZ 5: Gübre bantları ──
+    if (showFertilizer && fertPhase > 0) {
+      final fertPaint = Paint()
+        ..color = Colors.orange.shade300.withValues(alpha: fertPhase * 0.35)
+        ..style = PaintingStyle.fill;
+      final fertBorderPaint = Paint()
+        ..color = Colors.orange.shade400.withValues(alpha: fertPhase * 0.6)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1;
+
+      final bandPx = fertilizerBandCm * scaleX;
+
+      for (final ry in rowYs) {
+        // Bitki sırasının her iki yanında gübre bandı
+        final bandRect = Rect.fromLTWH(ox, ry - bandPx, drawW * fertPhase, bandPx * 2);
+        final rrect = RRect.fromRectAndRadius(bandRect, const Radius.circular(3));
+        canvas.drawRRect(rrect, fertPaint);
+        canvas.drawRRect(rrect, fertBorderPaint);
+      }
+
+      // Gübre bandı genişlik ölçüsü
+      if (fertPhase > 0.8 && rowYs.isNotEmpty) {
+        final ry = rowYs.last;
+        _drawDimensionArrow(
+            canvas,
+            Offset(ox + drawW * 0.7, ry - bandPx),
+            Offset(ox + drawW * 0.7, ry + bandPx),
+            '${(fertilizerBandCm * 2).round()}cm',
+            Colors.orange.shade700);
+      }
+    }
+  }
+
+  void _drawDimensionArrow(Canvas canvas, Offset p1, Offset p2, String label, Color color) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 1.5
+      ..style = PaintingStyle.stroke;
+
+    // Ana çizgi
+    canvas.drawLine(p1, p2, paint);
+
+    // Ok uçları
+    final isVertical = (p1.dx - p2.dx).abs() < 2;
+    final arrowSize = 5.0;
+    if (isVertical) {
+      // Üst ok
+      canvas.drawLine(p1, Offset(p1.dx - arrowSize, p1.dy + arrowSize), paint);
+      canvas.drawLine(p1, Offset(p1.dx + arrowSize, p1.dy + arrowSize), paint);
+      // Alt ok
+      canvas.drawLine(p2, Offset(p2.dx - arrowSize, p2.dy - arrowSize), paint);
+      canvas.drawLine(p2, Offset(p2.dx + arrowSize, p2.dy - arrowSize), paint);
+      // Etiket
+      _drawLabel(canvas, label, Offset((p1.dx + p2.dx) / 2 + 12, (p1.dy + p2.dy) / 2), color, 10, false);
+    } else {
+      // Sol ok
+      canvas.drawLine(p1, Offset(p1.dx + arrowSize, p1.dy - arrowSize), paint);
+      canvas.drawLine(p1, Offset(p1.dx + arrowSize, p1.dy + arrowSize), paint);
+      // Sağ ok
+      canvas.drawLine(p2, Offset(p2.dx - arrowSize, p2.dy - arrowSize), paint);
+      canvas.drawLine(p2, Offset(p2.dx - arrowSize, p2.dy + arrowSize), paint);
+      // Etiket
+      _drawLabel(canvas, label, Offset((p1.dx + p2.dx) / 2, p1.dy - 10), color, 10, true);
+    }
+  }
+
+  void _drawLabel(Canvas canvas, String text, Offset pos, Color color, double fontSize, bool center) {
+    final tp = TextPainter(
+      text: TextSpan(
+        text: text,
+        style: TextStyle(color: color, fontSize: fontSize, fontWeight: FontWeight.bold),
+      ),
+      textDirection: ui.TextDirection.ltr,
+    )..layout();
+    final offset = center ? Offset(pos.dx - tp.width / 2, pos.dy - tp.height / 2) : pos;
+    tp.paint(canvas, offset);
+  }
+
+  @override
+  bool shouldRepaint(covariant _TopDownFieldPainter old) =>
+      old.phase != phase ||
+      old.showPlanting != showPlanting ||
+      old.showIrrigation != showIrrigation ||
+      old.showFertilizer != showFertilizer;
+}
+
 class _PlantingStatCard extends StatelessWidget {
   final IconData icon;
   final String label, value;
@@ -1146,38 +1424,41 @@ class _PlantingStatCard extends StatelessWidget {
   }
 }
 
-class _FieldPlantingCard extends StatefulWidget {
-  final String fieldName, cropEmoji;
+// ─── Kuşbakışı Tarla Görünümü Widget ───
+class _TopDownFieldView extends StatefulWidget {
+  final String fieldName;
   final double areaDekar;
-  final int totalSeeds, totalRows, seedsPerDekar;
+  final Map<String, dynamic>? plantingData;
+  final String cropName;
 
-  const _FieldPlantingCard({
+  const _TopDownFieldView({
     required this.fieldName,
     required this.areaDekar,
-    required this.totalSeeds,
-    required this.totalRows,
-    required this.cropEmoji,
-    required this.seedsPerDekar,
+    required this.plantingData,
+    required this.cropName,
   });
 
   @override
-  State<_FieldPlantingCard> createState() => _FieldPlantingCardState();
+  State<_TopDownFieldView> createState() => _TopDownFieldViewState();
 }
 
-class _FieldPlantingCardState extends State<_FieldPlantingCard>
+class _TopDownFieldViewState extends State<_TopDownFieldView>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
-  late Animation<double> _fillAnim;
+  late Animation<double> _anim;
+  bool _showPlanting = true;
+  bool _showIrrigation = true;
+  bool _showFertilizer = true;
 
   @override
   void initState() {
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 2000),
+      duration: const Duration(milliseconds: 4000),
     );
-    _fillAnim = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
+    _anim = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
     );
     Future.delayed(const Duration(milliseconds: 300), () {
       if (mounted) _controller.forward();
@@ -1192,102 +1473,203 @@ class _FieldPlantingCardState extends State<_FieldPlantingCard>
 
   @override
   Widget build(BuildContext context) {
-    // Grid'de gösterilecek bitki sayısı (max 40 görsel)
-    final displayCount = widget.totalSeeds.clamp(1, 40);
+    final pd = widget.plantingData ?? {};
+    final rowSpacing = (pd['row_spacing_cm'] as num?)?.toDouble() ?? 50;
+    final plantSpacing = (pd['plant_spacing_cm'] as num?)?.toDouble() ?? 40;
+    final seedsPerDekar = (pd['seeds_per_dekar'] as num?)?.toInt() ?? 500;
+    final irrType = pd['irrigation_type']?.toString() ?? 'Damla Sulama';
+    final irrLineSpacing = (pd['irrigation_line_spacing_cm'] as num?)?.toDouble() ?? 70;
+    final irrDripperSpacing = (pd['irrigation_dripper_spacing_cm'] as num?)?.toDouble() ?? 30;
+    final fertBand = (pd['fertilizer_band_cm'] as num?)?.toDouble() ?? 15;
+    final fertType = pd['fertilizer_type']?.toString() ?? 'NPK 15-15-15';
 
-    return AnimatedBuilder(
-      animation: _fillAnim,
-      builder: (context, _) {
-        final visibleCount = (_fillAnim.value * displayCount).round();
-        return Card(
-          margin: const EdgeInsets.only(bottom: 10),
-          elevation: 2,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    final totalPlants = (seedsPerDekar * widget.areaDekar).round();
+    final fieldLengthM = (widget.areaDekar * 1000 / 10).round(); // yaklaşık uzunluk (m)
+    final totalRows = (fieldLengthM * 100 / rowSpacing).round();
+    final irrLengthM = (totalRows * 10).round(); // yaklaşık sulama hattı uzunluğu (m)
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 14),
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── Başlık ──
+            Row(
               children: [
-                // Tarla başlığı
-                Row(
-                  children: [
-                    Icon(Icons.landscape, color: Colors.green.shade700, size: 22),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(widget.fieldName,
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.green.shade50,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text('${widget.areaDekar.toStringAsFixed(1)} Dekar',
-                          style: TextStyle(fontSize: 12, color: Colors.green.shade800, fontWeight: FontWeight.bold)),
-                    ),
-                  ],
+                Icon(Icons.landscape, color: Colors.green.shade700, size: 22),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(widget.fieldName,
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                 ),
-                const SizedBox(height: 10),
-
-                // Animasyonlu ekim grid'i
                 Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Colors.brown.shade50,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: Colors.brown.shade200),
+                    color: Colors.green.shade50,
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Wrap(
-                    spacing: 2,
-                    runSpacing: 2,
-                    children: List.generate(displayCount, (i) {
-                      final isVisible = i < visibleCount;
-                      return SizedBox(
-                        width: 28,
-                        height: 28,
-                        child: Center(
-                          child: AnimatedOpacity(
-                            duration: const Duration(milliseconds: 200),
-                            opacity: isVisible ? 1.0 : 0.1,
-                            child: AnimatedScale(
-                              duration: const Duration(milliseconds: 300),
-                              scale: isVisible ? 1.0 : 0.3,
-                              child: Text(
-                                isVisible ? widget.cropEmoji : '·',
-                                style: TextStyle(fontSize: isVisible ? 16 : 10),
-                              ),
-                            ),
-                          ),
-                        ),
-                      );
-                    }),
-                  ),
+                  child: Text('${widget.areaDekar.toStringAsFixed(1)} Dekar',
+                      style: TextStyle(fontSize: 12, color: Colors.green.shade800, fontWeight: FontWeight.bold)),
                 ),
-                const SizedBox(height: 8),
-
-                // İstatistikler
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    _miniStat('Toplam Fide', '${widget.totalSeeds}'),
-                    _miniStat('Sıra Sayısı', '~${widget.totalRows}'),
-                    _miniStat('Dekara', '${widget.seedsPerDekar}'),
-                  ],
+                const SizedBox(width: 6),
+                IconButton(
+                  icon: const Icon(Icons.replay, size: 20),
+                  onPressed: () {
+                    _controller.reset();
+                    _controller.forward();
+                  },
+                  tooltip: 'Tekrar Oynat',
+                  color: Colors.green.shade700,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                 ),
               ],
             ),
-          ),
-        );
-      },
+            const SizedBox(height: 8),
+
+            // ── Katman Toggle ──
+            Row(
+              children: [
+                _layerChip('Ekim', Colors.green, _showPlanting, (v) => setState(() => _showPlanting = v)),
+                const SizedBox(width: 6),
+                _layerChip('Sulama', Colors.blue, _showIrrigation, (v) => setState(() => _showIrrigation = v)),
+                const SizedBox(width: 6),
+                _layerChip('Gübre', Colors.orange, _showFertilizer, (v) => setState(() => _showFertilizer = v)),
+              ],
+            ),
+            const SizedBox(height: 10),
+
+            // ── Kuşbakışı Canvas ──
+            AnimatedBuilder(
+              animation: _anim,
+              builder: (context, _) {
+                return AspectRatio(
+                  aspectRatio: 1.5,
+                  child: CustomPaint(
+                    painter: _TopDownFieldPainter(
+                      phase: _anim.value,
+                      rowSpacingCm: rowSpacing,
+                      plantSpacingCm: plantSpacing,
+                      irrigationLineSpacingCm: irrLineSpacing,
+                      irrigationDripperSpacingCm: irrDripperSpacing,
+                      fertilizerBandCm: fertBand,
+                      showPlanting: _showPlanting,
+                      showIrrigation: _showIrrigation,
+                      showFertilizer: _showFertilizer,
+                    ),
+                    size: Size.infinite,
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 10),
+
+            // ── Renk Açıklaması (Legend) ──
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _legendItem(Colors.green.shade600, 'Bitki', Icons.circle),
+                  _legendItem(Colors.blue.shade500, 'Sulama', Icons.horizontal_rule),
+                  _legendItem(Colors.orange.shade400, 'Gübre', Icons.square_rounded),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+
+            // ── Sulama ve Gübre Bilgisi ──
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.blue.shade100),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.water_drop, color: Colors.blue.shade600, size: 18),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text('$irrType  •  Hat arası: ${irrLineSpacing.round()}cm  •  Damlatıcı arası: ${irrDripperSpacing.round()}cm',
+                        style: TextStyle(fontSize: 12, color: Colors.blue.shade800)),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 6),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.orange.shade50,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.orange.shade100),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.science, color: Colors.orange.shade700, size: 18),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text('$fertType  •  Bant genişliği: ${(fertBand * 2).round()}cm  •  Bitkiden ${fertBand.round()}cm mesafe',
+                        style: TextStyle(fontSize: 12, color: Colors.orange.shade800)),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+
+            // ── İstatistikler ──
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _miniStat('Toplam Bitki', '$totalPlants', Colors.green.shade700),
+                _miniStat('Sıra Sayısı', '~$totalRows', Colors.brown.shade600),
+                _miniStat('Sulama Hattı', '~${irrLengthM}m', Colors.blue.shade700),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 
-  Widget _miniStat(String label, String value) {
+  Widget _layerChip(String label, Color color, bool selected, ValueChanged<bool> onChanged) {
+    return FilterChip(
+      label: Text(label, style: TextStyle(fontSize: 12, color: selected ? Colors.white : color)),
+      selected: selected,
+      onSelected: onChanged,
+      selectedColor: color,
+      checkmarkColor: Colors.white,
+      backgroundColor: color.withValues(alpha: 0.1),
+      side: BorderSide(color: color.withValues(alpha: 0.3)),
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      visualDensity: VisualDensity.compact,
+    );
+  }
+
+  Widget _legendItem(Color color, String label, IconData icon) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, color: color, size: 14),
+        const SizedBox(width: 4),
+        Text(label, style: TextStyle(fontSize: 11, color: Colors.grey.shade700)),
+      ],
+    );
+  }
+
+  Widget _miniStat(String label, String value, Color color) {
     return Column(
       children: [
-        Text(value, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.green.shade800)),
+        Text(value, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: color)),
         Text(label, style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
       ],
     );
