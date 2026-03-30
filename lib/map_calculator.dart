@@ -15,16 +15,15 @@ class MapAreaCalculatorScreen extends StatefulWidget {
   });
 
   @override
-  State<MapAreaCalculatorScreen> createState() =>
-      _MapAreaCalculatorScreenState();
+  State<MapAreaCalculatorScreen> createState() => _MapAreaCalculatorScreenState();
 }
 
 class _MapAreaCalculatorScreenState extends State<MapAreaCalculatorScreen> {
   final List<LatLng> _polygonPoints = [];
   final Set<Marker> _markers = {};
   Set<Polygon> _polygons = {};
-  String _calculatedArea = "Alanı Görmek İçin Tarlanın Köşelerini Çizin";
-  double _calculatedDekar = 0.0; // Kaydetmek için dekarı hafızada tutuyoruz
+  String _calculatedArea = "Alanı Görmek İçin Tarlanın 4 Köşesini Çizin";
+  double _calculatedDekar = 0.0; 
 
   void _onMapTapped(LatLng point) {
     setState(() {
@@ -47,7 +46,8 @@ class _MapAreaCalculatorScreenState extends State<MapAreaCalculatorScreen> {
   }
 
   void _updatePolygon() {
-    if (_polygonPoints.length >= 3) {
+    // ARTIK EN AZ 4 NOKTA ŞARTI VAR
+    if (_polygonPoints.length >= 4) {
       _polygons = {
         Polygon(
           polygonId: const PolygonId('field_polygon'),
@@ -59,16 +59,17 @@ class _MapAreaCalculatorScreenState extends State<MapAreaCalculatorScreen> {
       };
     } else {
       _polygons.clear();
-      _calculatedArea = "Alanı Görmek İçin Tarlanın Köşelerini Çizin";
+      _calculatedArea = "Alanı Görmek İçin Tarlanın ${_polygonPoints.length}/4 Köşesini Çizdiniz";
       _calculatedDekar = 0.0;
     }
   }
 
   void _calculateArea() {
-    if (_polygonPoints.length < 3) {
+    if (_polygonPoints.length < 4) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Alan hesaplamak için en az 3 nokta seçmelisiniz!'),
+          content: Text('Hassas ölçüm için arazinin EN AZ 4 köşesini işaretlemelisiniz!'),
+          backgroundColor: Colors.orange,
         ),
       );
       return;
@@ -77,15 +78,13 @@ class _MapAreaCalculatorScreenState extends State<MapAreaCalculatorScreen> {
     List<toolkit.LatLng> toolkitPoints = _polygonPoints
         .map((p) => toolkit.LatLng(p.latitude, p.longitude))
         .toList();
-    double areaSqMeters =
-        toolkit.SphericalUtil.computeArea(toolkitPoints).toDouble();
+    double areaSqMeters = toolkit.SphericalUtil.computeArea(toolkitPoints).toDouble();
 
     _calculatedDekar = areaSqMeters / 1000;
     double hektar = areaSqMeters / 10000;
 
     setState(() {
-      _calculatedArea =
-          '''
+      _calculatedArea = '''
 M²: ${areaSqMeters.toStringAsFixed(2)} m²
 Dekar (Dönüm): ${_calculatedDekar.toStringAsFixed(2)}
 Hektar: ${hektar.toStringAsFixed(3)}
@@ -98,7 +97,7 @@ Hektar: ${hektar.toStringAsFixed(3)}
       _polygonPoints.clear();
       _markers.clear();
       _polygons.clear();
-      _calculatedArea = "Alanı Görmek İçin Tarlanın Köşelerini Çizin";
+      _calculatedArea = "Alanı Görmek İçin Tarlanın 4 Köşesini Çizin";
       _calculatedDekar = 0.0;
     });
   }
@@ -106,14 +105,11 @@ Hektar: ${hektar.toStringAsFixed(3)}
   void _saveToMyCrops() {
     if (_calculatedDekar == 0.0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Önce tarlayı çizip ALANI HESAPLA butonuna basın!'),
-        ),
+        const SnackBar(content: Text('Önce 4 noktayı çizip ALANI HESAPLA butonuna basın!')),
       );
       return;
     }
 
-    // Poligonun orta noktasını hesapla
     double centerLat = 0, centerLng = 0;
     for (final p in _polygonPoints) {
       centerLat += p.latitude;
@@ -131,23 +127,18 @@ Hektar: ${hektar.toStringAsFixed(3)}
           onChanged: (v) => name = v,
           decoration: InputDecoration(
             hintText: 'Örn: Arka Bahçe',
-            helperText:
-                'Otomatik olarak ${_calculatedDekar.toStringAsFixed(1)} Dekar eklenecek',
+            helperText: 'Otomatik olarak ${_calculatedDekar.toStringAsFixed(1)} Dekar eklenecek',
             border: const OutlineInputBorder(),
           ),
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('İptal'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('İptal')),
           FilledButton(
             onPressed: () {
               if (name.isNotEmpty) {
                 final box = Hive.box('user_crops');
                 box.add({
-                  'name':
-                      '$name (${_calculatedDekar.toStringAsFixed(1)} Dekar)',
+                  'name': '$name (${_calculatedDekar.toStringAsFixed(1)} Dekar)',
                   'date': DateFormat('dd.MM.yyyy').format(DateTime.now()),
                   'latitude': centerLat,
                   'longitude': centerLng,
@@ -155,11 +146,7 @@ Hektar: ${hektar.toStringAsFixed(3)}
                 });
                 Navigator.pop(ctx);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text(
-                      'Tarla ölçüsüyle birlikte Tarlalarım sekmesine kaydedildi!',
-                    ),
-                  ),
+                  const SnackBar(content: Text('Tarla ölçüsüyle birlikte başarıyla kaydedildi!')),
                 );
               }
             },
@@ -170,23 +157,14 @@ Hektar: ${hektar.toStringAsFixed(3)}
     );
   }
 
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Tarla Hektar Hesaplayıcı'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.undo),
-            onPressed: _undoLastPoint,
-            tooltip: 'Son Noktayı Sil',
-          ),
-          IconButton(
-            icon: const Icon(Icons.cleaning_services),
-            onPressed: _clearMap,
-            tooltip: 'Haritayı Temizle',
-          ),
+          IconButton(icon: const Icon(Icons.undo), onPressed: _undoLastPoint, tooltip: 'Son Noktayı Sil'),
+          IconButton(icon: const Icon(Icons.cleaning_services), onPressed: _clearMap, tooltip: 'Haritayı Temizle'),
         ],
       ),
       body: Column(
@@ -197,20 +175,13 @@ Hektar: ${hektar.toStringAsFixed(3)}
             width: double.infinity,
             child: Text(
               _calculatedArea,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.blueAccent,
-              ),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blueAccent),
               textAlign: TextAlign.center,
             ),
           ),
           Expanded(
             child: GoogleMap(
-              initialCameraPosition: CameraPosition(
-                target: LatLng(widget.initialLat, widget.initialLng),
-                zoom: 18.0,
-              ),
+              initialCameraPosition: CameraPosition(target: LatLng(widget.initialLat, widget.initialLng), zoom: 18.0),
               mapType: MapType.satellite,
               markers: _markers,
               polygons: _polygons,
@@ -228,10 +199,7 @@ Hektar: ${hektar.toStringAsFixed(3)}
                     onPressed: _calculateArea,
                     icon: const Icon(Icons.calculate),
                     label: const Text('ALANI HESAPLA'),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: Colors.amber.shade900,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                    ),
+                    style: FilledButton.styleFrom(backgroundColor: Colors.amber.shade900, padding: const EdgeInsets.symmetric(vertical: 16)),
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -240,10 +208,7 @@ Hektar: ${hektar.toStringAsFixed(3)}
                     onPressed: _saveToMyCrops,
                     icon: const Icon(Icons.save),
                     label: const Text('KAYDET'),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: Colors.green.shade700,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                    ),
+                    style: FilledButton.styleFrom(backgroundColor: Colors.green.shade700, padding: const EdgeInsets.symmetric(vertical: 16)),
                   ),
                 ),
               ],
