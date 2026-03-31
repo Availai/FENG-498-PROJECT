@@ -4,9 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'crop_rules.dart';
-import 'package:translator/translator.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:translator/translator.dart';
 
 class AgriService {
   static String get _plantNetKey => dotenv.env['PLANTNET_API_KEY'] ?? '';
