@@ -1538,4 +1538,227 @@ weekly_water_plan dizisi tam 7 gün olmalı, yukarıdaki hava tahminine göre ya
       };
     }
   }
+
+  // ═══════════════════════════════════════════════════
+  // UYDU HAVA DURUMU (NASA POWER + Open-Meteo ERA5)
+  // ═══════════════════════════════════════════════════
+  static Future<Map<String, dynamic>> getSatelliteWeather(
+    double latitude,
+    double longitude,
+  ) async {
+    // Varsayılan değerler
+    double currentTemp = 0;
+    double currentHumidity = 0;
+    double currentWind = 0;
+    double currentPrecip = 0;
+    double currentCloudCover = 0;
+    double currentPressure = 0;
+    int weatherCode = 0;
+    List<Map<String, dynamic>> dailyForecast = [];
+
+    double nasaSolar = 0; // MJ/m²/gün — uydu güneş radyasyonu
+    double nasaTemp = 0;
+    double nasaHumidity = 0;
+    double nasaWind = 0;
+    double nasaPrecip = 0;
+    String nasaDate = '';
+    bool nasaSuccess = false;
+
+    List<Map<String, dynamic>> hourlyForecast = [];
+
+    // Open-Meteo anlık + saatlik + 7 günlük tahmin (ERA5 tabanlı)
+    try {
+      final omRes = await http
+          .get(Uri.parse(
+            'https://api.open-meteo.com/v1/forecast'
+            '?latitude=$latitude&longitude=$longitude'
+            '&current=temperature_2m,relative_humidity_2m,precipitation'
+            ',wind_speed_10m,cloud_cover,surface_pressure,weather_code'
+            '&hourly=temperature_2m,precipitation_probability,weather_code'
+            ',wind_speed_10m,relative_humidity_2m'
+            '&daily=temperature_2m_max,temperature_2m_min,precipitation_sum'
+            ',uv_index_max,wind_speed_10m_max'
+            '&forecast_days=7&timezone=auto',
+          ))
+          .timeout(const Duration(seconds: 10));
+      if (omRes.statusCode == 200) {
+        final omData = jsonDecode(omRes.body);
+        final cur = omData['current'];
+        currentTemp = (cur['temperature_2m'] as num).toDouble();
+        currentHumidity = (cur['relative_humidity_2m'] as num).toDouble();
+        currentWind = (cur['wind_speed_10m'] as num).toDouble();
+        currentPrecip = (cur['precipitation'] as num).toDouble();
+        currentCloudCover = (cur['cloud_cover'] as num).toDouble();
+        currentPressure = (cur['surface_pressure'] as num).toDouble();
+        weatherCode = (cur['weather_code'] as num).toInt();
+
+        // Saatlik veri — şu andan itibaren 24 saat
+        final hourly = omData['hourly'];
+        final hTimes = hourly['time'] as List;
+        final hTemps = hourly['temperature_2m'] as List;
+        final hPrecipProb = hourly['precipitation_probability'] as List;
+        final hCodes = hourly['weather_code'] as List;
+        final hWind = hourly['wind_speed_10m'] as List;
+        final hHumidity = hourly['relative_humidity_2m'] as List;
+        final nowHour = DateTime.now().hour;
+        int start = 0;
+        for (int i = 0; i < hTimes.length; i++) {
+          final t = hTimes[i] as String; // "2025-03-31T14:00"
+          if (t.length >= 13) {
+            final h = int.tryParse(t.substring(11, 13)) ?? 0;
+            final isToday = t.startsWith(
+                DateTime.now().toIso8601String().substring(0, 10));
+            if (isToday && h >= nowHour) {
+              start = i;
+              break;
+            }
+          }
+        }
+        for (int i = start; i < start + 24 && i < hTimes.length; i++) {
+          hourlyForecast.add({
+            'time': hTimes[i] as String,
+            'temp': (hTemps[i] as num).toDouble(),
+            'precip_prob': (hPrecipProb[i] as num).toInt(),
+            'code': (hCodes[i] as num).toInt(),
+            'wind': (hWind[i] as num).toDouble(),
+            'humidity': (hHumidity[i] as num).toInt(),
+          });
+        }
+
+        final daily = omData['daily'];
+        final dates = daily['time'] as List;
+        final maxT = daily['temperature_2m_max'] as List;
+        final minT = daily['temperature_2m_min'] as List;
+        final rain = daily['precipitation_sum'] as List;
+        final uv = daily['uv_index_max'] as List;
+        final windMax = daily['wind_speed_10m_max'] as List;
+        for (int i = 0; i < dates.length; i++) {
+          dailyForecast.add({
+            'date': dates[i] as String,
+            'max': (maxT[i] as num).toDouble(),
+            'min': (minT[i] as num).toDouble(),
+            'rain': (rain[i] as num).toDouble(),
+            'uv': uv[i] != null ? (uv[i] as num).toDouble() : 0.0,
+            'wind_max': (windMax[i] as num).toDouble(),
+          });
+        }
+      }
+    } catch (_) {}
+
+    // NASA POWER API — uydu kaynaklı tarımsal meteoroloji
+    // (1-3 günlük gecikme nedeniyle 3 gün öncesinin verisi alınır)
+    try {
+      final now = DateTime.now().subtract(const Duration(days: 3));
+      final dateStr =
+          '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}';
+      final nasaRes = await http
+          .get(Uri.parse(
+            'https://power.larc.nasa.gov/api/temporal/daily/point'
+            '?parameters=T2M,T2M_MAX,T2M_MIN,PRECTOTCORR,RH2M,WS2M,ALLSKY_SFC_SW_DWN'
+            '&community=AG'
+            '&longitude=$longitude&latitude=$latitude'
+            '&start=$dateStr&end=$dateStr'
+            '&format=JSON',
+          ))
+          .timeout(const Duration(seconds: 15));
+      if (nasaRes.statusCode == 200) {
+        final nasaData = jsonDecode(nasaRes.body);
+        final props = nasaData['properties']?['parameter'];
+        if (props != null) {
+          nasaTemp = (props['T2M']?[dateStr] as num?)?.toDouble() ?? 0;
+          nasaHumidity = (props['RH2M']?[dateStr] as num?)?.toDouble() ?? 0;
+          nasaWind = (props['WS2M']?[dateStr] as num?)?.toDouble() ?? 0;
+          nasaPrecip =
+              (props['PRECTOTCORR']?[dateStr] as num?)?.toDouble() ?? 0;
+          nasaSolar =
+              (props['ALLSKY_SFC_SW_DWN']?[dateStr] as num?)?.toDouble() ?? 0;
+          nasaDate =
+              '${now.day.toString().padLeft(2, '0')}.${now.month.toString().padLeft(2, '0')}.${now.year}';
+          nasaSuccess = nasaTemp != 0 || nasaSolar != 0;
+        }
+      }
+    } catch (_) {}
+
+    // Agromonitoring toprak nemi (uydu destekli)
+    double soilMoisture = 0;
+    double soilTempC = 0;
+    try {
+      final agroData = await _getAgroSoilData(latitude, longitude);
+      if (agroData != null) {
+        soilMoisture = agroData['moisture'] ?? 0.0;
+        soilTempC = agroData['soil_temp_c'] ?? 0.0;
+      }
+    } catch (_) {}
+
+    return {
+      'success': true,
+      'current_temp': currentTemp,
+      'current_humidity': currentHumidity,
+      'current_wind': currentWind,
+      'current_precip': currentPrecip,
+      'current_cloud_cover': currentCloudCover,
+      'current_pressure': currentPressure,
+      'weather_code': weatherCode,
+      'daily_forecast': dailyForecast,
+      'hourly_forecast': hourlyForecast,
+      'nasa_solar': nasaSolar,
+      'nasa_temp': nasaTemp,
+      'nasa_humidity': nasaHumidity,
+      'nasa_wind': nasaWind,
+      'nasa_precip': nasaPrecip,
+      'nasa_date': nasaDate,
+      'nasa_success': nasaSuccess,
+      'soil_moisture': soilMoisture,
+      'soil_temp_c': soilTempC,
+    };
+  }
+
+  // ═══════════════════════════════════════════════════
+  // SAATLİK HAVA (field_detail_screen için hafif çağrı)
+  // ═══════════════════════════════════════════════════
+  static Future<List<Map<String, dynamic>>> getHourlyWeather(
+    double latitude,
+    double longitude,
+  ) async {
+    try {
+      final res = await http
+          .get(Uri.parse(
+            'https://api.open-meteo.com/v1/forecast'
+            '?latitude=$latitude&longitude=$longitude'
+            '&hourly=temperature_2m,precipitation_probability,weather_code'
+            ',wind_speed_10m,relative_humidity_2m'
+            '&forecast_days=2&timezone=auto',
+          ))
+          .timeout(const Duration(seconds: 8));
+      if (res.statusCode != 200) return [];
+      final data = jsonDecode(res.body)['hourly'];
+      final times = data['time'] as List;
+      final temps = data['temperature_2m'] as List;
+      final precip = data['precipitation_probability'] as List;
+      final codes = data['weather_code'] as List;
+      final wind = data['wind_speed_10m'] as List;
+      final hum = data['relative_humidity_2m'] as List;
+
+      final nowStr = DateTime.now().toIso8601String().substring(0, 13);
+      final List<Map<String, dynamic>> result = [];
+      for (int i = 0; i < times.length; i++) {
+        // Sadece şu andan itibaren 24 saati al
+        final t = times[i] as String;
+        if (t.substring(0, 13).compareTo(nowStr) >= 0 &&
+            result.length < 24) {
+          result.add({
+            'time': t,
+            'temp': (temps[i] as num).toDouble(),
+            'precip_prob': (precip[i] as num).toInt(),
+            'code': (codes[i] as num).toInt(),
+            'wind': (wind[i] as num).toDouble(),
+            'humidity': (hum[i] as num).toInt(),
+          });
+        }
+      }
+      return result;
+    } catch (_) {
+      return [];
+    }
+  }
 }

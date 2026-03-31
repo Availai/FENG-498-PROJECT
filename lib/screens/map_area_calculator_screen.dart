@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:maps_toolkit/maps_toolkit.dart' as toolkit;
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/intl.dart';
@@ -15,108 +16,78 @@ class MapAreaCalculatorScreen extends StatefulWidget {
   });
 
   @override
-  State<MapAreaCalculatorScreen> createState() => _MapAreaCalculatorScreenState();
+  State<MapAreaCalculatorScreen> createState() =>
+      _MapAreaCalculatorScreenState();
 }
 
 class _MapAreaCalculatorScreenState extends State<MapAreaCalculatorScreen> {
-  final List<LatLng> _polygonPoints = [];
-  final Set<Marker> _markers = {};
-  Set<Polygon> _polygons = {};
-  String _calculatedArea = "Alanı Görmek İçin Tarlanın 4 Köşesini Çizin";
-  double _calculatedDekar = 0.0; 
+  final MapController _mapController = MapController();
+  final List<LatLng> _points = [];
 
-  void _onMapTapped(LatLng point) {
+  String _areaLabel = 'Tarlanın köşelerini dokunarak çizin (min. 4 nokta)';
+  double _calculatedDekar = 0.0;
+
+  // Katman seçimi: true = uydu, false = sokak
+  bool _satellite = true;
+
+  void _onMapTap(TapPosition _, LatLng latlng) {
     setState(() {
-      _polygonPoints.add(point);
-      _markers.add(
-        Marker(markerId: MarkerId(point.toString()), position: point),
-      );
-      _updatePolygon();
+      _points.add(latlng);
+      _areaLabel = '${_points.length} nokta işaretlendi'
+          '${_points.length < 4 ? ' — daha ${4 - _points.length} nokta gerekli' : ''}';
+    });
+    if (_points.length >= 4) _calculateArea();
+  }
+
+  void _calculateArea() {
+    final toolkitPts = _points
+        .map((p) => toolkit.LatLng(p.latitude, p.longitude))
+        .toList();
+    final sqm = toolkit.SphericalUtil.computeArea(toolkitPts).toDouble();
+    _calculatedDekar = sqm / 1000;
+    final hektar = sqm / 10000;
+    setState(() {
+      _areaLabel =
+          '${sqm.toStringAsFixed(0)} m²  •  ${_calculatedDekar.toStringAsFixed(2)} Dekar  •  ${hektar.toStringAsFixed(3)} ha';
     });
   }
 
   void _undoLastPoint() {
-    if (_polygonPoints.isNotEmpty) {
-      setState(() {
-        final lastPoint = _polygonPoints.removeLast();
-        _markers.removeWhere((m) => m.position == lastPoint);
-        _updatePolygon();
-      });
-    }
-  }
-
-  void _updatePolygon() {
-    // ARTIK EN AZ 4 NOKTA ŞARTI VAR
-    if (_polygonPoints.length >= 4) {
-      _polygons = {
-        Polygon(
-          polygonId: const PolygonId('field_polygon'),
-          points: _polygonPoints,
-          strokeWidth: 3,
-          strokeColor: Colors.green,
-          fillColor: Colors.green.withValues(alpha: 0.3),
-        ),
-      };
-    } else {
-      _polygons.clear();
-      _calculatedArea = "Alanı Görmek İçin Tarlanın ${_polygonPoints.length}/4 Köşesini Çizdiniz";
-      _calculatedDekar = 0.0;
-    }
-  }
-
-  void _calculateArea() {
-    if (_polygonPoints.length < 4) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Hassas ölçüm için arazinin EN AZ 4 köşesini işaretlemelisiniz!'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
-    }
-
-    List<toolkit.LatLng> toolkitPoints = _polygonPoints
-        .map((p) => toolkit.LatLng(p.latitude, p.longitude))
-        .toList();
-    double areaSqMeters = toolkit.SphericalUtil.computeArea(toolkitPoints).toDouble();
-
-    _calculatedDekar = areaSqMeters / 1000;
-    double hektar = areaSqMeters / 10000;
-
+    if (_points.isEmpty) return;
     setState(() {
-      _calculatedArea = '''
-M²: ${areaSqMeters.toStringAsFixed(2)} m²
-Dekar (Dönüm): ${_calculatedDekar.toStringAsFixed(2)}
-Hektar: ${hektar.toStringAsFixed(3)}
-''';
+      _points.removeLast();
+      _calculatedDekar = 0;
+      _areaLabel = _points.isEmpty
+          ? 'Tarlanın köşelerini dokunarak çizin (min. 4 nokta)'
+          : '${_points.length} nokta işaretlendi'
+              '${_points.length < 4 ? ' — daha ${4 - _points.length} nokta gerekli' : ''}';
     });
+    if (_points.length >= 4) _calculateArea();
   }
 
   void _clearMap() {
     setState(() {
-      _polygonPoints.clear();
-      _markers.clear();
-      _polygons.clear();
-      _calculatedArea = "Alanı Görmek İçin Tarlanın 4 Köşesini Çizin";
-      _calculatedDekar = 0.0;
+      _points.clear();
+      _calculatedDekar = 0;
+      _areaLabel = 'Tarlanın köşelerini dokunarak çizin (min. 4 nokta)';
     });
   }
 
-  void _saveToMyCrops() {
+  void _saveField() {
     if (_calculatedDekar == 0.0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Önce 4 noktayı çizip ALANI HESAPLA butonuna basın!')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content:
+              Text('Önce 4 nokta işaretleyip alan hesaplanmalıdır!')));
       return;
     }
 
     double centerLat = 0, centerLng = 0;
-    for (final p in _polygonPoints) {
+    for (final p in _points) {
       centerLat += p.latitude;
       centerLng += p.longitude;
     }
-    centerLat /= _polygonPoints.length;
-    centerLng /= _polygonPoints.length;
+    centerLat /= _points.length;
+    centerLng /= _points.length;
 
     String name = '';
     showDialog(
@@ -125,97 +96,212 @@ Hektar: ${hektar.toStringAsFixed(3)}
         title: const Text('Bu Tarlayı Kaydet'),
         content: TextField(
           onChanged: (v) => name = v,
+          autofocus: true,
           decoration: InputDecoration(
-            hintText: 'Örn: Arka Bahçe',
-            helperText: 'Otomatik olarak ${_calculatedDekar.toStringAsFixed(1)} Dekar eklenecek',
+            hintText: 'Örn: Kuzey Tarlası',
+            helperText:
+                '${_calculatedDekar.toStringAsFixed(1)} Dekar otomatik eklenecek',
             border: const OutlineInputBorder(),
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('İptal')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('İptal')),
           FilledButton(
             onPressed: () {
-              if (name.isNotEmpty) {
+              if (name.trim().isNotEmpty) {
                 final box = Hive.box('user_crops');
                 box.add({
-                  'name': '$name (${_calculatedDekar.toStringAsFixed(1)} Dekar)',
+                  'name':
+                      '${name.trim()} (${_calculatedDekar.toStringAsFixed(1)} Dekar)',
                   'date': DateFormat('dd.MM.yyyy').format(DateTime.now()),
                   'latitude': centerLat,
                   'longitude': centerLng,
                   'area_dekar': _calculatedDekar,
                 });
                 Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Tarla ölçüsüyle birlikte başarıyla kaydedildi!')),
-                );
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                    content: Text('Tarla başarıyla kaydedildi!')));
               }
             },
-            child: const Text('Tarlalarıma Kaydet'),
+            child: const Text('Kaydet'),
           ),
         ],
       ),
     );
   }
 
+  List<Marker> _buildMarkers() {
+    return List.generate(_points.length, (i) {
+      final p = _points[i];
+      return Marker(
+        point: p,
+        width: 28,
+        height: 28,
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.green.shade700,
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white, width: 2),
+            boxShadow: const [
+              BoxShadow(color: Colors.black38, blurRadius: 4)
+            ],
+          ),
+          child: Center(
+            child: Text(
+              '${i + 1}',
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold),
+            ),
+          ),
+        ),
+      );
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Kapalı polygon için son nokta = ilk nokta
+    final closedPoints =
+        _points.length >= 3 ? [..._points, _points.first] : <LatLng>[];
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Tarla Hektar Hesaplayıcı'),
         actions: [
-          IconButton(icon: const Icon(Icons.undo), onPressed: _undoLastPoint, tooltip: 'Son Noktayı Sil'),
-          IconButton(icon: const Icon(Icons.cleaning_services), onPressed: _clearMap, tooltip: 'Haritayı Temizle'),
+          // Katman değiştir
+          IconButton(
+            icon: Icon(
+              _satellite ? Icons.map_outlined : Icons.satellite_alt,
+              color: Colors.white,
+            ),
+            onPressed: () => setState(() => _satellite = !_satellite),
+            tooltip: _satellite ? 'Sokak görünümü' : 'Uydu görünümü',
+          ),
+          IconButton(
+              icon: const Icon(Icons.undo),
+              onPressed: _undoLastPoint,
+              tooltip: 'Son Noktayı Sil'),
+          IconButton(
+              icon: const Icon(Icons.cleaning_services),
+              onPressed: _clearMap,
+              tooltip: 'Haritayı Temizle'),
         ],
       ),
-      body: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            color: Colors.blue.shade50,
-            width: double.infinity,
-            child: Text(
-              _calculatedArea,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blueAccent),
-              textAlign: TextAlign.center,
-            ),
+      body: Column(children: [
+        // ── ALAN GÖSTERGESİ ──
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          color: _calculatedDekar > 0
+              ? Colors.green.shade700
+              : Colors.blueGrey.shade800,
+          width: double.infinity,
+          child: Text(
+            _areaLabel,
+            style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+                color: Colors.white),
+            textAlign: TextAlign.center,
           ),
-          Expanded(
-            child: GoogleMap(
-              initialCameraPosition: CameraPosition(target: LatLng(widget.initialLat, widget.initialLng), zoom: 18.0),
-              mapType: MapType.satellite,
-              markers: _markers,
-              polygons: _polygons,
-              onTap: _onMapTapped,
-              myLocationEnabled: true,
-              myLocationButtonEnabled: true,
+        ),
+
+        // ── HARİTA ──
+        Expanded(
+          child: FlutterMap(
+            mapController: _mapController,
+            options: MapOptions(
+              initialCenter:
+                  LatLng(widget.initialLat, widget.initialLng),
+              initialZoom: 17.0,
+              onTap: _onMapTap,
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: FilledButton.icon(
-                    onPressed: _calculateArea,
-                    icon: const Icon(Icons.calculate),
-                    label: const Text('ALANI HESAPLA'),
-                    style: FilledButton.styleFrom(backgroundColor: Colors.amber.shade900, padding: const EdgeInsets.symmetric(vertical: 16)),
-                  ),
+            children: [
+              // Uydu katmanı (ESRI — ücretsiz, anahtar yok)
+              if (_satellite)
+                TileLayer(
+                  urlTemplate:
+                      'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+                  userAgentPackageName: 'com.example.feng_498',
+                  maxZoom: 21,
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: FilledButton.icon(
-                    onPressed: _saveToMyCrops,
-                    icon: const Icon(Icons.save),
-                    label: const Text('KAYDET'),
-                    style: FilledButton.styleFrom(backgroundColor: Colors.green.shade700, padding: const EdgeInsets.symmetric(vertical: 16)),
-                  ),
+              // Sokak katmanı (OpenStreetMap — ücretsiz)
+              if (!_satellite)
+                TileLayer(
+                  urlTemplate:
+                      'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                  userAgentPackageName: 'com.example.feng_498',
+                  maxZoom: 19,
                 ),
-              ],
-            ),
+              // Uydu üstü yer adı katmanı
+              if (_satellite)
+                TileLayer(
+                  urlTemplate:
+                      'https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
+                  userAgentPackageName: 'com.example.feng_498',
+                  maxZoom: 21,
+                ),
+              // Polygon dolgusu
+              if (closedPoints.length >= 3)
+                PolygonLayer(polygons: [
+                  Polygon(
+                    points: closedPoints,
+                    color: Colors.green.withValues(alpha: 0.3),
+                    borderColor: Colors.greenAccent,
+                    borderStrokeWidth: 2.5,
+                  ),
+                ]),
+              // Noktalar arası çizgi
+              if (_points.length >= 2)
+                PolylineLayer(polylines: [
+                  Polyline(
+                    points: [..._points, if (_points.length >= 3) _points.first],
+                    color: Colors.greenAccent,
+                    strokeWidth: 2.0,
+                  ),
+                ]),
+              // Nokta numaraları
+              MarkerLayer(markers: _buildMarkers()),
+            ],
           ),
-        ],
-      ),
+        ),
+
+        // ── ALT BUTONLAR ──
+        Container(
+          color: Colors.grey.shade900,
+          padding: const EdgeInsets.all(12),
+          child: Row(children: [
+            Expanded(
+              child: FilledButton.icon(
+                onPressed:
+                    _points.length >= 4 ? _calculateArea : null,
+                icon: const Icon(Icons.calculate),
+                label: const Text('ALANI HESAPLA'),
+                style: FilledButton.styleFrom(
+                    backgroundColor: Colors.amber.shade800,
+                    padding:
+                        const EdgeInsets.symmetric(vertical: 14)),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: FilledButton.icon(
+                onPressed: _calculatedDekar > 0 ? _saveField : null,
+                icon: const Icon(Icons.save),
+                label: const Text('KAYDET'),
+                style: FilledButton.styleFrom(
+                    backgroundColor: Colors.green.shade700,
+                    padding:
+                        const EdgeInsets.symmetric(vertical: 14)),
+              ),
+            ),
+          ]),
+        ),
+      ]),
     );
   }
 }

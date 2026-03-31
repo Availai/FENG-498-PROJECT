@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Read(//c//**)"
+      "Read(//c//**)",
+      "Read(//c/FENG 498/**)"
     ]
   }
 }

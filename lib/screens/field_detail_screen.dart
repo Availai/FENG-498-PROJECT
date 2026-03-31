@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../services/agri_service.dart';
 import 'crop_field_match_screen.dart';
 import 'camera_screen.dart';
+import 'satellite_weather_screen.dart';
+import 'garden_manager_screen.dart';
 
 class FieldDetailScreen extends StatefulWidget {
   final dynamic fieldData;
@@ -15,10 +17,24 @@ class _FieldDetailScreenState extends State<FieldDetailScreen> {
   bool _isLoading = true;
   String? _error;
 
+  List<Map<String, dynamic>> _hourly = [];
+  bool _hourlyLoading = false;
+
   @override
   void initState() {
     super.initState();
     _loadAnalysis();
+    _loadHourly();
+  }
+
+  Future<void> _loadHourly() async {
+    final d = widget.fieldData;
+    setState(() => _hourlyLoading = true);
+    final list = await AgriService.getHourlyWeather(
+      (d['latitude'] as num).toDouble(),
+      (d['longitude'] as num).toDouble(),
+    );
+    if (mounted) setState(() { _hourly = list; _hourlyLoading = false; });
   }
 
   Future<void> _loadAnalysis() async {
@@ -160,6 +176,31 @@ class _FieldDetailScreenState extends State<FieldDetailScreen> {
 
         const SizedBox(height: 16),
 
+        // ── SAATLİK TAHMİN ──
+        const Text('🕐 Saatlik Hava Tahmini (24 saat)',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 8),
+        _hourlyLoading
+            ? const Center(
+                child: Padding(
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    child: CircularProgressIndicator(
+                        color: Colors.green, strokeWidth: 2)))
+            : _hourly.isEmpty
+                ? Text('Saatlik veri alınamadı.',
+                    style: TextStyle(color: Colors.grey.shade500))
+                : SizedBox(
+                    height: 110,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: _hourly.length,
+                      separatorBuilder: (_, __) => const SizedBox(width: 8),
+                      itemBuilder: (_, i) => _hourlyCard(_hourly[i]),
+                    ),
+                  ),
+
+        const SizedBox(height: 16),
+
         // ── TOPRAK pH + AGROMONITORING ──
         Container(
           padding: const EdgeInsets.all(14),
@@ -293,6 +334,40 @@ class _FieldDetailScreenState extends State<FieldDetailScreen> {
         // ── EYLEM BUTONLARI ──
         const Text('⚡ Hızlı İşlemler',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 10),
+        FilledButton.icon(
+          onPressed: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (_) =>
+                    GardenManagerScreen(fieldData: widget.fieldData)),
+          ),
+          icon: const Icon(Icons.yard),
+          label: const Text('Bahçemi Yönet & Bitki Dik'),
+          style: FilledButton.styleFrom(
+            minimumSize: const Size.fromHeight(52),
+            backgroundColor: Colors.green.shade800,
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12)),
+          ),
+        ),
+        const SizedBox(height: 10),
+        FilledButton.icon(
+          onPressed: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (_) =>
+                    SatelliteWeatherScreen(fieldData: widget.fieldData)),
+          ),
+          icon: const Icon(Icons.satellite_alt),
+          label: const Text('Uydu Hava Durumu (NASA + ERA5)'),
+          style: FilledButton.styleFrom(
+            minimumSize: const Size.fromHeight(52),
+            backgroundColor: const Color(0xFF0D47A1),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        ),
         const SizedBox(height: 10),
         FilledButton.icon(
           onPressed: () => Navigator.push(
@@ -485,6 +560,45 @@ class _FieldDetailScreenState extends State<FieldDetailScreen> {
         ]),
       ]),
     ));
+  }
+
+  Widget _hourlyCard(Map<String, dynamic> h) {
+    final time = (h['time'] as String);
+    final hour = time.length >= 16 ? time.substring(11, 16) : '??:??';
+    final temp = (h['temp'] as double).toStringAsFixed(0);
+    final prob = h['precip_prob'] as int;
+    final code = h['code'] as int;
+    final wind = (h['wind'] as double).toStringAsFixed(0);
+    final isRain = code >= 51 || prob >= 40;
+    return Container(
+      width: 72,
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+      decoration: BoxDecoration(
+        color: isRain ? Colors.blue.shade50 : Colors.amber.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+            color: isRain ? Colors.blue.shade200 : Colors.amber.shade200),
+      ),
+      child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+        Text(hour,
+            style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey.shade700)),
+        const SizedBox(height: 4),
+        Icon(isRain ? Icons.umbrella : Icons.wb_sunny,
+            size: 18, color: isRain ? Colors.blue : Colors.orange),
+        const SizedBox(height: 4),
+        Text('$temp°',
+            style: const TextStyle(
+                fontSize: 15, fontWeight: FontWeight.bold)),
+        Text('$wind km/h',
+            style: TextStyle(fontSize: 10, color: Colors.grey.shade600)),
+        if (prob > 0)
+          Text('%$prob',
+              style: const TextStyle(fontSize: 10, color: Colors.blue)),
+      ]),
+    );
   }
 
   String _phComment(double ph) {
