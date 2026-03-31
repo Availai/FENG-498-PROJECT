@@ -46,3 +46,7 @@ app.*.map.json
 
 # API passwords
 .env
+# Python Backend Ignore List
+backend/venv/
+backend/__pycache__/
+backend/.env
