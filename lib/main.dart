@@ -531,10 +531,9 @@ class _GrowingGuideScreenState extends State<GrowingGuideScreen> {
   final TextEditingController _searchCtrl = TextEditingController();
   String _scale = 'Hobi Bahçesi';
   bool _isLoading = false;
-  String? _guideResult;
-  String? _locationInfo;
-  Map<String, dynamic>? _plantingData;
+  Map<String, dynamic>? _result;
   String _currentCrop = '';
+  String? _error;
 
   void _getGuide() async {
     final query = _searchCtrl.text.trim();
@@ -545,8 +544,8 @@ class _GrowingGuideScreenState extends State<GrowingGuideScreen> {
     }
     setState(() {
       _isLoading = true;
-      _guideResult = null;
-      _plantingData = null;
+      _result = null;
+      _error = null;
     });
 
     try {
@@ -560,59 +559,61 @@ class _GrowingGuideScreenState extends State<GrowingGuideScreen> {
 
       if (mounted) {
         setState(() {
-          _guideResult = result['guide'];
-          _locationInfo = result['locationInfo'];
-          _plantingData = result['plantingData'] as Map<String, dynamic>?;
+          _result = result;
           _currentCrop = query;
         });
       }
     } catch (e) {
       if (mounted) {
-        setState(() {
-          _guideResult = 'Bir hata oluştu: $e';
-        });
+        setState(() => _error = '$e');
       }
     } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  String get _cropEmoji {
+    final n = _currentCrop.toLowerCase();
+    if (n.contains('domates')) return '🍅';
+    if (n.contains('mısır') || n.contains('misir')) return '🌽';
+    if (n.contains('salatalık') || n.contains('salatalik')) return '🥒';
+    if (n.contains('patlıcan') || n.contains('patlican')) return '🍆';
+    if (n.contains('buğday') || n.contains('bugday')) return '🌾';
+    if (n.contains('biber')) return '🫑';
+    if (n.contains('patates')) return '🥔';
+    if (n.contains('soğan') || n.contains('sogan')) return '🧅';
+    if (n.contains('çilek') || n.contains('cilek')) return '🍓';
+    if (n.contains('kavun')) return '🍈';
+    if (n.contains('karpuz')) return '🍉';
+    if (n.contains('üzüm') || n.contains('uzum')) return '🍇';
+    if (n.contains('elma')) return '🍎';
+    if (n.contains('armut')) return '🍐';
+    if (n.contains('portakal')) return '🍊';
+    if (n.contains('limon')) return '🍋';
+    if (n.contains('fasulye')) return '🫘';
+    if (n.contains('havuç') || n.contains('havuc')) return '🥕';
+    return '🌱';
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Akıllı Tarım Rehberi'),
-        elevation: 0,
-      ),
+      appBar: AppBar(title: const Text('Akıllı Tarım Rehberi'), elevation: 0),
       body: Column(
         children: [
+          // ── Arama Bölümü ──
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               color: Theme.of(context).primaryColor,
-              borderRadius:
-                  const BorderRadius.vertical(bottom: Radius.circular(30)),
-              boxShadow: [
-                BoxShadow(
-                    color: Colors.green.withValues(alpha: 0.3),
-                    blurRadius: 10,
-                    offset: const Offset(0, 5))
-              ],
+              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(30)),
+              boxShadow: [BoxShadow(color: Colors.green.withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 5))],
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Ne yetiştirmek istiyorsunuz?',
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold),
-                ),
+                const Text('Ne yetiştirmek istiyorsunuz?',
+                    style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 12),
                 TextField(
                   controller: _searchCtrl,
@@ -621,131 +622,657 @@ class _GrowingGuideScreenState extends State<GrowingGuideScreen> {
                     filled: true,
                     fillColor: Colors.white,
                     prefixIcon: const Icon(Icons.search, color: Colors.green),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: BorderSide.none,
-                    ),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
                   ),
                   onSubmitted: (_) => _getGuide(),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 Row(
                   children: [
-                    const Text('Hedef Ölçek: ',
-                        style: TextStyle(
-                            color: Colors.white70,
-                            fontWeight: FontWeight.bold)),
+                    const Text('Ölçek: ', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.bold)),
                     const SizedBox(width: 8),
-                    ChoiceChip(
-                      label: const Text('Hobi Bahçesi'),
-                      selected: _scale == 'Hobi Bahçesi',
-                      onSelected: (val) {
-                        if (val) setState(() => _scale = 'Hobi Bahçesi');
-                      },
-                    ),
+                    ChoiceChip(label: const Text('Hobi Bahçesi'), selected: _scale == 'Hobi Bahçesi',
+                        onSelected: (v) { if (v) setState(() => _scale = 'Hobi Bahçesi'); }),
                     const SizedBox(width: 8),
-                    ChoiceChip(
-                      label: const Text('Profesyonel'),
-                      selected: _scale == 'Profesyonel',
-                      onSelected: (val) {
-                        if (val) setState(() => _scale = 'Profesyonel');
-                      },
+                    ChoiceChip(label: const Text('Profesyonel'), selected: _scale == 'Profesyonel',
+                        onSelected: (v) { if (v) setState(() => _scale = 'Profesyonel'); }),
+                    const Spacer(),
+                    ElevatedButton.icon(
+                      onPressed: _isLoading ? null : _getGuide,
+                      icon: _isLoading
+                          ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.green, strokeWidth: 2))
+                          : const Icon(Icons.auto_awesome, size: 18),
+                      label: Text(_isLoading ? 'Yükleniyor...' : 'Rehber Oluştur', style: const TextStyle(fontSize: 13)),
+                      style: ElevatedButton.styleFrom(
+                        foregroundColor: Colors.green.shade800, backgroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
                     ),
                   ],
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: _isLoading ? null : _getGuide,
-                    icon: _isLoading
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                                color: Colors.green, strokeWidth: 2))
-                        : const Icon(Icons.auto_awesome),
-                    label: Text(_isLoading
-                        ? 'AI Rehberi Hazırlanıyor...'
-                        : 'Size Özel Rehber Oluştur'),
-                    style: ElevatedButton.styleFrom(
-                      foregroundColor: Colors.green.shade800,
-                      backgroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
-                      elevation: 0,
-                    ),
-                  ),
                 ),
               ],
             ),
           ),
+
+          // ── Sonuç Bölümü ──
           Expanded(
-            child: _guideResult == null
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.local_florist,
-                            size: 80, color: Colors.grey.shade300),
+            child: _isLoading
+                ? const Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+                    CircularProgressIndicator(color: Colors.green),
+                    SizedBox(height: 16),
+                    Text('Hava tahmini, toprak ve bitki verileri\nçekiliyor...', textAlign: TextAlign.center),
+                  ]))
+                : _result == null
+                    ? Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                        Icon(Icons.eco, size: 80, color: Colors.grey.shade300),
                         const SizedBox(height: 16),
-                        Text(
-                          'Bulunduğunuz konumdaki hava ve\ntoprak şartlarına özel AI yetiştiricilik\nrehberi oluşturun.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                              color: Colors.grey.shade600, fontSize: 16),
-                        ),
-                      ],
-                    ),
-                  )
-                : SingleChildScrollView(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (_locationInfo != null) ...[
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 12),
-                            decoration: BoxDecoration(
-                              color: Colors.blue.shade50,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.blue.shade100),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(Icons.place, color: Colors.blue.shade700),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                    child: Text(
-                                        'Hesaplanan Konum: $_locationInfo',
-                                        style: TextStyle(
-                                            color: Colors.blue.shade900,
-                                            fontWeight: FontWeight.w500))),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 20),
+                        Text('Bir bitki adı yazarak konumunuza özel\nyetiştiricilik rehberi oluşturun.',
+                            textAlign: TextAlign.center, style: TextStyle(color: Colors.grey.shade600, fontSize: 16)),
+                        if (_error != null) ...[
+                          const SizedBox(height: 12),
+                          Text('Hata: $_error', style: const TextStyle(color: Colors.red, fontSize: 13)),
                         ],
-                        Text(
-                          _guideResult!,
-                          style: const TextStyle(fontSize: 16, height: 1.6),
-                        ),
-                        const SizedBox(height: 24),
-                        // ── Animasyonlu Ekim Görselleştirme ──
-                        if (_currentCrop.isNotEmpty)
-                          _PlantingVisualization(
-                            cropName: _currentCrop,
-                            plantingData: _plantingData,
-                          ),
-                        const SizedBox(height: 40),
-                      ],
-                    ),
-                  ),
+                      ]))
+                    : _buildGuideContent(),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildGuideContent() {
+    final crop = (_result!['cropData'] as Map<String, dynamic>?) ?? {};
+    final env = (_result!['envData'] as Map<String, dynamic>?) ?? {};
+    final pd = (_result!['plantingData'] as Map<String, dynamic>?) ?? {};
+    final forecast = (_result!['weeklyForecast'] as List?) ?? [];
+    final waterPlan = (_result!['weeklyWaterPlan'] as List?) ?? [];
+
+    final temp = (env['temp'] as num?)?.toDouble() ?? 20;
+    final ph = (env['ph'] as num?)?.toDouble() ?? 6.8;
+    final hum = (env['humidity'] as num?)?.toDouble() ?? 50;
+    final location = env['location']?.toString() ?? 'Bölgeniz';
+    final uygunluk = (crop['region_uygunluk'] as num?)?.toDouble() ?? 70;
+    final idealTempMin = (crop['ideal_temp_min'] as num?)?.toDouble() ?? 15;
+    final idealTempMax = (crop['ideal_temp_max'] as num?)?.toDouble() ?? 30;
+    final idealPhMin = (crop['ideal_ph_min'] as num?)?.toDouble() ?? 5.5;
+    final idealPhMax = (crop['ideal_ph_max'] as num?)?.toDouble() ?? 7.0;
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── 1. Bitki Özet Kartı ──
+          Card(
+            elevation: 4,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(18),
+                gradient: LinearGradient(
+                  colors: [Colors.green.shade700, Colors.green.shade400],
+                  begin: Alignment.topLeft, end: Alignment.bottomRight,
+                ),
+              ),
+              padding: const EdgeInsets.all(18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(_cropEmoji, style: const TextStyle(fontSize: 42)),
+                      const SizedBox(width: 14),
+                      Expanded(child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(_currentCrop.toUpperCase(),
+                              style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
+                          Text(crop['scientific']?.toString() ?? '',
+                              style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 13, fontStyle: FontStyle.italic)),
+                        ],
+                      )),
+                      // Uygunluk rozeti
+                      Container(
+                        width: 56, height: 56,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white.withValues(alpha: 0.2),
+                          border: Border.all(color: Colors.white, width: 2),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text('%${uygunluk.round()}',
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Text(crop['desc']?.toString() ?? '',
+                      style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 14, height: 1.4)),
+                  const SizedBox(height: 14),
+                  // Mini bilgi satırı
+                  Wrap(
+                    spacing: 8, runSpacing: 6,
+                    children: [
+                      _infoBadge(Icons.calendar_month, crop['cycle']?.toString() ?? ''),
+                      _infoBadge(Icons.timer, '${crop['harvest_days'] ?? 90} gün hasat'),
+                      _infoBadge(Icons.wb_sunny, '${crop['sunlight_hours'] ?? 8}sa güneş'),
+                      _infoBadge(Icons.spa, crop['care']?.toString() ?? 'Orta'),
+                      if (crop['indoor'] == true) _infoBadge(Icons.home, 'İç mekan uygun'),
+                      if (crop['drought'] == true) _infoBadge(Icons.water_drop_outlined, 'Kuraklığa dayanıklı'),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          // ── 2. Bölge Uyumu Kartı ──
+          Card(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.place, color: Colors.blue.shade700),
+                      const SizedBox(width: 6),
+                      Text('$location — Bölge Uyumu',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  // Sıcaklık barı
+                  _rangeBar('Sıcaklık', temp, idealTempMin, idealTempMax, '°C', Colors.orange),
+                  const SizedBox(height: 8),
+                  // pH barı
+                  _rangeBar('Toprak pH', ph, idealPhMin, idealPhMax, '', Colors.brown),
+                  const SizedBox(height: 8),
+                  // Nem
+                  Row(
+                    children: [
+                      Icon(Icons.water_drop, size: 18, color: Colors.blue.shade400),
+                      const SizedBox(width: 6),
+                      Text('Nem: %${hum.round()}', style: const TextStyle(fontSize: 13)),
+                    ],
+                  ),
+                  if (crop['region_note'] != null && (crop['region_note'] as String).isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: uygunluk >= 70 ? Colors.green.shade50 : Colors.orange.shade50,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(uygunluk >= 70 ? Icons.check_circle : Icons.warning,
+                              size: 18, color: uygunluk >= 70 ? Colors.green : Colors.orange),
+                          const SizedBox(width: 8),
+                          Expanded(child: Text(crop['region_note'].toString(), style: const TextStyle(fontSize: 13))),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          // ── 3. Haftalık Hava & Sulama Planı ──
+          _WeeklyWaterCard(
+            forecast: forecast,
+            waterPlan: waterPlan,
+            cropName: _currentCrop,
+            cropEmoji: _cropEmoji,
+          ),
+          const SizedBox(height: 14),
+
+          // ── 4. Ekim & Dikim Bilgileri ──
+          Card(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.grass, color: Colors.green),
+                      SizedBox(width: 6),
+                      Text('Ekim & Dikim', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8, runSpacing: 8,
+                    children: [
+                      _detailTile(Icons.arrow_downward, '${pd['depth_cm'] ?? 3}cm', 'Derinlik', Colors.brown),
+                      _detailTile(Icons.swap_horiz, '${pd['row_spacing_cm'] ?? 50}cm', 'Sıra Arası', Colors.green),
+                      _detailTile(Icons.space_bar, '${pd['plant_spacing_cm'] ?? 40}cm', 'Bitki Arası', Colors.teal),
+                      _detailTile(Icons.grid_view, '${pd['seeds_per_dekar'] ?? 500}', 'Fide/Dekar', Colors.indigo),
+                    ],
+                  ),
+                  if (crop['best_planting_months'] != null && (crop['best_planting_months'] as String).isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Icon(Icons.date_range, size: 18, color: Colors.green.shade700),
+                        const SizedBox(width: 6),
+                        Expanded(child: Text('Ekim Ayları: ${crop['best_planting_months']}',
+                            style: TextStyle(fontSize: 13, color: Colors.green.shade800))),
+                      ],
+                    ),
+                  ],
+                  if (crop['planting_tip'] != null && (crop['planting_tip'] as String).isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(color: Colors.amber.shade50, borderRadius: BorderRadius.circular(10)),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(Icons.lightbulb, size: 18, color: Colors.amber.shade700),
+                          const SizedBox(width: 6),
+                          Expanded(child: Text(crop['planting_tip'].toString(),
+                              style: TextStyle(fontSize: 13, color: Colors.amber.shade900, fontStyle: FontStyle.italic))),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          // ── 5. Sulama & Gübre ──
+          Card(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.water_drop, color: Colors.blue),
+                      SizedBox(width: 6),
+                      Text('Sulama & Gübreleme', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8, runSpacing: 8,
+                    children: [
+                      _detailTile(Icons.water, pd['irrigation_type']?.toString() ?? 'Damla', 'Sulama Tipi', Colors.blue),
+                      _detailTile(Icons.opacity, '${pd['daily_water_liters'] ?? 2}L', 'Günlük/Bitki', Colors.cyan),
+                      _detailTile(Icons.science, pd['fertilizer_type']?.toString() ?? 'NPK', 'Gübre', Colors.orange),
+                      _detailTile(Icons.straighten, '${pd['fertilizer_band_cm'] ?? 15}cm', 'Gübre Mesafesi', Colors.deepOrange),
+                    ],
+                  ),
+                  if (pd['fertilizer_schedule'] != null && (pd['fertilizer_schedule'] as String).isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(color: Colors.orange.shade50, borderRadius: BorderRadius.circular(10)),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(Icons.schedule, size: 18, color: Colors.orange.shade700),
+                          const SizedBox(width: 6),
+                          Expanded(child: Text(pd['fertilizer_schedule'].toString(),
+                              style: TextStyle(fontSize: 13, color: Colors.orange.shade900))),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          // ── 6. Birlikte Ekim & Zararlılar ──
+          Card(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.groups, color: Colors.purple),
+                      SizedBox(width: 6),
+                      Text('Birlikte Ekim & Zararlılar', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  if (crop['companion_plants'] != null && (crop['companion_plants'] as String).isNotEmpty)
+                    _companionRow(Icons.handshake, 'İyi Eş:', crop['companion_plants'].toString(), Colors.green),
+                  if (crop['avoid_plants'] != null && (crop['avoid_plants'] as String).isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    _companionRow(Icons.block, 'Uzak Tut:', crop['avoid_plants'].toString(), Colors.red),
+                  ],
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(10)),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.bug_report, size: 18, color: Colors.red.shade700),
+                            const SizedBox(width: 6),
+                            Text('Zararlılar', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.red.shade800)),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text(crop['pests']?.toString() ?? '', style: TextStyle(fontSize: 13, color: Colors.red.shade900)),
+                        if (crop['pest_prevention'] != null && (crop['pest_prevention'] as String).isNotEmpty) ...[
+                          const SizedBox(height: 6),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Icon(Icons.shield, size: 16, color: Colors.green.shade700),
+                              const SizedBox(width: 4),
+                              Expanded(child: Text(crop['pest_prevention'].toString(),
+                                  style: TextStyle(fontSize: 12, color: Colors.green.shade900))),
+                            ],
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  if (crop['pruning'] != null && crop['pruning'] != 'Yok' && (crop['pruning'] as String).isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Icon(Icons.content_cut, size: 18, color: Colors.purple.shade700),
+                        const SizedBox(width: 6),
+                        Expanded(child: Text('Budama: ${crop['pruning']}',
+                            style: TextStyle(fontSize: 13, color: Colors.purple.shade800))),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          // ── 7. Kuşbakışı Tarla Görselleştirme ──
+          if (_currentCrop.isNotEmpty)
+            _PlantingVisualization(
+              cropName: _currentCrop,
+              plantingData: pd,
+            ),
+          const SizedBox(height: 40),
+        ],
+      ),
+    );
+  }
+
+  Widget _infoBadge(IconData icon, String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: Colors.white),
+          const SizedBox(width: 4),
+          Text(text, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w500)),
+        ],
+      ),
+    );
+  }
+
+  Widget _rangeBar(String label, double current, double idealMin, double idealMax, String unit, Color color) {
+    final inRange = current >= idealMin && current <= idealMax;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text('$label: ', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+            Text('${current.toStringAsFixed(1)}$unit',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: inRange ? Colors.green : Colors.red)),
+            Text('  (ideal: ${idealMin.toStringAsFixed(1)}–${idealMax.toStringAsFixed(1)}$unit)',
+                style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
+            const Spacer(),
+            Icon(inRange ? Icons.check_circle : Icons.error, size: 16, color: inRange ? Colors.green : Colors.red),
+          ],
+        ),
+        const SizedBox(height: 4),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: LinearProgressIndicator(
+            value: ((current - idealMin) / (idealMax - idealMin)).clamp(0.0, 1.0),
+            backgroundColor: Colors.grey.shade200,
+            color: inRange ? Colors.green : Colors.red.shade300,
+            minHeight: 5,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _detailTile(IconData icon, String value, String label, Color color) {
+    return Container(
+      width: (MediaQuery.of(context).size.width - 72) / 2,
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.07),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: 20),
+          const SizedBox(width: 8),
+          Expanded(child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(value, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: color), overflow: TextOverflow.ellipsis),
+              Text(label, style: TextStyle(fontSize: 10, color: Colors.grey.shade600)),
+            ],
+          )),
+        ],
+      ),
+    );
+  }
+
+  Widget _companionRow(IconData icon, String label, String text, Color color) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 18, color: color),
+        const SizedBox(width: 6),
+        Text('$label ', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: color)),
+        Expanded(child: Text(text, style: const TextStyle(fontSize: 13))),
+      ],
+    );
+  }
+}
+
+// ─── Haftalık Hava & Sulama Plan Kartı ───
+class _WeeklyWaterCard extends StatelessWidget {
+  final List forecast;
+  final List waterPlan;
+  final String cropName, cropEmoji;
+
+  const _WeeklyWaterCard({
+    required this.forecast,
+    required this.waterPlan,
+    required this.cropName,
+    required this.cropEmoji,
+  });
+
+  static const _dayNames = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
+
+  String _weatherIcon(int code) {
+    if (code == 0) return '☀️';
+    if (code <= 3) return '⛅';
+    if (code <= 49) return '🌫️';
+    if (code <= 69) return '🌧️';
+    if (code <= 79) return '🌨️';
+    if (code <= 99) return '⛈️';
+    return '🌤️';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (forecast.isEmpty) return const SizedBox.shrink();
+
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.calendar_today, color: Colors.blue),
+                const SizedBox(width: 6),
+                const Expanded(child: Text('Haftalık Hava & Sulama Planı',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15))),
+                Text(cropEmoji, style: const TextStyle(fontSize: 20)),
+              ],
+            ),
+            const SizedBox(height: 12),
+            // 7 günlük tablo
+            ...List.generate(forecast.length, (i) {
+              final f = forecast[i] as Map<String, dynamic>;
+              final dateStr = f['date']?.toString() ?? '';
+              final tempMax = (f['temp_max'] as num?)?.toDouble() ?? 0;
+              final tempMin = (f['temp_min'] as num?)?.toDouble() ?? 0;
+              final rainMm = (f['rain_mm'] as num?)?.toDouble() ?? 0;
+              final code = (f['code'] as num?)?.toInt() ?? 0;
+
+              // Sulama planından eşleştir
+              Map<String, dynamic>? wp;
+              if (i < waterPlan.length) {
+                wp = waterPlan[i] as Map<String, dynamic>?;
+              }
+              final waterL = (wp?['water_liters'] as num?)?.toDouble() ?? 0;
+              final waterNote = wp?['note']?.toString() ?? '';
+
+              // Gün adı
+              String dayName;
+              try {
+                final dt = DateTime.parse(dateStr);
+                dayName = _dayNames[dt.weekday - 1];
+              } catch (_) {
+                dayName = _dayNames[i % 7];
+              }
+
+              final hasRain = rainMm > 1;
+
+              return Container(
+                margin: const EdgeInsets.only(bottom: 4),
+                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+                decoration: BoxDecoration(
+                  color: i.isEven ? Colors.blue.shade50.withValues(alpha: 0.5) : Colors.transparent,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        SizedBox(width: 32, child: Text(dayName,
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13))),
+                        Text(_weatherIcon(code), style: const TextStyle(fontSize: 18)),
+                        const SizedBox(width: 6),
+                        SizedBox(width: 65, child: Text('${tempMin.round()}–${tempMax.round()}°C',
+                            style: const TextStyle(fontSize: 12))),
+                        if (hasRain) ...[
+                          Icon(Icons.water_drop, size: 14, color: Colors.blue.shade400),
+                          Text('${rainMm.toStringAsFixed(1)}mm ', style: TextStyle(fontSize: 11, color: Colors.blue.shade600)),
+                        ],
+                        const Spacer(),
+                        // Sulama miktarı
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: waterL > 0
+                                ? (hasRain ? Colors.green.shade100 : Colors.blue.shade100)
+                                : Colors.grey.shade100,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.water_drop, size: 13,
+                                  color: waterL > 0 ? Colors.blue.shade700 : Colors.grey),
+                              const SizedBox(width: 3),
+                              Text(waterL > 0 ? '${waterL.toStringAsFixed(1)}L/bitki' : 'Sulama yok',
+                                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold,
+                                      color: waterL > 0 ? Colors.blue.shade800 : Colors.grey.shade600)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (waterNote.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(left: 38, top: 2),
+                        child: Text(waterNote, style: TextStyle(fontSize: 11, color: Colors.grey.shade600, fontStyle: FontStyle.italic)),
+                      ),
+                  ],
+                ),
+              );
+            }),
+            const SizedBox(height: 8),
+            // Toplam haftalık su
+            Builder(builder: (_) {
+              double totalWater = 0;
+              for (final wp in waterPlan) {
+                totalWater += ((wp as Map<String, dynamic>?)?['water_liters'] as num?)?.toDouble() ?? 0;
+              }
+              double totalRain = 0;
+              for (final f in forecast) {
+                totalRain += ((f as Map<String, dynamic>)['rain_mm'] as num?)?.toDouble() ?? 0;
+              }
+              return Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.blue.shade200),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _summaryItem('💧', 'Haftalık Sulama', '${totalWater.toStringAsFixed(1)}L/bitki'),
+                    _summaryItem('🌧️', 'Beklenen Yağış', '${totalRain.toStringAsFixed(1)}mm'),
+                  ],
+                ),
+              );
+            }),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _summaryItem(String emoji, String label, String value) {
+    return Column(
+      children: [
+        Text(emoji, style: const TextStyle(fontSize: 20)),
+        Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+        Text(label, style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
+      ],
     );
   }
 }
@@ -1125,6 +1652,25 @@ class _RootPainter extends CustomPainter {
   bool shouldRepaint(covariant _RootPainter old) => old.progress != progress;
 }
 
+// ─── Çoklu ürün katman modeli ───
+class CropLayer {
+  final String name;
+  final Color color;
+  final double rowSpacingCm;
+  final double plantSpacingCm;
+  final double startPercent; // tarlanın kaçıncı %'sinden başlıyor (0.0–1.0)
+  final double endPercent;   // tarlanın kaçıncı %'sine kadar (0.0–1.0)
+
+  const CropLayer({
+    required this.name,
+    required this.color,
+    required this.rowSpacingCm,
+    required this.plantSpacingCm,
+    this.startPercent = 0.0,
+    this.endPercent = 1.0,
+  });
+}
+
 // ─── Kuşbakışı Tarla Çizici ───
 class _TopDownFieldPainter extends CustomPainter {
   final double phase; // 0.0–1.0
@@ -1133,7 +1679,10 @@ class _TopDownFieldPainter extends CustomPainter {
   final double irrigationLineSpacingCm;
   final double irrigationDripperSpacingCm;
   final double fertilizerBandCm;
+  final double fieldWidthM; // gerçek tarla genişliği (metre)
+  final double fieldHeightM; // gerçek tarla yüksekliği (metre)
   final bool showPlanting, showIrrigation, showFertilizer;
+  final List<CropLayer> crops; // çoklu ürün desteği
 
   _TopDownFieldPainter({
     required this.phase,
@@ -1142,16 +1691,19 @@ class _TopDownFieldPainter extends CustomPainter {
     required this.irrigationLineSpacingCm,
     required this.irrigationDripperSpacingCm,
     required this.fertilizerBandCm,
+    this.fieldWidthM = 10,
+    this.fieldHeightM = 10,
     this.showPlanting = true,
     this.showIrrigation = true,
     this.showFertilizer = true,
+    this.crops = const [],
   });
 
   @override
   void paint(Canvas canvas, Size size) {
-    // ── Temsili alan: 5m genişlik x 3m yükseklik ──
-    const fieldW = 500.0; // cm
-    const fieldH = 300.0; // cm
+    // ── Gerçek tarla boyutlarını cm'ye çevir ──
+    final fieldW = fieldWidthM * 100; // cm
+    final fieldH = fieldHeightM * 100; // cm
     const margin = 40.0; // px kenar boşluğu
     final drawW = size.width - margin * 2;
     final drawH = size.height - margin * 2;
@@ -1181,8 +1733,8 @@ class _TopDownFieldPainter extends CustomPainter {
 
       // Ölçek etiketi
       if (fieldPhase > 0.5) {
-        _drawLabel(canvas, '5m x 3m temsili bölüm', Offset(ox + drawW / 2, oy + drawH + 16),
-            Colors.brown.shade600, 10, true);
+        _drawLabel(canvas, '${fieldWidthM.toStringAsFixed(0)}m x ${fieldHeightM.toStringAsFixed(0)}m',
+            Offset(ox + drawW / 2, oy + drawH + 16), Colors.brown.shade600, 10, true);
       }
     }
 
@@ -1252,6 +1804,46 @@ class _TopDownFieldPainter extends CustomPainter {
         final px2 = ox + 1.5 * (drawW / plantsPerRow);
         _drawDimensionArrow(canvas, Offset(px1, rowYs[0] - 16), Offset(px2, rowYs[0] - 16),
             '${plantSpacingCm.round()}cm', Colors.green.shade800);
+      }
+    }
+
+    // ── Çoklu Ürün Katmanları (FAZ 3 ile beraber) ──
+    if (showPlanting && plantPhase > 0 && crops.isNotEmpty) {
+      for (final crop in crops) {
+        final cropStartX = ox + drawW * crop.startPercent;
+        final cropEndX = ox + drawW * crop.endPercent;
+        final cropW = cropEndX - cropStartX;
+
+        // Bölge sınır çizgisi
+        final borderPaint = Paint()
+          ..color = crop.color.withValues(alpha: plantPhase * 0.5)
+          ..strokeWidth = 1.5
+          ..style = PaintingStyle.stroke;
+        canvas.drawLine(Offset(cropStartX, oy), Offset(cropStartX, oy + drawH), borderPaint);
+
+        // Etiket
+        if (plantPhase > 0.5) {
+          _drawLabel(canvas, crop.name, Offset(cropStartX + cropW / 2, oy - 12),
+              crop.color, 9, true);
+        }
+
+        // Bu ürünün bitkileri
+        final cropRowSpacing = crop.rowSpacingCm;
+        final cropPlantSpacing = crop.plantSpacingCm;
+        final cropRowCount = (fieldH / cropRowSpacing).floor().clamp(1, 10);
+        final cropPlantsPerRow = (cropW / (drawW / fieldW) / cropPlantSpacing).floor().clamp(1, 12);
+
+        for (int r = 0; r < cropRowCount; r++) {
+          final ry = oy + (r + 0.5) * (drawH / cropRowCount);
+          for (int p = 0; p < (cropPlantsPerRow * plantPhase).round(); p++) {
+            final px = cropStartX + (p + 0.5) * (cropW / cropPlantsPerRow);
+            if (px >= cropEndX) break;
+            canvas.drawCircle(
+              Offset(px, ry), 4,
+              Paint()..color = crop.color.withValues(alpha: 0.8)..style = PaintingStyle.fill,
+            );
+          }
+        }
       }
     }
 
@@ -1430,12 +2022,14 @@ class _TopDownFieldView extends StatefulWidget {
   final double areaDekar;
   final Map<String, dynamic>? plantingData;
   final String cropName;
+  final List<CropLayer> extraCrops;
 
   const _TopDownFieldView({
     required this.fieldName,
     required this.areaDekar,
     required this.plantingData,
     required this.cropName,
+    this.extraCrops = const [],
   });
 
   @override
@@ -1483,10 +2077,20 @@ class _TopDownFieldViewState extends State<_TopDownFieldView>
     final fertBand = (pd['fertilizer_band_cm'] as num?)?.toDouble() ?? 15;
     final fertType = pd['fertilizer_type']?.toString() ?? 'NPK 15-15-15';
 
+    // Gerçek tarla boyutları (1 dekar = 1000 m², 3:2 oran)
+    // alan = w * h, w/h = 1.5 → w = 1.5h, alan = 1.5*h² → h = sqrt(alan/1.5)
+    // dart:math yok, Newton yaklaşımıyla sqrt:
+    final areaM2 = widget.areaDekar * 1000.0;
+    double hGuess = areaM2 / 2;
+    for (int i = 0; i < 20; i++) {
+      hGuess = (hGuess + (areaM2 / 1.5) / hGuess) / 2;
+    }
+    final fieldHeightM = hGuess.clamp(5.0, 500.0);
+    final fieldWidthM = (areaM2 / fieldHeightM).clamp(5.0, 500.0);
+
     final totalPlants = (seedsPerDekar * widget.areaDekar).round();
-    final fieldLengthM = (widget.areaDekar * 1000 / 10).round(); // yaklaşık uzunluk (m)
-    final totalRows = (fieldLengthM * 100 / rowSpacing).round();
-    final irrLengthM = (totalRows * 10).round(); // yaklaşık sulama hattı uzunluğu (m)
+    final totalRows = (fieldHeightM * 100 / rowSpacing).round();
+    final irrLengthM = (totalRows * fieldWidthM).round();
 
     return Card(
       margin: const EdgeInsets.only(bottom: 14),
@@ -1557,9 +2161,12 @@ class _TopDownFieldViewState extends State<_TopDownFieldView>
                       irrigationLineSpacingCm: irrLineSpacing,
                       irrigationDripperSpacingCm: irrDripperSpacing,
                       fertilizerBandCm: fertBand,
+                      fieldWidthM: fieldWidthM,
+                      fieldHeightM: fieldHeightM,
                       showPlanting: _showPlanting,
                       showIrrigation: _showIrrigation,
                       showFertilizer: _showFertilizer,
+                      crops: widget.extraCrops,
                     ),
                     size: Size.infinite,
                   ),

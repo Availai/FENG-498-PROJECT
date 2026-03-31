@@ -1295,28 +1295,51 @@ Düz metin, JSON kullanma, emoji kullan, somut bilgi ver.
       double ph = 6.8;
       double hum = 50.0;
       String locationName = "Bölgeniz";
+      List<Map<String, dynamic>> weeklyForecast = [];
 
       try {
         final weatherKey = dotenv.env['WEATHER_API_KEY'] ?? '';
-        final wRes = await http
-            .get(Uri.parse(
-              'https://api.openweathermap.org/data/2.5/weather?lat=$lat&lon=$lng&appid=$weatherKey&units=metric&lang=tr',
-            ))
-            .timeout(const Duration(seconds: 4));
-        if (wRes.statusCode == 200) {
-          final wd = jsonDecode(wRes.body);
+        // Anlık hava + 7 günlük tahmin paralel çek
+        final results = await Future.wait([
+          http.get(Uri.parse(
+            'https://api.openweathermap.org/data/2.5/weather?lat=$lat&lon=$lng&appid=$weatherKey&units=metric&lang=tr',
+          )).timeout(const Duration(seconds: 5)),
+          http.get(Uri.parse(
+            'https://api.open-meteo.com/v1/forecast?latitude=$lat&longitude=$lng&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,relative_humidity_2m_mean,windspeed_10m_max,weathercode&timezone=auto',
+          )).timeout(const Duration(seconds: 5)),
+          http.get(Uri.parse(
+            'https://rest.isric.org/soilgrids/v2.0/properties/query?lon=$lng&lat=$lat&property=phh2o&depth=0-5cm&value=mean',
+          )).timeout(const Duration(seconds: 5)),
+        ]);
+
+        // Anlık hava
+        if (results[0].statusCode == 200) {
+          final wd = jsonDecode(results[0].body);
           temp = (wd['main']['temp'] as num).toDouble();
           hum = (wd['main']['humidity'] as num).toDouble();
           locationName = wd['name'] ?? locationName;
         }
 
-        final phRes = await http
-            .get(Uri.parse(
-              'https://rest.isric.org/soilgrids/v2.0/properties/query?lon=$lng&lat=$lat&property=phh2o&depth=0-5cm&value=mean',
-            ))
-            .timeout(const Duration(seconds: 4));
-        if (phRes.statusCode == 200) {
-          final val = jsonDecode(phRes.body)['properties']?['layers']?[0]
+        // 7 günlük tahmin
+        if (results[1].statusCode == 200) {
+          final fd = jsonDecode(results[1].body)['daily'];
+          final dates = fd['time'] as List;
+          for (int i = 0; i < dates.length && i < 7; i++) {
+            weeklyForecast.add({
+              'date': dates[i],
+              'temp_max': (fd['temperature_2m_max'][i] as num).toDouble(),
+              'temp_min': (fd['temperature_2m_min'][i] as num).toDouble(),
+              'rain_mm': (fd['precipitation_sum'][i] as num).toDouble(),
+              'humidity': (fd['relative_humidity_2m_mean']?[i] as num?)?.toDouble() ?? 50,
+              'wind_kmh': (fd['windspeed_10m_max']?[i] as num?)?.toDouble() ?? 0,
+              'code': fd['weathercode']?[i] ?? 0,
+            });
+          }
+        }
+
+        // Toprak pH
+        if (results[2].statusCode == 200) {
+          final val = jsonDecode(results[2].body)['properties']?['layers']?[0]
               ?['depths']?[0]?['values']?['mean'];
           if (val != null) ph = (val as num).toDouble() / 10.0;
         }
@@ -1344,47 +1367,50 @@ Düz metin, JSON kullanma, emoji kullan, somut bilgi ver.
       final docSnap = await docRef.get();
 
       if (docSnap.exists) {
-        // Veritabanında bulundu! Sıfır çeviri gecikmesiyle direkt raporu basıyoruz.
         final data = docSnap.data()!;
 
-        StringBuffer guide = StringBuffer();
-        guide.writeln('# 🌿 ${query.toUpperCase()} Yetiştirme Rehberi');
-        guide.writeln('*Bilimsel Adı: ${data["scientific"] ?? "Bilinmiyor"}*');
-        guide.writeln('\n${data["desc"] ?? ""}\n');
-
-        guide.writeln('### 📊 Bölge Uyumu');
-        guide.writeln('- **Bölgeniz:** $locationName');
-        guide.writeln(
-            '- **Anlık Durum:** $temp°C sıcaklık ve %${hum.toStringAsFixed(0)} nem.');
-        guide.writeln('- **Toprak Uyumu:** $phComment');
-
-        guide.writeln('\n### 💧 Yaşam Döngüsü ve İhtiyaçlar');
-        guide.writeln('- **Döngü:** ${data["cycle"] ?? "Bilinmiyor"}');
-        guide.writeln('- **Su İhtiyacı:** ${data["watering"] ?? "Bilinmiyor"}');
-        guide.writeln('- **Güneş:** ${data["sunlight"] ?? "Bilinmiyor"}');
-        guide.writeln('- **Büyüme Hızı:** ${data["growth"] ?? "Bilinmiyor"}');
-        guide.writeln('- **Bakım Zorluğu:** ${data["care"] ?? "Bilinmiyor"}');
-        if (data["indoor"] == true)
-          guide.writeln(
-              '- **İç Mekan:** Bu bitki kapalı alanda/saksıda yetiştirmeye uygundur.');
-
-        guide.writeln('\n### 🛠️ $scale İçin Ekim ve Bakım Pratikleri');
-        guide.writeln(scaleComment);
-        if (data["drought"] == true) {
-          guide.writeln(
-              '\n💡 **İpucu:** Bu bitki kuraklığa oldukça dayanıklıdır. Toprak tamamen kurumadan sulama yapmayın.');
-        }
-        if (data["pruning"] != null && data["pruning"] != "Yok") {
-          guide.writeln('\n✂️ **Budama / Seyreltme:** ${data["pruning"]}');
-        }
-
-        guide.writeln('\n### ⚠️ Hastalık ve Zararlılar');
-        guide.writeln(
-            '**Dikkat Edilmesi Gereken Riskler:** ${data["pests"] ?? "Genel zararlı kontrolü yapın."}');
+        // Firestore verisini cropData formatına dönüştür
+        final cropData = {
+          'scientific': data["scientific"] ?? "Bilinmiyor",
+          'desc': data["desc"] ?? "",
+          'cycle': data["cycle"] ?? "Bilinmiyor",
+          'sunlight': data["sunlight"] ?? "Bilinmiyor",
+          'growth': data["growth"] ?? "Bilinmiyor",
+          'care': data["care"] ?? "Bilinmiyor",
+          'indoor': data["indoor"] ?? false,
+          'drought': data["drought"] ?? false,
+          'pruning': data["pruning"] ?? "Yok",
+          'pests': data["pests"] ?? "Genel zararlı kontrolü yapın.",
+          'ideal_temp_min': data["ideal_temp_min"] ?? 15,
+          'ideal_temp_max': data["ideal_temp_max"] ?? 30,
+          'ideal_ph_min': data["ideal_ph_min"] ?? 5.5,
+          'ideal_ph_max': data["ideal_ph_max"] ?? 7.0,
+          'sunlight_hours': data["sunlight_hours"] ?? 8,
+          'harvest_days': data["harvest_days"] ?? 90,
+          'best_planting_months': data["best_planting_months"] ?? "",
+          'companion_plants': data["companion_plants"] ?? "",
+          'avoid_plants': data["avoid_plants"] ?? "",
+          'pest_prevention': data["pest_prevention"] ?? "",
+          'region_uygunluk': data["region_uygunluk"] ?? 70,
+          'region_note': data["region_note"] ?? "",
+          'daily_water_liters_per_plant': data["daily_water_liters_per_plant"] ?? 2.0,
+          'fertilizer_schedule': data["fertilizer_schedule"] ?? "",
+          'planting_tip': data["planting_tip"] ?? "",
+        };
 
         return {
           'success': true,
-          'guide': guide.toString(),
+          'cropData': cropData,
+          'weeklyForecast': weeklyForecast,
+          'weeklyWaterPlan': [],
+          'envData': {
+            'temp': temp,
+            'ph': ph,
+            'humidity': hum,
+            'location': locationName,
+            'phComment': phComment,
+            'scaleComment': scaleComment,
+          },
           'plantingData': {
             'depth_cm': data["planting_depth_cm"] ?? 3,
             'row_spacing_cm': data["row_spacing_cm"] ?? 50,
@@ -1396,6 +1422,8 @@ Düz metin, JSON kullanma, emoji kullan, somut bilgi ver.
             'fertilizer_band_cm': data["fertilizer_band_cm"] ?? 15,
             'fertilizer_depth_cm': data["fertilizer_depth_cm"] ?? 10,
             'fertilizer_type': data["fertilizer_type"] ?? "NPK 15-15-15",
+            'daily_water_liters': data["daily_water_liters_per_plant"] ?? 2.0,
+            'fertilizer_schedule': data["fertilizer_schedule"] ?? "",
           },
           'locationInfo':
               '🌡️ $temp°C | 🌿 pH: ${ph.toStringAsFixed(1)} | 💧 Nem: %${hum.toStringAsFixed(0)}',
@@ -1408,36 +1436,61 @@ Düz metin, JSON kullanma, emoji kullan, somut bilgi ver.
         apiKey: dotenv.env['GEMINI_API_KEY'] ?? '',
       );
 
+      // Haftalık tahmin metnini oluştur
+      final forecastText = weeklyForecast.map((d) =>
+        '${d['date']}: ${d['temp_min']}–${d['temp_max']}°C, yağış:${d['rain_mm']}mm, nem:%${(d['humidity'] as double).round()}, rüzgar:${(d['wind_kmh'] as double).round()}km/s'
+      ).join('\n');
+
       final geminiPrompt = '''
-"$query" bitkisi için Türkçe yetiştirme rehberi oluştur.
-Bölge verileri: $locationName, Sıcaklık: $temp°C, Nem: %${hum.toStringAsFixed(0)}, Toprak pH: ${ph.toStringAsFixed(1)}
+"$query" bitkisi için Türkçe detaylı çiftçi/bahçeci rehberi oluştur.
+Bölge: $locationName, Anlık: $temp°C, Nem:%${hum.toStringAsFixed(0)}, pH:${ph.toStringAsFixed(1)}
 Ölçek: $scale
+
+7 Günlük Hava Tahmini:
+$forecastText
 
 Aşağıdaki JSON formatında yanıt ver. Markdown KULLANMA, saf JSON:
 {
   "scientific": "Bilimsel adı",
   "desc": "2-3 cümle genel açıklama",
   "cycle": "Tek Yıllık / Çok Yıllık",
-  "watering": "Su ihtiyacı açıklaması",
-  "sunlight": "Güneş ihtiyacı",
+  "ideal_temp_min": 15,
+  "ideal_temp_max": 30,
+  "ideal_ph_min": 5.5,
+  "ideal_ph_max": 7.0,
+  "sunlight_hours": 8,
+  "sunlight": "Güneş ihtiyacı açıklaması",
   "growth": "Büyüme hızı",
-  "care": "Bakım zorluğu",
+  "care": "Bakım zorluğu (Düşük/Orta/Yüksek)",
   "indoor": false,
   "drought": false,
+  "harvest_days": 90,
+  "best_planting_months": "Mart, Nisan, Mayıs",
+  "companion_plants": "Birlikte ekilebilecek bitkiler",
+  "avoid_plants": "Birlikte ekilmemesi gereken bitkiler",
   "pruning": "Budama bilgisi veya Yok",
   "pests": "Yaygın zararlı ve hastalıklar",
+  "pest_prevention": "Zararlı önleme yöntemleri (1-2 cümle)",
   "planting_depth_cm": 3,
   "row_spacing_cm": 50,
   "plant_spacing_cm": 40,
   "seeds_per_dekar": 500,
-  "planting_tip": "Ekim ile ilgili 1 cümle pratik bilgi",
+  "planting_tip": "Ekim pratik bilgisi (1 cümle)",
   "irrigation_type": "Damla Sulama / Yağmurlama / Karık (birini seç)",
   "irrigation_line_spacing_cm": 70,
   "irrigation_dripper_spacing_cm": 30,
+  "daily_water_liters_per_plant": 2.5,
   "fertilizer_band_cm": 15,
   "fertilizer_depth_cm": 10,
-  "fertilizer_type": "Önerilen gübre türü (Örn: NPK 15-15-15)"
+  "fertilizer_type": "Önerilen gübre türü",
+  "fertilizer_schedule": "Gübreleme takvimi (1-2 cümle)",
+  "weekly_water_plan": [
+    {"day": "Pazartesi", "date": "tarih", "water_liters": 2.5, "note": "Hava durumuna göre sulama notu"}
+  ],
+  "region_uygunluk": 85,
+  "region_note": "Bu bölge için 1-2 cümle uygunluk değerlendirmesi"
 }
+weekly_water_plan dizisi tam 7 gün olmalı, yukarıdaki hava tahminine göre yağış varsa sulamayı azalt, sıcak ve kuru günlerde artır. Her gün için litre/bitki cinsinden ver.
 ''';
 
       final response = await model.generateContent([Content.text(geminiPrompt)]);
@@ -1449,52 +1502,9 @@ Aşağıdaki JSON formatında yanıt ver. Markdown KULLANMA, saf JSON:
 
       final data = jsonDecode(responseText) as Map<String, dynamic>;
 
-      StringBuffer guide = StringBuffer();
-      guide.writeln('# 🌿 ${query.toUpperCase()} Yetiştirme Rehberi');
-      guide.writeln('*Bilimsel Adı: ${data["scientific"] ?? "Bilinmiyor"}*');
-      guide.writeln('\n${data["desc"] ?? ""}\n');
-
-      guide.writeln('### 📊 Bölge Uyumu');
-      guide.writeln('- **Bölgeniz:** $locationName');
-      guide.writeln(
-          '- **Anlık Durum:** $temp°C sıcaklık ve %${hum.toStringAsFixed(0)} nem.');
-      guide.writeln('- **Toprak Uyumu:** $phComment');
-
-      guide.writeln('\n### 💧 Yaşam Döngüsü ve İhtiyaçlar');
-      guide.writeln('- **Döngü:** ${data["cycle"] ?? "Bilinmiyor"}');
-      guide.writeln('- **Su İhtiyacı:** ${data["watering"] ?? "Bilinmiyor"}');
-      guide.writeln('- **Güneş:** ${data["sunlight"] ?? "Bilinmiyor"}');
-      guide.writeln('- **Büyüme Hızı:** ${data["growth"] ?? "Bilinmiyor"}');
-      guide.writeln('- **Bakım Zorluğu:** ${data["care"] ?? "Bilinmiyor"}');
-      if (data["indoor"] == true)
-        guide.writeln(
-            '- **İç Mekan:** Bu bitki kapalı alanda/saksıda yetiştirmeye uygundur.');
-
-      guide.writeln('\n### 🌱 Ekim Bilgileri');
-      guide.writeln('- **Ekim Derinliği:** ${data["planting_depth_cm"] ?? 3} cm');
-      guide.writeln('- **Sıra Arası:** ${data["row_spacing_cm"] ?? 50} cm');
-      guide.writeln('- **Bitki Arası:** ${data["plant_spacing_cm"] ?? 40} cm');
-      guide.writeln('- **Dekara Fide/Tohum:** ${data["seeds_per_dekar"] ?? 500} adet');
-      if (data["planting_tip"] != null)
-        guide.writeln('- **💡 İpucu:** ${data["planting_tip"]}');
-
-      guide.writeln('\n### 🛠️ $scale İçin Ekim ve Bakım Pratikleri');
-      guide.writeln(scaleComment);
-      if (data["drought"] == true) {
-        guide.writeln(
-            '\n💡 **İpucu:** Bu bitki kuraklığa oldukça dayanıklıdır.');
-      }
-      if (data["pruning"] != null && data["pruning"] != "Yok") {
-        guide.writeln('\n✂️ **Budama:** ${data["pruning"]}');
-      }
-
-      guide.writeln('\n### ⚠️ Hastalık ve Zararlılar');
-      guide.writeln(
-          '**Dikkat Edilmesi Gereken Riskler:** ${data["pests"] ?? "Genel zararlı kontrolü yapın."}');
-
       return {
         'success': true,
-        'guide': guide.toString(),
+        'cropData': data,
         'plantingData': {
           'depth_cm': data["planting_depth_cm"] ?? 3,
           'row_spacing_cm': data["row_spacing_cm"] ?? 50,
@@ -1506,6 +1516,18 @@ Aşağıdaki JSON formatında yanıt ver. Markdown KULLANMA, saf JSON:
           'fertilizer_band_cm': data["fertilizer_band_cm"] ?? 15,
           'fertilizer_depth_cm': data["fertilizer_depth_cm"] ?? 10,
           'fertilizer_type': data["fertilizer_type"] ?? "NPK 15-15-15",
+          'daily_water_liters': data["daily_water_liters_per_plant"] ?? 2.0,
+          'fertilizer_schedule': data["fertilizer_schedule"] ?? '',
+        },
+        'weeklyWaterPlan': data["weekly_water_plan"] ?? [],
+        'weeklyForecast': weeklyForecast,
+        'envData': {
+          'temp': temp,
+          'ph': ph,
+          'humidity': hum,
+          'location': locationName,
+          'phComment': phComment,
+          'scaleComment': scaleComment,
         },
         'locationInfo':
             '🌡️ $temp°C | 🌿 pH: ${ph.toStringAsFixed(1)} | 💧 Nem: %${hum.toStringAsFixed(0)}',
