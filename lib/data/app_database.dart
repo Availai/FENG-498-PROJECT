@@ -125,7 +125,8 @@ class SyncState extends Table {
   ],
 )
 class AppDatabase extends _$AppDatabase {
-  AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
+  AppDatabase() : super(_openConnection());
+  AppDatabase.forTesting(QueryExecutor executor) : super(executor);
 
   @override
   int get schemaVersion => 1;
@@ -149,6 +150,6 @@ LazyDatabase _openConnection() {
       file = File(p.join(fallbackDir.path, 'smart_agri_local.sqlite'));
     }
 
-    return NativeDatabase.createInBackground(file);
+    return NativeDatabase(file);
   });
 }
