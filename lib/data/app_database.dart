@@ -134,31 +134,35 @@ class AppDatabase extends _$AppDatabase {
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) async {
           await m.createAll();
-          await _createIndexes();
+          await m.customStatement(
+            'CREATE INDEX IF NOT EXISTS idx_sync_jobs_status_updated_at '
+            'ON sync_jobs (status, updated_at)',
+          );
+          await m.customStatement(
+            'CREATE INDEX IF NOT EXISTS idx_sync_jobs_entity '
+            'ON sync_jobs (entity_type, entity_id)',
+          );
+          await m.customStatement(
+            'CREATE INDEX IF NOT EXISTS idx_calendar_events_date '
+            'ON calendar_events (event_date)',
+          );
         },
         onUpgrade: (m, from, to) async {
           // Şimdilik şema v1; gelecekte sürüm yükseltmelerinde adımlı migration eklenecek.
-          await _createIndexes();
-        },
-        beforeOpen: (details) async {
-          await customStatement('PRAGMA foreign_keys = ON');
+          await m.customStatement(
+            'CREATE INDEX IF NOT EXISTS idx_sync_jobs_status_updated_at '
+            'ON sync_jobs (status, updated_at)',
+          );
+          await m.customStatement(
+            'CREATE INDEX IF NOT EXISTS idx_sync_jobs_entity '
+            'ON sync_jobs (entity_type, entity_id)',
+          );
+          await m.customStatement(
+            'CREATE INDEX IF NOT EXISTS idx_calendar_events_date '
+            'ON calendar_events (event_date)',
+          );
         },
       );
-
-  Future<void> _createIndexes() async {
-    await customStatement(
-      'CREATE INDEX IF NOT EXISTS idx_sync_jobs_status_updated_at '
-      'ON sync_jobs (status, updated_at)'
-    );
-    await customStatement(
-      'CREATE INDEX IF NOT EXISTS idx_sync_jobs_entity '
-      'ON sync_jobs (entity_type, entity_id)'
-    );
-    await customStatement(
-      'CREATE INDEX IF NOT EXISTS idx_calendar_events_date '
-      'ON calendar_events (event_date)'
-    );
-  }
 
 }
 
@@ -172,6 +176,9 @@ LazyDatabase _openConnection() {
       final fallbackDir = Directory.systemTemp;
       file = File(p.join(fallbackDir.path, 'smart_agri_local.sqlite'));
     }
-    return NativeDatabase.createInBackground(file);
+    return NativeDatabase.createInBackground(
+      file,
+      setup: (db) => db.execute('PRAGMA foreign_keys = ON'),
+    );
   });
 }
