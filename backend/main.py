@@ -1,6 +1,6 @@
 # main.py
 from fastapi import FastAPI, HTTPException, Header
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from datetime import datetime, timezone
 from typing import List, Optional, Any
 import asyncpg
@@ -57,13 +57,13 @@ class SyncPushItem(BaseModel):
     entity_type: str
     entity_id: str
     operation: str
-    payload: Any = {}
+    payload: Any = Field(default_factory=dict)
     updated_at: datetime
     attempt_count: int = 0
 
 
 class SyncPushRequest(BaseModel):
-    items: List[SyncPushItem] = []
+    items: List[SyncPushItem] = Field(default_factory=list)
     client_time: Optional[datetime] = None
 
 
