@@ -5,8 +5,6 @@ import 'package:drift/native.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
-part 'app_database.g.dart';
-
 class Fields extends Table {
   TextColumn get id => text()();
   TextColumn get name => text()();
@@ -67,7 +65,8 @@ class IrrigationPlans extends Table {
   TextColumn get fieldId => text().references(Fields, #id)();
   TextColumn get cropId => text().nullable().references(FieldCrops, #id)();
   DateTimeColumn get scheduledDate => dateTime()();
-  BoolColumn get shouldIrrigate => boolean().withDefault(const Constant(true))();
+  BoolColumn get shouldIrrigate =>
+      boolean().withDefault(const Constant(true))();
   TextColumn get reason => text()();
   TextColumn get recommendation => text().nullable()();
   DateTimeColumn get createdAt => dateTime()();
@@ -125,8 +124,7 @@ class SyncState extends Table {
   ],
 )
 class AppDatabase extends _$AppDatabase {
-  AppDatabase() : super(_openConnection());
-  AppDatabase.forTesting(QueryExecutor executor) : super(executor);
+  AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
   int get schemaVersion => 1;
@@ -150,6 +148,6 @@ LazyDatabase _openConnection() {
       file = File(p.join(fallbackDir.path, 'smart_agri_local.sqlite'));
     }
 
-    return NativeDatabase(file);
+    return NativeDatabase.createInBackground(file);
   });
 }
