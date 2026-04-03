@@ -1,23 +1,27 @@
 # main.py
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Header
 from pydantic import BaseModel
-from typing import List
+from datetime import datetime, timezone
+from typing import List, Optional, Any
 import asyncpg
 import os
-from rule_engine import analyze, AnalyzeRequest
+try:
+    from .rule_engine import analyze, AnalyzeRequest
+except ImportError:
+    from rule_engine import analyze, AnalyzeRequest
 
 app = FastAPI(title="Smart Agri Backend API", version="1.0")
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# KURAL MOTORU ENDPOINTLERİ
-# ─────────────────────────────────────────────────────────────────────────────
+# âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+# KURAL MOTORU ENDPOINTLERÄ°
+# âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
-@app.post("/api/analyze/risks", summary="Risk Analizi — Kural Motoru")
+@app.post("/api/analyze/risks", summary="Risk Analizi â Kural Motoru")
 async def analyze_risks(req: AnalyzeRequest):
     """
-    Hava + toprak + bitki verilerini alır, deterministik kural motoruyla
-    risk listesi döndürür. Gemini/LLM kullanılmaz.
+    Hava + toprak + bitki verilerini alÄ±r, deterministik kural motoruyla
+    risk listesi dÃ¶ndÃ¼rÃ¼r. Gemini/LLM kullanÄ±lmaz.
     """
     results = analyze(req)
     return {
@@ -27,17 +31,131 @@ async def analyze_risks(req: AnalyzeRequest):
     }
 
 
-@app.get("/api/health", summary="Servis Sağlık Kontrolü")
+@app.get("/api/health", summary="Servis SaÄlÄ±k KontrolÃ¼")
 async def health():
     return {"status": "ok", "service": "Smart Agri Backend"}
 
 
+# -----------------------------------------------------------------------------
+# BASIT AUTH + SYNC UCLARI (MVP)
+# -----------------------------------------------------------------------------
+# Not: Uretimde Firebase Admin ile token dogrulamasi yapilmalidir.
+# Bu MVP'de bearer token dogrudan kullanici anahtari olarak ele alinir.
 
-# Veritabanı bağlantı ayarı (Kendi bilgilerine göre güncelleyeceksin)
-# Doğru format: postgresql://kullanici_adi:sifre@localhost...
+
+def _require_bearer_user(authorization: Optional[str]) -> str:
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Authorization Bearer token gerekli.")
+    token = authorization.split(" ", 1)[1].strip()
+    if not token:
+        raise HTTPException(status_code=401, detail="Gecersiz Bearer token.")
+    return token
+
+
+class SyncPushItem(BaseModel):
+    id: int
+    entity_type: str
+    entity_id: str
+    operation: str
+    payload: Any = {}
+    updated_at: datetime
+    attempt_count: int = 0
+
+
+class SyncPushRequest(BaseModel):
+    items: List[SyncPushItem] = []
+    client_time: Optional[datetime] = None
+
+
+_sync_store: dict[str, dict[str, dict[str, dict[str, Any]]]] = {}
+
+
+def _upsert_sync_record(user_key: str, item: SyncPushItem) -> bool:
+    user_bucket = _sync_store.setdefault(user_key, {})
+    entity_bucket = user_bucket.setdefault(item.entity_type, {})
+    existing = entity_bucket.get(item.entity_id)
+
+    incoming_updated_at = item.updated_at.astimezone(timezone.utc)
+    if existing is not None:
+        existing_updated_at = existing["updated_at"]
+        if incoming_updated_at <= existing_updated_at:
+            return False
+
+    entity_bucket[item.entity_id] = {
+        "entity_type": item.entity_type,
+        "entity_id": item.entity_id,
+        "operation": item.operation,
+        "payload": item.payload,
+        "updated_at": incoming_updated_at,
+    }
+    return True
+
+
+@app.post("/api/sync/push", summary="Outbox batch push (LWW)")
+async def sync_push(req: SyncPushRequest, authorization: Optional[str] = Header(default=None)):
+    user_key = _require_bearer_user(authorization)
+
+    completed_ids: List[int] = []
+    failed_by_id: dict[str, str] = {}
+
+    for item in req.items:
+        accepted = _upsert_sync_record(user_key, item)
+        if accepted:
+            completed_ids.append(item.id)
+        else:
+            failed_by_id[str(item.id)] = "stale_update"
+
+    return {
+        "success": True,
+        "completed_ids": completed_ids,
+        "failed_by_id": failed_by_id,
+        "server_time": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+@app.get("/api/sync/pull", summary="Sunucudan guncel kayitlari cek")
+async def sync_pull(since: Optional[str] = None, authorization: Optional[str] = Header(default=None)):
+    user_key = _require_bearer_user(authorization)
+
+    since_dt: Optional[datetime] = None
+    if since:
+        try:
+            since_clean = since.replace(" ", "+").replace("Z", "+00:00")
+            since_dt = datetime.fromisoformat(since_clean).astimezone(timezone.utc)
+        except Exception:
+            raise HTTPException(status_code=400, detail="since parametresi ISO-8601 olmalidir.")
+
+    user_bucket = _sync_store.get(user_key, {})
+    out: List[dict[str, Any]] = []
+    for entities in user_bucket.values():
+        for rec in entities.values():
+            updated_at = rec["updated_at"]
+            if since_dt is not None and updated_at <= since_dt:
+                continue
+            out.append({
+                "entity_type": rec["entity_type"],
+                "entity_id": rec["entity_id"],
+                "operation": rec["operation"],
+                "payload": rec["payload"],
+                "updated_at": updated_at.isoformat(),
+            })
+
+    out.sort(key=lambda x: x["updated_at"])
+
+    return {
+        "success": True,
+        "items": out,
+        "server_time": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+
+
+# VeritabanÄ± baÄlantÄ± ayarÄ± (Kendi bilgilerine gÃ¶re gÃ¼ncelleyeceksin)
+# DoÄru format: postgresql://kullanici_adi:sifre@localhost...
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:32542409@localhost:5432/smartagri")
 
-# -- VERİ MODELLERİ (Flutter'dan gelecek JSON formatı) --
+# -- VERÄ° MODELLERÄ° (Flutter'dan gelecek JSON formatÄ±) --
 class Coordinate(BaseModel):
     lat: float
     lng: float
@@ -46,22 +164,22 @@ class FieldCreateRequest(BaseModel):
     firebase_uid: str
     name: str
     area_dekar: float
-    boundary: List[Coordinate]  # Flutter'dan gelen en az 4 köşe noktası
+    boundary: List[Coordinate]  # Flutter'dan gelen en az 4 kÃ¶Åe noktasÄ±
 
-# -- API UÇ NOKTALARI (ENDPOINTS) --
+# -- API UÃ NOKTALARI (ENDPOINTS) --
 
 @app.post("/api/fields/create", summary="Yeni Tarla Kaydet")
 async def create_field(req: FieldCreateRequest):
     """
-    Flutter'dan gelen 4 koordinatı PostGIS Poligon formatına çevirip veritabanına kaydeder.
+    Flutter'dan gelen 4 koordinatÄ± PostGIS Poligon formatÄ±na Ã§evirip veritabanÄ±na kaydeder.
     """
-    # Poligonun kapanması için ilk noktanın en sona tekrar eklenmesi gerekir (PostGIS kuralı)
+    # Poligonun kapanmasÄ± iÃ§in ilk noktanÄ±n en sona tekrar eklenmesi gerekir (PostGIS kuralÄ±)
     coords = req.boundary
     if len(coords) < 3:
-        raise HTTPException(status_code=400, detail="Bir alan için en az 3 nokta gereklidir.")
+        raise HTTPException(status_code=400, detail="Bir alan iÃ§in en az 3 nokta gereklidir.")
     
-    # Koordinatları "BOYLAM ENLEM" (LNG LAT) formatında string'e çeviriyoruz
-    # Not: PostGIS her zaman X(Lng), Y(Lat) sırasını kullanır!
+    # KoordinatlarÄ± "BOYLAM ENLEM" (LNG LAT) formatÄ±nda string'e Ã§eviriyoruz
+    # Not: PostGIS her zaman X(Lng), Y(Lat) sÄ±rasÄ±nÄ± kullanÄ±r!
     polygon_points = ", ".join([f"{c.lng} {c.lat}" for c in coords])
     # Poligonu kapat
     polygon_points += f", {coords[0].lng} {coords[0].lat}"
@@ -71,18 +189,18 @@ async def create_field(req: FieldCreateRequest):
     try:
         conn = await asyncpg.connect(DATABASE_URL)
         
-        # Önce Firebase UID'ye ait çiftçinin ID'sini bul
+        # Ãnce Firebase UID'ye ait Ã§iftÃ§inin ID'sini bul
         farmer_id = await conn.fetchval(
             "SELECT id FROM farmers WHERE firebase_uid = $1", req.firebase_uid
         )
         if not farmer_id:
-            # Gerekirse çiftçiyi otomatik oluştur
+            # Gerekirse Ã§iftÃ§iyi otomatik oluÅtur
             farmer_id = await conn.fetchval(
                 "INSERT INTO farmers (firebase_uid, full_name) VALUES ($1, $2) RETURNING id",
-                req.firebase_uid, "Bilinmeyen Çiftçi"
+                req.firebase_uid, "Bilinmeyen ÃiftÃ§i"
             )
 
-        # Tarlayı PostGIS dönüşümü (ST_GeomFromText) ile kaydet
+        # TarlayÄ± PostGIS dÃ¶nÃ¼ÅÃ¼mÃ¼ (ST_GeomFromText) ile kaydet
         query = """
             INSERT INTO fields (farmer_id, name, area_dekar, boundary)
             VALUES ($1, $2, $3, ST_GeomFromText($4, 4326))
@@ -91,15 +209,15 @@ async def create_field(req: FieldCreateRequest):
         field_id = await conn.fetchval(query, farmer_id, req.name, req.area_dekar, wkt_polygon)
         await conn.close()
         
-        return {"success": True, "message": "Tarla başarıyla uydu ağına eklendi!", "field_id": field_id}
+        return {"success": True, "message": "Tarla baÅarÄ±yla uydu aÄÄ±na eklendi!", "field_id": field_id}
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Veritabanı Hatası: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"VeritabanÄ± HatasÄ±: {str(e)}")
 
-@app.get("/api/fields/{farmer_uid}", summary="Çiftçinin Tarlalarını Getir")
+@app.get("/api/fields/{farmer_uid}", summary="ÃiftÃ§inin TarlalarÄ±nÄ± Getir")
 async def get_farmer_fields(farmer_uid: str):
     """
-    Çiftçinin kayıtlı tarlalarını ve merkez koordinatlarını (ST_Centroid) döndürür.
+    ÃiftÃ§inin kayÄ±tlÄ± tarlalarÄ±nÄ± ve merkez koordinatlarÄ±nÄ± (ST_Centroid) dÃ¶ndÃ¼rÃ¼r.
     """
     conn = await asyncpg.connect(DATABASE_URL)
     query = """
@@ -114,12 +232,15 @@ async def get_farmer_fields(farmer_uid: str):
     await conn.close()
     
     return {"success": True, "fields": [dict(r) for r in rows]}
-# -- YEN�: TARLAYA B�TK� EKME VE KAR�ILA�TIRMA --
+# -- YENÝ: TARLAYA BÝTKÝ EKME VE KARÞILAÞTIRMA --
 
-from agri_api import fetch_plant_details_from_perenual
+try:
+    from .agri_api import fetch_plant_details_from_perenual
+except ImportError:
+    from agri_api import fetch_plant_details_from_perenual
 
 class PlantCropRequest(BaseModel):
-    query: str  # Bitki ad�
+    query: str  # Bitki adý
     temperature: float = 20.0
     avg_weekly_temp: float = 20.0
     humidity: float = 60.0
@@ -132,11 +253,11 @@ class PlantCropRequest(BaseModel):
     month: int = 6
     precip_prob_next3h: float = 0.0
 
-@app.post("/api/fields/{field_id}/plant", summary="Tarlaya Bitki Ek ve Kar��la�t�r")
+@app.post("/api/fields/{field_id}/plant", summary="Tarlaya Bitki Ek ve Karþýlaþtýr")
 async def plant_crop(field_id: int, req: PlantCropRequest):
     """
-    Belirli bir tarlaya bitki eklerken (�rn: Domates), Perenual API'den detaylar� �eker (veya veritaban�ndan),
-    field_plants tablosuna kaydeder ve �evresel fakt�rlerle yap�lm�� son derece kesin risk analizini d�ner.
+    Belirli bir tarlaya bitki eklerken (örn: Domates), Perenual API'den detaylarý çeker (veya veritabanýndan),
+    field_plants tablosuna kaydeder ve çevresel faktörlerle yapýlmýþ son derece kesin risk analizini döner.
     """
     conn = await asyncpg.connect(DATABASE_URL)
     try:
