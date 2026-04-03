@@ -1,6 +1,29 @@
-import 'api/sync_api_client.dart';
+import '../data/app_database.dart';
 import 'repositories/sync_repository.dart';
-import 'sync_models.dart';
+
+class SyncPushResult {
+  const SyncPushResult({
+    this.completedIds = const <int>{},
+    this.failedById = const <int, String>{},
+  });
+
+  final Set<int> completedIds;
+  final Map<int, String> failedById;
+}
+
+class SyncRunReport {
+  const SyncRunReport({
+    required this.picked,
+    required this.completed,
+    required this.failed,
+  });
+
+  final int picked;
+  final int completed;
+  final int failed;
+}
+
+typedef SyncPushHandler = Future<SyncPushResult> Function(List<SyncJob> jobs);
 
 class SyncService {
   SyncService({required SyncRepository syncRepository})
@@ -61,15 +84,5 @@ class SyncService {
         failed: ids.length,
       );
     }
-  }
-
-  Future<SyncRunReport> runPushCycleWithApi({
-    required SyncApiClient apiClient,
-    int batchSize = 25,
-  }) {
-    return runPushCycle(
-      batchSize: batchSize,
-      pushHandler: apiClient.pushJobs,
-    );
   }
 }

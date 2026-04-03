@@ -5,7 +5,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:feng_498/data/app_database.dart';
 import 'package:feng_498/services/repositories/sync_repository.dart';
 import 'package:feng_498/services/sync_service.dart';
-import 'package:feng_498/services/sync_models.dart';
 
 void main() {
   late AppDatabase database;

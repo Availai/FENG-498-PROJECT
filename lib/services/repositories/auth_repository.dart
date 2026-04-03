@@ -45,9 +45,4 @@ class AuthRepository {
   Future<void> signOut() {
     return _firebaseAuth.signOut();
   }
-
-  Future<String?> getIdToken({bool forceRefresh = false}) async {
-    return _firebaseAuth.currentUser?.getIdToken(forceRefresh);
-  }
 }
-
