@@ -208,7 +208,7 @@ class MyCropsScreen extends ConsumerWidget {
                             onPressed: () async {
                               final id = item['id']?.toString();
                               if (id == null) return;
-                              await ref.read(localDataRepositoryProvider).deleteField(id);
+                              await ref.read(fieldRepositoryProvider).deleteField(id);
                             },
                           ),
                         ],
@@ -255,7 +255,7 @@ class MyCropsScreen extends ConsumerWidget {
           ElevatedButton(
             onPressed: () async {
               if (name.isNotEmpty) {
-                await ref.read(localDataRepositoryProvider).createManualField(
+                await ref.read(fieldRepositoryProvider).createManualField(
                       name: name,
                       latitude: lat,
                       longitude: lng,
