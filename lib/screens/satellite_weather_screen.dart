@@ -1,18 +1,22 @@
 import 'package:flutter/material.dart';
-import '../services/agri_service.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class SatelliteWeatherScreen extends StatefulWidget {
+import '../services/app_providers.dart';
+
+class SatelliteWeatherScreen extends ConsumerStatefulWidget {
   final dynamic fieldData;
   const SatelliteWeatherScreen({super.key, required this.fieldData});
 
   @override
-  State<SatelliteWeatherScreen> createState() => _SatelliteWeatherScreenState();
+  ConsumerState<SatelliteWeatherScreen> createState() => _SatelliteWeatherScreenState();
 }
 
-class _SatelliteWeatherScreenState extends State<SatelliteWeatherScreen> {
+class _SatelliteWeatherScreenState extends ConsumerState<SatelliteWeatherScreen> {
   Map<String, dynamic>? _data;
   bool _isLoading = true;
   String? _error;
+  bool _isStaleData = false;
+  DateTime? _lastUpdated;
 
   @override
   void initState() {
@@ -27,13 +31,15 @@ class _SatelliteWeatherScreenState extends State<SatelliteWeatherScreen> {
     });
     try {
       final d = widget.fieldData;
-      final result = await AgriService.getSatelliteWeather(
-        (d['latitude'] as num).toDouble(),
-        (d['longitude'] as num).toDouble(),
-      );
+      final result = await ref.read(weatherRepositoryProvider).getSatelliteWeather(
+            latitude: (d['latitude'] as num).toDouble(),
+            longitude: (d['longitude'] as num).toDouble(),
+          );
       if (mounted) {
         setState(() {
-          _data = result;
+          _data = result.data;
+          _isStaleData = result.isStale;
+          _lastUpdated = result.lastUpdated;
           _isLoading = false;
         });
       }
@@ -132,6 +138,33 @@ class _SatelliteWeatherScreenState extends State<SatelliteWeatherScreen> {
         ]),
         const SizedBox(height: 16),
 
+        if (_isStaleData)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF3CD),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFFFE69C)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.wifi_off_rounded, color: Color(0xFF7A5D00), size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    _lastUpdated == null
+                        ? 'Çevrimdışı mod: Son başarılı hava verisi gösteriliyor.'
+                        : 'Çevrimdışı mod: Son başarılı veri ${_formatUpdatedAt(_lastUpdated!)} tarihinde alındı.',
+                    style: const TextStyle(color: Color(0xFF7A5D00), fontSize: 12.5),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+        if (_isStaleData)
+          const SizedBox(height: 12),
+
         // ── ANLIK HAVA (Open-Meteo ERA5) ──
         _sectionTitle('Anlık Hava Durumu', Icons.wb_sunny_outlined),
         const SizedBox(height: 8),
@@ -201,6 +234,13 @@ class _SatelliteWeatherScreenState extends State<SatelliteWeatherScreen> {
         const SizedBox(height: 24),
       ]),
     );
+  }
+
+
+  String _formatUpdatedAt(DateTime dt) {
+    final local = dt.toLocal();
+    final two = (int v) => v.toString().padLeft(2, '0');
+    return '${two(local.day)}.${two(local.month)}.${local.year} ${two(local.hour)}:${two(local.minute)}';
   }
 
   Widget _sectionTitle(String title, IconData icon) {
