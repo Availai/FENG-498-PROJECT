@@ -111,6 +111,88 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
     }
   }
 
+  Future<void> _loadLatestSuitabilityReport() async {
+    final fieldId = widget.fieldData['id']?.toString();
+    if (fieldId == null || fieldId.isEmpty) return;
+
+    final report = await ref
+        .read(localDataRepositoryProvider)
+        .loadLatestSuitabilityReport(fieldId);
+    if (!mounted) return;
+
+    setState(() => _latestSuitabilityReport = report);
+  }
+
+  Future<void> _persistSuitabilityReport(
+    Map<String, dynamic> analysis,
+  ) async {
+    final fieldId = widget.fieldData['id']?.toString();
+    if (fieldId == null || fieldId.isEmpty) return;
+
+    final recommendedCrops = (analysis['crops'] as List? ?? const [])
+        .whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
+        .toList();
+
+    final topCrop =
+        recommendedCrops.isNotEmpty ? recommendedCrops.first : <String, dynamic>{};
+    final rawCropName = topCrop['name']?.toString().trim();
+    final cropName = (rawCropName == null || rawCropName.isEmpty)
+        ? (widget.fieldData['crop']?.toString() ?? 'Belirtilmedi')
+        : rawCropName
+            .replaceAll(
+              RegExp(r'[\u{1F300}-\u{1FAFF}]', unicode: true),
+              '',
+            )
+            .trim();
+
+    final score = (topCrop['uygunluk'] as num?)?.toDouble() ?? 0.0;
+    final now = DateTime.now().toUtc();
+
+    final reportPayload = <String, dynamic>{
+      'field_name': widget.fieldData['name']?.toString() ?? 'Tarla',
+      'recommended_crop': cropName,
+      'refreshed_at': now.toIso8601String(),
+      'weekly_comment': analysis['ai_weekly_comment']?.toString() ?? '',
+      'weather_snapshot': {
+        'temp': (analysis['temp'] as num?)?.toDouble() ?? 0.0,
+        'humidity': (analysis['humidity'] as num?)?.toDouble() ?? 0.0,
+        'wind': (analysis['wind'] as num?)?.toDouble() ?? 0.0,
+        'avg_weekly_temp': (analysis['avg_weekly_temp'] as num?)?.toDouble() ?? 0.0,
+        'total_weekly_rain':
+            (analysis['total_weekly_rain'] as num?)?.toDouble() ?? 0.0,
+      },
+      'soil_snapshot': {
+        'ph': (analysis['ph'] as num?)?.toDouble() ?? 6.5,
+        'soil_moisture': (analysis['soil_moisture'] as num?)?.toDouble() ?? 0.0,
+        'soil_temp_c': (analysis['soil_temp_c'] as num?)?.toDouble() ?? 0.0,
+      },
+      'top_recommendations': recommendedCrops.take(3).toList(),
+    };
+
+    await ref.read(localDataRepositoryProvider).saveSuitabilityReport(
+          fieldId: fieldId,
+          cropName: cropName,
+          score: score,
+          report: reportPayload,
+        );
+
+    await _loadLatestSuitabilityReport();
+  }
+
+  Future<void> _refreshSuitability() async {
+    if (_analysis == null) return;
+
+    setState(() => _isRefreshingSuitability = true);
+    try {
+      await _persistSuitabilityReport(_analysis!);
+    } finally {
+      if (mounted) {
+        setState(() => _isRefreshingSuitability = false);
+      }
+    }
+  }
+
 
   Future<void> _showSyncQueueDialog() async {
     final syncRepository = ref.read(syncRepositoryProvider);
