@@ -7,7 +7,6 @@ import 'local_data_repository.dart';
 import 'repositories/calendar_repository.dart';
 import 'repositories/field_repository.dart';
 import 'repositories/weather_repository.dart';
-import 'repositories/sync_repository.dart';
 import 'repositories/auth_repository.dart';
 
 final appDatabaseProvider = Provider<AppDatabase>((ref) {
@@ -17,6 +16,7 @@ final appDatabaseProvider = Provider<AppDatabase>((ref) {
 final localDataRepositoryProvider = Provider<LocalDataRepository>((ref) {
   return LocalDataRepository(database: ref.watch(appDatabaseProvider));
 });
+
 
 
 final settingsBoxProvider = Provider<Box>((ref) {
@@ -45,10 +45,6 @@ final calendarRepositoryProvider = Provider<CalendarRepository>((ref) {
 
 final weatherRepositoryProvider = Provider<WeatherRepository>((ref) {
   return WeatherRepository(settingsBox: ref.watch(settingsBoxProvider));
-});
-
-final syncRepositoryProvider = Provider<SyncRepository>((ref) {
-  return SyncRepository(database: ref.watch(appDatabaseProvider));
 });
 
 final fieldMapsProvider = StreamProvider<List<Map<String, dynamic>>>((ref) {
