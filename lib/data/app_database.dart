@@ -125,16 +125,30 @@ class SyncState extends Table {
   ],
 )
 class AppDatabase extends _$AppDatabase {
-  AppDatabase() : super(_openConnection());
+  AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
   int get schemaVersion => 1;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onCreate: (m) async {
+          await m.createAll();
+        },
+      );
 }
 
 LazyDatabase _openConnection() {
   return LazyDatabase(() async {
-    final dir = await getApplicationDocumentsDirectory();
-    final file = File(p.join(dir.path, 'smart_agri_local.sqlite'));
+    File file;
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      file = File(p.join(dir.path, 'smart_agri_local.sqlite'));
+    } catch (_) {
+      final fallbackDir = Directory.systemTemp;
+      file = File(p.join(fallbackDir.path, 'smart_agri_local.sqlite'));
+    }
+
     return NativeDatabase.createInBackground(file);
   });
 }

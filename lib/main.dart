@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -88,29 +87,24 @@ class SmartAgriApp extends StatelessWidget {
 }
 
 /// Listens to Firebase Auth state and routes to Auth or Main screen.
-class _AuthGate extends StatelessWidget {
+class _AuthGate extends ConsumerWidget {
   const _AuthGate();
 
   @override
-  Widget build(BuildContext context) {
-    return StreamBuilder<User?>(
-      stream: FirebaseAuth.instance.authStateChanges(),
-      builder: (context, snapshot) {
-        // While checking auth state
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
-            body: Center(
-              child: CircularProgressIndicator(color: Color(0xFF00E676)),
-            ),
-          );
-        }
+  Widget build(BuildContext context, WidgetRef ref) {
+    final authStateAsync = ref.watch(authStateChangesProvider);
 
-        // Logged in (including anonymous) → main app
-        if (snapshot.hasData) {
+    return authStateAsync.when(
+      loading: () => const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(color: Color(0xFF00E676)),
+        ),
+      ),
+      error: (_, __) => const AuthScreen(),
+      data: (user) {
+        if (user != null) {
           return const MainNavigationScreen();
         }
-
-        // Not logged in → auth screen
         return const AuthScreen();
       },
     );
