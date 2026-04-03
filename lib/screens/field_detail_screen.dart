@@ -1,21 +1,23 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/agri_service.dart';
+import '../services/app_providers.dart';
 import '../data/verified_agri_database.dart';
 import '../widgets/glass_panel.dart';
 import '../widgets/tech_3d_field_renderer.dart';
 import 'seed_selector_screen.dart';
 import 'harvest_oracle_screen.dart';
 
-class FieldDetailScreen extends StatefulWidget {
+class FieldDetailScreen extends ConsumerStatefulWidget {
   final dynamic fieldData;
   const FieldDetailScreen({super.key, required this.fieldData});
   @override
-  State<FieldDetailScreen> createState() => _FieldDetailScreenState();
+  ConsumerState<FieldDetailScreen> createState() => _FieldDetailScreenState();
 }
 
-class _FieldDetailScreenState extends State<FieldDetailScreen>
+class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
     with SingleTickerProviderStateMixin {
   Map<String, dynamic>? _analysis;
   bool _isLoading = true;
@@ -106,6 +108,61 @@ class _FieldDetailScreenState extends State<FieldDetailScreen>
     }
   }
 
+
+  Future<void> _showSyncQueueDialog() async {
+    final syncRepository = ref.read(syncRepositoryProvider);
+    final stats = await syncRepository.getQueueStats();
+    if (!mounted) return;
+
+    await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Senkron Kuyruğu'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Bekleyen: ${stats['pending'] ?? 0}'),
+            Text('İşleniyor: ${stats['in_progress'] ?? 0}'),
+            Text('Hatalı: ${stats['failed'] ?? 0}'),
+            const SizedBox(height: 8),
+            Text('Toplam: ${stats['total'] ?? 0}'),
+            const SizedBox(height: 8),
+            const Text(
+              'Not: Bu adım yalnızca yerel outbox kuyruğunu yönetir.',
+              style: TextStyle(fontSize: 12, color: Colors.black54),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Kapat'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              final moved = await syncRepository.retryFailedJobs();
+              final report = await ref.read(syncServiceProvider).runPushCycleWithApi(
+                    apiClient: ref.read(syncApiClientProvider),
+                  );
+              if (!mounted) return;
+              Navigator.pop(ctx);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    '$moved kayıt tekrar kuyruğa alındı • '
+                    'Push: ${report.completed}/${report.picked} başarılı',
+                  ),
+                ),
+              );
+            },
+            child: const Text('Hatalıları Tekrar Dene'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final d = widget.fieldData;
@@ -142,7 +199,7 @@ class _FieldDetailScreenState extends State<FieldDetailScreen>
         actions: [
           IconButton(
               icon: const Icon(Icons.sync, color: Color(0xFF00E676)),
-              onPressed: _loadAnalysis),
+              onPressed: _showSyncQueueDialog),
         ],
       ),
       body: Stack(
@@ -501,6 +558,7 @@ class _FieldDetailScreenState extends State<FieldDetailScreen>
 class _VerifiedRecommendationSheet extends StatelessWidget {
   final List<Map<String, dynamic>> recommendations;
   const _VerifiedRecommendationSheet({required this.recommendations});
+
 
   @override
   Widget build(BuildContext context) {
