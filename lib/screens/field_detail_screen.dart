@@ -248,7 +248,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
         actions: [
           IconButton(
               icon: const Icon(Icons.sync, color: Color(0xFF00E676)),
-              onPressed: _loadAnalysis),
+              onPressed: _showSyncQueueDialog),
         ],
       ),
       body: Stack(
@@ -691,6 +691,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
 class _VerifiedRecommendationSheet extends StatelessWidget {
   final List<Map<String, dynamic>> recommendations;
   const _VerifiedRecommendationSheet({required this.recommendations});
+
 
   @override
   Widget build(BuildContext context) {
