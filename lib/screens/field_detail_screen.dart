@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
 import '../services/agri_service.dart';
 import '../services/app_providers.dart';
 import '../data/verified_agri_database.dart';
@@ -20,7 +21,9 @@ class FieldDetailScreen extends ConsumerStatefulWidget {
 class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
     with SingleTickerProviderStateMixin {
   Map<String, dynamic>? _analysis;
+  Map<String, dynamic>? _latestSuitabilityReport;
   bool _isLoading = true;
+  bool _isRefreshingSuitability = false;
   String? _error;
 
   late AnimationController _animCtrl;
@@ -62,10 +65,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
 
     _animCtrl.forward();
 
-    // Init matrix data with area approximation
-    double area = (widget.fieldData['area_dekar'] as num?)?.toDouble() ?? 1.0;
-    // You could dynamically calculate rows/cols based on true area here, but for tech demo keep static or clamped.
-
+    _loadLatestSuitabilityReport();
     _loadAnalysis();
   }
 
@@ -88,6 +88,9 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
         d['name'] ?? 'Tarla',
         (d['area_dekar'] as num?)?.toDouble() ?? 1.0,
       );
+      if (result['success'] == true) {
+        await _persistSuitabilityReport(result);
+      }
       if (mounted) {
         setState(() {
           if (result['success'] == true) {
@@ -338,6 +341,18 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
                 ),
               ),
             ),
+          if (!_isLoading && _error == null)
+            Positioned(
+              left: 16,
+              top: MediaQuery.of(context).padding.top + 60,
+              child: FadeTransition(
+                opacity: _uiFadeAnim,
+                child: SlideTransition(
+                  position: _uiSlideAnim,
+                  child: _buildSuitabilityCard(),
+                ),
+              ),
+            ),
 
           // 5. Bottom System Nav
           if (!_isLoading && _error == null)
@@ -370,11 +385,8 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
     String humid = '--';
 
     if (a != null) {
-      final cw = a['current_weather'];
-      if (cw != null) {
-        temp = '${cw['temp']?.round() ?? '--'}°C';
-        humid = '%${cw['humidity']?.round() ?? '--'}';
-      }
+      temp = '${(a['temp'] as num?)?.round() ?? '--'}°C';
+      humid = '%${(a['humidity'] as num?)?.round() ?? '--'}';
     }
 
     final fieldName = widget.fieldData['name'] ?? 'Tarla';
@@ -415,6 +427,77 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildSuitabilityCard() {
+    final report = _latestSuitabilityReport;
+    final reportBody = report?['report'];
+    final refreshedAtRaw =
+        (reportBody is Map ? reportBody['refreshed_at'] : null)?.toString();
+    final refreshedAt = DateTime.tryParse(refreshedAtRaw ?? '')?.toLocal();
+    final topCrop = report?['crop_name']?.toString() ?? 'Henüz yok';
+    final score = (report?['score'] as num?)?.toDouble() ?? 0.0;
+
+    return GlassPanel(
+      baseColor: const Color(0xFF1B5E20),
+      borderRadius: 16,
+      padding: const EdgeInsets.all(12),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 220),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.verified_rounded, color: Color(0xFF00E676), size: 16),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    'Uygunluk Raporu',
+                    style: GoogleFonts.outfit(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Raporu yenile',
+                  onPressed: _isRefreshingSuitability ? null : _refreshSuitability,
+                  icon: _isRefreshingSuitability
+                      ? const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Color(0xFF00E676),
+                          ),
+                        )
+                      : const Icon(Icons.refresh, color: Color(0xFF00E676), size: 16),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Önerilen Ürün: $topCrop',
+              style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Skor: %${score.toStringAsFixed(0)}',
+              style: const TextStyle(color: Colors.white70, fontSize: 12),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              refreshedAt == null
+                  ? 'Durum: Henüz rapor oluşturulmadı'
+                  : 'Son Güncelleme: ${DateFormat('dd.MM.yyyy HH:mm', 'tr_TR').format(refreshedAt)}',
+              style: const TextStyle(color: Colors.white70, fontSize: 11),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -468,8 +551,12 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
     double totalRain = 400.0;
 
     if (_analysis != null) {
-      if (_analysis!['current_weather'] != null) currentT = (_analysis!['current_weather']['temp'] as num?)?.toDouble() ?? 20.0;
-      if (_analysis!['soil'] != null) currentPh = (_analysis!['soil']['ph'] as num?)?.toDouble() ?? 6.5;
+      currentT = (_analysis!['avg_weekly_temp'] as num?)?.toDouble() ??
+          (_analysis!['temp'] as num?)?.toDouble() ??
+          20.0;
+      currentPh = (_analysis!['ph'] as num?)?.toDouble() ?? 6.5;
+      totalRain =
+          ((_analysis!['total_weekly_rain'] as num?)?.toDouble() ?? 12.0) * 52;
     }
 
     // Use Verified Database perfectly 

@@ -357,6 +357,69 @@ class LocalDataRepository {
     );
   }
 
+  Future<void> saveSuitabilityReport({
+    required String fieldId,
+    required String cropName,
+    required double score,
+    required Map<String, dynamic> report,
+  }) async {
+    final now = DateTime.now().toUtc();
+    final reportId = _newId('suitability');
+    await _db.into(_db.suitabilityReports).insert(
+          SuitabilityReportsCompanion.insert(
+            id: reportId,
+            fieldId: fieldId,
+            cropName: cropName,
+            score: Value(score),
+            reportJson: jsonEncode(report),
+            createdAt: now,
+            updatedAt: now,
+          ),
+        );
+
+    await _enqueueSyncJob(
+      entityType: 'suitability_reports',
+      entityId: reportId,
+      operation: 'upsert',
+      payload: {
+        'id': reportId,
+        'field_id': fieldId,
+        'crop_name': cropName,
+        'score': score,
+        'report': report,
+        'updated_at': now.toIso8601String(),
+      },
+      updatedAt: now,
+    );
+  }
+
+  Future<Map<String, dynamic>?> loadLatestSuitabilityReport(String fieldId) async {
+    final report = await (_db.select(_db.suitabilityReports)
+          ..where((tbl) => tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull())
+          ..orderBy([(tbl) => OrderingTerm.desc(tbl.updatedAt)])
+          ..limit(1))
+        .getSingleOrNull();
+    if (report == null) return null;
+
+    Map<String, dynamic> decodedReport = const {};
+    try {
+      final parsed = jsonDecode(report.reportJson);
+      if (parsed is Map) {
+        decodedReport = Map<String, dynamic>.from(parsed);
+      }
+    } catch (_) {}
+
+    return {
+      'id': report.id,
+      'field_id': report.fieldId,
+      'crop_name': report.cropName,
+      'score': report.score ?? 0.0,
+      'report': decodedReport,
+      'created_at': report.createdAt,
+      'updated_at': report.updatedAt,
+    };
+  }
+
   Future<void> _regenerateIrrigationPlans({
     required String fieldId,
     required DateTime referenceTime,
