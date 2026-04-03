@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:hive_flutter/hive_flutter.dart';
-import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
 
 import '../services/app_providers.dart';
@@ -36,85 +34,6 @@ class _CropCalendarScreenState extends ConsumerState<CropCalendarScreen> {
 
   // ── Event Building ────────────────────────────────────────────────────────
 
-  void _buildEvents() {
-    final map = <DateTime, List<_CalEvent>>{};
-
-    void add(DateTime dt, _CalEvent ev) {
-      final key = DateTime.utc(dt.year, dt.month, dt.day);
-      map.putIfAbsent(key, () => []).add(ev);
-    }
-
-    final cropsBox = Hive.box('user_crops');
-
-    for (int i = 0; i < cropsBox.length; i++) {
-      final raw = cropsBox.getAt(i);
-      if (raw == null) continue;
-      final field = Map<String, dynamic>.from(raw as Map);
-
-      final fieldName = field['name']?.toString() ?? 'Tarla ${i + 1}';
-
-      // Field registration date
-      final regDateStr = field['date']?.toString();
-      if (regDateStr != null) {
-        final regDate = _parseDate(regDateStr);
-        if (regDate != null) {
-          add(regDate, _CalEvent(
-            title: '$fieldName — Tarla Kaydı',
-            type: _EventType.registration,
-          ));
-        }
-      }
-
-      // Planted crops
-      final planted = field['planted_crops'];
-      if (planted is List) {
-        for (final p in planted) {
-          if (p is! Map) continue;
-          final crop = Map<String, dynamic>.from(p);
-          final cropName = crop['name']?.toString() ?? 'Bitki';
-          final plantedStr = crop['planted_date']?.toString();
-          final harvestDays = (crop['harvest_days'] as num?)?.toInt() ?? 90;
-          final waterDays = (crop['water_interval_days'] as num?)?.toInt() ?? 7;
-
-          if (plantedStr != null) {
-            final plantDate = _parseDate(plantedStr);
-            if (plantDate != null) {
-              // Planting event
-              add(plantDate, _CalEvent(
-                title: '$cropName — $fieldName Ekimi',
-                type: _EventType.planting,
-              ));
-
-              // Harvest event
-              final harvestDate = plantDate.add(Duration(days: harvestDays));
-              add(harvestDate, _CalEvent(
-                title: '$cropName — $fieldName Hasat',
-                type: _EventType.harvest,
-              ));
-
-              // Watering reminders (weekly, from now ± 30 days)
-              final now = DateTime.now();
-              final rangeStart = now.subtract(const Duration(days: 7));
-              final rangeEnd = now.add(const Duration(days: 60));
-              var waterDate = plantDate;
-              while (waterDate.isBefore(harvestDate)) {
-                if (waterDate.isAfter(rangeStart) && waterDate.isBefore(rangeEnd)) {
-                  add(waterDate, _CalEvent(
-                    title: '$cropName — Sulama',
-                    type: _EventType.watering,
-                  ));
-                }
-                waterDate = waterDate.add(Duration(days: waterDays));
-              }
-            }
-          }
-        }
-      }
-    }
-
-    setState(() => _events = map);
-  }
-
   Future<void> _buildEventsFromRepository() async {
     final map = <DateTime, List<_CalEvent>>{};
 
@@ -138,20 +57,6 @@ class _CropCalendarScreenState extends ConsumerState<CropCalendarScreen> {
 
     if (!mounted) return;
     setState(() => _events = map);
-  }
-
-  DateTime? _parseDate(String s) {
-    // Supports "dd.MM.yyyy HH:mm" and "dd.MM.yyyy"
-    try {
-      return DateFormat('dd.MM.yyyy HH:mm').parse(s);
-    } catch (_) {}
-    try {
-      return DateFormat('dd.MM.yyyy').parse(s);
-    } catch (_) {}
-    try {
-      return DateTime.parse(s);
-    } catch (_) {}
-    return null;
   }
 
   List<_CalEvent> _eventsForDay(DateTime day) {
