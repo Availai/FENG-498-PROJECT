@@ -1,17 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../services/app_providers.dart';
 
 /// Email / password authentication screen.
 /// Fulfills: "Registration and Authentication via email/password"
 /// (Proposal Section 6.1.2.1).
-class AuthScreen extends StatefulWidget {
+class AuthScreen extends ConsumerStatefulWidget {
   const AuthScreen({super.key});
 
   @override
-  State<AuthScreen> createState() => _AuthScreenState();
+  ConsumerState<AuthScreen> createState() => _AuthScreenState();
 }
 
-class _AuthScreenState extends State<AuthScreen>
+class _AuthScreenState extends ConsumerState<AuthScreen>
     with SingleTickerProviderStateMixin {
   final _emailCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
@@ -45,7 +48,7 @@ class _AuthScreenState extends State<AuthScreen>
     if (!_formKey.currentState!.validate()) return;
     setState(() { _loading = true; _error = null; });
     try {
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
+      await ref.read(authRepositoryProvider).signInWithEmailAndPassword(
         email: _emailCtrl.text.trim(),
         password: _passCtrl.text,
       );
@@ -60,11 +63,11 @@ class _AuthScreenState extends State<AuthScreen>
     if (!_formKey.currentState!.validate()) return;
     setState(() { _loading = true; _error = null; });
     try {
-      final cred = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+      await ref.read(authRepositoryProvider).registerWithEmailAndPassword(
         email: _emailCtrl.text.trim(),
         password: _passCtrl.text,
+        displayName: _nameCtrl.text,
       );
-      await cred.user?.updateDisplayName(_nameCtrl.text.trim());
     } on FirebaseAuthException catch (e) {
       setState(() => _error = _mapError(e.code));
     } finally {
@@ -75,7 +78,7 @@ class _AuthScreenState extends State<AuthScreen>
   Future<void> _continueAsGuest() async {
     setState(() { _loading = true; _error = null; });
     try {
-      await FirebaseAuth.instance.signInAnonymously();
+      await ref.read(authRepositoryProvider).signInAnonymously();
     } catch (e) {
       // Even if anon fails, navigate anyway — non-cloud features still work
       if (mounted) Navigator.of(context).pushReplacementNamed('/home');

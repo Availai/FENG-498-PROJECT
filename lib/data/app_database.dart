@@ -125,16 +125,60 @@ class SyncState extends Table {
   ],
 )
 class AppDatabase extends _$AppDatabase {
-  AppDatabase() : super(_openConnection());
+  AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
   int get schemaVersion => 1;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onCreate: (m) async {
+          await m.createAll();
+          await m.customStatement(
+            'CREATE INDEX IF NOT EXISTS idx_sync_jobs_status_updated_at '
+            'ON sync_jobs (status, updated_at)',
+          );
+          await m.customStatement(
+            'CREATE INDEX IF NOT EXISTS idx_sync_jobs_entity '
+            'ON sync_jobs (entity_type, entity_id)',
+          );
+          await m.customStatement(
+            'CREATE INDEX IF NOT EXISTS idx_calendar_events_date '
+            'ON calendar_events (event_date)',
+          );
+        },
+        onUpgrade: (m, from, to) async {
+          // Şimdilik şema v1; gelecekte sürüm yükseltmelerinde adımlı migration eklenecek.
+          await m.customStatement(
+            'CREATE INDEX IF NOT EXISTS idx_sync_jobs_status_updated_at '
+            'ON sync_jobs (status, updated_at)',
+          );
+          await m.customStatement(
+            'CREATE INDEX IF NOT EXISTS idx_sync_jobs_entity '
+            'ON sync_jobs (entity_type, entity_id)',
+          );
+          await m.customStatement(
+            'CREATE INDEX IF NOT EXISTS idx_calendar_events_date '
+            'ON calendar_events (event_date)',
+          );
+        },
+      );
+
 }
 
 LazyDatabase _openConnection() {
   return LazyDatabase(() async {
-    final dir = await getApplicationDocumentsDirectory();
-    final file = File(p.join(dir.path, 'smart_agri_local.sqlite'));
-    return NativeDatabase.createInBackground(file);
+    File file;
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      file = File(p.join(dir.path, 'smart_agri_local.sqlite'));
+    } catch (_) {
+      final fallbackDir = Directory.systemTemp;
+      file = File(p.join(fallbackDir.path, 'smart_agri_local.sqlite'));
+    }
+    return NativeDatabase.createInBackground(
+      file,
+      setup: (db) => db.execute('PRAGMA foreign_keys = ON'),
+    );
   });
 }
