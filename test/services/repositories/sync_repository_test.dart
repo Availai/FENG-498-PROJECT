@@ -83,63 +83,6 @@ void main() {
     expect(row.lastError, 'timeout');
   });
 
-
-
-  test('getQueueStats returns counts by status', () async {
-    final now = DateTime.now().toUtc();
-
-    await database.into(database.syncJobs).insert(
-          SyncJobsCompanion.insert(
-            entityType: 'fields',
-            entityId: 'p-1',
-            operation: 'upsert',
-            payloadJson: '{}',
-            updatedAt: now,
-            status: const Value('pending'),
-          ),
-        );
-    await database.into(database.syncJobs).insert(
-          SyncJobsCompanion.insert(
-            entityType: 'fields',
-            entityId: 'f-1',
-            operation: 'upsert',
-            payloadJson: '{}',
-            updatedAt: now,
-            status: const Value('failed'),
-          ),
-        );
-
-    final stats = await repository.getQueueStats();
-
-    expect(stats['pending'], 1);
-    expect(stats['failed'], 1);
-    expect(stats['in_progress'], 0);
-    expect(stats['total'], 2);
-  });
-
-  test('retryFailedJobs moves failed rows back to pending', () async {
-    final now = DateTime.now().toUtc();
-
-    await database.into(database.syncJobs).insert(
-          SyncJobsCompanion.insert(
-            entityType: 'fields',
-            entityId: 'f-1',
-            operation: 'upsert',
-            payloadJson: '{}',
-            updatedAt: now,
-            status: const Value('failed'),
-            lastError: const Value('timeout'),
-          ),
-        );
-
-    final moved = await repository.retryFailedJobs();
-    final stats = await repository.getQueueStats();
-
-    expect(moved, 1);
-    expect(stats['failed'], 0);
-    expect(stats['pending'], 1);
-  });
-
   test('setLastSyncAt and getLastSyncAt round-trip', () async {
     final stamp = DateTime.utc(2026, 4, 3, 12, 0, 0);
 

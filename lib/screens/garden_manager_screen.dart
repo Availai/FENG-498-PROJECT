@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:hive_flutter/hive_flutter.dart';
 
 import '../models/crop_layer.dart';
 import '../services/app_providers.dart';
@@ -45,49 +44,11 @@ class _GardenManagerScreenState extends ConsumerState<GardenManagerScreen> {
     _fieldWidthM = (_areaM2 / _fieldHeightM).clamp(5.0, 500.0);
   }
 
-  // ── Hive okuma / yazma ────────────────────────────────────────────────
-  void _loadCrops() {
-    final box = Hive.box('user_crops');
-    for (int i = 0; i < box.length; i++) {
-      final f = box.getAt(i);
-      if (f != null &&
-          f['name'] == widget.fieldData['name'] &&
-          f['date'] == widget.fieldData['date']) {
-        final raw = f['planted_crops'];
-        if (raw != null) {
-          _crops = (raw as List)
-              .map((c) => Map<String, dynamic>.from(c))
-              .toList();
-        }
-        break;
-      }
-    }
-    setState(() {});
-  }
-
-  void _saveToHive() {
-    final box = Hive.box('user_crops');
-    for (int i = 0; i < box.length; i++) {
-      final f = box.getAt(i);
-      if (f != null &&
-          f['name'] == widget.fieldData['name'] &&
-          f['date'] == widget.fieldData['date']) {
-        final updated = Map<String, dynamic>.from(f);
-        updated['planted_crops'] =
-            _crops.map((c) => Map<String, dynamic>.from(c)).toList();
-        box.putAt(i, updated);
-        setState(() => _dirty = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Bahçe kaydedildi!')));
-        return;
-      }
-    }
-  }
-
   Future<void> _loadCropsFromRepository() async {
     final fieldId = widget.fieldData['id']?.toString();
     if (fieldId == null) {
-      _loadCrops();
+      if (!mounted) return;
+      setState(() => _crops = []);
       return;
     }
 
@@ -99,7 +60,10 @@ class _GardenManagerScreenState extends ConsumerState<GardenManagerScreen> {
   Future<void> _saveToRepository() async {
     final fieldId = widget.fieldData['id']?.toString();
     if (fieldId == null) {
-      _saveToHive();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Alan kimliği bulunamadı, kayıt yapılamadı.')),
+      );
       return;
     }
 
