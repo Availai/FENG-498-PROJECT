@@ -2,6 +2,11 @@ import 'package:hive/hive.dart';
 
 import '../agri_service.dart';
 
+typedef SatelliteWeatherFetcher = Future<Map<String, dynamic>> Function(
+  double latitude,
+  double longitude,
+);
+
 class SatelliteWeatherResult {
   const SatelliteWeatherResult({
     required this.data,
@@ -19,9 +24,13 @@ class SatelliteWeatherResult {
 class WeatherRepository {
   WeatherRepository({
     required Box settingsBox,
-  }) : _settingsBox = settingsBox;
+    SatelliteWeatherFetcher? satelliteWeatherFetcher,
+  })  : _settingsBox = settingsBox,
+        _satelliteWeatherFetcher =
+            satelliteWeatherFetcher ?? AgriService.getSatelliteWeather;
 
   final Box _settingsBox;
+  final SatelliteWeatherFetcher _satelliteWeatherFetcher;
 
   Future<SatelliteWeatherResult> getSatelliteWeather({
     required double latitude,
@@ -30,7 +39,7 @@ class WeatherRepository {
     final cacheKey = _cacheKey(latitude, longitude);
 
     try {
-      final result = await AgriService.getSatelliteWeather(latitude, longitude);
+      final result = await _satelliteWeatherFetcher(latitude, longitude);
       final now = DateTime.now().toUtc();
       await _settingsBox.put(cacheKey, {
         'data': result,
