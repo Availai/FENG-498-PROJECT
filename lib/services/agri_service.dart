@@ -2,9 +2,11 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:google_generative_ai/google_generative_ai.dart';
 import 'crop_rules.dart';
+import 'rule_engine.dart';
+import 'offline_encyclopedia.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'plant_cache_service.dart';
 
 class AgriService {
   static String get _plantNetKey => dotenv.env['PLANTNET_API_KEY'] ?? '';
@@ -178,50 +180,24 @@ class AgriService {
       // --- AŞAMA 3: YÖNLENDİRME ---
 
       if (isUnrelated) {
-        // ═══ SENARYO C: İLGİSİZ FOTOĞRAF — Gemini Vision + Bölgesel Rapor ═══
-        try {
-          final model = GenerativeModel(
-            model: 'gemini-2.5-pro',
-            apiKey: dotenv.env['GEMINI_API_KEY'] ?? '',
-          );
-          final bytes = await imageFile.readAsBytes();
-          final prompt = '''
-Sen tarım ve çevre analiz asistanısın. Kullanıcı bir fotoğraf yükledi, ancak görüntü sınıflandırıcıları bunun tarımsal bir içerik olmadığını veya bir tarla/bitki olmadığını söylüyor. Lütfen bu fotoğrafla ilgili 1 cümlelik çok kısa bir yorum yap (örn: "Bu bir bilgisayar ekranı gibi görünüyor"). Ardından, sensörlerden gelen alttaki konum verilerini birleştirerek "Ancak bulunduğunuz bölgedeki güncel tarımsal çevre şartları şu şekildedir:" diyerek kullanıcıya o bölgenin toprak ve iklim şartları için detaylıca bir rapor paragrafı sun. (Lütfen Markdown kullanma, direkt ve akıcı bir metin yaz)
-
-Bölge Verileri:
-- Ortalama Sıcaklık: $avgWeeklyTemp°C
-- Anlık Sıcaklık: $numericTemp°C
-- Haftalık Toplam Yağış: $totalWeeklyRain mm
-- Ortalama Nem: %$numericHumidity
-- Toprak pH: ${numericPh.toStringAsFixed(1)}
-- Yüzey Toprak Nemi: %${(soilMoisture * 100).toStringAsFixed(1)}
-''';
-          final content = [
-            Content.multi([
-              TextPart(prompt),
-              DataPart('image/jpeg', bytes),
-            ])
-          ];
-          final res = await model.generateContent(content);
-
-          return {
-            "type": "plant",
-            "data": {
-              "title": "Görüntü Analizi & Çevre Raporu",
-              "description": res.text?.trim() ?? "Çevresel veriler listelendi.",
-            }
-          };
-        } catch (e) {
-          // Vision modeli bir şekilde çalışmazsa standart metin döndür
-          return {
-            "type": "plant",
-            "data": {
-              "title": "Bölgesel Çevre Raporu",
-              "description":
-                  "Fotoğraf tarımsal bir içerik değil gibi görünüyor (Etiketler: ${tagNames.take(3).join(', ')}). Ancak bulunduğunuz bölgenin toprak pH'ı ${numericPh.toStringAsFixed(1)} ve sıcaklığı $numericTemp°C civarındadır. Detaylı analiz için daha net bir bitki veya tarla fotoğrafı çekebilirsiniz.",
-            }
-          };
-        }
+        // ═══ SENARYO C: İLGİSİZ FOTOĞRAF — Rule Engine Bölgesel Rapor ═══
+        final report = RuleEngine.generateEnvironmentalReport(
+          temp: numericTemp,
+          humidity: numericHumidity,
+          weeklyRain: totalWeeklyRain,
+          ph: numericPh,
+          soilMoisture: soilMoisture,
+          soilTempC: soilTempC,
+          month: DateTime.now().month,
+        );
+        return {
+          "type": "plant",
+          "data": {
+            "title": "Bölgesel Çevre Raporu",
+            "description":
+                "Fotoğraf tarımsal bir içerik değil gibi görünüyor (Etiketler: ${tagNames.take(3).join(', ')}). $report",
+          }
+        };
       } else if (isPlant) {
         // ═══ SENARYO A: BİTKİ — %100 DETERMİNİSTİK (Perenual API) ═══
 
@@ -255,7 +231,9 @@ Bölge Verileri:
                   : scientificName;
           double confidence = ((bestMatch['score'] ?? 0) * 100).toDouble();
 
-          // 3A-2: Perenual API ile detaylları çek (LLM YOK — %100 API)
+          // 3A-2: Perenual API / cache'den bitki detaylarını çek
+          final bool detailsFromCache =
+              await PlantCacheService.get(scientificName) != null;
           Map<String, dynamic> perenualDetails =
               await _fetchPerenualDetails(scientificName, commonTitle);
 
@@ -296,7 +274,8 @@ Bölge Verileri:
               "title": commonTitle,
               "scientific_name": scientificName,
               "description":
-                  "Botanik Teşhis (%${confidence.toStringAsFixed(0)} güvenilirlik) — API Tabanlı Analiz",
+                  "Botanik Teşhis (%${confidence.toStringAsFixed(0)} güvenilirlik) — ${detailsFromCache ? 'Önbellekten' : 'API Tabanlı'} Analiz",
+              "from_cache": detailsFromCache,
               "plant_details": {
                 "family": familyName,
                 "halk_dilindeki_adi":
@@ -364,6 +343,10 @@ Bölge Verileri:
     String scientificName,
     String commonName,
   ) async {
+    // ── CACHE HIT: local Hive first, then Firestore community DB ──
+    final cached = await PlantCacheService.get(scientificName);
+    if (cached != null && cached.isNotEmpty) return cached;
+
     Map<String, dynamic> result = {};
     try {
       // 1. İsimle ara → ID bul
@@ -467,73 +450,23 @@ Bölge Verileri:
       }
     } catch (_) {}
 
-    // Perenual API boş döndüyse Gemini AI ile tüm alanları doldur
-    if (result.isEmpty) {
-      result = await _fetchAIPlantDetails(scientificName, commonName);
+    // Perenual returned data → save to cache before returning
+    if (result.isNotEmpty) {
+      PlantCacheService.save(scientificName, result);
+      return result;
     }
 
-    return result;
-  }
-
-  /// Gemini AI fallback — Perenual API boş döndüğünde tüm bitki bilgilerini AI'dan çek
-  static Future<Map<String, dynamic>> _fetchAIPlantDetails(
-    String scientificName,
-    String commonName,
-  ) async {
+    // Perenual boş döndüyse: OfflineEncyclopedia'ya bak, yoksa cache'e dön
+    final enc = OfflineEncyclopedia.getByName(commonName);
+    if (enc != null && enc.isNotEmpty) {
+      PlantCacheService.save(scientificName, enc);
+      return enc;
+    }
     try {
-      final model = GenerativeModel(
-        model: 'gemini-2.5-flash',
-        apiKey: dotenv.env['GEMINI_API_KEY'] ?? '',
-      );
-
-      final prompt = '''
-Sen bitki bilimi ve tarım alanında uzman bir yapay zekasın.
-"$commonName" ($scientificName) bitkisi hakkında aşağıdaki JSON formatında Türkiye koşullarına uygun bilgi ver.
-Yalnızca geçerli JSON döndür, kesinlikle markdown veya ``` etiketi kullanma.
-
-{
-  "other_names": "Halk dilindeki adları (virgülle ayrılmış)",
-  "type": "vegetable veya fruit veya herb veya tree veya shrub veya flower",
-  "cycle": "Annual veya Perennial veya Biennial",
-  "watering": "Frequent veya Average veya Minimum",
-  "sunlight": "Full Sun veya Partial Shade veya Full Shade",
-  "soil": "Uygun toprak türleri",
-  "growth_rate": "Slow veya Moderate veya Fast",
-  "care_level": "Low veya Medium veya High",
-  "maintenance": "Low veya Medium veya High",
-  "drought_tolerant": false,
-  "salt_tolerant": false,
-  "tropical": false,
-  "invasive": false,
-  "medicinal": false,
-  "poisonous_to_humans": false,
-  "poisonous_to_pets": false,
-  "edible_fruit": false,
-  "edible_leaf": false,
-  "flowering_season": "Mevsim adı veya null",
-  "fruiting_season": "Mevsim adı veya null",
-  "harvest_season": "Hasat mevsimi bilgisi veya null",
-  "harvest_method": "Hasat yöntemi veya null",
-  "pruning_month": "Budama ayları veya null",
-  "origin": "Köken ülkeler",
-  "propagation": "Tohumla, çelikleme, aşılama vb.",
-  "pest_susceptibility": "Bu bitkinin hassas olduğu başlıca hastalık ve zararlılar (2-3 cümle Türkçe detaylı)",
-  "care_description": "💧 Sulama: ...\n\n☀️ Güneş İhtiyacı: ...\n\n✂️ Budama: ...\n\n🧪 Gübreleme: ... (detaylı Türkçe bakım rehberi, her bölüm 2-3 cümle)"
-}
-''';
-
-      final response = await model.generateContent([Content.text(prompt)]);
-      String text = response.text?.trim() ?? '';
-      if (text.startsWith('```json')) text = text.substring(7);
-      if (text.startsWith('```')) text = text.substring(3);
-      if (text.endsWith('```')) text = text.substring(0, text.length - 3);
-      text = text.trim();
-
-      final Map<String, dynamic> aiData = jsonDecode(text);
-      return Map<String, dynamic>.from(aiData);
-    } catch (_) {
-      return {};
-    }
+      final cached = await PlantCacheService.get(scientificName);
+      if (cached != null && cached.isNotEmpty) return cached;
+    } catch (_) {}
+    return {};
   }
 
   static String _translateCareType(String type) {
@@ -992,17 +925,7 @@ Yalnızca geçerli JSON döndür, kesinlikle markdown veya ``` etiketi kullanma.
   }
 
   // ═══════════════════════════════════════════════════
-  // MEVSİM YARDIMCISI
-  // ═══════════════════════════════════════════════════
-  static String _getCurrentSeason(int month) {
-    if (month >= 3 && month <= 5) return 'İlkbahar';
-    if (month >= 6 && month <= 8) return 'Yaz';
-    if (month >= 9 && month <= 11) return 'Sonbahar';
-    return 'Kış';
-  }
-
-  // ═══════════════════════════════════════════════════
-  // TARLAYA ÖZEL EKİM PLANI (Gemini LLM — sadece bu fonksiyon kullanıyor)
+  // TARLAYA ÖZEL EKİM PLANI (Rule Engine — deterministik)
   // ═══════════════════════════════════════════════════
   static Future<String> generateFieldPlan(
     String plantName,
@@ -1014,79 +937,17 @@ Yalnızca geçerli JSON döndür, kesinlikle markdown veya ``` etiketi kullanma.
     double? totalRain,
     double? areaDekar,
   }) async {
-    try {
-      final now = DateTime.now();
-      final monthNames = [
-        '',
-        'Ocak',
-        'Şubat',
-        'Mart',
-        'Nisan',
-        'Mayıs',
-        'Haziran',
-        'Temmuz',
-        'Ağustos',
-        'Eylül',
-        'Ekim',
-        'Kasım',
-        'Aralık'
-      ];
-
-      final model = GenerativeModel(
-        model: 'gemini-2.5-flash',
-        apiKey: dotenv.env['GEMINI_API_KEY'] ?? '',
-      );
-
-      String contextBlock = '';
-      if (latitude != null && longitude != null) {
-        contextBlock = '''
-📊 TARLA VERİLERİ:
-- Konum: $latitude, $longitude
-- Alan: ${areaDekar != null ? '${areaDekar.toStringAsFixed(1)} Dekar' : 'Belirtilmedi'}
-- Toprak pH: ${ph != null ? ph.toStringAsFixed(1) : 'Bilinmiyor'}
-- Haftalık Ort. Sıcaklık: ${avgTemp != null ? '${avgTemp.toStringAsFixed(1)}°C' : 'Bilinmiyor'}
-- Haftalık Toplam Yağış: ${totalRain != null ? '${totalRain.toStringAsFixed(1)} mm' : 'Bilinmiyor'}
-''';
-      }
-
-      final prompt = '''
-Sen profesyonel bir ziraat mühendisisin ve Türkiye'de çiftçilere danışmanlık yapıyorsun.
-
-📋 GÖREV:
-Kullanıcı "$plantName" bitkisini, kayıtlı olan "$fieldName" isimli tarlasına ekecek.
-Bugünün tarihi: ${now.day} ${monthNames[now.month]} ${now.year}
-Mevcut Mevsim: ${_getCurrentSeason(now.month)}
-
-$contextBlock
-
-Lütfen bu tarlaya özel, bugünden başlayarak adım adım bir yetiştirme takvimi çıkar.
-Aşağıdaki başlıkları detaylı olarak doldur:
-
-🌱 1. TOPRAK HAZIRLIĞI
-${ph != null ? '- pH ${ph.toStringAsFixed(1)} değerine göre kireçleme/kükürt gerekli mi?' : ''}
-- Taban gübresi ne zaman, ne kadar atılmalı (dekara kg)
-
-🌾 2. EKİM / DİKİM SÜRECİ
-- Ekim derinliği, sıra arası ve sıra üzeri mesafeleri
-- Tohum/fide miktarı (dekara)
-
-💧 3. SULAMA VE GÜBRELEME TAKVİMİ
-${totalRain != null ? '- Haftalık yağış $totalRain mm. Ek sulama gerekli mi?' : ''}
-
-🌡️ 4. BAKIM VE HASTALIK TAKİBİ
-
-🎯 5. HASAT BEKLENTİSİ
-${areaDekar != null ? '- ${areaDekar.toStringAsFixed(1)} dekar alandan beklenen verim (kg)' : ''}
-
-Cevabın şık, cesaretlendirici, somut ve akıcı Türkçe metin olsun.
-Emoji kullanarak başlıkları renklendir. JSON KULLANMA.
-''';
-
-      final response = await model.generateContent([Content.text(prompt)]);
-      return response.text ?? 'Plan oluşturulamadı.';
-    } catch (e) {
-      return 'Bağlantı hatası: Plan şu an oluşturulamıyor.';
-    }
+    final plantDetails = OfflineEncyclopedia.getByName(plantName) ?? {};
+    return RuleEngine.generateFieldPlan(
+      plantName: plantName,
+      fieldName: fieldName,
+      ph: ph ?? 6.8,
+      avgTemp: avgTemp ?? 20.0,
+      totalRain: totalRain ?? 15.0,
+      areaDekar: areaDekar ?? 1.0,
+      month: DateTime.now().month,
+      plantDetails: plantDetails,
+    );
   }
 
   // ═══════════════════════════════════════════════════
@@ -1200,55 +1061,20 @@ Emoji kullanarak başlıkları renklendir. JSON KULLANMA.
       soilTempC: soilTempC,
     );
 
-    // Gemini AI haftalık yorum
-    String aiWeeklyComment = '';
-    try {
-      final model = GenerativeModel(
-        model: 'gemini-2.5-flash',
-        apiKey: dotenv.env['GEMINI_API_KEY'] ?? '',
-      );
-
-      final now = DateTime.now();
-      final monthNames = [
-        '',
-        'Ocak',
-        'Şubat',
-        'Mart',
-        'Nisan',
-        'Mayıs',
-        'Haziran',
-        'Temmuz',
-        'Ağustos',
-        'Eylül',
-        'Ekim',
-        'Kasım',
-        'Aralık'
-      ];
-      String suggestedCrops = crops.map((c) => c['name']).join(', ');
-
-      final prompt = '''
-Sen uzman bir ziraat mühendisisin.
-Tarla: "$fieldName" (${areaDekar.toStringAsFixed(1)} Dekar)
-Konum: $latitude, $longitude | Tarih: ${now.day} ${monthNames[now.month]} ${now.year}
-Hava: ${numericTemp.toStringAsFixed(1)}°C, $weatherDesc, Nem %${numericHumidity.toStringAsFixed(0)}, Rüzgar ${numericWind.toStringAsFixed(1)} m/s
-Toprak — pH: ${numericPh.toStringAsFixed(1)}, Nem: %${(soilMoisture * 100).toStringAsFixed(1)}, Sıcaklık: ${soilTempC.toStringAsFixed(1)}°C
-Haftalık: Ort. $avgWeeklyTemp°C, Yağış $totalWeeklyRain mm
-Önerilen Ürünler: $suggestedCrops
-
-5-6 paragraf detaylı Türkçe haftalık yorum yaz. Başlıklar:
-🌤️ Haftalık Hava Değerlendirmesi
-🌱 Bu Hafta Yapılması Gerekenler
-🧪 Toprak ve Gübre Durumu
-⚠️ Riskler
-💡 Hobi Bahçecileri İçin İpuçları
-
-Düz metin, JSON kullanma, emoji kullan, somut bilgi ver.
-''';
-      final response = await model.generateContent([Content.text(prompt)]);
-      aiWeeklyComment = response.text ?? 'AI yorumu oluşturulamadı.';
-    } catch (e) {
-      aiWeeklyComment = 'AI yorumu şu an yüklenemedi.';
-    }
+    // Rule Engine haftalık yorum
+    final String aiWeeklyComment = RuleEngine.generateWeeklyComment(
+      fieldName: fieldName,
+      temp: numericTemp,
+      humidity: numericHumidity,
+      wind: numericWind,
+      ph: numericPh,
+      avgTemp: avgWeeklyTemp,
+      totalWeeklyRain: totalWeeklyRain,
+      soilMoisture: soilMoisture,
+      soilTempC: soilTempC,
+      month: DateTime.now().month,
+      crops: crops,
+    );
 
     return {
       'success': true,
@@ -1428,96 +1254,66 @@ Düz metin, JSON kullanma, emoji kullan, somut bilgi ver.
         };
       }
 
-      // --- 3. FIRESTORE'DA YOKSA GEMİNİ AI İLE REHBER OLUŞTUR (FALLBACK) ---
-      final model = GenerativeModel(
-        model: 'gemini-2.5-flash',
-        apiKey: dotenv.env['GEMINI_API_KEY'] ?? '',
-      );
+      // --- 3. FIRESTORE'DA YOKSA OfflineEncyclopedia + statik varsayılanlar ---
+      final encData = OfflineEncyclopedia.getByName(query) ?? {};
 
-      // Haftalık tahmin metnini oluştur
-      final forecastText = weeklyForecast.map((d) =>
-        '${d['date']}: ${d['temp_min']}–${d['temp_max']}°C, yağış:${d['rain_mm']}mm, nem:%${(d['humidity'] as double).round()}, rüzgar:${(d['wind_kmh'] as double).round()}km/s'
-      ).join('\n');
-
-      final geminiPrompt = '''
-"$query" bitkisi için Türkçe detaylı çiftçi/bahçeci rehberi oluştur.
-Bölge: $locationName, Anlık: $temp°C, Nem:%${hum.toStringAsFixed(0)}, pH:${ph.toStringAsFixed(1)}
-Ölçek: $scale
-
-7 Günlük Hava Tahmini:
-$forecastText
-
-Aşağıdaki JSON formatında yanıt ver. Markdown KULLANMA, saf JSON:
-{
-  "scientific": "Bilimsel adı",
-  "desc": "2-3 cümle genel açıklama",
-  "cycle": "Tek Yıllık / Çok Yıllık",
-  "ideal_temp_min": 15,
-  "ideal_temp_max": 30,
-  "ideal_ph_min": 5.5,
-  "ideal_ph_max": 7.0,
-  "sunlight_hours": 8,
-  "sunlight": "Güneş ihtiyacı açıklaması",
-  "growth": "Büyüme hızı",
-  "care": "Bakım zorluğu (Düşük/Orta/Yüksek)",
-  "indoor": false,
-  "drought": false,
-  "harvest_days": 90,
-  "best_planting_months": "Mart, Nisan, Mayıs",
-  "companion_plants": "Birlikte ekilebilecek bitkiler",
-  "avoid_plants": "Birlikte ekilmemesi gereken bitkiler",
-  "pruning": "Budama bilgisi veya Yok",
-  "pests": "Yaygın zararlı ve hastalıklar",
-  "pest_prevention": "Zararlı önleme yöntemleri (1-2 cümle)",
-  "planting_depth_cm": 3,
-  "row_spacing_cm": 50,
-  "plant_spacing_cm": 40,
-  "seeds_per_dekar": 500,
-  "planting_tip": "Ekim pratik bilgisi (1 cümle)",
-  "irrigation_type": "Damla Sulama / Yağmurlama / Karık (birini seç)",
-  "irrigation_line_spacing_cm": 70,
-  "irrigation_dripper_spacing_cm": 30,
-  "daily_water_liters_per_plant": 2.5,
-  "fertilizer_band_cm": 15,
-  "fertilizer_depth_cm": 10,
-  "fertilizer_type": "Önerilen gübre türü",
-  "fertilizer_schedule": "Gübreleme takvimi (1-2 cümle)",
-  "weekly_water_plan": [
-    {"day": "Pazartesi", "date": "tarih", "water_liters": 2.5, "note": "Hava durumuna göre sulama notu"}
-  ],
-  "region_uygunluk": 85,
-  "region_note": "Bu bölge için 1-2 cümle uygunluk değerlendirmesi"
-}
-weekly_water_plan dizisi tam 7 gün olmalı, yukarıdaki hava tahminine göre yağış varsa sulamayı azalt, sıcak ve kuru günlerde artır. Her gün için litre/bitki cinsinden ver.
-''';
-
-      final response = await model.generateContent([Content.text(geminiPrompt)]);
-      String responseText = response.text?.trim() ?? '{}';
-      if (responseText.startsWith('```json')) responseText = responseText.substring(7);
-      if (responseText.startsWith('```')) responseText = responseText.substring(3);
-      if (responseText.endsWith('```')) responseText = responseText.substring(0, responseText.length - 3);
-      responseText = responseText.trim();
-
-      final data = jsonDecode(responseText) as Map<String, dynamic>;
+      final data = <String, dynamic>{
+        'scientific': encData['scientific_name'] ?? query,
+        'desc': encData['care_description'] ?? '$query bitkisi hakkında bilgi bulunamadı.',
+        'cycle': encData['cycle'] ?? 'Bilinmiyor',
+        'sunlight': encData['sunlight'] ?? 'Full Sun',
+        'growth': encData['growth_rate'] ?? 'Moderate',
+        'care': encData['care_level'] ?? 'Medium',
+        'indoor': false,
+        'drought': encData['drought_tolerant'] ?? false,
+        'ideal_temp_min': encData['ideal_temp_min'] ?? 15,
+        'ideal_temp_max': encData['ideal_temp_max'] ?? 30,
+        'ideal_ph_min': encData['ideal_ph_min'] ?? 5.5,
+        'ideal_ph_max': encData['ideal_ph_max'] ?? 7.0,
+        'sunlight_hours': 8,
+        'harvest_days': encData['harvest_days'] ?? 90,
+        'best_planting_months': encData['best_planting_months'] ?? 'Nisan, Mayıs',
+        'companion_plants': encData['companion_plants'] ?? '',
+        'avoid_plants': encData['avoid_plants'] ?? '',
+        'pruning': encData['pruning_month'] ?? 'Yok',
+        'pests': encData['pest_susceptibility'] ?? 'Genel zararlı takibi yapın.',
+        'pest_prevention': 'Düzenli kontrol ve önleyici ilaçlama.',
+        'planting_depth_cm': encData['depth_cm'] ?? 3,
+        'row_spacing_cm': encData['row_spacing_cm'] ?? 50,
+        'plant_spacing_cm': encData['plant_spacing_cm'] ?? 40,
+        'seeds_per_dekar': encData['seeds_per_dekar'] ?? 500,
+        'planting_tip': 'Sabah erken saatlerde ekim yapın.',
+        'irrigation_type': encData['irrigation_type'] ?? 'Damla Sulama',
+        'irrigation_line_spacing_cm': 70,
+        'irrigation_dripper_spacing_cm': 30,
+        'daily_water_liters_per_plant': 2.5,
+        'fertilizer_band_cm': 15,
+        'fertilizer_depth_cm': 10,
+        'fertilizer_type': 'NPK 15-15-15',
+        'fertilizer_schedule': 'Ekimden 2 hafta sonra azot gübresi, çiçeklenme öncesi fosfor.',
+        'weekly_water_plan': [],
+        'region_uygunluk': 70,
+        'region_note': 'Bölge koşulları genel olarak bu bitki için uygundur.',
+      };
 
       return {
         'success': true,
         'cropData': data,
         'plantingData': {
-          'depth_cm': data["planting_depth_cm"] ?? 3,
-          'row_spacing_cm': data["row_spacing_cm"] ?? 50,
-          'plant_spacing_cm': data["plant_spacing_cm"] ?? 40,
-          'seeds_per_dekar': data["seeds_per_dekar"] ?? 500,
-          'irrigation_type': data["irrigation_type"] ?? "Damla Sulama",
-          'irrigation_line_spacing_cm': data["irrigation_line_spacing_cm"] ?? 70,
-          'irrigation_dripper_spacing_cm': data["irrigation_dripper_spacing_cm"] ?? 30,
-          'fertilizer_band_cm': data["fertilizer_band_cm"] ?? 15,
-          'fertilizer_depth_cm': data["fertilizer_depth_cm"] ?? 10,
-          'fertilizer_type': data["fertilizer_type"] ?? "NPK 15-15-15",
-          'daily_water_liters': data["daily_water_liters_per_plant"] ?? 2.0,
-          'fertilizer_schedule': data["fertilizer_schedule"] ?? '',
+          'depth_cm': data["planting_depth_cm"],
+          'row_spacing_cm': data["row_spacing_cm"],
+          'plant_spacing_cm': data["plant_spacing_cm"],
+          'seeds_per_dekar': data["seeds_per_dekar"],
+          'irrigation_type': data["irrigation_type"],
+          'irrigation_line_spacing_cm': data["irrigation_line_spacing_cm"],
+          'irrigation_dripper_spacing_cm': data["irrigation_dripper_spacing_cm"],
+          'fertilizer_band_cm': data["fertilizer_band_cm"],
+          'fertilizer_depth_cm': data["fertilizer_depth_cm"],
+          'fertilizer_type': data["fertilizer_type"],
+          'daily_water_liters': data["daily_water_liters_per_plant"],
+          'fertilizer_schedule': data["fertilizer_schedule"],
         },
-        'weeklyWaterPlan': data["weekly_water_plan"] ?? [],
+        'weeklyWaterPlan': [],
         'weeklyForecast': weeklyForecast,
         'envData': {
           'temp': temp,

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/agri_service.dart';
 import '../utils/location_utils.dart';
 import '../widgets/weekly_water_card.dart';
-import '../widgets/planting_visualization.dart';
+
 
 class GrowingGuideScreen extends StatefulWidget {
   const GrowingGuideScreen({super.key});
@@ -115,25 +115,35 @@ class _GrowingGuideScreenState extends State<GrowingGuideScreen> {
                   children: [
                     const Text('Ölçek: ', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.bold)),
                     const SizedBox(width: 8),
-                    ChoiceChip(label: const Text('Hobi Bahçesi'), selected: _scale == 'Hobi Bahçesi',
-                        onSelected: (v) { if (v) setState(() => _scale = 'Hobi Bahçesi'); }),
+                    ChoiceChip(
+                      label: const Text('Hobi Bahçesi'),
+                      selected: _scale == 'Hobi Bahçesi',
+                      onSelected: (v) { if (v) setState(() => _scale = 'Hobi Bahçesi'); },
+                    ),
                     const SizedBox(width: 8),
-                    ChoiceChip(label: const Text('Profesyonel'), selected: _scale == 'Profesyonel',
-                        onSelected: (v) { if (v) setState(() => _scale = 'Profesyonel'); }),
-                    const Spacer(),
-                    ElevatedButton.icon(
-                      onPressed: _isLoading ? null : _getGuide,
-                      icon: _isLoading
-                          ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.green, strokeWidth: 2))
-                          : const Icon(Icons.auto_awesome, size: 18),
-                      label: Text(_isLoading ? 'Yükleniyor...' : 'Rehber Oluştur', style: const TextStyle(fontSize: 13)),
-                      style: ElevatedButton.styleFrom(
-                        foregroundColor: Colors.green.shade800, backgroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
+                    ChoiceChip(
+                      label: const Text('Profesyonel'),
+                      selected: _scale == 'Profesyonel',
+                      onSelected: (v) { if (v) setState(() => _scale = 'Profesyonel'); },
                     ),
                   ],
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: _isLoading ? null : _getGuide,
+                    icon: _isLoading
+                        ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.green, strokeWidth: 2))
+                        : const Icon(Icons.auto_awesome, size: 18),
+                    label: Text(_isLoading ? 'Yükleniyor...' : 'Rehber Oluştur', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                    style: ElevatedButton.styleFrom(
+                      foregroundColor: Colors.green.shade800,
+                      backgroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 13),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -491,12 +501,7 @@ class _GrowingGuideScreenState extends State<GrowingGuideScreen> {
           ),
           const SizedBox(height: 14),
 
-          // ── 7. Kuşbakışı Tarla Görselleştirme ──
-          if (_currentCrop.isNotEmpty)
-            PlantingVisualization(
-              cropName: _currentCrop,
-              plantingData: pd,
-            ),
+
           const SizedBox(height: 40),
         ],
       ),

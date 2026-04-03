@@ -1,11 +1,8 @@
-import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:google_generative_ai/google_generative_ai.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class CropRules {
-  /// Yapay zeka ve API aracılığıyla sağlanan çevresel verilere dayanıklı,
-  /// dinamik ürün analiz motoru. Elle yazılmış (hardcoded) tavsiye YOKTUR.
+  /// Deterministik ürün öneri motoru — Gemini kaldırıldı.
+  /// Çevresel koşullara göre en uygun 5 ürünü sıralar.
   static Future<List<Map<String, dynamic>>> getDynamicRecommendations(
     double currentTemp,
     double ph,
@@ -14,86 +11,109 @@ class CropRules {
     double soilMoisture = 0.0,
     double soilTempC = 0.0,
   }) async {
-    List<Map<String, dynamic>> fallback = [
-      {
-        'name': '⚠️ Bilgi Bulunamadı',
-        'season': '-',
-        'uygunluk': 0.0,
-        'info': 'Yapay Zeka API bağlantısı sağlanamadı. Lütfen internetinizi kontrol edin.',
-        'fertilizer': '-',
-        'weather_impact': '-',
-        'care_details': '-',
-      }
+    debugPrint('CropRules: deterministik öneri hesaplanıyor');
+
+    // Tüm aday bitkiler: [ad, minTemp, maxTemp, minPh, maxPh, minRain, maxRain, mevsim]
+    final candidates = <Map<String, dynamic>>[
+      _c('🍅 Domates',     15, 32, 5.5, 7.0, 10, 50, 'İlkbahar-Yaz'),
+      _c('🌶️ Biber',       18, 32, 5.5, 7.0, 10, 45, 'İlkbahar-Yaz'),
+      _c('🍆 Patlıcan',    18, 35, 5.5, 7.0, 10, 45, 'İlkbahar-Yaz'),
+      _c('🥒 Salatalık',   18, 30, 6.0, 7.0, 15, 50, 'İlkbahar-Yaz'),
+      _c('🌽 Mısır',       18, 35, 5.8, 7.0, 15, 60, 'Yaz'),
+      _c('🥔 Patates',     10, 22, 5.0, 6.5, 20, 60, 'İlkbahar-Sonbahar'),
+      _c('🧅 Soğan',       10, 28, 6.0, 7.5, 10, 40, 'İlkbahar-Sonbahar'),
+      _c('🧄 Sarımsak',    5,  25, 6.0, 7.5, 10, 35, 'Sonbahar-İlkbahar'),
+      _c('🥕 Havuç',       10, 24, 6.0, 7.0, 15, 45, 'İlkbahar-Sonbahar'),
+      _c('🌾 Buğday',      5,  22, 6.0, 7.5, 10, 40, 'Sonbahar-İlkbahar'),
+      _c('🫘 Fasulye',     16, 30, 6.0, 7.0, 15, 50, 'Yaz'),
+      _c('🍓 Çilek',       10, 26, 5.5, 6.5, 20, 60, 'İlkbahar'),
+      _c('🍉 Karpuz',      20, 35, 6.0, 7.0, 10, 35, 'Yaz'),
+      _c('🍈 Kavun',       20, 35, 6.0, 7.5, 10, 35, 'Yaz'),
+      _c('🥬 Ispanak',     5,  18, 6.0, 7.5, 15, 50, 'İlkbahar-Sonbahar'),
+      _c('🥗 Marul',       8,  22, 6.0, 7.0, 15, 50, 'İlkbahar-Sonbahar'),
+      _c('🎃 Kabak',       18, 32, 6.0, 7.5, 15, 50, 'Yaz'),
+      _c('🌻 Ayçiçeği',    18, 35, 6.0, 7.5, 10, 40, 'Yaz'),
     ];
 
-    try {
-      final model = GenerativeModel(
-        model: 'gemini-2.5-flash',
-        apiKey: dotenv.env['GEMINI_API_KEY'] ?? '',
+    for (final crop in candidates) {
+      final double score = _score(
+        crop, avgWeeklyTemp, ph, totalWeeklyRain, soilMoisture, soilTempC,
       );
+      crop['uygunluk'] = score;
 
-      final prompt = '''
-Sen Türkiye şartlarında çalışan uzman bir Ziraat Mühendisisin. "Elle yazdığım verileri sildim, doğrudan senin anlık zeka verilerini kullanıyorum."
+      final pHNote = ph < 5.5
+          ? 'Acil: pH ${ph.toStringAsFixed(1)} çok asidik — ekimden önce dekara 200 kg tarım kireci uygulayın.'
+          : ph > 7.5
+              ? 'Acil: pH ${ph.toStringAsFixed(1)} bazik — dekara 30 kg kükürt uygulayın.'
+              : 'pH ${ph.toStringAsFixed(1)} uygun aralıkta.';
 
-Aşağıdaki anlık çevresel koşulları dikkatlice analiz et ve bu koşullara EN UYGUN (en yüksek verim alınabilecek) 5 adet ticari veya hobi bitkisini (sebze, meyve veya tahıl) belirle. 
+      final rainNote = totalWeeklyRain > 50
+          ? 'Bu hafta aşırı yağış (${totalWeeklyRain.round()} mm) — sulama durdurun, fungisit planlayın.'
+          : totalWeeklyRain < 5
+              ? 'Yağış çok az (${totalWeeklyRain.round()} mm) — sulama gerekli.'
+              : 'Haftalık yağış (${totalWeeklyRain.round()} mm) yeterli.';
 
-ÇEVRESEL SENSÖR VERİLERİ (API'dan Gelen Gerçek Verilerdir):
-- Haftalık Ort. Sıcaklık: $avgWeeklyTemp°C
-- Anlık Sıcaklık: $currentTemp°C
-- Toprak pH: ${ph.toStringAsFixed(1)}
-- Haftalık Beklenen Yağış: $totalWeeklyRain mm
-- Toprak Nem Oranı: %${(soilMoisture * 100).toStringAsFixed(1)}
-- Toprak Sıcaklığı (10cm derinlik): ${soilTempC.toStringAsFixed(1)}°C
-
-ÇIKTI KURALLARI:
-Mevcut ortam değerlerini METNİN İÇİNE yedirerek ($ph pH yüksek/düşük, $avgWeeklyTemp sıcaklık iyi/kötü gibi) YALNIZCA geçerli bir JSON formatında DÜZ metin olarak yanıt ver. Kesinlikle ````json veya markdown etiketi KULLANMA. Saf array ile başlasın ve bitsin: [ { ... } ]
-
-Toprak pH Kritik Kuralı: 
-Eğer pH 5.5'ten küçükse veya 7.5'ten büyükse, "fertilizer" bölümünde "Acil: pH değerini dengelemek için Kireçleme (veya Kükürt) şarttır" gibi son derece net, pratik ve kesin bir düzeltici bilgi VERMELİSİNİZ. Bu bir zorunluluktur.
-
-Beklenen JSON Formatı:
-[
-  {
-    "name": "🍅 Domates (Örnek Bitki Adı + Emoji)",
-    "season": "Ekim Mevsimi",
-    "uygunluk": 85.0,
-    "info": "Mevcut pH $ph koşullarına göre... (2-3 cümle detaylı analiz ve çevresel uyum analizi)",
-    "fertilizer": "Dekara 15kg X gübresi kullanılmalı...(pH ve nem koşullarına duyarlı kireçleme veya gübreleme reçetesi. pH sorunluysa kesin ve net talimat ver.)",
-    "weather_impact": "$totalWeeklyRain mm yağış mantar riski oluşturur... (Haftalık hava koşullarının bu bitkiye etkisi)",
-    "care_details": "40x50 cm dikim mesafesi... vs"
-  }
-]
-''';
-
-      final response = await model.generateContent([Content.text(prompt)]);
-      String text = response.text?.trim() ?? '';
-      
-      // Olası markdown kalıntılarını temizle (Prompt ile yasaklasak bile AI ekleyebilir)
-      if (text.startsWith('```json')) text = text.substring(7);
-      if (text.startsWith('```')) text = text.substring(3);
-      if (text.endsWith('```')) text = text.substring(0, text.length - 3);
-      text = text.trim();
-
-      final List<dynamic> decoded = jsonDecode(text);
-      List<Map<String, dynamic>> results = decoded.map((e) {
-        return {
-          'name': e['name']?.toString() ?? 'Bilinmiyor',
-          'season': e['season']?.toString() ?? '-',
-          'uygunluk': (e['uygunluk'] as num?)?.toDouble() ?? 50.0,
-          'info': e['info']?.toString() ?? '-',
-          'fertilizer': e['fertilizer']?.toString() ?? '-',
-          'weather_impact': e['weather_impact']?.toString() ?? '-',
-          'care_details': e['care_details']?.toString() ?? '-',
-        };
-      }).toList();
-      
-      // Uygunluk skoruna göre azalan sırada sırala (en büyük en üstte)
-      results.sort((a, b) => ((b['uygunluk'] as num).toDouble()).compareTo((a['uygunluk'] as num).toDouble()));
-      
-      return results;
-    } catch (e) {
-      debugPrint('Dynamic CropRules Error: $e');
-      return fallback;
+      crop['info'] =
+          'Ort. ${avgWeeklyTemp.toStringAsFixed(1)}°C + pH ${ph.toStringAsFixed(1)} koşullarında '
+          '${crop['name']} için uygunluk skoru %${score.round()}.';
+      crop['fertilizer'] = '$pHNote Taban gübresi olarak dekara 20 kg 15-15-15 NPK önerilir.';
+      crop['weather_impact'] = rainNote;
+      crop['care_details'] =
+          'Sıra arası 50-60 cm, bitki arası 30-40 cm. Sabah erken sulama önerilir.';
     }
+
+    candidates.sort((a, b) =>
+        (b['uygunluk'] as double).compareTo(a['uygunluk'] as double));
+
+    return candidates.take(5).toList();
+  }
+
+  static Map<String, dynamic> _c(
+    String name,
+    double minT, double maxT,
+    double minPh, double maxPh,
+    double minRain, double maxRain,
+    String season,
+  ) => {
+    'name': name,
+    'season': season,
+    '_minT': minT, '_maxT': maxT,
+    '_minPh': minPh, '_maxPh': maxPh,
+    '_minRain': minRain, '_maxRain': maxRain,
+    'uygunluk': 0.0,
+    'info': '', 'fertilizer': '', 'weather_impact': '', 'care_details': '',
+  };
+
+  static double _score(
+    Map<String, dynamic> c,
+    double temp, double ph, double rain,
+    double soilMoisture, double soilTempC,
+  ) {
+    double s = 100.0;
+
+    final minT  = c['_minT']  as double;
+    final maxT  = c['_maxT']  as double;
+    final minPh = c['_minPh'] as double;
+    final maxPh = c['_maxPh'] as double;
+    final minR  = c['_minRain'] as double;
+    final maxR  = c['_maxRain'] as double;
+
+    // Sıcaklık penaltısı
+    if (temp < minT) s -= (minT - temp) * 4;
+    if (temp > maxT) s -= (temp - maxT) * 4;
+
+    // pH penaltısı
+    if (ph < minPh) s -= (minPh - ph) * 12;
+    if (ph > maxPh) s -= (ph - maxPh) * 12;
+
+    // Yağış penaltısı
+    if (rain < minR) s -= (minR - rain) * 1.5;
+    if (rain > maxR) s -= (rain - maxR) * 1.5;
+
+    // Toprak nemi bonusu/penaltısı
+    if (soilMoisture > 0.45) s -= 10;
+    if (soilMoisture < 0.10 && rain < 10) s -= 8;
+
+    return s.clamp(0.0, 100.0);
   }
 }

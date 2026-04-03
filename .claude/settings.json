@@ -2,7 +2,19 @@
   "permissions": {
     "allow": [
       "Read(//c//**)",
-      "Read(//c/FENG 498/**)"
+      "Read(//c/FENG 498/**)",
+      "Bash(curl -L \"https://docs.google.com/document/d/1TbegN4slM1dGHC2GefVnorM3CeBcQBLYCcchjvfPUpw/export?format=txt\")",
+      "Bash(flutter pub:*)",
+      "Bash(dart analyze:*)",
+      "Bash(flutter build:*)",
+      "Bash(flutter emulators:*)",
+      "Bash(adb devices:*)",
+      "Bash(flutter run:*)",
+      "Bash(adb -s emulator-5554 logcat -c)",
+      "Bash(adb -s emulator-5554 logcat -d)",
+      "Bash(grep -v \"^$\")",
+      "Bash(python3 -c ':*)",
+      "Bash(node -e ':*)"
     ]
   }
 }

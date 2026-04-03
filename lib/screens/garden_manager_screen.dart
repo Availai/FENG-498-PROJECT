@@ -1,19 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+
 import '../models/crop_layer.dart';
+import '../services/app_providers.dart';
 import '../services/companion_service.dart';
 import '../widgets/top_down_field_view.dart';
 
-class GardenManagerScreen extends StatefulWidget {
+class GardenManagerScreen extends ConsumerStatefulWidget {
   final dynamic fieldData;
 
   const GardenManagerScreen({super.key, required this.fieldData});
 
   @override
-  State<GardenManagerScreen> createState() => _GardenManagerScreenState();
+  ConsumerState<GardenManagerScreen> createState() => _GardenManagerScreenState();
 }
 
-class _GardenManagerScreenState extends State<GardenManagerScreen> {
+class _GardenManagerScreenState extends ConsumerState<GardenManagerScreen> {
   List<Map<String, dynamic>> _crops = [];
   bool _dirty = false; // kayıt bekliyor mu
 
@@ -26,7 +29,7 @@ class _GardenManagerScreenState extends State<GardenManagerScreen> {
   void initState() {
     super.initState();
     _computeDimensions();
-    _loadCrops();
+    _loadCropsFromRepository();
   }
 
   // ── Boyut hesaplama (TopDownFieldView ile aynı newton yöntemi) ─────────
@@ -79,6 +82,36 @@ class _GardenManagerScreenState extends State<GardenManagerScreen> {
         return;
       }
     }
+  }
+
+  Future<void> _loadCropsFromRepository() async {
+    final fieldId = widget.fieldData['id']?.toString();
+    if (fieldId == null) {
+      _loadCrops();
+      return;
+    }
+
+    final crops = await ref.read(localDataRepositoryProvider).loadFieldCrops(fieldId);
+    if (!mounted) return;
+    setState(() => _crops = crops);
+  }
+
+  Future<void> _saveToRepository() async {
+    final fieldId = widget.fieldData['id']?.toString();
+    if (fieldId == null) {
+      _saveToHive();
+      return;
+    }
+
+    await ref.read(localDataRepositoryProvider).replaceFieldCrops(
+          fieldId: fieldId,
+          crops: _crops.map((c) => Map<String, dynamic>.from(c)).toList(),
+        );
+    if (!mounted) return;
+    setState(() => _dirty = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Bahçe kaydedildi!')),
+    );
   }
 
   // ── CropLayer listesi üret (TopDownFieldView için) ─────────────────────
@@ -146,7 +179,7 @@ class _GardenManagerScreenState extends State<GardenManagerScreen> {
           if (_dirty)
             IconButton(
               icon: const Icon(Icons.save, color: Colors.white),
-              onPressed: _saveToHive,
+              onPressed: () => _saveToRepository(),
               tooltip: 'Kaydet',
             ),
           if (errorCount > 0)
@@ -544,7 +577,7 @@ class _GardenManagerScreenState extends State<GardenManagerScreen> {
                 _crops.removeAt(index);
                 _dirty = true;
               });
-              _saveToHive();
+              _saveToRepository();
             },
             child: const Text('Kaldır'),
           ),
@@ -844,6 +877,6 @@ class _GardenManagerScreenState extends State<GardenManagerScreen> {
       });
       _dirty = true;
     });
-    _saveToHive();
+    _saveToRepository();
   }
 }

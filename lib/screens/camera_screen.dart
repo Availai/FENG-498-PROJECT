@@ -6,6 +6,8 @@ import 'package:intl/intl.dart';
 import '../services/agri_service.dart';
 import '../utils/location_utils.dart';
 import 'analysis_result_screen.dart';
+import '../theme/app_theme.dart';
+import '../widgets/glass_panel.dart';
 
 class CameraScreen extends StatefulWidget {
   const CameraScreen({super.key});
@@ -21,7 +23,7 @@ class _CameraScreenState extends State<CameraScreen> {
     final img = await ImagePicker().pickImage(
       source: s,
       imageQuality: 70,
-      maxWidth: 1080, // Fotoğraf 10MB olsa bile 300KB'a düşürülür, API çökmez!
+      maxWidth: 1080,
       maxHeight: 1080,
     );
     if (img != null) setState(() => _photos.insert(0, File(img.path)));
@@ -30,7 +32,13 @@ class _CameraScreenState extends State<CameraScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Akıllı Asistan Kamerası')),
+      backgroundColor: AppColors.bg,
+      appBar: AppBar(
+        title: Text('Akıllı Asistan Kamerası', style: AppText.h2(context)),
+        backgroundColor: AppColors.surface,
+        elevation: 0,
+        centerTitle: false,
+      ),
       body: Column(
         children: [
           Padding(
@@ -38,130 +46,138 @@ class _CameraScreenState extends State<CameraScreen> {
             child: Row(
               children: [
                 Expanded(
-                  child: FilledButton.icon(
+                  child: ElevatedButton.icon(
                     onPressed: () => _pick(ImageSource.camera),
-                    icon: const Icon(Icons.camera),
-                    label: const Text('Kamera'),
-                    style: FilledButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 15),
+                    icon: const Icon(Icons.camera_alt_outlined),
+                    label: const Text('Kamera Çekimi'),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
                     ),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: FilledButton.icon(
+                  child: OutlinedButton.icon(
                     onPressed: () => _pick(ImageSource.gallery),
-                    icon: const Icon(Icons.image),
-                    label: const Text('Galeri'),
-                    style: FilledButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 15),
+                    icon: const Icon(Icons.photo_library_outlined),
+                    label: const Text('Galeri Kullan'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.emerald,
+                      side: const BorderSide(color: AppColors.emerald),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
                     ),
                   ),
                 ),
               ],
             ),
           ),
-          if (_isLoading) const LinearProgressIndicator(color: Colors.green),
-          Expanded(
-            child: GridView.builder(
-              padding: const EdgeInsets.all(12),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: 10,
-                mainAxisSpacing: 10,
-                childAspectRatio: 0.8,
-              ),
-              itemCount: _photos.length,
-              itemBuilder: (context, i) => Card(
-                clipBehavior: Clip.antiAlias,
-                elevation: 4,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Stack(
-                  fit: StackFit.expand,
+          if (_isLoading) const LinearProgressIndicator(color: AppColors.emerald),
+          if (_photos.isEmpty && !_isLoading)
+            Expanded(
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Image.file(_photos[i], fit: BoxFit.cover),
-                    Positioned(
-                      bottom: 0,
-                      left: 0,
-                      right: 0,
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: const BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.bottomCenter,
-                            end: Alignment.topCenter,
-                            colors: [Colors.black87, Colors.transparent],
-                          ),
-                        ),
-                        child: FilledButton(
-                          onPressed: _isLoading
-                              ? null
-                              : () async {
-                                  setState(() => _isLoading = true);
-                                  final navigator = Navigator.of(context);
-                                  final messenger =
-                                      ScaffoldMessenger.of(context);
-                                  try {
-                                    final pos = await getCurrentPosition();
-                                    // HİBRİT SERVİSİ ÇAĞIRIYORUZ
-                                    final res = await AgriService.analyzeImage(
-                                      _photos[i],
-                                      pos.latitude,
-                                      pos.longitude,
-                                    );
-                                    // Başarılı analiz sonuçlarını Kayıtlar sekmesine kaydet
-                                    if (res['type'] != 'error') {
-                                      Hive.box('recognized_plants').add({
-                                        'type': res['type'],
-                                        'title': res['data']?['title'] ??
-                                            'Bilinmeyen',
-                                        'description': res['data']
-                                            ?['description'],
-                                        'date': DateFormat('dd.MM.yyyy HH:mm')
-                                            .format(DateTime.now()),
-                                      });
-                                    }
-                                    if (mounted) {
-                                      navigator.push(
-                                        MaterialPageRoute(
-                                          builder: (_) => AnalysisResultScreen(
-                                            image: _photos[i],
-                                            result: res,
-                                          ),
-                                        ),
-                                      );
-                                    }
-                                  } catch (e) {
-                                    if (mounted) {
-                                      messenger.showSnackBar(
-                                        SnackBar(content: Text('Hata: $e')),
-                                      );
-                                    }
-                                  } finally {
-                                    if (mounted) {
-                                      setState(() => _isLoading = false);
-                                    }
-                                  }
-                                },
-                          style: FilledButton.styleFrom(
-                            backgroundColor: Colors.amber.shade900,
-                          ),
-                          child: const Text(
-                            'Analiz Et',
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                      ),
+                    Icon(Icons.document_scanner_outlined, size: 80, color: AppColors.emerald.withValues(alpha: 0.2)),
+                    const SizedBox(height: 16),
+                    Text('Analiz İçin Görsel Seçin', style: AppText.h3(context)),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Hastalık, zararlı böcek\nve bitki türü teşhisi yapar.',
+                      textAlign: TextAlign.center,
+                      style: AppText.sm(context),
                     ),
                   ],
                 ),
               ),
+            )
+          else
+            Expanded(
+              child: GridView.builder(
+                padding: const EdgeInsets.all(16),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 16,
+                  mainAxisSpacing: 16,
+                  childAspectRatio: 0.75,
+                ),
+                itemCount: _photos.length,
+                itemBuilder: (context, i) => Container(
+                  decoration: BoxDecoration(
+                    borderRadius: AppRadius.md,
+                    boxShadow: AppShadows.md,
+                  ),
+                  child: ClipRRect(
+                    borderRadius: AppRadius.md,
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        Image.file(_photos[i], fit: BoxFit.cover),
+                        Positioned(
+                          bottom: 0, left: 0, right: 0,
+                          child: GlassPanel(
+                            borderRadius: 0,
+                            padding: const EdgeInsets.all(10),
+                            child: ElevatedButton(
+                              onPressed: _isLoading ? null : () => _analyze(i),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.emerald,
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                              ),
+                              child: const Text('YARDIM AL', style: TextStyle(letterSpacing: 1.2)),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             ),
-          ),
         ],
       ),
     );
+  }
+
+  Future<void> _analyze(int index) async {
+    setState(() => _isLoading = true);
+    final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final pos = await getCurrentPosition();
+      final res = await AgriService.analyzeImage(
+        _photos[index],
+        pos.latitude,
+        pos.longitude,
+      );
+      if (res['type'] != 'error') {
+        Hive.box('recognized_plants').add({
+          'type': res['type'],
+          'title': res['data']?['title'] ?? 'Bilinmeyen',
+          'scientific_name': res['data']?['scientific_name'],
+          'description': res['data']?['description'],
+          'cached': res['data']?['from_cache'] == true,
+          'date': DateFormat('dd.MM.yyyy HH:mm').format(DateTime.now()),
+        });
+      }
+      if (mounted) {
+        navigator.push(
+          MaterialPageRoute(
+            builder: (_) => AnalysisResultScreen(
+              image: _photos[index],
+              result: res,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        messenger.showSnackBar(SnackBar(content: Text('Hata: $e'), backgroundColor: AppColors.error));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 }

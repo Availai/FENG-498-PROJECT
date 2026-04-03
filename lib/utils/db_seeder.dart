@@ -41,5 +41,6 @@ Future<void> seedDatabaseOneTime() async {
     await firestore.collection('crops').doc(entry.key).set(entry.value);
   }
 
+  // ignore: avoid_print
   print("Veritabanı başarıyla tohumlandı! 🌱");
 }

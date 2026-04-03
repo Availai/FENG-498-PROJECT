@@ -1,18 +1,27 @@
 import 'package:flutter/material.dart';
-import 'package:hive_flutter/hive_flutter.dart';
-import 'package:intl/intl.dart';
-import '../utils/location_utils.dart';
-import 'map_area_calculator_screen.dart';
-import 'field_detail_screen.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class MyCropsScreen extends StatelessWidget {
+import '../services/app_providers.dart';
+import '../utils/location_utils.dart';
+import 'field_3d_planner_screen.dart';
+import 'field_detail_screen.dart';
+import '../theme/app_theme.dart';
+
+class MyCropsScreen extends ConsumerWidget {
   const MyCropsScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final box = Hive.box('user_crops');
+  Widget build(BuildContext context, WidgetRef ref) {
+    final fieldsAsync = ref.watch(fieldMapsProvider);
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Tarlalarım')),
+      backgroundColor: AppColors.bg,
+      appBar: AppBar(
+        title: Text('Tarım Alanlarım', style: AppText.h2(context)),
+        backgroundColor: AppColors.surface,
+        elevation: 0,
+        centerTitle: false,
+      ),
       floatingActionButton: Column(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
@@ -25,7 +34,7 @@ class MyCropsScreen extends StatelessWidget {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => MapAreaCalculatorScreen(
+                      builder: (context) => Field3DPlannerScreen(
                         initialLat: pos.latitude,
                         initialLng: pos.longitude,
                       ),
@@ -35,146 +44,175 @@ class MyCropsScreen extends StatelessWidget {
               } catch (e) {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Konum hatası: $e')));
+                    SnackBar(
+                      content: Text('Sinyal hatası: $e'),
+                      backgroundColor: AppColors.error,
+                    )
+                  );
                 }
               }
             },
-            backgroundColor: Colors.blue.shade700,
-            icon: const Icon(Icons.map, color: Colors.white),
-            label: const Text('Haritadan Tarla Çiz',
-                style: TextStyle(color: Colors.white)),
+            backgroundColor: AppColors.emerald,
+            icon: const Icon(Icons.satellite_alt, color: Colors.white),
+            label: Text('YENİ ALAN ÇİZ',
+                style: AppText.label(context).copyWith(color: Colors.white)),
           ),
           const SizedBox(height: 12),
           FloatingActionButton(
             heroTag: 'addBtn',
-            onPressed: () => _showAddDialog(context, box),
-            backgroundColor: Colors.green,
-            child: const Icon(Icons.add, color: Colors.white),
+            onPressed: () => _showAddDialog(context, ref),
+            backgroundColor: AppColors.surface,
+            child: const Icon(Icons.add_location_alt, color: AppColors.emerald),
           ),
         ],
       ),
-      body: ValueListenableBuilder(
-        valueListenable: box.listenable(),
-        builder: (context, Box b, _) {
-          if (b.isEmpty) {
+      body: fieldsAsync.when(
+        loading: () => const Center(
+          child: CircularProgressIndicator(color: AppColors.emerald),
+        ),
+        error: (error, _) => Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text(
+              'Alanlar yüklenemedi: $error',
+              style: AppText.body(context),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+        data: (fields) {
+          if (fields.isEmpty) {
             return Center(
               child: Padding(
                 padding: const EdgeInsets.all(32),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.agriculture,
-                        size: 80, color: Colors.green.shade300),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Henüz kayıtlı tarla yok',
-                      style:
-                          TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: AppColors.emerald.withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.radar, size: 64, color: AppColors.emerald),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 24),
                     Text(
-                      'Haritadan tarla çizerek veya + butonuna basarak ilk tarlanızı ekleyin. '
-                      'Eklediğiniz tarlalar için anlık hava durumu, toprak analizi ve '
-                      'AI destekli ekim önerileri alabilirsiniz!',
+                      'Kayıtlı Alan Bulunmuyor',
                       textAlign: TextAlign.center,
-                      style:
-                          TextStyle(fontSize: 14, color: Colors.grey.shade600),
+                      style: AppText.h2(context),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Uydudan gerçek arazinizi seçerek ekim alanlarınızı oluşturmaya başlayın.',
+                      textAlign: TextAlign.center,
+                      style: AppText.body(context),
                     ),
                   ],
                 ),
               ),
             );
           }
+          
           return ListView.builder(
-            padding: const EdgeInsets.only(bottom: 100),
-            itemCount: b.length,
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+            itemCount: fields.length,
             itemBuilder: (context, i) {
-              final item = b.getAt(i);
+              final item = fields[i];
               final hasLocation = item['latitude'] != null;
               final areaDekar = item['area_dekar'];
-              return Card(
-                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                elevation: 2,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(12),
-                  onTap: hasLocation
-                      ? () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) =>
-                                  FieldDetailScreen(fieldData: item),
+              final cropName = item['crop'] ?? 'Bilinmiyor';
+              
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: AppRadius.md,
+                    boxShadow: AppShadows.sm,
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: InkWell(
+                    borderRadius: AppRadius.md,
+                    onTap: hasLocation ? () {
+                      Navigator.push(context, MaterialPageRoute(
+                        builder: (_) => FieldDetailScreen(fieldData: item)
+                      ));
+                    } : null,
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: AppColors.emeraldLight.withValues(alpha: 0.2),
+                              borderRadius: AppRadius.sm,
                             ),
-                          )
-                      : null,
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Row(
-                      children: [
-                        CircleAvatar(
-                          radius: 24,
-                          backgroundColor: Colors.green.shade100,
-                          child: Icon(Icons.grass,
-                              color: Colors.green.shade700, size: 28),
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                item['name'] ?? '',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Row(
-                                children: [
-                                  Icon(Icons.calendar_today,
-                                      size: 14, color: Colors.grey.shade600),
-                                  const SizedBox(width: 4),
-                                  Text('${item['date']}',
-                                      style: TextStyle(
-                                          fontSize: 13,
-                                          color: Colors.grey.shade600)),
-                                  if (areaDekar != null) ...[
-                                    const SizedBox(width: 12),
-                                    Icon(Icons.square_foot,
-                                        size: 14, color: Colors.grey.shade600),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      '${(areaDekar as num).toStringAsFixed(1)} Dekar',
-                                      style: TextStyle(
-                                          fontSize: 13,
-                                          color: Colors.grey.shade600),
-                                    ),
-                                  ],
-                                ],
-                              ),
-                              if (hasLocation)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 4),
-                                  child: Text(
-                                    'Detaylar için dokunun →',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.green.shade700,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ),
-                            ],
+                            child: const Icon(Icons.dashboard_customize, color: AppColors.emerald, size: 28),
                           ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.delete_outline,
-                              color: Colors.red),
-                          onPressed: () => b.deleteAt(i),
-                        ),
-                      ],
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  (item['name'] ?? 'İsimsiz Tarla').toString(),
+                                  style: AppText.h3(context),
+                                ),
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    const Icon(Icons.calendar_today, size: 12, color: AppColors.textSecondary),
+                                    const SizedBox(width: 4),
+                                    Text('${item['date']}', style: AppText.xs(context)),
+                                    if (areaDekar != null) ...[
+                                      const SizedBox(width: 12),
+                                      const Icon(Icons.square_foot, size: 12, color: AppColors.textSecondary),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        '${(areaDekar as num).toStringAsFixed(1)} da',
+                                        style: AppText.xs(context),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                Row(
+                                  children: [
+                                    AppTag(cropName),
+                                    const Spacer(),
+                                    if (hasLocation)
+                                      Row(
+                                        children: [
+                                          Text('Bağlı', style: AppText.xs(context).copyWith(color: AppColors.emerald)),
+                                          const SizedBox(width: 4),
+                                          const Icon(Icons.link, size: 12, color: AppColors.emerald),
+                                        ],
+                                      )
+                                    else 
+                                      Row(
+                                        children: [
+                                          Text('Koordinat Yok', style: AppText.xs(context).copyWith(color: AppColors.error)),
+                                          const SizedBox(width: 4),
+                                          const Icon(Icons.location_off, size: 12, color: AppColors.error),
+                                        ],
+                                      )
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.delete_outline, color: AppColors.error),
+                            onPressed: () async {
+                              final id = item['id']?.toString();
+                              if (id == null) return;
+                              await ref.read(localDataRepositoryProvider).deleteField(id);
+                            },
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -186,7 +224,7 @@ class MyCropsScreen extends StatelessWidget {
     );
   }
 
-  void _showAddDialog(BuildContext context, Box box) async {
+  void _showAddDialog(BuildContext context, WidgetRef ref) async {
     double? lat, lng;
     try {
       final pos = await getCurrentPosition();
@@ -200,29 +238,31 @@ class MyCropsScreen extends StatelessWidget {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Tarla Ekle'),
+        backgroundColor: AppColors.surface,
+        title: Text('Manuel Konum Ekle', style: AppText.h2(context)),
         content: TextField(
           onChanged: (v) => name = v,
+          style: AppText.body(context),
           decoration: const InputDecoration(
-            hintText: 'Örn: Arka Bahçe Domates',
-            border: OutlineInputBorder(),
+            hintText: 'Tanımlayıcı Giriniz',
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('İptal'),
+            child: Text('İptal', style: TextStyle(color: AppColors.textSecondary)),
           ),
-          FilledButton(
-            onPressed: () {
+          ElevatedButton(
+            onPressed: () async {
               if (name.isNotEmpty) {
-                box.add({
-                  'name': name,
-                  'date': DateFormat('dd.MM.yyyy').format(DateTime.now()),
-                  'latitude': lat,
-                  'longitude': lng,
-                });
-                Navigator.pop(ctx);
+                await ref.read(localDataRepositoryProvider).createManualField(
+                      name: name,
+                      latitude: lat,
+                      longitude: lng,
+                    );
+                if (context.mounted) {
+                  Navigator.pop(ctx);
+                }
               }
             },
             child: const Text('Kaydet'),

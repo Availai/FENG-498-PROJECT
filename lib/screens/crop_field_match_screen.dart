@@ -2,9 +2,10 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:http/http.dart' as http;
 import 'dart:math';
+import '../services/rule_engine.dart';
+import '../services/offline_encyclopedia.dart';
 
 /// Seçilen ürünün kayıtlı tarlalara uygunluğunu animasyonlu gösterir.
 class CropFieldMatchScreen extends StatefulWidget {
@@ -151,71 +152,73 @@ class _CropFieldMatchScreenState extends State<CropFieldMatchScreen>
     return {'temp': temp, 'ph': ph, 'rain': rain, 'humidity': humidity};
   }
 
-  /// Tek Gemini çağrısıyla tüm tarlaları toplu değerlendir
+  /// Kural motoru ile tüm tarlaları toplu değerlendir (Gemini kaldırıldı)
   Future<List<FieldMatch>> _batchEvaluate(
     String crop,
     List<Map<String, dynamic>> fields,
     List<Map<String, double>> envList,
   ) async {
-    final model = GenerativeModel(
-      model: 'gemini-2.5-flash',
-      apiKey: dotenv.env['GEMINI_API_KEY'] ?? '',
-    );
+    final plantDetails = OfflineEncyclopedia.getByName(crop) ?? {};
+    final results = <FieldMatch>[];
 
-    // Tarla bilgilerini prompt'a ekle
-    final sb = StringBuffer();
     for (int i = 0; i < fields.length; i++) {
       final f = fields[i];
       final e = envList[i];
       final dekar = (f['area_dekar'] as num?)?.toDouble() ?? 1.0;
-      sb.writeln('Tarla${i + 1}: "${f['name']}", $dekar Dekar, '
-          'Sıcaklık:${e['temp']!.toStringAsFixed(1)}°C, '
-          'pH:${e['ph']!.toStringAsFixed(1)}, '
-          'Yağış:${e['rain']!.toStringAsFixed(1)}mm/hafta, '
-          'Nem:%${e['humidity']!.toStringAsFixed(0)}');
+      final temp = e['temp'] ?? 20.0;
+      final ph = e['ph'] ?? 6.5;
+      final rain = e['rain'] ?? 15.0;
+      final humidity = e['humidity'] ?? 50.0;
+
+      final ruleResults = RuleEngine.analyze(
+        commonName: crop,
+        plantDetails: plantDetails,
+        temperature: temp,
+        avgWeeklyTemp: temp,
+        humidity: humidity,
+        weeklyRain: rain,
+        soilPh: ph,
+        month: DateTime.now().month,
+      );
+
+      // Uygunluk skoru: kritik kurallar -20, uyarılar -8, ok kurallar +5
+      double score = 70.0;
+      for (final r in ruleResults) {
+        if (r.level == RiskLevel.critical) score -= 20;
+        if (r.level == RiskLevel.warning) score -= 8;
+        if (r.level == RiskLevel.ok) score += 5;
+      }
+      score = score.clamp(0.0, 100.0);
+
+      // Verim tahmini: tür bazlı yaklaşık değer
+      final harvestDays = (plantDetails['harvest_days'] as num?)?.toInt() ?? 90;
+      final rowSp = (plantDetails['row_spacing_cm'] as num?)?.toInt() ?? 60;
+      final plantSp = (plantDetails['plant_spacing_cm'] as num?)?.toInt() ?? 40;
+      final maxPlants = ((10000 * dekar) / (rowSp * plantSp)).round();
+      final yieldPerDekar = 2000.0 + (score - 50) * 30; // yaklaşık kg/dekar
+      final totalYield = yieldPerDekar * dekar;
+
+      // Özet mesajlar
+      final criticals = ruleResults.where((r) => r.level == RiskLevel.critical).toList();
+      final reason = criticals.isNotEmpty
+          ? criticals.first.message
+          : 'pH ${ph.toStringAsFixed(1)} ve ${temp.toStringAsFixed(1)}°C koşulları değerlendirildi.';
+      final suggestion = 'Hasat ~$harvestDays gün. Damla sulama ile verim artırılabilir.';
+
+      results.add(FieldMatch(
+        fieldName: f['name'] ?? 'Tarla',
+        areaDekar: dekar,
+        uygunluk: score,
+        maxPlants: maxPlants,
+        yieldPerDekar: yieldPerDekar,
+        totalYield: totalYield,
+        reason: reason,
+        suggestion: suggestion,
+      ));
     }
 
-    final prompt = '''
-"$crop" bitkisi için aşağıdaki tarlaların her birini değerlendir.
-$sb
-Her tarla için JSON döndür. Markdown KULLANMA, saf JSON array:
-[
-  {
-    "index": 0,
-    "uygunluk": 85,
-    "max_bitki_sayisi": 1200,
-    "dekara_verim_kg": 3500,
-    "toplam_verim_kg": 3500,
-    "neden": "pH ve sıcaklık ideal, yağış yeterli (1-2 cümle)",
-    "oneri": "Damla sulama ile verimi %20 artırabilirsiniz (1 cümle)"
-  }
-]
-Uygunluk 0-100 arası. max_bitki_sayisi tarlanın dekar alanına göre hesapla. toplam_verim_kg = dekara_verim * dekar.
-''';
-
-    final response = await model.generateContent([Content.text(prompt)]);
-    String text = response.text?.trim() ?? '[]';
-    if (text.startsWith('```json')) text = text.substring(7);
-    if (text.startsWith('```')) text = text.substring(3);
-    if (text.endsWith('```')) text = text.substring(0, text.length - 3);
-    text = text.trim();
-
-    final List decoded = jsonDecode(text);
-    return decoded.map((item) {
-      final idx = (item['index'] as int?) ?? 0;
-      final f = fields[idx < fields.length ? idx : 0];
-      return FieldMatch(
-        fieldName: f['name'] ?? 'Tarla',
-        areaDekar: (f['area_dekar'] as num?)?.toDouble() ?? 1.0,
-        uygunluk: (item['uygunluk'] as num?)?.toDouble() ?? 0,
-        maxPlants: (item['max_bitki_sayisi'] as num?)?.toInt() ?? 0,
-        yieldPerDekar: (item['dekara_verim_kg'] as num?)?.toDouble() ?? 0,
-        totalYield: (item['toplam_verim_kg'] as num?)?.toDouble() ?? 0,
-        reason: item['neden']?.toString() ?? '',
-        suggestion: item['oneri']?.toString() ?? '',
-      );
-    }).toList()
-      ..sort((a, b) => b.uygunluk.compareTo(a.uygunluk));
+    results.sort((a, b) => b.uygunluk.compareTo(a.uygunluk));
+    return results;
   }
 
   @override
