@@ -2,7 +2,11 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
 import '../services/agri_service.dart';
+import '../services/crop_rules.dart';
+import '../services/rule_engine.dart';
+import '../services/offline_encyclopedia.dart';
 import '../services/app_providers.dart';
 import '../data/verified_agri_database.dart';
 import '../widgets/glass_panel.dart';
@@ -20,7 +24,9 @@ class FieldDetailScreen extends ConsumerStatefulWidget {
 class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
     with SingleTickerProviderStateMixin {
   Map<String, dynamic>? _analysis;
+  Map<String, dynamic>? _latestSuitabilityReport;
   bool _isLoading = true;
+  bool _isRefreshingSuitability = false;
   String? _error;
 
   late AnimationController _animCtrl;
@@ -62,10 +68,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
 
     _animCtrl.forward();
 
-    // Init matrix data with area approximation
-    double area = (widget.fieldData['area_dekar'] as num?)?.toDouble() ?? 1.0;
-    // You could dynamically calculate rows/cols based on true area here, but for tech demo keep static or clamped.
-
+    _loadLatestSuitabilityReport();
     _loadAnalysis();
   }
 
@@ -88,6 +91,9 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
         d['name'] ?? 'Tarla',
         (d['area_dekar'] as num?)?.toDouble() ?? 1.0,
       );
+      if (result['success'] == true) {
+        await _persistSuitabilityReport(result);
+      }
       if (mounted) {
         setState(() {
           if (result['success'] == true) {
@@ -108,53 +114,102 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
     }
   }
 
-
-  Future<void> _showSyncQueueDialog() async {
-    final syncRepository = ref.read(syncRepositoryProvider);
-    final stats = await syncRepository.getQueueStats();
+  Future<void> _loadLatestSuitabilityReport() async {
+    final fieldId = widget.fieldData['id']?.toString();
+    if (fieldId == null) return;
+    final report =
+        await ref.read(localDataRepositoryProvider).loadLatestSuitabilityReport(fieldId);
     if (!mounted) return;
+    setState(() => _latestSuitabilityReport = report);
+  }
 
-    await showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Senkron Kuyruğu'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Bekleyen: ${stats['pending'] ?? 0}'),
-            Text('İşleniyor: ${stats['in_progress'] ?? 0}'),
-            Text('Hatalı: ${stats['failed'] ?? 0}'),
-            const SizedBox(height: 8),
-            Text('Toplam: ${stats['total'] ?? 0}'),
-            const SizedBox(height: 8),
-            const Text(
-              'Not: Bu adım yalnızca yerel outbox kuyruğunu yönetir.',
-              style: TextStyle(fontSize: 12, color: Colors.black54),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Kapat'),
-          ),
-          FilledButton(
-            onPressed: () async {
-              final moved = await syncRepository.retryFailedJobs();
-              if (!mounted) return;
-              Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('$moved hatalı kayıt tekrar kuyruğa alındı.'),
-                ),
-              );
-            },
-            child: const Text('Hatalıları Tekrar Dene'),
-          ),
-        ],
-      ),
+  Future<void> _persistSuitabilityReport(Map<String, dynamic> analysis) async {
+    final fieldId = widget.fieldData['id']?.toString();
+    if (fieldId == null) return;
+
+    final temp = (analysis['temp'] as num?)?.toDouble() ?? 20.0;
+    final ph = (analysis['ph'] as num?)?.toDouble() ?? 6.5;
+    final weeklyTemp = (analysis['avg_weekly_temp'] as num?)?.toDouble() ?? temp;
+    final weeklyRain = (analysis['total_weekly_rain'] as num?)?.toDouble() ?? 12.0;
+    final humidity = (analysis['humidity'] as num?)?.toDouble() ?? 60.0;
+    final soilMoisture = (analysis['soil_moisture'] as num?)?.toDouble() ?? 0.2;
+    final soilTemp = (analysis['soil_temp_c'] as num?)?.toDouble() ?? 15.0;
+
+    final dynamicRecommendations = await CropRules.getDynamicRecommendations(
+      temp,
+      ph,
+      weeklyTemp,
+      weeklyRain,
+      soilMoisture: soilMoisture,
+      soilTempC: soilTemp,
     );
+
+    final topDynamicName = (dynamicRecommendations.isNotEmpty
+            ? dynamicRecommendations.first['name']
+            : 'Buğday')
+        .toString()
+        .replaceAll(RegExp(r'[\u{1F300}-\u{1FAFF}]', unicode: true), '')
+        .trim();
+
+    final verifiedPlant = VerifiedAgriDatabase.plants.firstWhere(
+      (plant) => topDynamicName.toLowerCase().contains(plant.nameTr.toLowerCase()),
+      orElse: () => VerifiedAgriDatabase.plants.first,
+    );
+    final annualRainEstimate = weeklyRain * 52;
+    final score = verifiedPlant
+        .evaluateSuitability(ph, weeklyTemp, annualRainEstimate)
+        .toDouble();
+
+    final ruleResults = RuleEngine.analyze(
+      commonName: verifiedPlant.nameTr,
+      plantDetails: OfflineEncyclopedia.getByName(verifiedPlant.nameTr) ?? const {},
+      temperature: temp,
+      avgWeeklyTemp: weeklyTemp,
+      humidity: humidity,
+      weeklyRain: weeklyRain,
+      soilPh: ph,
+      soilMoisture: soilMoisture,
+      soilTempC: soilTemp,
+      month: DateTime.now().month,
+    );
+
+    final reportPayload = <String, dynamic>{
+      'field_name': widget.fieldData['name']?.toString() ?? 'Tarla',
+      'recommended_crop': verifiedPlant.nameTr,
+      'dynamic_recommendations': dynamicRecommendations.take(3).toList(),
+      'risk_summary': ruleResults.take(5).map((r) => r.toMap()).toList(),
+      'weather_snapshot': {
+        'temp': temp,
+        'humidity': humidity,
+        'weekly_rain': weeklyRain,
+      },
+      'soil_snapshot': {
+        'ph': ph,
+        'moisture': soilMoisture,
+        'soil_temp_c': soilTemp,
+      },
+      'refreshed_at': DateTime.now().toUtc().toIso8601String(),
+    };
+
+    await ref.read(localDataRepositoryProvider).saveSuitabilityReport(
+          fieldId: fieldId,
+          cropName: verifiedPlant.nameTr,
+          score: score,
+          report: reportPayload,
+        );
+    await _loadLatestSuitabilityReport();
+  }
+
+  Future<void> _refreshSuitability() async {
+    if (_analysis == null) return;
+    setState(() => _isRefreshingSuitability = true);
+    try {
+      await _persistSuitabilityReport(_analysis!);
+    } finally {
+      if (mounted) {
+        setState(() => _isRefreshingSuitability = false);
+      }
+    }
   }
 
   @override
@@ -332,6 +387,18 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
                 ),
               ),
             ),
+          if (!_isLoading && _error == null)
+            Positioned(
+              left: 16,
+              top: MediaQuery.of(context).padding.top + 60,
+              child: FadeTransition(
+                opacity: _uiFadeAnim,
+                child: SlideTransition(
+                  position: _uiSlideAnim,
+                  child: _buildSuitabilityCard(),
+                ),
+              ),
+            ),
 
           // 5. Bottom System Nav
           if (!_isLoading && _error == null)
@@ -364,11 +431,8 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
     String humid = '--';
 
     if (a != null) {
-      final cw = a['current_weather'];
-      if (cw != null) {
-        temp = '${cw['temp']?.round() ?? '--'}°C';
-        humid = '%${cw['humidity']?.round() ?? '--'}';
-      }
+      temp = '${(a['temp'] as num?)?.round() ?? '--'}°C';
+      humid = '%${(a['humidity'] as num?)?.round() ?? '--'}';
     }
 
     final fieldName = widget.fieldData['name'] ?? 'Tarla';
@@ -409,6 +473,77 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildSuitabilityCard() {
+    final report = _latestSuitabilityReport;
+    final reportBody = report?['report'];
+    final refreshedAtRaw =
+        (reportBody is Map ? reportBody['refreshed_at'] : null)?.toString();
+    final refreshedAt = DateTime.tryParse(refreshedAtRaw ?? '')?.toLocal();
+    final topCrop = report?['crop_name']?.toString() ?? 'Henüz yok';
+    final score = (report?['score'] as num?)?.toDouble() ?? 0.0;
+
+    return GlassPanel(
+      baseColor: const Color(0xFF1B5E20),
+      borderRadius: 16,
+      padding: const EdgeInsets.all(12),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 220),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.verified_rounded, color: Color(0xFF00E676), size: 16),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    'Uygunluk Raporu',
+                    style: GoogleFonts.outfit(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Raporu yenile',
+                  onPressed: _isRefreshingSuitability ? null : _refreshSuitability,
+                  icon: _isRefreshingSuitability
+                      ? const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Color(0xFF00E676),
+                          ),
+                        )
+                      : const Icon(Icons.refresh, color: Color(0xFF00E676), size: 16),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Önerilen Ürün: $topCrop',
+              style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Skor: %${score.toStringAsFixed(0)}',
+              style: const TextStyle(color: Colors.white70, fontSize: 12),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              refreshedAt == null
+                  ? 'Durum: Henüz rapor oluşturulmadı'
+                  : 'Son Güncelleme: ${DateFormat('dd.MM.yyyy HH:mm', 'tr_TR').format(refreshedAt)}',
+              style: const TextStyle(color: Colors.white70, fontSize: 11),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -462,8 +597,12 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
     double totalRain = 400.0;
 
     if (_analysis != null) {
-      if (_analysis!['current_weather'] != null) currentT = (_analysis!['current_weather']['temp'] as num?)?.toDouble() ?? 20.0;
-      if (_analysis!['soil'] != null) currentPh = (_analysis!['soil']['ph'] as num?)?.toDouble() ?? 6.5;
+      currentT = (_analysis!['avg_weekly_temp'] as num?)?.toDouble() ??
+          (_analysis!['temp'] as num?)?.toDouble() ??
+          20.0;
+      currentPh = (_analysis!['ph'] as num?)?.toDouble() ?? 6.5;
+      totalRain =
+          ((_analysis!['total_weekly_rain'] as num?)?.toDouble() ?? 12.0) * 52;
     }
 
     // Use Verified Database perfectly 

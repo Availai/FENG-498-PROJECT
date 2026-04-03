@@ -18,55 +18,6 @@ class SyncRepository {
     return query.get();
   }
 
-
-  Future<Map<String, int>> getQueueStats() async {
-    final rows = await _db.select(_db.syncJobs).get();
-    var pending = 0;
-    var inProgress = 0;
-    var failed = 0;
-
-    for (final row in rows) {
-      switch (row.status) {
-        case 'pending':
-          pending++;
-          break;
-        case 'in_progress':
-          inProgress++;
-          break;
-        case 'failed':
-          failed++;
-          break;
-      }
-    }
-
-    return {
-      'pending': pending,
-      'in_progress': inProgress,
-      'failed': failed,
-      'total': rows.length,
-    };
-  }
-
-  Future<int> retryFailedJobs({int limit = 50}) async {
-    final failedRows = await (_db.select(_db.syncJobs)
-          ..where((tbl) => tbl.status.equals('failed'))
-          ..orderBy([(tbl) => OrderingTerm.asc(tbl.updatedAt)])
-          ..limit(limit))
-        .get();
-
-    if (failedRows.isEmpty) return 0;
-
-    final ids = failedRows.map((row) => row.id).toList();
-    await (_db.update(_db.syncJobs)..where((tbl) => tbl.id.isIn(ids))).write(
-      const SyncJobsCompanion(
-        status: Value('pending'),
-        lastError: Value(null),
-      ),
-    );
-
-    return ids.length;
-  }
-
   Future<void> markInProgress(List<int> ids) async {
     if (ids.isEmpty) return;
     await (_db.update(_db.syncJobs)..where((tbl) => tbl.id.isIn(ids))).write(
