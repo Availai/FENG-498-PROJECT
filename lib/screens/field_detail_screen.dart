@@ -4,9 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../services/agri_service.dart';
-import '../services/crop_rules.dart';
-import '../services/rule_engine.dart';
-import '../services/offline_encyclopedia.dart';
 import '../services/app_providers.dart';
 import '../data/verified_agri_database.dart';
 import '../widgets/glass_panel.dart';
@@ -107,109 +104,66 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = 'Bağlantı Hatası: `$e';
+          _error = 'Bağlantı Hatası: $e';
           _isLoading = false;
         });
       }
     }
   }
 
-  Future<void> _loadLatestSuitabilityReport() async {
-    final fieldId = widget.fieldData['id']?.toString();
-    if (fieldId == null) return;
-    final report =
-        await ref.read(localDataRepositoryProvider).loadLatestSuitabilityReport(fieldId);
+
+  Future<void> _showSyncQueueDialog() async {
+    final syncRepository = ref.read(syncRepositoryProvider);
+    final stats = await syncRepository.getQueueStats();
     if (!mounted) return;
-    setState(() => _latestSuitabilityReport = report);
-  }
 
-  Future<void> _persistSuitabilityReport(Map<String, dynamic> analysis) async {
-    final fieldId = widget.fieldData['id']?.toString();
-    if (fieldId == null) return;
-
-    final temp = (analysis['temp'] as num?)?.toDouble() ?? 20.0;
-    final ph = (analysis['ph'] as num?)?.toDouble() ?? 6.5;
-    final weeklyTemp = (analysis['avg_weekly_temp'] as num?)?.toDouble() ?? temp;
-    final weeklyRain = (analysis['total_weekly_rain'] as num?)?.toDouble() ?? 12.0;
-    final humidity = (analysis['humidity'] as num?)?.toDouble() ?? 60.0;
-    final soilMoisture = (analysis['soil_moisture'] as num?)?.toDouble() ?? 0.2;
-    final soilTemp = (analysis['soil_temp_c'] as num?)?.toDouble() ?? 15.0;
-
-    final dynamicRecommendations = await CropRules.getDynamicRecommendations(
-      temp,
-      ph,
-      weeklyTemp,
-      weeklyRain,
-      soilMoisture: soilMoisture,
-      soilTempC: soilTemp,
+    await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Senkron Kuyruğu'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Bekleyen: ${stats['pending'] ?? 0}'),
+            Text('İşleniyor: ${stats['in_progress'] ?? 0}'),
+            Text('Hatalı: ${stats['failed'] ?? 0}'),
+            const SizedBox(height: 8),
+            Text('Toplam: ${stats['total'] ?? 0}'),
+            const SizedBox(height: 8),
+            const Text(
+              'Not: Bu adım yalnızca yerel outbox kuyruğunu yönetir.',
+              style: TextStyle(fontSize: 12, color: Colors.black54),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Kapat'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              final moved = await syncRepository.retryFailedJobs();
+              final report = await ref.read(syncServiceProvider).runPushCycleWithApi(
+                    apiClient: ref.read(syncApiClientProvider),
+                  );
+              if (!mounted) return;
+              Navigator.pop(ctx);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    '$moved kayıt tekrar kuyruğa alındı • '
+                    'Push: ${report.completed}/${report.picked} başarılı',
+                  ),
+                ),
+              );
+            },
+            child: const Text('Hatalıları Tekrar Dene'),
+          ),
+        ],
+      ),
     );
-
-    final topDynamicName = (dynamicRecommendations.isNotEmpty
-            ? dynamicRecommendations.first['name']
-            : 'Buğday')
-        .toString()
-        .replaceAll(RegExp(r'[\u{1F300}-\u{1FAFF}]', unicode: true), '')
-        .trim();
-
-    final verifiedPlant = VerifiedAgriDatabase.plants.firstWhere(
-      (plant) => topDynamicName.toLowerCase().contains(plant.nameTr.toLowerCase()),
-      orElse: () => VerifiedAgriDatabase.plants.first,
-    );
-    final annualRainEstimate = weeklyRain * 52;
-    final score = verifiedPlant
-        .evaluateSuitability(ph, weeklyTemp, annualRainEstimate)
-        .toDouble();
-
-    final ruleResults = RuleEngine.analyze(
-      commonName: verifiedPlant.nameTr,
-      plantDetails: OfflineEncyclopedia.getByName(verifiedPlant.nameTr) ?? const {},
-      temperature: temp,
-      avgWeeklyTemp: weeklyTemp,
-      humidity: humidity,
-      weeklyRain: weeklyRain,
-      soilPh: ph,
-      soilMoisture: soilMoisture,
-      soilTempC: soilTemp,
-      month: DateTime.now().month,
-    );
-
-    final reportPayload = <String, dynamic>{
-      'field_name': widget.fieldData['name']?.toString() ?? 'Tarla',
-      'recommended_crop': verifiedPlant.nameTr,
-      'dynamic_recommendations': dynamicRecommendations.take(3).toList(),
-      'risk_summary': ruleResults.take(5).map((r) => r.toMap()).toList(),
-      'weather_snapshot': {
-        'temp': temp,
-        'humidity': humidity,
-        'weekly_rain': weeklyRain,
-      },
-      'soil_snapshot': {
-        'ph': ph,
-        'moisture': soilMoisture,
-        'soil_temp_c': soilTemp,
-      },
-      'refreshed_at': DateTime.now().toUtc().toIso8601String(),
-    };
-
-    await ref.read(localDataRepositoryProvider).saveSuitabilityReport(
-          fieldId: fieldId,
-          cropName: verifiedPlant.nameTr,
-          score: score,
-          report: reportPayload,
-        );
-    await _loadLatestSuitabilityReport();
-  }
-
-  Future<void> _refreshSuitability() async {
-    if (_analysis == null) return;
-    setState(() => _isRefreshingSuitability = true);
-    try {
-      await _persistSuitabilityReport(_analysis!);
-    } finally {
-      if (mounted) {
-        setState(() => _isRefreshingSuitability = false);
-      }
-    }
   }
 
   @override
