@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
+import '../services/app_providers.dart';
 import '../widgets/glass_panel.dart';
 import 'dashboard_screen.dart';
 import 'growing_guide_screen.dart';
@@ -10,14 +11,14 @@ import 'camera_screen.dart';
 import 'plant_database_screen.dart';
 import 'crop_calendar_screen.dart';
 
-class MainNavigationScreen extends StatefulWidget {
+class MainNavigationScreen extends ConsumerStatefulWidget {
   const MainNavigationScreen({super.key});
 
   @override
-  State<MainNavigationScreen> createState() => _MainNavigationScreenState();
+  ConsumerState<MainNavigationScreen> createState() => _MainNavigationScreenState();
 }
 
-class _MainNavigationScreenState extends State<MainNavigationScreen>
+class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
     with TickerProviderStateMixin {
   int _currentIndex = 0;
 
@@ -49,7 +50,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
   // ── Profile / Logout bottom sheet ────────────────────────────────────────
 
   void _showProfileSheet() {
-    final user = FirebaseAuth.instance.currentUser;
+    final user = ref.read(authRepositoryProvider).currentUser;
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -126,7 +127,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
                 ),
                 onTap: () async {
                   Navigator.pop(context);
-                  await FirebaseAuth.instance.signOut();
+                  await ref.read(authRepositoryProvider).signOut();
                 },
               ),
             ],
