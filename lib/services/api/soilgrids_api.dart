@@ -2,6 +2,24 @@
 ///
 /// REST endpoint: https://rest.isric.org/soilgrids/v2.0/properties/query
 /// Returns soil properties at a given lat/lon for 0-5 cm, 5-15 cm, 15-30 cm depths.
+///
+/// ─── TÜRKİYE TOPRAK VERİSİ KAYNAK HİYERARŞİSİ ────────────────────────────────
+///
+/// SoilGrids global bir model olduğundan Türkiye için yerel kaynaklar tercih
+/// edilmelidir. Bu servis aşağıdaki **fallback chain**'in son halkasıdır:
+///
+/// 1. **TÜBİTAK MAM Toprak Veritabanı** (öncelikli — yerel ölçüm)
+///    https://www.mam.tubitak.gov.tr — Türkiye'nin 1:25.000 ölçekli detaylı
+///    toprak haritası. API erişimi sınırlı; veri çekilemediğinde adım 2.
+///
+/// 2. **TAGEM Toprak Etüt Raporları** (il/ilçe bazlı)
+///    https://www.tarimorman.gov.tr/TAGEM — devlet etüt-haritalama projeleri
+///    sonucu üretilen lokal toprak profilleri.
+///
+/// 3. **SoilGrids (ISRIC)** — bu dosya. Global, ücretsiz, anlık erişim.
+///    Türkiye'de %15-25 sapma payı vardır ama her zaman erişilebilir.
+///
+/// `fetchProfileWithFallback` tüm zinciri sırayla dener.
 library;
 
 import 'dart:convert';

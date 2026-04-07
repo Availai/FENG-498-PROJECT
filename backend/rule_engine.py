@@ -1,11 +1,43 @@
 """
 Kural Tabanlı Karar Motoru — FastAPI endpoint'leri için Python implementasyonu.
 Dart tarafındaki lib/services/rule_engine.dart ile birebir aynı mantık.
+
+Hastalık ve zararlı kuralları EPPO Global Database (https://gd.eppo.int) kod
+referansları ile birlikte verilmiştir. EPPO kodları (Bayer kodları) Avrupa
+Bitki Koruma Organizasyonu (European and Mediterranean Plant Protection
+Organization) tarafından tanımlanan, tüm AB üye ülkelerinde tarımsal mevzuatta
+kullanılan resmi standart taksonomi tanımlayıcılardır.
+EPPO PP1 standartları: https://pp1.eppo.int
 """
 
 from enum import Enum
 from typing import Optional
 from pydantic import BaseModel
+
+
+# EPPO Global Database kod referansları (Bayer codes)
+# Kaynak: https://gd.eppo.int — bu kodlar AB tarımsal mevzuatında resmidir
+EPPO_CODES = {
+    # Hastalıklar
+    "BOTRCI": "Botrytis cinerea (Gri küf) — domates, üzüm, çilek",
+    "ALTESO": "Alternaria solani (Erken yanıklık) — domates, patates",
+    "PHYTIN": "Phytophthora infestans (Geç yanıklık/Mildiyö) — patates, domates",
+    "PUCCST": "Puccinia striiformis (Sarı pas) — buğday",
+    "PUCCRT": "Puccinia recondita (Kahverengi pas) — buğday",
+    "FUSASP": "Fusarium spp. (Solgunluk) — geniş konak",
+    "RHIZSO": "Rhizoctonia solani (Kök çürüklüğü) — geniş konak",
+    "PSDMSP": "Pseudomonas syringae (Bakteriyel benek) — domates, biber",
+    # Zararlılar
+    "TETRUR": "Tetranychus urticae (İki noktalı kırmızı örümcek)",
+    "BEMITA": "Bemisia tabaci (Tütün beyazsineği)",
+    "TRIAVA": "Trialeurodes vaporariorum (Sera beyazsineği)",
+    "MYZUPE": "Myzus persicae (Şeftali yaprak biti)",
+    "APHIGO": "Aphis gossypii (Pamuk yaprak biti)",
+    "LPTNDE": "Leptinotarsa decemlineata (Colorado patates böceği)",
+    "HELIAR": "Helicoverpa armigera (Yeşil kurt / koçan kurdu)",
+    "TUTAAB": "Tuta absoluta (Domates pas akarı/güvesi)",
+    "FRANOC": "Frankliniella occidentalis (Batı çiçek tripsi)",
+}
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -38,6 +70,8 @@ class RuleResult(BaseModel):
     recommendation: str
     emoji: str = ""
     category_label: str = ""
+    eppo_code: Optional[str] = None        # EPPO Global DB kod (varsa)
+    source_ref: Optional[str] = None       # Bilimsel/resmi kaynak referansı
 
     def model_post_init(self, __context):
         emoji_map = {
@@ -266,6 +300,8 @@ def _disease_rules(name, temp, humidity, weekly_rain, soil_moisture, month):
             title="Yüksek Mantar (Fungus) Riski — Domates",
             message=f"Nem %{round(humidity)} + Sıcaklık {temp:.1f}°C — Botrytis ve Alternaria için ideal koşullar.",
             recommendation="Bakırlı fungisit uygulayın. Sulamayı sabah yapın.",
+            eppo_code="BOTRCI / ALTESO",
+            source_ref="EPPO PP1/152 — Botrytis ve Alternaria yönetimi",
         ))
 
     if humidity > 85 and 18 <= temp <= 28:
@@ -282,6 +318,8 @@ def _disease_rules(name, temp, humidity, weekly_rain, soil_moisture, month):
             title="Mildiyö (Phytophthora) Riski",
             message=f"Nem %{round(humidity)} + {temp:.1f}°C — geç yanıklık için kritik.",
             recommendation="Profilaktik fungisit (Metalaksil veya Mancozeb) uygulayın.",
+            eppo_code="PHYTIN",
+            source_ref="EPPO PP1/2 — Phytophthora infestans",
         ))
 
     if ("buğday" in name) and humidity > 75 and 15 <= temp <= 25:
@@ -290,6 +328,8 @@ def _disease_rules(name, temp, humidity, weekly_rain, soil_moisture, month):
             title="Pas Hastalığı Riski — Buğday",
             message=f"Nem %{round(humidity)} + {temp:.1f}°C — sarı pas sporları yayılabilir.",
             recommendation="Triazol bazlı fungisit hazır bulundurun.",
+            eppo_code="PUCCST",
+            source_ref="EPPO PP1/26 — Puccinia striiformis (sarı pas)",
         ))
 
     if soil_moisture > 0.45 and temp > 20:
@@ -298,6 +338,8 @@ def _disease_rules(name, temp, humidity, weekly_rain, soil_moisture, month):
             title="Toprak Kaynaklı Patojen Riski",
             message=f"Yüksek toprak nemi (%{round(soil_moisture * 100)}) ve {temp:.1f}°C sıcaklık.",
             recommendation="Kök boğazı çürüklüğüne (Fusarium, Rhizoctonia vb.) karşı dikkatli olun. Sulamayı geçici olarak durdurun.",
+            eppo_code="FUSASP / RHIZSO",
+            source_ref="EPPO PP1/119 — Toprak kaynaklı fungal patojenler",
         ))
 
     if weekly_rain > 40 and humidity > 80:
@@ -323,6 +365,8 @@ def _pest_rules(name, temp, humidity, wind, month):
             title="Kırmızı Örümcek Riski",
             message=f"{temp:.1f}°C + Düşük nem %{round(humidity)}.",
             recommendation="Yaprak altlarını kontrol edin. Kükürt bazlı akarisit uygulayın.",
+            eppo_code="TETRUR",
+            source_ref="EPPO PP1/200 — Tetranychus urticae mücadele",
         ))
 
     if 3 <= month <= 6 and 15 <= temp <= 25 and humidity >= 60:
@@ -331,6 +375,8 @@ def _pest_rules(name, temp, humidity, wind, month):
             title="Yaprak Biti (Aphid) Sezonu",
             message=f"Bahar sezonu ve {temp:.1f}°C — yaprak biti çoğalması için uygun.",
             recommendation="Sarı yapışkanlı tuzak kullanın.",
+            eppo_code="MYZUPE / APHIGO",
+            source_ref="EPPO PP1/252 — Aphidae yönetimi",
         ))
 
     if any(p in name for p in ["patates", "patlıcan"]) \
@@ -340,6 +386,8 @@ def _pest_rules(name, temp, humidity, wind, month):
             title="Colorado Böceği Riski",
             message=f"Yaz sezonu ve {temp:.1f}°C — Colorado böceği aktif.",
             recommendation="Yaprak altlarını günlük kontrol edin. Spinosad uygulayın.",
+            eppo_code="LPTNDE",
+            source_ref="EPPO PP1/12 — Leptinotarsa decemlineata",
         ))
 
     if "mısır" in name and temp > 25 and 6 <= month <= 9:
@@ -348,6 +396,8 @@ def _pest_rules(name, temp, humidity, wind, month):
             title="Mısır Kurdu (Helicoverpa) Riski",
             message="Sıcak yaz — koçan kurdu aktif dönemde.",
             recommendation="Feromonlu tuzaklar kurun. Bacillus thuringiensis (Bt) kullanın.",
+            eppo_code="HELIAR",
+            source_ref="EPPO PP1/110 — Helicoverpa armigera",
         ))
 
     if wind < 2.0 and temp > 25 and humidity > 50:

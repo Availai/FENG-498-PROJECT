@@ -72,14 +72,41 @@ void backgroundDispatcher() {
       switch (task) {
         case BackgroundTasks.periodicWeatherCheck:
           try {
-            final pos = await Geolocator.getLastKnownPosition() ??
-                await Geolocator.getCurrentPosition(
-                  desiredAccuracy: LocationAccuracy.low,
-                  timeLimit: const Duration(seconds: 20),
-                );
             await NotificationService.initialize();
-            await NotificationService.checkWeatherAndAlert(
-                pos.latitude, pos.longitude);
+
+            // Kayıtlı tüm tarlaları tara — her birinin koordinatına göre uyarı.
+            final db = AppDatabase();
+            try {
+              final fields = await (db.select(db.fields)
+                    ..where((f) => f.deletedAt.isNull()))
+                  .get();
+
+              if (fields.isEmpty) {
+                // Hiç kayıtlı tarla yoksa cihazın mevcut konumuna düş.
+                final pos = await Geolocator.getLastKnownPosition() ??
+                    await Geolocator.getCurrentPosition(
+                      desiredAccuracy: LocationAccuracy.low,
+                      timeLimit: const Duration(seconds: 20),
+                    );
+                await NotificationService.checkWeatherAndAlert(
+                    pos.latitude, pos.longitude);
+              } else {
+                int seed = 0;
+                for (final f in fields) {
+                  if (f.latitude == null || f.longitude == null) continue;
+                  await NotificationService.checkWeatherAndAlert(
+                    f.latitude!,
+                    f.longitude!,
+                    fieldName: f.name,
+                    // Her tarlaya benzersiz id seed'i ver — bildirimler birbirini ezmesin.
+                    notificationIdSeed: seed,
+                  );
+                  seed += 100;
+                }
+              }
+            } finally {
+              await db.close();
+            }
           } catch (e) {
             debugPrint('Weather check skipped: $e');
           }

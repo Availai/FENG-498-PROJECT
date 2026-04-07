@@ -1,14 +1,22 @@
 # main.py
 from fastapi import FastAPI, HTTPException, Header
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from datetime import datetime, timezone
 from typing import List, Optional, Any
+from pathlib import Path
 import asyncpg
 import os
+
 try:
-    from .rule_engine import analyze, AnalyzeRequest
+    from dotenv import load_dotenv
+    load_dotenv()
 except ImportError:
-    from rule_engine import analyze, AnalyzeRequest
+    pass
+try:
+    from .rule_engine import analyze, AnalyzeRequest, RuleCategory, RiskLevel
+except ImportError:
+    from rule_engine import analyze, AnalyzeRequest, RuleCategory, RiskLevel
 
 app = FastAPI(title="Smart Agri Backend API", version="1.0")
 
@@ -330,6 +338,272 @@ async def plant_crop(field_id: int, req: PlantCropRequest):
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# AKILLI SULAMA PROGRAMI (Smart Irrigation Schedule) — FAO Penman-Monteith ETo
+# ═══════════════════════════════════════════════════════════════════════════════
+# Tur + yagis tahmini + toprak nemi -> 7 gunluk sulama plani.
+# Karar mantigi rule_engine.analyze icindeki _irrigation_rules ve _weather_rules
+# kategorilerinden uretilir + FAO-56 Penman-Monteith referans
+# evapotranspirasyonu (ETo) ile bitki su ihtiyaci (ETc = Kc * ETo) hesaplanir.
+#
+# Kaynak: FAO Irrigation and Drainage Paper No. 56
+# "Crop evapotranspiration — Guidelines for computing crop water requirements"
+# Allen, Pereira, Raes, Smith (1998) — https://www.fao.org/3/X0490E/x0490e00.htm
+
+import math as _math
+
+
+def _fao_eto(t_max, t_min, rh_mean, wind_ms, lat_deg, day_of_year, elev_m=500):
+    """
+    FAO-56 Penman-Monteith referans evapotranspirasyon (mm/gun).
+    Solar radyasyon Hargreaves yaklasimi (FAO-56 Eq. 50) ile hesaplanir.
+    """
+    t_mean = (t_max + t_min) / 2.0
+    p = 101.3 * ((293.0 - 0.0065 * elev_m) / 293.0) ** 5.26  # Eq. 7
+    gamma = 0.000665 * p                                     # Eq. 8
+
+    es_tmax = 0.6108 * _math.exp((17.27 * t_max) / (t_max + 237.3))
+    es_tmin = 0.6108 * _math.exp((17.27 * t_min) / (t_min + 237.3))
+    es = (es_tmax + es_tmin) / 2.0
+    ea = (es * rh_mean / 100.0)
+
+    delta = (4098 * (0.6108 * _math.exp((17.27 * t_mean) / (t_mean + 237.3)))) \
+            / (t_mean + 237.3) ** 2
+
+    # Hargreaves Rs (Eq. 50) — solar radyasyon yoksa yaklaşık
+    phi = lat_deg * _math.pi / 180.0
+    decl = 0.409 * _math.sin((2 * _math.pi / 365.0) * day_of_year - 1.39)
+    ws = _math.acos(max(-1, min(1, -_math.tan(phi) * _math.tan(decl))))
+    dr = 1 + 0.033 * _math.cos((2 * _math.pi / 365.0) * day_of_year)
+    ra = (24 * 60 / _math.pi) * 0.0820 * dr * (
+        ws * _math.sin(phi) * _math.sin(decl) +
+        _math.cos(phi) * _math.cos(decl) * _math.sin(ws)
+    )
+    rs = 0.16 * _math.sqrt(max(0.1, abs(t_max - t_min))) * ra
+    rn = 0.77 * rs
+
+    num = 0.408 * delta * rn + gamma * (900.0 / (t_mean + 273.0)) * wind_ms * (es - ea)
+    den = delta + gamma * (1.0 + 0.34 * wind_ms)
+    eto = num / den
+    return max(0.0, eto)
+
+
+# FAO-56 Table 12 — bitki katsayilari (Kc) — Turkce ad → (kc_init, kc_mid, kc_end, total_days)
+FAO_KC = {
+    "domates":      (0.60, 1.15, 0.80, 135),
+    "biber":        (0.60, 1.05, 0.90, 125),
+    "patlican":     (0.60, 1.05, 0.90, 130),
+    "salatalik":    (0.60, 1.00, 0.75, 105),
+    "kabak":        (0.50, 1.00, 0.80, 100),
+    "karpuz":       (0.40, 1.00, 0.75, 100),
+    "kavun":        (0.50, 1.05, 0.75, 100),
+    "patates":      (0.50, 1.15, 0.75, 130),
+    "sogan":        (0.70, 1.05, 0.75, 150),
+    "havuc":        (0.70, 1.05, 0.95, 115),
+    "lahana":       (0.70, 1.05, 0.95, 130),
+    "fasulye":      (0.50, 1.05, 0.90, 90),
+    "nohut":        (0.40, 1.00, 0.35, 95),
+    "mercimek":     (0.40, 1.10, 0.30, 150),
+    "bugday":       (0.70, 1.15, 0.40, 235),
+    "arpa":         (0.30, 1.15, 0.25, 130),
+    "misir":        (0.30, 1.20, 0.60, 150),
+    "celtik":       (1.05, 1.20, 0.90, 150),
+    "aycicegi":     (0.35, 1.15, 0.35, 130),
+    "pamuk":        (0.35, 1.20, 0.60, 195),
+    "sekerpancari": (0.35, 1.20, 0.70, 180),
+    "yonca":        (0.40, 0.95, 0.90, 165),
+    "uzum":         (0.30, 0.85, 0.45, 205),
+    "zeytin":       (0.65, 0.70, 0.70, 365),
+    "elma":         (0.60, 0.95, 0.75, 240),
+}
+
+
+def _normalize_crop(name: str) -> str:
+    s = name.lower().strip()
+    return (s.replace("ç", "c").replace("ğ", "g").replace("ı", "i")
+             .replace("ö", "o").replace("ş", "s").replace("ü", "u"))
+
+
+def _lookup_kc(crop_name: str, days_since_planted: int = 60):
+    """Bitki adina ve ekim sonrasi gun sayisina gore Kc dondurur."""
+    key = _normalize_crop(crop_name)
+    spec = FAO_KC.get(key)
+    if spec is None:
+        for k, v in FAO_KC.items():
+            if k in key or key in k:
+                spec = v
+                break
+    if spec is None:
+        return 1.0  # default
+    kc_init, kc_mid, kc_end, total = spec
+    pct = days_since_planted / total
+    if pct < 0.20:
+        return kc_init
+    if pct < 0.75:
+        return kc_mid
+    return kc_end
+
+class IrrigationDailyForecast(BaseModel):
+    date: str                       # ISO yyyy-mm-dd
+    temp_c: float
+    humidity: float
+    precip_mm: float                # gunluk toplam yagis (mm)
+    precip_prob_pct: float = 0.0    # yagis olasiligi (0-100)
+    wind_speed_ms: float = 0.0
+
+
+class IrrigationScheduleRequest(BaseModel):
+    common_name: str = ""
+    plant_details: dict = Field(default_factory=dict)
+    soil_ph: float = 6.8
+    soil_moisture: float = 0.25
+    soil_temp_c: float = 15.0
+    ndvi: float = 0.6
+    latitude: float = 39.0           # FAO ETo radyasyon hesabı için
+    elevation_m: float = 500.0       # Penman-Monteith atmosferik basınç
+    days_since_planted: int = 60     # Kc gelişim evresi seçimi için
+    days: List[IrrigationDailyForecast] = Field(default_factory=list)
+
+
+class IrrigationDayPlan(BaseModel):
+    date: str
+    should_irrigate: bool
+    level: str                  # critical | warning | info | ok
+    title: str
+    reason: str
+    recommendation: str
+    estimated_mm: float = 0.0   # onerilen sulama miktari (mm)
+    eto_mm: float = 0.0         # FAO referans evapotranspirasyon (mm/gun)
+    etc_mm: float = 0.0         # Bitki su ihtiyaci ETc = Kc * ETo (mm/gun)
+    kc: float = 1.0             # FAO-56 Tablo 12 bitki katsayisi
+
+
+@app.post("/api/irrigation/schedule", summary="Akilli Sulama Programi (7 Gun)")
+async def irrigation_schedule(req: IrrigationScheduleRequest):
+    """
+    Bitki + tarla + 7 gunluk hava tahminini alir, her gun icin sulama karari uretir.
+    Karar motoru rule_engine._irrigation_rules + _weather_rules uzerinden calisir.
+    """
+    if not req.days:
+        raise HTTPException(status_code=400, detail="En az 1 gunluk tahmin gereklidir.")
+
+    plant = req.plant_details or {}
+
+    # FAO-56 Kc katsayisi (bitki + gelisim evresi)
+    kc = _lookup_kc(req.common_name, days_since_planted=req.days_since_planted)
+
+    plan: list[IrrigationDayPlan] = []
+    running_soil_moisture = req.soil_moisture
+
+    for day in req.days:
+        try:
+            day_dt = datetime.fromisoformat(day.date)
+        except Exception:
+            day_dt = datetime.now(timezone.utc)
+        month = day_dt.month
+        doy = day_dt.timetuple().tm_yday
+
+        # FAO Penman-Monteith ETo ve bitki su ihtiyaci ETc
+        # Tahmin verisinden tmax/tmin yerine ortalama ± varyasyon kullaniyoruz.
+        t_avg = day.temp_c
+        t_max = t_avg + 5.0
+        t_min = t_avg - 5.0
+        eto_mm = _fao_eto(
+            t_max=t_max, t_min=t_min,
+            rh_mean=day.humidity, wind_ms=day.wind_speed_ms,
+            lat_deg=req.latitude, day_of_year=doy,
+            elev_m=req.elevation_m,
+        )
+        etc_mm = eto_mm * kc
+
+        analyze_req = AnalyzeRequest(
+            common_name=req.common_name,
+            plant_details=plant,
+            temperature=day.temp_c,
+            avg_weekly_temp=day.temp_c,
+            humidity=day.humidity,
+            weekly_rain=sum(d.precip_mm for d in req.days),
+            soil_ph=req.soil_ph,
+            soil_moisture=running_soil_moisture,
+            soil_temp_c=req.soil_temp_c,
+            ndvi=req.ndvi,
+            wind_speed=day.wind_speed_ms,
+            month=month,
+            precip_prob_next3h=day.precip_prob_pct,
+        )
+
+        results = analyze(analyze_req)
+        irr_results = [r for r in results if r.category == RuleCategory.irrigation]
+        weather_block = [
+            r for r in results
+            if r.category == RuleCategory.weather and r.level in (RiskLevel.critical, RiskLevel.warning)
+            and ("Yagmur" in r.title or "Yağmur" in r.title or "Aşırı Yağış" in r.title or "Yüksek Yağış" in r.title)
+        ]
+
+        should_irrigate = False
+        title = "Sulama Gerekmiyor"
+        reason = "Mevcut kosullarda toprak nemi yeterli."
+        recommendation = "Bugun sulama yapmayin."
+        level = "ok"
+        estimated_mm = 0.0
+
+        # Yagis bekleniyorsa veya yagis yuksekse sulama iptal
+        if day.precip_mm >= 5 or day.precip_prob_pct >= 70 or weather_block:
+            should_irrigate = False
+            title = "Yagis Bekleniyor"
+            reason = f"Tahmini yagis {day.precip_mm:.0f} mm (%{round(day.precip_prob_pct)} olasilik)."
+            recommendation = "Sulamayi erteleyin. Drenaji kontrol edin."
+            level = "info"
+        elif irr_results:
+            top = irr_results[0]
+            level = top.level.value
+            title = top.title
+            reason = top.message
+            recommendation = top.recommendation
+            should_irrigate = top.level in (RiskLevel.critical, RiskLevel.warning) and "Cok Nemli" not in top.title and "Cürüklüğü" not in top.title and "Çürüklüğü" not in top.title
+            if should_irrigate:
+                # FAO-56: ETc - efektif yagis = net sulama ihtiyaci
+                # Efektif yagis: yagisin yaklaşık %80'i bitkiye ulasir (USDA SCS)
+                effective_rain = day.precip_mm * 0.80
+                net_need = etc_mm - effective_rain
+                estimated_mm = round(max(0.0, net_need), 1)
+
+        # Toprak nemini iteratif guncelle: gunluk net = yagis + sulama - ETc
+        net_water_mm = day.precip_mm + estimated_mm - etc_mm
+        running_soil_moisture += net_water_mm * 0.003
+        running_soil_moisture = max(0.05, min(0.6, running_soil_moisture))
+
+        plan.append(IrrigationDayPlan(
+            date=day.date,
+            should_irrigate=should_irrigate,
+            level=level,
+            title=title,
+            reason=reason,
+            recommendation=recommendation,
+            estimated_mm=estimated_mm,
+            eto_mm=round(eto_mm, 2),
+            etc_mm=round(etc_mm, 2),
+            kc=round(kc, 2),
+        ))
+
+    total_mm = round(sum(p.estimated_mm for p in plan), 1)
+    total_etc = round(sum(p.etc_mm for p in plan), 1)
+    irrigation_days = sum(1 for p in plan if p.should_irrigate)
+
+    return {
+        "success": True,
+        "summary": {
+            "total_days": len(plan),
+            "irrigation_days": irrigation_days,
+            "total_water_mm": total_mm,
+            "total_crop_demand_mm": total_etc,
+            "kc_used": round(kc, 2),
+            "method": "FAO-56 Penman-Monteith (Allen et al., 1998)",
+        },
+        "plan": [p.model_dump() for p in plan],
+    }
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # ADMIN PANEL ENDPOINTLERI
 # ═══════════════════════════════════════════════════════════════════════════════
 # Tum admin endpointleri X-Admin-Key header ile korunur.
@@ -431,6 +705,18 @@ class ContentUpdateRequest(BaseModel):
     entity_type: str = Field(..., description="Icerik turu, ornegin 'encyclopedia'")
     entity_id: str = Field(..., description="Guncellenen kaydin kimliği")
     payload: dict[str, Any] = Field(default_factory=dict, description="Guncel icerik verisi")
+
+
+@app.get("/admin", summary="Web Yonetim Paneli (HTML)")
+async def admin_panel_page():
+    """
+    Admin yonetim panelini HTML olarak dondurur.
+    Kullanici tarayicida X-Admin-Key girer; key localStorage'a kaydedilir.
+    """
+    html_path = Path(__file__).parent / "admin_panel.html"
+    if not html_path.exists():
+        raise HTTPException(status_code=404, detail="admin_panel.html bulunamadi.")
+    return FileResponse(html_path, media_type="text/html")
 
 
 @app.post("/api/admin/content", summary="Icerik Guncelleme (Ansiklopedi vs.)")

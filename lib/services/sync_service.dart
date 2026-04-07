@@ -181,7 +181,8 @@ class SyncService {
         .getSingleOrNull();
 
     // LWW kontrolü: yerel daha yeni ise atla
-    if (existing != null && existing.updatedAt.isAfter(item.updatedAt)) {
+    // İlk LWW koruması (Field): backend _upsert_sync_record ile birebir simetrik.
+    if (existing != null && !existing.updatedAt.isBefore(item.updatedAt)) {
       return false;
     }
 
@@ -219,7 +220,8 @@ class SyncService {
           ..where((tbl) => tbl.id.equals(item.entityId)))
         .getSingleOrNull();
 
-    if (existing != null && existing.updatedAt.isAfter(item.updatedAt)) {
+    // LWW: yerel >= gelen ise atla (eşitlikte yerel kazanır — backend ile simetrik).
+    if (existing != null && !existing.updatedAt.isBefore(item.updatedAt)) {
       return false;
     }
 
@@ -258,7 +260,8 @@ class SyncService {
           ..where((tbl) => tbl.id.equals(item.entityId)))
         .getSingleOrNull();
 
-    if (existing != null && existing.updatedAt.isAfter(item.updatedAt)) {
+    // LWW: yerel >= gelen ise atla (eşitlikte yerel kazanır — backend ile simetrik).
+    if (existing != null && !existing.updatedAt.isBefore(item.updatedAt)) {
       return false;
     }
 
@@ -297,7 +300,8 @@ class SyncService {
           ..where((tbl) => tbl.id.equals(item.entityId)))
         .getSingleOrNull();
 
-    if (existing != null && existing.updatedAt.isAfter(item.updatedAt)) {
+    // LWW: yerel >= gelen ise atla (eşitlikte yerel kazanır — backend ile simetrik).
+    if (existing != null && !existing.updatedAt.isBefore(item.updatedAt)) {
       return false;
     }
 
@@ -337,7 +341,8 @@ class SyncService {
           ..where((tbl) => tbl.id.equals(item.entityId)))
         .getSingleOrNull();
 
-    if (existing != null && existing.updatedAt.isAfter(item.updatedAt)) {
+    // LWW: yerel >= gelen ise atla (eşitlikte yerel kazanır — backend ile simetrik).
+    if (existing != null && !existing.updatedAt.isBefore(item.updatedAt)) {
       return false;
     }
 

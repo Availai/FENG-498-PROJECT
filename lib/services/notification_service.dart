@@ -9,11 +9,29 @@ import 'package:http/http.dart' as http;
 /// Fulfills: "Proactive Notification Engine: FCM-based push notifications
 /// for extreme weather events" (Proposal Section 6.1.1).
 ///
-/// Smart alerts:
-///  - Rain expected in 3h → "Sulama yapmayın"
-///  - Frost risk (< 3°C) → "Bitkilerinizi koruyun"
-///  - Heat stress (> 36°C) → "Sulama saatini ayarlayın"
-///  - Strong wind (> 10 m/s) → "Sera perdelerini kapatın"
+/// ─── PROFESYONEL UYARI EŞİKLERİ (kaynak doğrulamalı) ────────────────────────
+///
+/// DON (Frost):
+///   FAO "Frost Protection: fundamentals, practice, and economics" (2005)
+///   ve WMO ground-frost tanımı:
+///     • ≤ 0°C  → kritik don (hassas bitkilerde hücre hasarı başlar)
+///     • ≤ +2°C → uyarı (radyatif soğuma + tahmin belirsizliği marjı)
+///
+/// YAĞIŞ:
+///   T.C. MGM resmi yağış sınıflandırması (https://mgm.gov.tr) + WMO-No. 407:
+///     • > 50 mm/24h → şiddetli yağış (drenaj/kök çürüklüğü kritik)
+///     • > 20 mm/24h → kuvvetli yağış (uyarı)
+///
+/// RÜZGAR:
+///   Beaufort ölçeği (WMO standardı, WMO-No. 8 Guide to Met. Instruments):
+///     • ≥ 17.2 m/s → Beaufort 8 fırtına (sera/yapısal hasar) — kritik
+///     • ≥ 10.8 m/s → Beaufort 6 kuvvetli esinti — uyarı
+///
+/// AŞIRI SICAKLIK:
+///   FAO Irrigation & Drainage Paper No. 66 "Crop Yield Response to Water"
+///   ve C3 bitkilerde fotosentez tepe eğrisi:
+///     • ≥ 40°C → kritik ısı stresi (geri dönüşsüz hasar riski)
+///     • ≥ 35°C → uyarı (su stresi başlangıcı)
 class NotificationService {
   static final _plugin = FlutterLocalNotificationsPlugin();
 
@@ -79,89 +97,168 @@ class NotificationService {
 
   // ── Weather-Triggered Smart Alerts ───────────────────────────────────────
 
-  /// Fetches hourly forecast for the given coordinates and sends local
-  /// notifications if any agricultural thresholds are breached.
-  static Future<void> checkWeatherAndAlert(double lat, double lng) async {
+  // ─── Profesyonel uyarı eşikleri (yukarıdaki kaynak listesine bakınız) ──────
+  static const double frostCriticalC = 0.0;   // FAO/WMO
+  static const double frostWarningC  = 2.0;
+  static const double heatCriticalC  = 40.0;  // FAO I&D Paper 66
+  static const double heatWarningC   = 35.0;
+  static const double windCriticalMs = 17.2;  // Beaufort 8 (fırtına)
+  static const double windWarningMs  = 10.8;  // Beaufort 6
+  static const double rainCriticalMm = 50.0;  // MGM şiddetli yağış / 24h
+  static const double rainWarningMm  = 20.0;  // MGM kuvvetli yağış / 24h
+
+  /// Fetches forecast for the given coordinates and sends local notifications
+  /// if any agricultural thresholds are breached. [fieldName] uyarı metninde
+  /// gösterilir; null ise sadece koordinata göre uyarı verilir.
+  ///
+  /// [notificationIdSeed] aynı tarla için aynı id'lerin üst üste yazılmasını
+  /// engeller — birden çok tarla taranırken her tarlaya farklı seed verilmeli.
+  static Future<void> checkWeatherAndAlert(
+    double lat,
+    double lng, {
+    String? fieldName,
+    int notificationIdSeed = 0,
+  }) async {
     try {
+      // Hourly: don/sıcaklık/rüzgar tepelerini yakalamak için
+      // Daily: 24h yağış toplamı (MGM eşiği günlük tabanlıdır)
       final url = Uri.parse(
         'https://api.open-meteo.com/v1/forecast'
         '?latitude=$lat&longitude=$lng'
         '&hourly=temperature_2m,precipitation_probability,windspeed_10m,weathercode'
-        '&forecast_days=1&timezone=auto',
+        '&daily=precipitation_sum'
+        '&forecast_days=2&timezone=auto',
       );
       final res = await http.get(url).timeout(const Duration(seconds: 10));
       if (res.statusCode != 200) return;
 
-      final data = jsonDecode(res.body)['hourly'] as Map<String, dynamic>;
-      final List<int> codes = List<int>.from(data['weathercode'] ?? []);
-      final List<double> temps =
-          (data['temperature_2m'] as List).map((e) => (e as num).toDouble()).toList();
-      final List<int> precipProb =
-          (data['precipitation_probability'] as List).map((e) => (e as num).toInt()).toList();
-      final List<double> winds =
-          (data['windspeed_10m'] as List).map((e) => (e as num).toDouble()).toList();
+      final body = jsonDecode(res.body) as Map<String, dynamic>;
+      final hourly = body['hourly'] as Map<String, dynamic>;
+      final daily = body['daily'] as Map<String, dynamic>?;
+
+      final List<int> codes = List<int>.from(hourly['weathercode'] ?? []);
+      final List<double> temps = (hourly['temperature_2m'] as List)
+          .map((e) => (e as num).toDouble())
+          .toList();
+      final List<int> precipProb = (hourly['precipitation_probability'] as List)
+          .map((e) => (e as num).toInt())
+          .toList();
+      final List<double> winds = (hourly['windspeed_10m'] as List)
+          .map((e) => (e as num).toDouble())
+          .toList();
+
+      // 24h toplam yağış (yarın için)
+      final dailyPrecip = (daily?['precipitation_sum'] as List?)
+              ?.map((e) => (e as num).toDouble())
+              .toList() ??
+          const <double>[];
+      final tomorrowRainMm = dailyPrecip.length > 1 ? dailyPrecip[1] : 0.0;
+
+      // Önümüzdeki 12 saat içindeki tepe değerleri tara
+      final limit = codes.length < 12 ? codes.length : 12;
+      double minTemp = double.infinity;
+      double maxTemp = -double.infinity;
+      double maxWind = 0;
+      int maxPrecipProb = 0;
+      bool hasStorm = false;
+      DateTime? minTempHour;
 
       final now = DateTime.now();
-      // Check next 6 hours
-      final limit = (codes.length < 6 ? codes.length : 6);
-
-      bool rainAlertSent = false;
-      bool frostAlertSent = false;
-      bool heatAlertSent = false;
-      bool windAlertSent = false;
-
       for (int i = 0; i < limit; i++) {
-        final hour = now.add(Duration(hours: i));
-
-        // Rain / thunderstorm (WMO codes 51-99)
-        if (!rainAlertSent &&
-            (precipProb[i] >= 70 || (codes[i] >= 51 && codes[i] <= 99))) {
-          final hoursAway = i == 0 ? 'şu an' : '$i saat içinde';
-          await show(
-            id: 1001,
-            title: '🌧️ Yağmur Uyarısı',
-            body:
-                'Yağış bekleniyor ($hoursAway, %${precipProb[i]} olasılık). Sulama yapmayın, tarımsal ilaçlama erteleyiniz.',
-          );
-          rainAlertSent = true;
+        if (temps[i] < minTemp) {
+          minTemp = temps[i];
+          minTempHour = now.add(Duration(hours: i));
         }
+        if (temps[i] > maxTemp) maxTemp = temps[i];
+        if (winds[i] > maxWind) maxWind = winds[i];
+        if (precipProb[i] > maxPrecipProb) maxPrecipProb = precipProb[i];
+        if (codes[i] >= 95 && codes[i] <= 99) hasStorm = true;
+      }
 
-        // Frost risk
-        if (!frostAlertSent && temps[i] <= 3.0 && (hour.hour >= 22 || hour.hour <= 7)) {
-          await show(
-            id: 1002,
-            title: '🥶 Don Riski!',
-            body:
-                '${temps[i].toStringAsFixed(1)}°C bekleniyor. Hassas bitkilerinizi örtün, sera perdelerini kapatın.',
-          );
-          frostAlertSent = true;
-        }
+      final suffix = fieldName != null ? ' — $fieldName' : '';
 
-        // Heat stress
-        if (!heatAlertSent && temps[i] >= 36.0) {
-          await show(
-            id: 1003,
-            title: '🌡️ Aşırı Sıcaklık Uyarısı',
-            body:
-                '${temps[i].toStringAsFixed(1)}°C bekleniyor. Sulamayı sabah erken veya akşam üstü yapın. Bitkileri gölgeleyin.',
-          );
-          heatAlertSent = true;
-        }
+      // ── DON (FAO/WMO) ────────────────────────────────────────────────────
+      if (minTemp <= frostCriticalC) {
+        await show(
+          id: 1002 + notificationIdSeed,
+          title: '🥶 KRİTİK Don Uyarısı$suffix',
+          body:
+              '${minTemp.toStringAsFixed(1)}°C bekleniyor (${_hh(minTempHour)}). Hassas bitkilerinizi örtün, sera ısıtmasını devreye alın. Sabah erken sulama yapmayın.',
+        );
+      } else if (minTemp <= frostWarningC) {
+        await show(
+          id: 1002 + notificationIdSeed,
+          title: '❄️ Don Riski$suffix',
+          body:
+              '${minTemp.toStringAsFixed(1)}°C bekleniyor (${_hh(minTempHour)}). Örtü bezi hazırlayın, fideleri koruyun.',
+        );
+      }
 
-        // Strong wind
-        if (!windAlertSent && winds[i] >= 10.0) {
-          await show(
-            id: 1004,
-            title: '💨 Şiddetli Rüzgar Uyarısı',
-            body:
-                '${winds[i].toStringAsFixed(1)} m/s rüzgar bekleniyor. Sera branda ve perdelerini kapatın, hassas bitkileri destekleyin.',
-          );
-          windAlertSent = true;
-        }
+      // ── AŞIRI SICAKLIK (FAO) ─────────────────────────────────────────────
+      if (maxTemp >= heatCriticalC) {
+        await show(
+          id: 1003 + notificationIdSeed,
+          title: '🔥 KRİTİK Sıcak Dalgası$suffix',
+          body:
+              '${maxTemp.toStringAsFixed(1)}°C — bitki ölüm riski. Sulamayı sabah 06:00 öncesi yapın, gölgeleme uygulayın.',
+        );
+      } else if (maxTemp >= heatWarningC) {
+        await show(
+          id: 1003 + notificationIdSeed,
+          title: '🌡️ Yüksek Sıcaklık$suffix',
+          body:
+              '${maxTemp.toStringAsFixed(1)}°C bekleniyor. Sulama saatini sabah erken/akşam üstüne çekin.',
+        );
+      }
+
+      // ── RÜZGAR (Beaufort/WMO) ────────────────────────────────────────────
+      if (maxWind >= windCriticalMs) {
+        await show(
+          id: 1004 + notificationIdSeed,
+          title: '🌪️ FIRTINA Uyarısı$suffix',
+          body:
+              '${maxWind.toStringAsFixed(1)} m/s (Beaufort 8+). Sera örtü/perdelerini sabitleyin, destek kazıkları kontrol edin, ilaçlama yapmayın.',
+        );
+      } else if (maxWind >= windWarningMs) {
+        await show(
+          id: 1004 + notificationIdSeed,
+          title: '💨 Kuvvetli Rüzgar$suffix',
+          body:
+              '${maxWind.toStringAsFixed(1)} m/s rüzgar bekleniyor. İlaçlama erteleyin (drift riski), perdeleri kapatın.',
+        );
+      }
+
+      // ── YAĞIŞ (MGM/WMO) ──────────────────────────────────────────────────
+      if (tomorrowRainMm >= rainCriticalMm) {
+        await show(
+          id: 1001 + notificationIdSeed,
+          title: '⛈️ ŞİDDETLİ Yağış$suffix',
+          body:
+              'Yarın ${tomorrowRainMm.toStringAsFixed(0)} mm yağış (MGM şiddetli sınıfı). Drenaj kanallarını açın, sulamayı tamamen durdurun, kök çürüklüğüne dikkat.',
+        );
+      } else if (tomorrowRainMm >= rainWarningMm) {
+        await show(
+          id: 1001 + notificationIdSeed,
+          title: '🌧️ Kuvvetli Yağış$suffix',
+          body:
+              'Yarın ${tomorrowRainMm.toStringAsFixed(0)} mm yağış bekleniyor. Sulama ve ilaçlamayı erteleyin.',
+        );
+      } else if (hasStorm) {
+        await show(
+          id: 1005 + notificationIdSeed,
+          title: '⚡ Gök Gürültülü Fırtına$suffix',
+          body:
+              'Önümüzdeki saatlerde fırtına bekleniyor. Tarla işlerini erteleyin, ekipmanı emniyete alın.',
+        );
       }
     } catch (_) {
       // Silently ignore — notifications are a best-effort feature
     }
+  }
+
+  static String _hh(DateTime? d) {
+    if (d == null) return '';
+    return '${d.hour.toString().padLeft(2, '0')}:00';
   }
 
   // ── Manual Notifications ─────────────────────────────────────────────────

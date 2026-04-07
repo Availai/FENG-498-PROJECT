@@ -180,6 +180,96 @@ class LocalDataRepository {
     return crops.map(_cropToMap).toList();
   }
 
+  /// Akıllı Sulama Programı: backend'den gelen 7 günlük planı yerel Drift'e
+  /// yazar ve outbox'a sync job ekler. Aynı tarlanın eski (silinmemiş)
+  /// kayıtları tombstone ile soft-delete edilir.
+  Future<void> saveSmartIrrigationSchedule({
+    required String fieldId,
+    String? cropId,
+    required List<Map<String, dynamic>> dailyPlan,
+  }) async {
+    final now = DateTime.now().toUtc();
+
+    // Eski planları tombstone et + her birine delete sync job
+    final existing = await (_db.select(_db.irrigationPlans)
+          ..where((tbl) => tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull()))
+        .get();
+    for (final old in existing) {
+      await (_db.update(_db.irrigationPlans)
+            ..where((tbl) => tbl.id.equals(old.id)))
+          .write(IrrigationPlansCompanion(
+        updatedAt: Value(now),
+        deletedAt: Value(now),
+      ));
+      await _enqueueSyncJob(
+        entityType: 'irrigation_plans',
+        entityId: old.id,
+        operation: 'delete',
+        payload: {'id': old.id},
+        updatedAt: now,
+      );
+    }
+
+    // Yeni günlük kayıtları ekle
+    for (final day in dailyPlan) {
+      final id = _newId('irrigation');
+      final scheduled = day['date'] is DateTime
+          ? day['date'] as DateTime
+          : DateTime.tryParse(day['date'].toString()) ?? now;
+      final shouldIrrigate = day['should_irrigate'] as bool? ?? false;
+      final reason = (day['reason'] ?? day['title'] ?? '').toString();
+      final recommendation = day['recommendation']?.toString();
+
+      await _db.into(_db.irrigationPlans).insert(
+            IrrigationPlansCompanion.insert(
+              id: id,
+              fieldId: fieldId,
+              cropId: Value(cropId),
+              scheduledDate: scheduled.toUtc(),
+              shouldIrrigate: Value(shouldIrrigate),
+              reason: reason,
+              recommendation: Value(recommendation),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+
+      await _enqueueSyncJob(
+        entityType: 'irrigation_plans',
+        entityId: id,
+        operation: 'upsert',
+        payload: {
+          'id': id,
+          'field_id': fieldId,
+          'crop_id': cropId,
+          'scheduled_date': scheduled.toUtc().toIso8601String(),
+          'should_irrigate': shouldIrrigate,
+          'reason': reason,
+          'recommendation': recommendation,
+          'source': 'smart_schedule',
+        },
+        updatedAt: now,
+      );
+    }
+  }
+
+  /// Belirli bir tarlanın sulama planlarını yükler (tarihe göre sıralı).
+  Future<List<Map<String, dynamic>>> loadFieldIrrigationPlans(String fieldId) async {
+    final plans = await (_db.select(_db.irrigationPlans)
+          ..where((tbl) => tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull())
+          ..orderBy([(tbl) => OrderingTerm.asc(tbl.scheduledDate)]))
+        .get();
+    return plans.map((p) => <String, dynamic>{
+      'id': p.id,
+      'field_id': p.fieldId,
+      'crop_id': p.cropId,
+      'scheduled_date': p.scheduledDate,
+      'should_irrigate': p.shouldIrrigate,
+      'reason': p.reason,
+      'recommendation': p.recommendation,
+    }).toList();
+  }
+
   Future<void> replaceFieldCrops({
     required String fieldId,
     required List<Map<String, dynamic>> crops,
