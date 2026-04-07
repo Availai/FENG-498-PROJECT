@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(flutter analyze:*)",
-      "Bash(wc -l lib/*.dart lib/**/*.dart)"
+      "Bash(wc -l lib/*.dart lib/**/*.dart)",
+      "Bash(dart run:*)"
     ]
   }
 }
