@@ -12,6 +12,7 @@ import 'services/notification_service.dart';
 import 'services/offline_encyclopedia.dart';
 import 'services/app_providers.dart';
 import 'services/local_data_repository.dart';
+import 'services/background_sync_service.dart';
 import 'theme/app_theme.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -49,6 +50,9 @@ void main() async {
   final database = AppDatabase();
   final localDataRepository = LocalDataRepository(database: database);
   await localDataRepository.bootstrapFromLegacyHive();
+
+  // 6. Background periodic tasks (Android'de aktif, diğer platformlarda no-op)
+  await BackgroundSyncService.initialize();
 
   runApp(
     ProviderScope(

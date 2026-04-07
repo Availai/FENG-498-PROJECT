@@ -20,7 +20,13 @@ class AnalysisResultScreen extends StatelessWidget {
     final String description = data['description'] ?? '';
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Akıllı Tarım Raporu')),
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.of(context).maybePop(),
+        ),
+        title: const Text('Akıllı Tarım Raporu'),
+      ),
       body: SingleChildScrollView(
         child: Column(
           children: [

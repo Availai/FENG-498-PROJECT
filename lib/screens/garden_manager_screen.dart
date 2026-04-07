@@ -134,6 +134,10 @@ class _GardenManagerScreenState extends ConsumerState<GardenManagerScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.of(context).maybePop(),
+        ),
         title: Row(children: [
           const Text('🌿 '),
           Expanded(

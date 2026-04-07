@@ -234,6 +234,10 @@ class _Field3DPlannerScreenState extends ConsumerState<Field3DPlannerScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.of(context).maybePop(),
+        ),
         title: Text('3D Tarla Yerleşimi', style: AppText.h3Dark(context)),
         actions: [
           IconButton(icon: const Icon(Icons.undo), onPressed: _undoLastPoint),

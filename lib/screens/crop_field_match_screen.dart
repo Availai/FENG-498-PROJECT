@@ -224,7 +224,13 @@ class _CropFieldMatchScreenState extends State<CropFieldMatchScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Ürün–Tarla Eşleştirme')),
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.of(context).maybePop(),
+        ),
+        title: const Text('Ürün–Tarla Eşleştirme'),
+      ),
       body: Column(
         children: [
           // Ürün seçimi

@@ -61,6 +61,10 @@ class _SatelliteWeatherScreenState extends ConsumerState<SatelliteWeatherScreen>
       appBar: AppBar(
         backgroundColor: const Color(0xFF0D1321),
         foregroundColor: Colors.white,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.of(context).maybePop(),
+        ),
         title: Row(children: [
           const Icon(Icons.satellite_alt, color: Color(0xFF4FC3F7), size: 22),
           const SizedBox(width: 8),
