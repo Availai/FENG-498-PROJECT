@@ -5,6 +5,7 @@ import 'package:geocoding/geocoding.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
+import '../services/notification_service.dart';
 import '../utils/location_utils.dart';
 
 class AgriDashboard extends StatefulWidget {
@@ -93,6 +94,10 @@ class _AgriDashboardState extends State<AgriDashboard>
       await ensureLocationPermission();
       final pos = await getCurrentPosition();
 
+      // ── Proaktif hava uyarısı: max 3 saatte 1 kez ──
+      _triggerWeatherAlertIfDue(pos.latitude, pos.longitude);
+
+
       String detailedAddress = 'Adres çözümleniyor...';
       try {
         List<Placemark> placemarks =
@@ -163,6 +168,36 @@ class _AgriDashboardState extends State<AgriDashboard>
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  /// Proaktif hava uyarısını tetikler — max 3 saatte 1 kez.
+  /// Fire-and-forget: sonucu beklemeyiz, UI'ı bloklamaz.
+  void _triggerWeatherAlertIfDue(double lat, double lng) {
+    final settingsBox = Hive.box('settingsBox');
+    final lastCheckStr = settingsBox.get('last_weather_check_at') as String?;
+    final lastCheck = lastCheckStr != null
+        ? DateTime.tryParse(lastCheckStr)
+        : null;
+    final now = DateTime.now().toUtc();
+
+    // Son kontrolden 3 saatten az geçmişse atla
+    if (lastCheck != null &&
+        now.difference(lastCheck).inHours < 3) {
+      return;
+    }
+
+    // Fire-and-forget — arka planda çalışır, hata sessizce yutulur
+    () async {
+      try {
+        await NotificationService.checkWeatherAndAlert(lat, lng);
+        await settingsBox.put(
+          'last_weather_check_at',
+          now.toIso8601String(),
+        );
+      } catch (_) {
+        // Bildirim hatası uygulamayı etkilememeli
+      }
+    }();
   }
 
   // Hive stats

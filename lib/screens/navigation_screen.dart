@@ -139,6 +139,10 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
 
   @override
   Widget build(BuildContext context) {
+    // Foreground sync: uygulama açıldığında otomatik senkronizasyon tetikle.
+    // Sonucu dinlemiyoruz — arka planda sessizce çalışır, hata UI'ı etkilemez.
+    ref.watch(foregroundSyncProvider);
+
     return Scaffold(
       extendBody: true,
       body: IndexedStack(index: _currentIndex, children: _pages),

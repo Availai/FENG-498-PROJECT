@@ -55,7 +55,10 @@ final syncRepositoryProvider = Provider<SyncRepository>((ref) {
 });
 
 final syncServiceProvider = Provider<SyncService>((ref) {
-  return SyncService(syncRepository: ref.watch(syncRepositoryProvider));
+  return SyncService(
+    syncRepository: ref.watch(syncRepositoryProvider),
+    database: ref.watch(appDatabaseProvider),
+  );
 });
 
 final backendBaseUrlProvider = Provider<String>((ref) {
@@ -72,3 +75,12 @@ final syncApiClientProvider = Provider<SyncApiClient>((ref) {
 final fieldMapsProvider = StreamProvider<List<Map<String, dynamic>>>((ref) {
   return ref.watch(fieldRepositoryProvider).watchFields();
 });
+
+/// Uygulama foreground'a geldiğinde otomatik senkronizasyon çalıştır.
+/// Bu provider ilk kez okunduğunda push cycle'ı tetikler.
+final foregroundSyncProvider = FutureProvider<void>((ref) async {
+  final syncService = ref.read(syncServiceProvider);
+  final apiClient = ref.read(syncApiClientProvider);
+  await syncService.runForegroundSync(apiClient: apiClient);
+});
+

@@ -4,6 +4,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import '../services/agri_service.dart';
+import '../utils/image_compressor.dart';
 import '../utils/location_utils.dart';
 import 'analysis_result_screen.dart';
 import '../theme/app_theme.dart';
@@ -26,7 +27,11 @@ class _CameraScreenState extends State<CameraScreen> {
       maxWidth: 1080,
       maxHeight: 1080,
     );
-    if (img != null) setState(() => _photos.insert(0, File(img.path)));
+    if (img == null) return;
+
+    // AGENTS.md: "Compress photos to WebP before upload when relevant."
+    final compressed = await ImageCompressor.compressToWebP(File(img.path));
+    setState(() => _photos.insert(0, compressed));
   }
 
   @override
@@ -145,8 +150,12 @@ class _CameraScreenState extends State<CameraScreen> {
     final messenger = ScaffoldMessenger.of(context);
     try {
       final pos = await getCurrentPosition();
+
+      // Upload öncesi WebP sıkıştırma (zaten sıkıştırılmışsa atlar)
+      final compressedPhoto = await ImageCompressor.compressToWebP(_photos[index]);
+
       final res = await AgriService.analyzeImage(
-        _photos[index],
+        compressedPhoto,
         pos.latitude,
         pos.longitude,
       );

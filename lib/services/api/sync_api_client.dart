@@ -89,4 +89,50 @@ class SyncApiClient {
       return {'_raw': payloadJson};
     }
   }
+
+  // ── Pull ──────────────────────────────────────────────────────────────
+
+  /// Sunucudan [since] zamanından sonra güncellenen kayıtları çeker.
+  /// [since] null ise tüm kayıtlar döner.
+  Future<SyncPullResult> pullChanges({DateTime? since}) async {
+    final token = await _authTokenProvider();
+    if (token == null || token.isEmpty) {
+      throw StateError('Kimlik doğrulaması bulunamadı.');
+    }
+
+    final queryParams = <String, String>{};
+    if (since != null) {
+      queryParams['since'] = since.toUtc().toIso8601String();
+    }
+
+    final uri = Uri.parse('$_baseUrl/api/sync/pull')
+        .replace(queryParameters: queryParams.isNotEmpty ? queryParams : null);
+
+    final response = await _httpClient.get(
+      uri,
+      headers: {
+        'Authorization': 'Bearer $token',
+      },
+    ).timeout(const Duration(seconds: 15));
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception('Pull başarısız: HTTP ${response.statusCode}');
+    }
+
+    final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+    final rawItems = decoded['items'] as List? ?? const [];
+    final items = rawItems
+        .whereType<Map<String, dynamic>>()
+        .map(SyncPullItem.fromJson)
+        .toList();
+
+    DateTime? serverTime;
+    final serverTimeStr = decoded['server_time']?.toString();
+    if (serverTimeStr != null && serverTimeStr.isNotEmpty) {
+      serverTime = DateTime.tryParse(serverTimeStr)?.toUtc();
+    }
+
+    return SyncPullResult(items: items, serverTime: serverTime);
+  }
 }
+

@@ -3,6 +3,7 @@ import 'dart:math';
 
 import 'package:drift/drift.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:http/http.dart' as http;
 
 import '../data/app_database.dart';
 
@@ -424,6 +425,17 @@ class LocalDataRepository {
     required String fieldId,
     required DateTime referenceTime,
   }) async {
+    // Tarla koordinatlarını al (yağış tahminini çekmek için gerekli)
+    final field = await (_db.select(_db.fields)
+          ..where((tbl) => tbl.id.equals(fieldId)))
+        .getSingleOrNull();
+    final lat = field?.latitude;
+    final lng = field?.longitude;
+
+    // Yağış tahminini çekmeyi dene (7 günlük, günlük yağış olasılığı)
+    // Offline durumda boş map kalır — tüm planlar varsayılan olarak sulama yapar
+    final dailyPrecipProb = await _fetchDailyPrecipForecast(lat, lng);
+
     final crops = await (_db.select(_db.fieldCrops)
           ..where((tbl) => tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull()))
         .get();
@@ -437,15 +449,28 @@ class LocalDataRepository {
 
       while (current.isBefore(harvestDate) && current.isBefore(horizon)) {
         if (!current.isBefore(referenceTime.toLocal().subtract(const Duration(days: 1)))) {
+          // Sulama günü için yağış kontrolü
+          final dateKey = '${current.year}-${current.month.toString().padLeft(2, '0')}-${current.day.toString().padLeft(2, '0')}';
+          final precipProb = dailyPrecipProb[dateKey];
+          final rainExpected = precipProb != null && precipProb >= 60;
+
+          final shouldIrrigate = !rainExpected;
+          final reason = rainExpected
+              ? 'Yağış bekleniyor (%${precipProb.toStringAsFixed(0)} olasılık). Sulama önerilmez.'
+              : 'Varsayılan sulama döngüsüne göre üretildi.';
+          final recommendation = rainExpected
+              ? '🌧️ ${crop.name} — yağış nedeniyle sulama ertelendi'
+              : '${crop.name} için planlanan sulama';
+
           final irrigationId = _newId('irrigation');
           await _db.into(_db.irrigationPlans).insert(
                 IrrigationPlansCompanion.insert(
                   id: irrigationId,
                   fieldId: fieldId,
                   scheduledDate: current.toUtc(),
-                  shouldIrrigate: const Value(true),
-                  reason: 'Varsayılan sulama döngüsüne göre üretildi.',
-                  recommendation: Value('${crop.name} için planlanan sulama'),
+                  shouldIrrigate: Value(shouldIrrigate),
+                  reason: reason,
+                  recommendation: Value(recommendation),
                   cropId: Value(crop.id),
                   createdAt: referenceTime,
                   updatedAt: referenceTime,
@@ -460,14 +485,56 @@ class LocalDataRepository {
               'field_id': fieldId,
               'crop_id': crop.id,
               'scheduled_date': current.toUtc().toIso8601String(),
-              'should_irrigate': true,
-              'reason': 'Varsayılan sulama döngüsüne göre üretildi.',
+              'should_irrigate': shouldIrrigate,
+              'reason': reason,
             },
             updatedAt: referenceTime,
           );
         }
         current = current.add(Duration(days: waterInterval));
       }
+    }
+  }
+
+  /// Open-Meteo'dan 7 günlük yağış olasılığını çeker.
+  /// Dönen map: {'2026-04-08': 75.0, '2026-04-09': 20.0, ...}
+  /// Offline durumda veya hata durumunda boş map döner (graceful fallback).
+  Future<Map<String, double>> _fetchDailyPrecipForecast(
+    double? lat,
+    double? lng,
+  ) async {
+    if (lat == null || lng == null) return const {};
+
+    try {
+      final url = Uri.parse(
+        'https://api.open-meteo.com/v1/forecast'
+        '?latitude=$lat&longitude=$lng'
+        '&daily=precipitation_probability_max'
+        '&forecast_days=7&timezone=auto',
+      );
+
+      final response = await http.get(url).timeout(const Duration(seconds: 8));
+      if (response.statusCode != 200) return const {};
+
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      final daily = body['daily'] as Map<String, dynamic>?;
+      if (daily == null) return const {};
+
+      final dates = (daily['time'] as List?)?.cast<String>() ?? [];
+      final probs = (daily['precipitation_probability_max'] as List?)
+              ?.map((e) => (e as num?)?.toDouble() ?? 0.0)
+              .toList() ??
+          [];
+
+      final result = <String, double>{};
+      for (int i = 0; i < dates.length && i < probs.length; i++) {
+        result[dates[i]] = probs[i];
+      }
+      return result;
+    } catch (_) {
+      // Offline / timeout — graceful fallback: boş map döner,
+      // tüm sulama planları varsayılan (shouldIrrigate=true) olarak kalır.
+      return const {};
     }
   }
 

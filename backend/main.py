@@ -327,3 +327,139 @@ async def plant_crop(field_id: int, req: PlantCropRequest):
     except Exception as e:
         await conn.close()
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ADMIN PANEL ENDPOINTLERI
+# ═══════════════════════════════════════════════════════════════════════════════
+# Tum admin endpointleri X-Admin-Key header ile korunur.
+# Admin anahtari cevresel degisken olarak ayarlanir.
+
+ADMIN_API_KEY = os.getenv("ADMIN_API_KEY", "admin-secret-key-change-me")
+
+# API trafik sayaci (in-memory, restart'ta sifirlanir)
+_api_traffic: dict[str, int] = {}
+_server_start_time = datetime.now(timezone.utc)
+
+
+def _require_admin(x_admin_key: Optional[str]) -> None:
+    """Admin isteklerini X-Admin-Key header ile dogrula."""
+    if not x_admin_key or x_admin_key != ADMIN_API_KEY:
+        raise HTTPException(status_code=403, detail="Gecersiz admin anahtari.")
+
+
+@app.middleware("http")
+async def track_api_traffic(request, call_next):
+    """Her API istegini say — admin/traffic endpointi icin."""
+    path = request.url.path
+    _api_traffic[path] = _api_traffic.get(path, 0) + 1
+    response = await call_next(request)
+    return response
+
+
+# ── GET /api/admin/users ──────────────────────────────────────────────────────
+
+@app.get("/api/admin/users", summary="Kullanici Listesi ve Sync Durumu")
+async def admin_list_users(x_admin_key: Optional[str] = Header(default=None)):
+    """
+    Tum kayitli kullanicilari, sync store'daki kayit sayilarini
+    ve son aktivite zamanlarini doner.
+    """
+    _require_admin(x_admin_key)
+
+    users = []
+    for user_key, entities in _sync_store.items():
+        total_records = 0
+        entity_counts = {}
+        latest_update = None
+
+        for entity_type, records in entities.items():
+            count = len(records)
+            entity_counts[entity_type] = count
+            total_records += count
+
+            for rec in records.values():
+                updated = rec.get("updated_at")
+                if updated and (latest_update is None or updated > latest_update):
+                    latest_update = updated
+
+        users.append({
+            "user_key": user_key,
+            "total_synced_records": total_records,
+            "entity_counts": entity_counts,
+            "last_activity": latest_update.isoformat() if latest_update else None,
+            "status": "active",
+        })
+
+    return {
+        "success": True,
+        "total_users": len(users),
+        "users": users,
+    }
+
+
+# ── GET /api/admin/traffic ────────────────────────────────────────────────────
+
+@app.get("/api/admin/traffic", summary="API Trafik Istatistikleri")
+async def admin_traffic(x_admin_key: Optional[str] = Header(default=None)):
+    """
+    Sunucu baslatildigindan bu yana her endpoint icin istek sayisini doner.
+    """
+    _require_admin(x_admin_key)
+
+    total_requests = sum(_api_traffic.values())
+    sorted_endpoints = sorted(_api_traffic.items(), key=lambda x: x[1], reverse=True)
+
+    uptime_seconds = (datetime.now(timezone.utc) - _server_start_time).total_seconds()
+
+    return {
+        "success": True,
+        "server_start_time": _server_start_time.isoformat(),
+        "uptime_seconds": int(uptime_seconds),
+        "total_requests": total_requests,
+        "endpoints": [
+            {"path": path, "request_count": count}
+            for path, count in sorted_endpoints
+        ],
+    }
+
+
+# ── POST /api/admin/content ───────────────────────────────────────────────────
+
+class ContentUpdateRequest(BaseModel):
+    """Ansiklopedi veya genel icerik guncelleme istegi."""
+    entity_type: str = Field(..., description="Icerik turu, ornegin 'encyclopedia'")
+    entity_id: str = Field(..., description="Guncellenen kaydin kimliği")
+    payload: dict[str, Any] = Field(default_factory=dict, description="Guncel icerik verisi")
+
+
+@app.post("/api/admin/content", summary="Icerik Guncelleme (Ansiklopedi vs.)")
+async def admin_update_content(
+    req: ContentUpdateRequest,
+    x_admin_key: Optional[str] = Header(default=None),
+):
+    """
+    Admin panelinden ansiklopedi veya diger icerik verilerini gunceller.
+    Guncelleme tum kullanicilarin pull cycle'inda dagitilir.
+    """
+    _require_admin(x_admin_key)
+
+    now = datetime.now(timezone.utc)
+
+    # Ozel 'admin' bucket'ina kaydet — tum kullanicilar pull ederken bu kayitlari alir
+    admin_bucket = _sync_store.setdefault("__admin_content__", {})
+    entity_bucket = admin_bucket.setdefault(req.entity_type, {})
+    entity_bucket[req.entity_id] = {
+        "entity_type": req.entity_type,
+        "entity_id": req.entity_id,
+        "operation": "upsert",
+        "payload": req.payload,
+        "updated_at": now,
+    }
+
+    return {
+        "success": True,
+        "message": f"Icerik guncellendi: {req.entity_type}/{req.entity_id}",
+        "updated_at": now.isoformat(),
+    }
+

@@ -4,6 +4,10 @@ import 'package:workmanager/workmanager.dart';
 import 'package:geolocator/geolocator.dart';
 
 import 'notification_service.dart';
+import '../data/app_database.dart';
+import 'repositories/sync_repository.dart';
+import 'sync_service.dart';
+import 'api/sync_api_client.dart';
 
 /// Background görev anahtarları.
 class BackgroundTasks {
@@ -81,11 +85,27 @@ void backgroundDispatcher() {
           }
           return true;
         case BackgroundTasks.periodicSyncFlush:
-          // Sync flush için gerçek tetikleme uygulama foreground açıldığında
-          // SyncService tarafından yapılır. Background dispatcher yalnızca bir
-          // bildirim noktası olarak yer tutar; gerçek I/O Drift+HTTP gerektirir
-          // ve isolate açılışında ayrı init şart koşar. Bu yer tutucu, ileride
-          // headless sync isolate'ı için imza sağlar.
+          // Headless isolate'da sync flush: Drift DB'yi ayrı aç,
+          // push cycle'ı çalıştır, kapat.
+          try {
+            final db = AppDatabase();
+            final syncRepo = SyncRepository(database: db);
+            final syncService = SyncService(syncRepository: syncRepo);
+            final apiClient = SyncApiClient(
+              baseUrl: 'http://10.0.2.2:8000', // Emulator localhost
+              authTokenProvider: () async => null, // Background'da token yok — best-effort
+            );
+
+            // Token olmadan push başarısız olur ama job'lar pending kalır.
+            // Foreground'da tekrar denenir.
+            final online = await SyncService.hasNetwork();
+            if (online) {
+              await syncService.runForegroundSync(apiClient: apiClient);
+            }
+            await db.close();
+          } catch (e) {
+            debugPrint('Sync flush skipped: $e');
+          }
           return true;
         default:
           return true;
@@ -96,3 +116,4 @@ void backgroundDispatcher() {
     }
   });
 }
+
