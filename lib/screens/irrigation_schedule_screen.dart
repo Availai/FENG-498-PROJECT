@@ -187,9 +187,16 @@ class _IrrigationScheduleScreenState
                   children: [
                     _stat('Sulama Günü', '${s.irrigationDays}'),
                     _stat('Toplam Su', '${s.totalWaterMm.toStringAsFixed(0)} mm'),
-                    _stat('Haftalık İhtiyaç',
-                        '${s.weeklyNeedMm.toStringAsFixed(0)} mm'),
+                    _stat(
+                      'Toplam ETc',
+                      '${s.totalCropDemandMm.toStringAsFixed(0)} mm',
+                    ),
                   ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Kc: ${s.kcUsed.toStringAsFixed(2)} • ${s.method}',
+                  style: const TextStyle(color: Colors.black54, fontSize: 12),
                 ),
               ],
             ),
@@ -248,6 +255,14 @@ class _IrrigationScheduleScreenState
                           Text('💧 ${p.recommendation}',
                               style: const TextStyle(
                                   fontSize: 13, color: Colors.black87)),
+                          const SizedBox(height: 4),
+                          Text(
+                            'ET₀ ${p.etoMm.toStringAsFixed(1)} • ETc ${p.etcMm.toStringAsFixed(1)} • Kc ${p.kc.toStringAsFixed(2)}',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.black54,
+                            ),
+                          ),
                         ],
                       ),
                     ),
