@@ -18,6 +18,9 @@ class IrrigationDayPlan {
   final String reason;
   final String recommendation;
   final double estimatedMm;
+  final double etoMm;
+  final double etcMm;
+  final double kc;
 
   const IrrigationDayPlan({
     required this.date,
@@ -27,6 +30,9 @@ class IrrigationDayPlan {
     required this.reason,
     required this.recommendation,
     required this.estimatedMm,
+    required this.etoMm,
+    required this.etcMm,
+    required this.kc,
   });
 
   factory IrrigationDayPlan.fromJson(Map<String, dynamic> j) {
@@ -38,6 +44,9 @@ class IrrigationDayPlan {
       reason: j['reason'] as String? ?? '',
       recommendation: j['recommendation'] as String? ?? '',
       estimatedMm: ((j['estimated_mm'] as num?) ?? 0).toDouble(),
+      etoMm: ((j['eto_mm'] as num?) ?? 0).toDouble(),
+      etcMm: ((j['etc_mm'] as num?) ?? 0).toDouble(),
+      kc: ((j['kc'] as num?) ?? 1).toDouble(),
     );
   }
 }
@@ -46,14 +55,18 @@ class IrrigationSchedule {
   final int totalDays;
   final int irrigationDays;
   final double totalWaterMm;
-  final double weeklyNeedMm;
+  final double totalCropDemandMm;
+  final double kcUsed;
+  final String method;
   final List<IrrigationDayPlan> plan;
 
   const IrrigationSchedule({
     required this.totalDays,
     required this.irrigationDays,
     required this.totalWaterMm,
-    required this.weeklyNeedMm,
+    required this.totalCropDemandMm,
+    required this.kcUsed,
+    required this.method,
     required this.plan,
   });
 }
@@ -128,7 +141,10 @@ class IrrigationService {
       totalDays: (summary['total_days'] as num?)?.toInt() ?? planList.length,
       irrigationDays: (summary['irrigation_days'] as num?)?.toInt() ?? 0,
       totalWaterMm: ((summary['total_water_mm'] as num?) ?? 0).toDouble(),
-      weeklyNeedMm: ((summary['weekly_need_mm'] as num?) ?? 0).toDouble(),
+      totalCropDemandMm:
+          ((summary['total_crop_demand_mm'] as num?) ?? 0).toDouble(),
+      kcUsed: ((summary['kc_used'] as num?) ?? 1).toDouble(),
+      method: (summary['method'] as String?) ?? '',
       plan: planList,
     );
   }
