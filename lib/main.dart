@@ -39,6 +39,7 @@ void main() async {
   await Hive.openBox('fieldsBox');
   await Hive.openBox('settingsBox');
   await Hive.openBox('sim_results_cache');
+  await Hive.openBox('sensor_data');
 
 
   // 4. Push notification service

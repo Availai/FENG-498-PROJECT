@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import '../services/notification_service.dart';
 import '../utils/location_utils.dart';
+import 'sensor_data_screen.dart';
 
 class AgriDashboard extends StatefulWidget {
   const AgriDashboard({super.key});
@@ -233,6 +234,8 @@ class _AgriDashboardState extends State<AgriDashboard>
                       const SizedBox(height: 12),
                       _buildSoilCard(),
                       const SizedBox(height: 24),
+                      _buildSensorButton(),
+                      const SizedBox(height: 12),
                       _buildArchiveButton(),
                     ],
                   ),
@@ -682,6 +685,26 @@ class _AgriDashboardState extends State<AgriDashboard>
             style: TextStyle(fontSize: 10.5, color: Colors.grey.shade400),
           ),
         ],
+      ),
+    );
+  }
+
+
+  Widget _buildSensorButton() {
+    return OutlinedButton.icon(
+      onPressed: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const SensorDataScreen()),
+        );
+      },
+      icon: const Icon(Icons.sensors_rounded),
+      label: const Text('CANLI SENSÖR PANELİ'),
+      style: OutlinedButton.styleFrom(
+        minimumSize: const Size.fromHeight(48),
+        foregroundColor: Colors.teal.shade700,
+        side: BorderSide(color: Colors.teal.shade300),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
     );
   }
