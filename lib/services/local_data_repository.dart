@@ -312,6 +312,7 @@ class LocalDataRepository {
               plantedDate: Value(plantedDate),
               harvestDays: Value(harvestDays),
               waterIntervalDays: Value(waterIntervalDays),
+              zonePolygonJson: Value(crop['zone_polygon_json']?.toString()),
               createdAt: Value(_parseTimestamp(crop['created_at']) ?? now),
               updatedAt: Value(now),
               deletedAt: const Value(null),
@@ -684,9 +685,127 @@ class LocalDataRepository {
       'planted_date': crop.plantedDate,
       'harvest_days': crop.harvestDays ?? 90,
       'water_interval_days': crop.waterIntervalDays ?? 7,
+      'zone_polygon_json': crop.zonePolygonJson,
       'created_at': crop.createdAt.toIso8601String(),
       'updated_at': crop.updatedAt.toIso8601String(),
     };
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // TEK BİTKİ CRUD — İnteraktif bölge yerleştirme sistemi için
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /// Mevcut bitkilere dokunmadan tarlaya tek bir bitki ekler.
+  /// [zonePolygonJson]: JSON dizesi [{"lat":...,"lng":...}, ...]
+  Future<String> addSingleCropToField({
+    required String fieldId,
+    required String name,
+    int? colorValue,
+    String? plantedDate,
+    int harvestDays = 90,
+    int waterIntervalDays = 7,
+    double rowSpacingCm = 50.0,
+    double plantSpacingCm = 40.0,
+    String? zonePolygonJson,
+  }) async {
+    final now = DateTime.now().toUtc();
+    final cropId = _newId('crop');
+
+    await _db.into(_db.fieldCrops).insert(
+      FieldCropsCompanion.insert(
+        id: cropId,
+        fieldId: fieldId,
+        name: name,
+        zoneStart: 0.0,
+        zoneEnd: 1.0,
+        rowSpacingCm: rowSpacingCm,
+        plantSpacingCm: plantSpacingCm,
+        colorValue: Value(colorValue),
+        plantedDate: Value(plantedDate),
+        harvestDays: Value(harvestDays),
+        waterIntervalDays: Value(waterIntervalDays),
+        zonePolygonJson: Value(zonePolygonJson),
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+
+    await _enqueueSyncJob(
+      entityType: 'field_crops',
+      entityId: cropId,
+      operation: 'upsert',
+      payload: {
+        'id': cropId,
+        'field_id': fieldId,
+        'name': name,
+        'zone_polygon_json': zonePolygonJson,
+      },
+      updatedAt: now,
+    );
+
+    await _regenerateIrrigationPlans(fieldId: fieldId, referenceTime: now);
+    await _mirrorActiveFieldsToHive();
+    return cropId;
+  }
+
+  /// Tek bir bitkiyi soft-delete eder.
+  Future<void> deleteSingleCrop(String cropId) async {
+    final now = DateTime.now().toUtc();
+
+    final crop = await (_db.select(_db.fieldCrops)
+          ..where((tbl) => tbl.id.equals(cropId)))
+        .getSingleOrNull();
+    if (crop == null) return;
+
+    await (_db.update(_db.fieldCrops)..where((tbl) => tbl.id.equals(cropId)))
+        .write(FieldCropsCompanion(
+      updatedAt: Value(now),
+      deletedAt: Value(now),
+    ));
+
+    // İlgili sulama planlarını da sil
+    await (_db.update(_db.irrigationPlans)
+          ..where((tbl) => tbl.cropId.equals(cropId) & tbl.deletedAt.isNull()))
+        .write(IrrigationPlansCompanion(
+      updatedAt: Value(now),
+      deletedAt: Value(now),
+    ));
+
+    await _enqueueSyncJob(
+      entityType: 'field_crops',
+      entityId: cropId,
+      operation: 'delete',
+      payload: {'id': cropId},
+      updatedAt: now,
+    );
+
+    await _mirrorActiveFieldsToHive();
+  }
+
+  /// Bir bitkinin bölge poligonunu günceller.
+  Future<void> updateCropZone({
+    required String cropId,
+    required String? zonePolygonJson,
+  }) async {
+    final now = DateTime.now().toUtc();
+    await (_db.update(_db.fieldCrops)..where((tbl) => tbl.id.equals(cropId)))
+        .write(FieldCropsCompanion(
+      zonePolygonJson: Value(zonePolygonJson),
+      updatedAt: Value(now),
+    ));
+
+    await _enqueueSyncJob(
+      entityType: 'field_crops',
+      entityId: cropId,
+      operation: 'upsert',
+      payload: {
+        'id': cropId,
+        'zone_polygon_json': zonePolygonJson,
+      },
+      updatedAt: now,
+    );
+
+    await _mirrorActiveFieldsToHive();
   }
 
   SimpleSelectStatement<$FieldsTable, Field> _activeFieldsQuery() {

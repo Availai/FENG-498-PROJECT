@@ -661,6 +661,12 @@ class $FieldCropsTable extends FieldCrops
   late final GeneratedColumn<int> waterIntervalDays = GeneratedColumn<int>(
       'water_interval_days', aliasedName, true,
       type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _zonePolygonJsonMeta =
+      const VerificationMeta('zonePolygonJson');
+  @override
+  late final GeneratedColumn<String> zonePolygonJson = GeneratedColumn<String>(
+      'zone_polygon_json', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _createdAtMeta =
       const VerificationMeta('createdAt');
   @override
@@ -692,6 +698,7 @@ class $FieldCropsTable extends FieldCrops
         plantedDate,
         harvestDays,
         waterIntervalDays,
+        zonePolygonJson,
         createdAt,
         updatedAt,
         deletedAt
@@ -775,6 +782,12 @@ class $FieldCropsTable extends FieldCrops
           waterIntervalDays.isAcceptableOrUnknown(
               data['water_interval_days']!, _waterIntervalDaysMeta));
     }
+    if (data.containsKey('zone_polygon_json')) {
+      context.handle(
+          _zonePolygonJsonMeta,
+          zonePolygonJson.isAcceptableOrUnknown(
+              data['zone_polygon_json']!, _zonePolygonJsonMeta));
+    }
     if (data.containsKey('created_at')) {
       context.handle(_createdAtMeta,
           createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
@@ -822,6 +835,8 @@ class $FieldCropsTable extends FieldCrops
           .read(DriftSqlType.int, data['${effectivePrefix}harvest_days']),
       waterIntervalDays: attachedDatabase.typeMapping.read(
           DriftSqlType.int, data['${effectivePrefix}water_interval_days']),
+      zonePolygonJson: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}zone_polygon_json']),
       createdAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
       updatedAt: attachedDatabase.typeMapping
@@ -849,6 +864,10 @@ class FieldCrop extends DataClass implements Insertable<FieldCrop> {
   final String? plantedDate;
   final int? harvestDays;
   final int? waterIntervalDays;
+
+  /// Sub-polygon JSON: [{"lat":..., "lng":...}, ...]
+  /// null ise bitki tüm tarla alanına ekilmiş kabul edilir.
+  final String? zonePolygonJson;
   final DateTime createdAt;
   final DateTime updatedAt;
   final DateTime? deletedAt;
@@ -864,6 +883,7 @@ class FieldCrop extends DataClass implements Insertable<FieldCrop> {
       this.plantedDate,
       this.harvestDays,
       this.waterIntervalDays,
+      this.zonePolygonJson,
       required this.createdAt,
       required this.updatedAt,
       this.deletedAt});
@@ -888,6 +908,9 @@ class FieldCrop extends DataClass implements Insertable<FieldCrop> {
     }
     if (!nullToAbsent || waterIntervalDays != null) {
       map['water_interval_days'] = Variable<int>(waterIntervalDays);
+    }
+    if (!nullToAbsent || zonePolygonJson != null) {
+      map['zone_polygon_json'] = Variable<String>(zonePolygonJson);
     }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
@@ -918,6 +941,9 @@ class FieldCrop extends DataClass implements Insertable<FieldCrop> {
       waterIntervalDays: waterIntervalDays == null && nullToAbsent
           ? const Value.absent()
           : Value(waterIntervalDays),
+      zonePolygonJson: zonePolygonJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(zonePolygonJson),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
       deletedAt: deletedAt == null && nullToAbsent
@@ -941,6 +967,7 @@ class FieldCrop extends DataClass implements Insertable<FieldCrop> {
       plantedDate: serializer.fromJson<String?>(json['plantedDate']),
       harvestDays: serializer.fromJson<int?>(json['harvestDays']),
       waterIntervalDays: serializer.fromJson<int?>(json['waterIntervalDays']),
+      zonePolygonJson: serializer.fromJson<String?>(json['zonePolygonJson']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
@@ -961,6 +988,7 @@ class FieldCrop extends DataClass implements Insertable<FieldCrop> {
       'plantedDate': serializer.toJson<String?>(plantedDate),
       'harvestDays': serializer.toJson<int?>(harvestDays),
       'waterIntervalDays': serializer.toJson<int?>(waterIntervalDays),
+      'zonePolygonJson': serializer.toJson<String?>(zonePolygonJson),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'deletedAt': serializer.toJson<DateTime?>(deletedAt),
@@ -979,6 +1007,7 @@ class FieldCrop extends DataClass implements Insertable<FieldCrop> {
           Value<String?> plantedDate = const Value.absent(),
           Value<int?> harvestDays = const Value.absent(),
           Value<int?> waterIntervalDays = const Value.absent(),
+          Value<String?> zonePolygonJson = const Value.absent(),
           DateTime? createdAt,
           DateTime? updatedAt,
           Value<DateTime?> deletedAt = const Value.absent()}) =>
@@ -996,6 +1025,9 @@ class FieldCrop extends DataClass implements Insertable<FieldCrop> {
         waterIntervalDays: waterIntervalDays.present
             ? waterIntervalDays.value
             : this.waterIntervalDays,
+        zonePolygonJson: zonePolygonJson.present
+            ? zonePolygonJson.value
+            : this.zonePolygonJson,
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
         deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
@@ -1022,6 +1054,9 @@ class FieldCrop extends DataClass implements Insertable<FieldCrop> {
       waterIntervalDays: data.waterIntervalDays.present
           ? data.waterIntervalDays.value
           : this.waterIntervalDays,
+      zonePolygonJson: data.zonePolygonJson.present
+          ? data.zonePolygonJson.value
+          : this.zonePolygonJson,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
@@ -1042,6 +1077,7 @@ class FieldCrop extends DataClass implements Insertable<FieldCrop> {
           ..write('plantedDate: $plantedDate, ')
           ..write('harvestDays: $harvestDays, ')
           ..write('waterIntervalDays: $waterIntervalDays, ')
+          ..write('zonePolygonJson: $zonePolygonJson, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('deletedAt: $deletedAt')
@@ -1062,6 +1098,7 @@ class FieldCrop extends DataClass implements Insertable<FieldCrop> {
       plantedDate,
       harvestDays,
       waterIntervalDays,
+      zonePolygonJson,
       createdAt,
       updatedAt,
       deletedAt);
@@ -1080,6 +1117,7 @@ class FieldCrop extends DataClass implements Insertable<FieldCrop> {
           other.plantedDate == this.plantedDate &&
           other.harvestDays == this.harvestDays &&
           other.waterIntervalDays == this.waterIntervalDays &&
+          other.zonePolygonJson == this.zonePolygonJson &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
           other.deletedAt == this.deletedAt);
@@ -1097,6 +1135,7 @@ class FieldCropsCompanion extends UpdateCompanion<FieldCrop> {
   final Value<String?> plantedDate;
   final Value<int?> harvestDays;
   final Value<int?> waterIntervalDays;
+  final Value<String?> zonePolygonJson;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<DateTime?> deletedAt;
@@ -1113,6 +1152,7 @@ class FieldCropsCompanion extends UpdateCompanion<FieldCrop> {
     this.plantedDate = const Value.absent(),
     this.harvestDays = const Value.absent(),
     this.waterIntervalDays = const Value.absent(),
+    this.zonePolygonJson = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.deletedAt = const Value.absent(),
@@ -1130,6 +1170,7 @@ class FieldCropsCompanion extends UpdateCompanion<FieldCrop> {
     this.plantedDate = const Value.absent(),
     this.harvestDays = const Value.absent(),
     this.waterIntervalDays = const Value.absent(),
+    this.zonePolygonJson = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
     this.deletedAt = const Value.absent(),
@@ -1155,6 +1196,7 @@ class FieldCropsCompanion extends UpdateCompanion<FieldCrop> {
     Expression<String>? plantedDate,
     Expression<int>? harvestDays,
     Expression<int>? waterIntervalDays,
+    Expression<String>? zonePolygonJson,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<DateTime>? deletedAt,
@@ -1172,6 +1214,7 @@ class FieldCropsCompanion extends UpdateCompanion<FieldCrop> {
       if (plantedDate != null) 'planted_date': plantedDate,
       if (harvestDays != null) 'harvest_days': harvestDays,
       if (waterIntervalDays != null) 'water_interval_days': waterIntervalDays,
+      if (zonePolygonJson != null) 'zone_polygon_json': zonePolygonJson,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (deletedAt != null) 'deleted_at': deletedAt,
@@ -1191,6 +1234,7 @@ class FieldCropsCompanion extends UpdateCompanion<FieldCrop> {
       Value<String?>? plantedDate,
       Value<int?>? harvestDays,
       Value<int?>? waterIntervalDays,
+      Value<String?>? zonePolygonJson,
       Value<DateTime>? createdAt,
       Value<DateTime>? updatedAt,
       Value<DateTime?>? deletedAt,
@@ -1207,6 +1251,7 @@ class FieldCropsCompanion extends UpdateCompanion<FieldCrop> {
       plantedDate: plantedDate ?? this.plantedDate,
       harvestDays: harvestDays ?? this.harvestDays,
       waterIntervalDays: waterIntervalDays ?? this.waterIntervalDays,
+      zonePolygonJson: zonePolygonJson ?? this.zonePolygonJson,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       deletedAt: deletedAt ?? this.deletedAt,
@@ -1250,6 +1295,9 @@ class FieldCropsCompanion extends UpdateCompanion<FieldCrop> {
     if (waterIntervalDays.present) {
       map['water_interval_days'] = Variable<int>(waterIntervalDays.value);
     }
+    if (zonePolygonJson.present) {
+      map['zone_polygon_json'] = Variable<String>(zonePolygonJson.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -1279,6 +1327,7 @@ class FieldCropsCompanion extends UpdateCompanion<FieldCrop> {
           ..write('plantedDate: $plantedDate, ')
           ..write('harvestDays: $harvestDays, ')
           ..write('waterIntervalDays: $waterIntervalDays, ')
+          ..write('zonePolygonJson: $zonePolygonJson, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('deletedAt: $deletedAt, ')
@@ -4122,6 +4171,7 @@ typedef $$FieldCropsTableCreateCompanionBuilder = FieldCropsCompanion Function({
   Value<String?> plantedDate,
   Value<int?> harvestDays,
   Value<int?> waterIntervalDays,
+  Value<String?> zonePolygonJson,
   required DateTime createdAt,
   required DateTime updatedAt,
   Value<DateTime?> deletedAt,
@@ -4139,6 +4189,7 @@ typedef $$FieldCropsTableUpdateCompanionBuilder = FieldCropsCompanion Function({
   Value<String?> plantedDate,
   Value<int?> harvestDays,
   Value<int?> waterIntervalDays,
+  Value<String?> zonePolygonJson,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
   Value<DateTime?> deletedAt,
@@ -4235,6 +4286,10 @@ class $$FieldCropsTableFilterComposer
 
   ColumnFilters<int> get waterIntervalDays => $composableBuilder(
       column: $table.waterIntervalDays,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get zonePolygonJson => $composableBuilder(
+      column: $table.zonePolygonJson,
       builder: (column) => ColumnFilters(column));
 
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
@@ -4351,6 +4406,10 @@ class $$FieldCropsTableOrderingComposer
       column: $table.waterIntervalDays,
       builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get zonePolygonJson => $composableBuilder(
+      column: $table.zonePolygonJson,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnOrderings(column));
 
@@ -4419,6 +4478,9 @@ class $$FieldCropsTableAnnotationComposer
 
   GeneratedColumn<int> get waterIntervalDays => $composableBuilder(
       column: $table.waterIntervalDays, builder: (column) => column);
+
+  GeneratedColumn<String> get zonePolygonJson => $composableBuilder(
+      column: $table.zonePolygonJson, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -4527,6 +4589,7 @@ class $$FieldCropsTableTableManager extends RootTableManager<
             Value<String?> plantedDate = const Value.absent(),
             Value<int?> harvestDays = const Value.absent(),
             Value<int?> waterIntervalDays = const Value.absent(),
+            Value<String?> zonePolygonJson = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
             Value<DateTime?> deletedAt = const Value.absent(),
@@ -4544,6 +4607,7 @@ class $$FieldCropsTableTableManager extends RootTableManager<
             plantedDate: plantedDate,
             harvestDays: harvestDays,
             waterIntervalDays: waterIntervalDays,
+            zonePolygonJson: zonePolygonJson,
             createdAt: createdAt,
             updatedAt: updatedAt,
             deletedAt: deletedAt,
@@ -4561,6 +4625,7 @@ class $$FieldCropsTableTableManager extends RootTableManager<
             Value<String?> plantedDate = const Value.absent(),
             Value<int?> harvestDays = const Value.absent(),
             Value<int?> waterIntervalDays = const Value.absent(),
+            Value<String?> zonePolygonJson = const Value.absent(),
             required DateTime createdAt,
             required DateTime updatedAt,
             Value<DateTime?> deletedAt = const Value.absent(),
@@ -4578,6 +4643,7 @@ class $$FieldCropsTableTableManager extends RootTableManager<
             plantedDate: plantedDate,
             harvestDays: harvestDays,
             waterIntervalDays: waterIntervalDays,
+            zonePolygonJson: zonePolygonJson,
             createdAt: createdAt,
             updatedAt: updatedAt,
             deletedAt: deletedAt,

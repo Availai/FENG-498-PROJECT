@@ -749,3 +749,57 @@ async def admin_update_content(
         "updated_at": now.isoformat(),
     }
 
+
+# ── POST /api/admin/broadcast ─────────────────────────────────────────────────
+# Toplu bildirim — admin bucket uzerinden tum kullanicilara dagitilir.
+# Istemci sync pull cycle'inde bildirimi alip yerel notification olarak gosterir.
+
+class BroadcastRequest(BaseModel):
+    """Toplu bildirim istegi."""
+    title: str = Field(..., min_length=1, max_length=120, description="Bildirim basligi")
+    body: str = Field(..., min_length=1, max_length=500, description="Bildirim govdesi")
+    target: str = Field(default="all", description="Hedef: 'all' veya kullanici anahtari")
+    severity: str = Field(default="info", description="info | warning | critical")
+
+
+@app.post("/api/admin/broadcast", summary="Toplu Bildirim Gonderme")
+async def admin_broadcast(
+    req: BroadcastRequest,
+    x_admin_key: Optional[str] = Header(default=None),
+):
+    """
+    Toplu bildirimi admin bucket'ina kaydeder. Istemciler sync pull cycle'inde
+    bu bildirimleri cekip yerel olarak gosterir. Cevrimdisi kullanicilar
+    bir sonraki sync'te alir.
+    """
+    _require_admin(x_admin_key)
+
+    if req.severity not in ("info", "warning", "critical"):
+        raise HTTPException(status_code=400, detail="severity: info|warning|critical")
+
+    now = datetime.now(timezone.utc)
+    notif_id = f"broadcast_{int(now.timestamp() * 1000)}"
+
+    admin_bucket = _sync_store.setdefault("__admin_content__", {})
+    notif_bucket = admin_bucket.setdefault("notifications", {})
+    notif_bucket[notif_id] = {
+        "entity_type": "notifications",
+        "entity_id": notif_id,
+        "operation": "upsert",
+        "payload": {
+            "id": notif_id,
+            "title": req.title,
+            "body": req.body,
+            "severity": req.severity,
+            "target": req.target,
+            "sent_at": now.isoformat(),
+        },
+        "updated_at": now,
+    }
+
+    return {
+        "success": True,
+        "message": f"Bildirim kuyruga alindi: {notif_id}",
+        "notification_id": notif_id,
+        "sent_at": now.isoformat(),
+    }

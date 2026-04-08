@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -9,8 +10,12 @@ import '../services/agri_service.dart';
 import '../services/app_providers.dart';
 import '../data/verified_agri_database.dart';
 import '../widgets/glass_panel.dart';
+import '../widgets/zone_drawing_toolbar.dart';
+import '../widgets/crop_zone_legend.dart';
+import '../widgets/crop_zone_tooltip.dart';
+import '../widgets/field_panorama_view.dart';
+import '../widgets/crop_render_factory.dart';
 import 'seed_selector_screen.dart';
-import 'harvest_oracle_screen.dart';
 import 'irrigation_schedule_screen.dart';
 
 class FieldDetailScreen extends ConsumerStatefulWidget {
@@ -30,9 +35,18 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
   bool _isRefreshingSuitability = false;
   String? _error;
 
+  // ═══ Bölge çizme modu state ═══
+  bool _isZoneDrawingMode = false;
+  List<LatLng> _zoneDrawingPoints = [];
+  AgriPlant? _pendingPlant;
+  Map<String, dynamic>? _selectedCropForTooltip;
+
   late AnimationController _animCtrl;
   late Animation<double> _uiFadeAnim;
   late Animation<Offset> _uiSlideAnim;
+
+  // Hasat halosu animasyonu
+  late AnimationController _harvestPulseCtrl;
 
   final MapController _mapController = MapController();
 
@@ -51,6 +65,11 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
             curve: const Interval(0.2, 1.0, curve: Curves.easeOutBack)));
 
     _animCtrl.forward();
+
+    _harvestPulseCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat(reverse: true);
 
     _loadLatestSuitabilityReport();
     _loadAnalysis();
@@ -80,6 +99,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
   @override
   void dispose() {
     _animCtrl.dispose();
+    _harvestPulseCtrl.dispose();
     super.dispose();
   }
 
@@ -333,7 +353,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
 
           // 4. Center Top/Sides stats
           // 4. Live Stats (sağ üst)
-          if (!_isLoading && _error == null)
+          if (!_isLoading && _error == null && !_isZoneDrawingMode)
             Positioned(
               right: 12,
               top: MediaQuery.of(context).padding.top + 56,
@@ -347,7 +367,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
             ),
 
           // 4b. Uygunluk raporu (sol üst)
-          if (!_isLoading && _error == null)
+          if (!_isLoading && _error == null && !_isZoneDrawingMode)
             Positioned(
               left: 12,
               top: MediaQuery.of(context).padding.top + 56,
@@ -361,7 +381,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
             ),
 
           // 4c. Field Details (sağ alt)
-          if (!_isLoading && _error == null && _fieldCrops.isNotEmpty)
+          if (!_isLoading && _error == null && _fieldCrops.isNotEmpty && !_isZoneDrawingMode)
             Positioned(
               right: 12,
               bottom: MediaQuery.of(context).padding.bottom + 90,
@@ -372,7 +392,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
             ),
 
           // 4d. Alert badges (sol taraf, harita üstü)
-          if (!_isLoading && _error == null)
+          if (!_isLoading && _error == null && !_isZoneDrawingMode)
             Positioned(
               left: 60,
               top: MediaQuery.of(context).size.height * 0.38,
@@ -382,8 +402,28 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
               ),
             ),
 
-          // 5. Bottom System Nav
-          if (!_isLoading && _error == null)
+          // 4e. Bölge lejandı (sol alt)
+          if (!_isLoading && _error == null && _fieldCrops.isNotEmpty && !_isZoneDrawingMode)
+            Positioned(
+              left: 12,
+              bottom: MediaQuery.of(context).padding.bottom + 90,
+              child: FadeTransition(
+                opacity: _uiFadeAnim,
+                child: CropZoneLegend(
+                  zones: _fieldCrops.map((crop) {
+                    final zoneJson = crop['zone_polygon_json']?.toString();
+                    return {
+                      'name': crop['name']?.toString() ?? 'Bitki',
+                      'color': _cropColor(crop),
+                      'has_zone': zoneJson != null && zoneJson.isNotEmpty,
+                    };
+                  }).toList(),
+                ),
+              ),
+            ),
+
+          // 5. Bottom System Nav — normal mod
+          if (!_isLoading && _error == null && !_isZoneDrawingMode)
             Positioned(
               left: 16,
               right: 16,
@@ -393,6 +433,41 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
                 child: SlideTransition(
                   position: _uiSlideAnim,
                   child: _buildHUDBottomBar(),
+                ),
+              ),
+            ),
+
+          // 5b. Bottom — bölge çizme modu toolbar
+          if (_isZoneDrawingMode)
+            Positioned(
+              left: 16,
+              right: 16,
+              bottom: MediaQuery.of(context).padding.bottom + 20,
+              child: ZoneDrawingToolbar(
+                plantName: _pendingPlant?.nameTr ?? 'Bitki',
+                plantColor: _pendingPlant?.renderColor ?? const Color(0xFF00E676),
+                pointCount: _zoneDrawingPoints.length,
+                onUndo: _undoLastZonePoint,
+                onComplete: _completeZoneDrawing,
+                onCancel: _cancelZoneDrawing,
+              ),
+            ),
+
+          // 6. Crop Zone Tooltip overlay
+          if (_selectedCropForTooltip != null)
+            Positioned(
+              left: 0,
+              right: 0,
+              top: MediaQuery.of(context).size.height * 0.25,
+              child: Center(
+                child: CropZoneTooltip(
+                  cropName: _selectedCropForTooltip!['name']?.toString() ?? 'Bitki',
+                  cropColor: _cropColor(_selectedCropForTooltip!),
+                  plantedDate: _selectedCropForTooltip!['planted_date']?.toString(),
+                  harvestDays: (_selectedCropForTooltip!['harvest_days'] as num?)?.toInt() ?? 90,
+                  maturityPercent: _computeMaturityPercent(_selectedCropForTooltip!),
+                  onDelete: () => _deleteCropZone(_selectedCropForTooltip!),
+                  onClose: _closeTooltip,
                 ),
               ),
             ),
@@ -753,12 +828,11 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
       child: Row(
         children: [
           Expanded(child: _buildNavBtn(Icons.add_circle_rounded, 'Ekle', _showPlantPicker, primary: true)),
+          Expanded(child: _buildNavBtn(Icons.view_in_ar_rounded, '360°', _openPanoramaView)),
           Expanded(child: _buildNavBtn(Icons.eco_rounded, 'Nöbetleşe', _showCropRecommendations)),
           Expanded(child: _buildNavBtn(Icons.article_rounded, 'Detaylar', _showDetailModal)),
           Expanded(child: _buildNavBtn(Icons.grain_rounded, 'Tohum', () => Navigator.push(context,
               MaterialPageRoute(builder: (_) => const SeedSelectorScreen())))),
-          Expanded(child: _buildNavBtn(Icons.wb_cloudy_rounded, 'Hasat', () => Navigator.push(context,
-              MaterialPageRoute(builder: (_) => const HarvestOracleScreen())))),
           Expanded(child: _buildNavBtn(Icons.water_drop_rounded, 'Sulama', _openIrrigationSchedule)),
         ],
       ),
@@ -789,6 +863,35 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
           latitude: lat,
           longitude: lon,
           cropTr: crop,
+          fieldName: name,
+        ),
+      ),
+    );
+  }
+
+  void _openPanoramaView() {
+    final d = widget.fieldData;
+    final polygon = _polygonPoints(d);
+    final crops = _plantedCrops(d);
+    final area = (d['area_dekar'] as num?)?.toDouble() ?? 1.0;
+    final name = d['name']?.toString() ?? 'Tarla';
+
+    if (polygon.length < 3) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('360° görünüm için tarlanın alan çizimi gereklidir.'),
+        ),
+      );
+      return;
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => FieldPanoramaView(
+          polygon: polygon,
+          crops: crops,
+          areaDekar: area,
           fieldName: name,
         ),
       ),
@@ -899,12 +1002,152 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
         scored: scored,
         onPick: (plant) async {
           Navigator.pop(context);
-          await _plantCrop(plant);
+          _startZoneDrawing(plant);
         },
       ),
     );
   }
 
+  // ═════════════════════════════════════════════════
+  // BÖLGE ÇİZME MODU — İnteraktif ürün yerleştirme
+  // ═════════════════════════════════════════════════
+
+  void _startZoneDrawing(AgriPlant plant) {
+    setState(() {
+      _isZoneDrawingMode = true;
+      _zoneDrawingPoints = [];
+      _pendingPlant = plant;
+      _selectedCropForTooltip = null;
+    });
+  }
+
+  void _cancelZoneDrawing() {
+    setState(() {
+      _isZoneDrawingMode = false;
+      _zoneDrawingPoints = [];
+      _pendingPlant = null;
+    });
+  }
+
+  void _undoLastZonePoint() {
+    if (_zoneDrawingPoints.isNotEmpty) {
+      setState(() {
+        _zoneDrawingPoints = List.from(_zoneDrawingPoints)..removeLast();
+      });
+    }
+  }
+
+  void _onMapTapForZone(LatLng point) {
+    if (!_isZoneDrawingMode) return;
+
+    final polygon = _polygonPoints(widget.fieldData);
+    if (polygon.length < 3) return;
+
+    // Nokta tarla poligonu içinde mi kontrol et
+    if (!_pointInPolygon(point.latitude, point.longitude, polygon)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Bu nokta tarla sınırları dışında.'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _zoneDrawingPoints = [..._zoneDrawingPoints, point];
+    });
+  }
+
+  Future<void> _completeZoneDrawing() async {
+    if (_pendingPlant == null || _zoneDrawingPoints.length < 3) return;
+
+    final plant = _pendingPlant!;
+    final fieldId = widget.fieldData['id']?.toString();
+    if (fieldId == null || fieldId.isEmpty) return;
+
+    // Zone polygon'u JSON'a çevir
+    final zoneJson = jsonEncode(
+      _zoneDrawingPoints
+          .map((p) => {'lat': p.latitude, 'lng': p.longitude})
+          .toList(),
+    );
+
+    final repo = ref.read(localDataRepositoryProvider);
+    await repo.addSingleCropToField(
+      fieldId: fieldId,
+      name: plant.nameTr,
+      colorValue: plant.renderColor.toARGB32(),
+      plantedDate:
+          '${DateTime.now().day.toString().padLeft(2, '0')}.${DateTime.now().month.toString().padLeft(2, '0')}.${DateTime.now().year}',
+      harvestDays: plant.daysToHarvest,
+      waterIntervalDays: 7,
+      zonePolygonJson: zoneJson,
+    );
+
+    setState(() {
+      _isZoneDrawingMode = false;
+      _zoneDrawingPoints = [];
+      _pendingPlant = null;
+    });
+
+    await _loadFieldCrops();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('${plant.nameTr} seçilen bölgeye yerleştirildi.'),
+      ),
+    );
+  }
+
+  /// Bölgeye dokunulduğunda tooltip göster
+  void _onCropZoneTap(Map<String, dynamic> crop) {
+    if (_isZoneDrawingMode) return;
+    setState(() {
+      _selectedCropForTooltip = crop;
+    });
+  }
+
+  void _closeTooltip() {
+    setState(() => _selectedCropForTooltip = null);
+  }
+
+  Future<void> _deleteCropZone(Map<String, dynamic> crop) async {
+    final cropId = crop['id']?.toString();
+    if (cropId == null) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Bölgeyi Sil'),
+        content: Text('"${crop['name']}" bölgesi silinecek. Emin misiniz?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('İptal'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Sil'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await ref.read(localDataRepositoryProvider).deleteSingleCrop(cropId);
+      _closeTooltip();
+      await _loadFieldCrops();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${crop['name']} bölgesi silindi.')),
+      );
+    }
+  }
+
+  // Eski _plantCrop uyumluluk için (zone olmadan ekleme)
+  // ignore: unused_element
   Future<void> _plantCrop(AgriPlant plant) async {
     final fieldId = widget.fieldData['id']?.toString();
     if (fieldId == null || fieldId.isEmpty) {
@@ -915,23 +1158,14 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
     }
 
     final repo = ref.read(localDataRepositoryProvider);
-    final existing = await repo.loadFieldCrops(fieldId);
-    final newCrop = <String, dynamic>{
-      'name': plant.nameTr,
-      'zone_start': 0.0,
-      'zone_end': 1.0,
-      'row_spacing_cm': 50.0,
-      'plant_spacing_cm': 40.0,
-      'color_value': plant.renderColor.toARGB32(),
-      'planted_date':
-          '${DateTime.now().day.toString().padLeft(2, '0')}.${DateTime.now().month.toString().padLeft(2, '0')}.${DateTime.now().year}',
-      'harvest_days': plant.daysToHarvest,
-      'water_interval_days': 7,
-    };
-
-    await repo.replaceFieldCrops(
+    await repo.addSingleCropToField(
       fieldId: fieldId,
-      crops: [...existing, newCrop],
+      name: plant.nameTr,
+      colorValue: plant.renderColor.toARGB32(),
+      plantedDate:
+          '${DateTime.now().day.toString().padLeft(2, '0')}.${DateTime.now().month.toString().padLeft(2, '0')}.${DateTime.now().year}',
+      harvestDays: plant.daysToHarvest,
+      waterIntervalDays: 7,
     );
 
     await _loadFieldCrops();
@@ -1057,35 +1291,29 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
     return const Color(0xFF66BB6A);
   }
 
+  /// Sub-polygon JSON'dan LatLng listesi çıkar
+  List<LatLng> _parseZonePolygon(String? json) {
+    if (json == null || json.isEmpty) return const [];
+    try {
+      final decoded = jsonDecode(json);
+      if (decoded is List) {
+        return decoded
+            .whereType<Map>()
+            .map((e) => LatLng(
+                  (e['lat'] as num).toDouble(),
+                  (e['lng'] as num).toDouble(),
+                ))
+            .toList();
+      }
+    } catch (_) {}
+    return const [];
+  }
+
   Widget _build3DFieldMap(Map<String, dynamic> d) {
     final polygon = _polygonPoints(d);
     final center = _fieldCenter(d, polygon);
     final crops = _plantedCrops(d);
 
-    // Polygon iç markerları (toplam ~36 nokta) — ekili ekinler arasında dağıt.
-    final positions = _gridInsidePolygon(polygon, 36);
-    final markers = <Marker>[];
-    if (crops.isNotEmpty && positions.isNotEmpty) {
-      for (int i = 0; i < positions.length; i++) {
-        final crop = crops[i % crops.length];
-        markers.add(
-          Marker(
-            point: positions[i],
-            width: 28,
-            height: 28,
-            child: Text(
-              _cropEmoji(crop['name']?.toString() ?? ''),
-              style: const TextStyle(fontSize: 20),
-              textAlign: TextAlign.center,
-            ),
-          ),
-        );
-      }
-    }
-
-    final polygonColor = crops.isNotEmpty
-        ? _cropColor(crops.first).withValues(alpha: 0.30)
-        : const Color(0xFF00E676).withValues(alpha: 0.25);
     const borderColor = Color(0xFF00E676);
 
     // Polygon bounds — kameranın sınırları ve initial fit için.
@@ -1094,7 +1322,129 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
       bounds = LatLngBounds.fromPoints(polygon);
     }
 
-    // Köşe etiketleri (A, B, C, D ...) — referans görseldeki gibi.
+    // ── Ekili bölge poligonları (zonePolygonJson olanlar) ──
+    final zonePolygons = <Polygon>[];
+    final zoneMarkers = <Marker>[];
+    // Zone olmayan bitkiler için eski grid markerlar
+    final gridCrops = <Map<String, dynamic>>[];
+
+    for (final crop in crops) {
+      final zoneJson = crop['zone_polygon_json']?.toString();
+      final zonePoly = _parseZonePolygon(zoneJson);
+
+      if (zonePoly.length >= 3) {
+        final color = _cropColor(crop);
+        zonePolygons.add(Polygon(
+          points: zonePoly,
+          color: color.withValues(alpha: 0.35),
+          borderColor: color,
+          borderStrokeWidth: 2.5,
+        ));
+
+        // Bölge merkez marker'ı — dokunulabilir
+        double cLat = 0, cLng = 0;
+        for (final p in zonePoly) {
+          cLat += p.latitude;
+          cLng += p.longitude;
+        }
+        final zoneCenter = LatLng(cLat / zonePoly.length, cLng / zonePoly.length);
+
+        final maturity = _computeMaturityPercent(crop);
+        zoneMarkers.add(Marker(
+          point: zoneCenter,
+          width: 36,
+          height: 42,
+          child: AnimatedBuilder(
+            animation: _harvestPulseCtrl,
+            builder: (_, __) => buildCropMarkerWidget(
+              cropName: crop['name']?.toString() ?? '',
+              cropColor: color,
+              maturityPercent: maturity,
+              harvestPulse: _harvestPulseCtrl.value,
+              onTap: () => _onCropZoneTap(crop),
+            ),
+          ),
+        ));
+      } else {
+        gridCrops.add(crop);
+      }
+    }
+
+    // Zone olmayan bitkiler için eski grid markerlar → CustomPainter
+    final positions = _gridInsidePolygon(polygon, 36);
+    final markers = <Marker>[];
+    if (gridCrops.isNotEmpty && positions.isNotEmpty) {
+      for (int i = 0; i < positions.length; i++) {
+        final crop = gridCrops[i % gridCrops.length];
+        final maturity = _computeMaturityPercent(crop);
+        markers.add(
+          Marker(
+            point: positions[i],
+            width: 32,
+            height: 38,
+            child: AnimatedBuilder(
+              animation: _harvestPulseCtrl,
+              builder: (_, __) => buildCropMarkerWidget(
+                cropName: crop['name']?.toString() ?? '',
+                cropColor: _cropColor(crop),
+                maturityPercent: maturity,
+                harvestPulse: _harvestPulseCtrl.value,
+                onTap: () => _onCropZoneTap(crop),
+              ),
+            ),
+          ),
+        );
+      }
+    }
+
+    // ── Bölge çizme modu — çizilmekte olan polygon ──
+    final drawingPolygons = <Polygon>[];
+    final drawingMarkers = <Marker>[];
+    if (_isZoneDrawingMode && _zoneDrawingPoints.isNotEmpty) {
+      // Çizilmekte olan polygon
+      if (_zoneDrawingPoints.length >= 3) {
+        final drawColor = _pendingPlant?.renderColor ?? const Color(0xFF00E676);
+        drawingPolygons.add(Polygon(
+          points: _zoneDrawingPoints,
+          color: drawColor.withValues(alpha: 0.20),
+          borderColor: drawColor,
+          borderStrokeWidth: 3.0,
+        ));
+      }
+
+      // Nokta markerları (numaralı)
+      for (int i = 0; i < _zoneDrawingPoints.length; i++) {
+        drawingMarkers.add(Marker(
+          point: _zoneDrawingPoints[i],
+          width: 28,
+          height: 28,
+          child: Container(
+            decoration: BoxDecoration(
+              color: (_pendingPlant?.renderColor ?? const Color(0xFF00E676))
+                  .withValues(alpha: 0.85),
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white, width: 2),
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              '${i + 1}',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ));
+      }
+    }
+
+    // Ana tarla polygon rengi
+    final polygonColor = crops.isNotEmpty
+        ? _cropColor(crops.first).withValues(alpha: 0.15)
+        : const Color(0xFF00E676).withValues(alpha: 0.15);
+
+    // Köşe etiketleri (A, B, C, D ...)
     final cornerMarkers = <Marker>[];
     for (int i = 0; i < polygon.length && i < 26; i++) {
       cornerMarkers.add(
@@ -1138,11 +1488,16 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
         cameraConstraint: bounds != null
             ? CameraConstraint.containCenter(bounds: bounds)
             : const CameraConstraint.unconstrained(),
-        interactionOptions: const InteractionOptions(
-          flags: InteractiveFlag.pinchZoom |
-              InteractiveFlag.drag |
-              InteractiveFlag.doubleTapZoom,
+        interactionOptions: InteractionOptions(
+          flags: _isZoneDrawingMode
+              ? InteractiveFlag.pinchZoom | InteractiveFlag.drag
+              : InteractiveFlag.pinchZoom |
+                  InteractiveFlag.drag |
+                  InteractiveFlag.doubleTapZoom,
         ),
+        onTap: _isZoneDrawingMode
+            ? (tapPos, point) => _onMapTapForZone(point)
+            : null,
       ),
       children: [
         TileLayer(
@@ -1168,9 +1523,15 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
                 borderColor: borderColor,
                 borderStrokeWidth: 3.0,
               ),
+              // Ekili bölge poligonları
+              ...zonePolygons,
+              // Çizilmekte olan polygon
+              ...drawingPolygons,
             ],
           ),
         if (markers.isNotEmpty) MarkerLayer(markers: markers),
+        if (zoneMarkers.isNotEmpty) MarkerLayer(markers: zoneMarkers),
+        if (drawingMarkers.isNotEmpty) MarkerLayer(markers: drawingMarkers),
         if (cornerMarkers.isNotEmpty) MarkerLayer(markers: cornerMarkers),
       ],
     );

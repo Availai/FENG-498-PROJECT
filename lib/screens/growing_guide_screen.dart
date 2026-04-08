@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/agri_service.dart';
+import '../services/encyclopedia_extensions.dart';
 import '../utils/location_utils.dart';
 import '../widgets/weekly_water_card.dart';
 
@@ -501,6 +502,8 @@ class _GrowingGuideScreenState extends State<GrowingGuideScreen> {
           ),
           const SizedBox(height: 14),
 
+          // ── 7. Ansiklopedi Derinleştirme — Modül 4 ──
+          _buildEncyclopediaDeepCard(),
 
           const SizedBox(height: 40),
         ],
@@ -577,6 +580,210 @@ class _GrowingGuideScreenState extends State<GrowingGuideScreen> {
             ],
           )),
         ],
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Modül 4 — Ansiklopedi Derinleştirme
+  // ─────────────────────────────────────────────────────────────────────
+  Widget _buildEncyclopediaDeepCard() {
+    final stages = EncyclopediaExtensions.stagesFor(_currentCrop);
+    final pests = EncyclopediaExtensions.pestsFor(_currentCrop);
+
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                Icon(Icons.menu_book_rounded, color: Colors.teal),
+                SizedBox(width: 6),
+                Text('Ansiklopedi — Derinlemesine',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'İnternet olmadan da çalışan kapsamlı rehber.',
+              style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+            ),
+            const SizedBox(height: 8),
+
+            // 1. Adım adım büyüme
+            ExpansionTile(
+              tilePadding: const EdgeInsets.symmetric(horizontal: 4),
+              leading: const Icon(Icons.timeline, color: Colors.green, size: 20),
+              title: const Text('Adım Adım Yetiştirme',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+              children: stages.map((s) {
+                return ListTile(
+                  dense: true,
+                  leading: CircleAvatar(
+                    radius: 14,
+                    backgroundColor: Colors.green.shade100,
+                    child: Text('${stages.indexOf(s) + 1}',
+                        style: TextStyle(
+                            color: Colors.green.shade800,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13)),
+                  ),
+                  title: Text('${s.label} — ${s.durationDays}',
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(s.description, style: const TextStyle(fontSize: 12)),
+                      const SizedBox(height: 2),
+                      Text('💡 ${s.careTip}',
+                          style: TextStyle(fontSize: 12, color: Colors.amber.shade900)),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+
+            // 2. Bölgesel ekim takvimi
+            ExpansionTile(
+              tilePadding: const EdgeInsets.symmetric(horizontal: 4),
+              leading: const Icon(Icons.map_outlined, color: Colors.blue, size: 20),
+              title: const Text('Bölgesel Ekim Takvimi',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+              children: EncyclopediaExtensions.regionalCalendar.entries.map((region) {
+                final iklim = region.value['iklim'] ?? '';
+                final crops = Map<String, String>.from(region.value)..remove('iklim');
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  child: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade50,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(region.key,
+                            style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.blue.shade900)),
+                        Text(iklim,
+                            style: TextStyle(
+                                fontSize: 11,
+                                fontStyle: FontStyle.italic,
+                                color: Colors.blue.shade700)),
+                        const SizedBox(height: 4),
+                        ...crops.entries.map((e) => Padding(
+                              padding: const EdgeInsets.only(top: 2),
+                              child: Text('• ${e.key}: ${e.value}',
+                                  style: const TextStyle(fontSize: 12)),
+                            )),
+                      ],
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+
+            // 3. Hastalık & zararlı tanıma
+            ExpansionTile(
+              tilePadding: const EdgeInsets.symmetric(horizontal: 4),
+              leading: const Icon(Icons.bug_report, color: Colors.red, size: 20),
+              title: const Text('Hastalık & Zararlı Tanıma',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+              children: pests.map((p) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  child: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade50,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(p.name,
+                            style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.red.shade900)),
+                        const SizedBox(height: 4),
+                        Text('🔍 Belirtiler: ${p.symptoms}',
+                            style: const TextStyle(fontSize: 12)),
+                        const SizedBox(height: 4),
+                        Text('🌿 Organik: ${p.organicTreatment}',
+                            style: TextStyle(fontSize: 12, color: Colors.green.shade900)),
+                        const SizedBox(height: 2),
+                        Text('🧪 Kimyasal: ${p.chemicalTreatment}',
+                            style: TextStyle(fontSize: 12, color: Colors.orange.shade900)),
+                      ],
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+
+            // 4. Toprak iyileştirme
+            ExpansionTile(
+              tilePadding: const EdgeInsets.symmetric(horizontal: 4),
+              leading: const Icon(Icons.terrain, color: Colors.brown, size: 20),
+              title: const Text('Toprak İyileştirme',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+              children: EncyclopediaExtensions.soilImprovement.map((item) {
+                return ListTile(
+                  dense: true,
+                  leading: Icon(Icons.eco, color: Colors.brown.shade400, size: 18),
+                  title: Text(item['baslik'] ?? '',
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                  subtitle: Text(item['oneri'] ?? '',
+                      style: const TextStyle(fontSize: 12)),
+                );
+              }).toList(),
+            ),
+
+            // 5. Organik tarım yöntemleri
+            ExpansionTile(
+              tilePadding: const EdgeInsets.symmetric(horizontal: 4),
+              leading: const Icon(Icons.spa, color: Colors.green, size: 20),
+              title: const Text('Organik Tarım Yöntemleri',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+              children: EncyclopediaExtensions.organicMethods.map((item) {
+                return ListTile(
+                  dense: true,
+                  leading: Icon(Icons.check_circle, color: Colors.green.shade400, size: 18),
+                  title: Text(item['baslik'] ?? '',
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                  subtitle: Text(item['aciklama'] ?? '',
+                      style: const TextStyle(fontSize: 12)),
+                );
+              }).toList(),
+            ),
+
+            // 6. Geleneksel Anadolu bilgileri
+            ExpansionTile(
+              tilePadding: const EdgeInsets.symmetric(horizontal: 4),
+              leading: const Icon(Icons.auto_stories, color: Colors.deepOrange, size: 20),
+              title: const Text('Geleneksel Anadolu Bilgisi',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+              children: EncyclopediaExtensions.traditionalKnowledge.map((item) {
+                return ListTile(
+                  dense: true,
+                  leading: Icon(Icons.history_edu,
+                      color: Colors.deepOrange.shade400, size: 18),
+                  title: Text(item['baslik'] ?? '',
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                  subtitle: Text(item['aciklama'] ?? '',
+                      style: const TextStyle(fontSize: 12)),
+                );
+              }).toList(),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -37,6 +37,9 @@ class FieldCrops extends Table {
   TextColumn get plantedDate => text().nullable()();
   IntColumn get harvestDays => integer().nullable()();
   IntColumn get waterIntervalDays => integer().nullable()();
+  /// Sub-polygon JSON: [{"lat":..., "lng":...}, ...]
+  /// null ise bitki tüm tarla alanına ekilmiş kabul edilir.
+  TextColumn get zonePolygonJson => text().nullable()();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
   DateTimeColumn get deletedAt => dateTime().nullable()();
@@ -129,12 +132,18 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) async {
           await m.createAll();
+        },
+        onUpgrade: (m, from, to) async {
+          if (from < 2) {
+            // v2: FieldCrops tablosuna zonePolygonJson TEXT nullable sütun ekle
+            await m.addColumn(fieldCrops, fieldCrops.zonePolygonJson);
+          }
         },
       );
 }

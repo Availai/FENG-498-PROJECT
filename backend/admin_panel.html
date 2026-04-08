@@ -43,6 +43,7 @@
   <button class="active" data-tab="users" onclick="showTab('users')">👥 Kullanıcılar</button>
   <button data-tab="traffic" onclick="showTab('traffic')">📊 API Trafiği</button>
   <button data-tab="content" onclick="showTab('content')">📝 İçerik Güncelleme</button>
+  <button data-tab="broadcast" onclick="showTab('broadcast')">📣 Toplu Bildirim</button>
 </nav>
 <main>
   <div id="alert"></div>
@@ -96,6 +97,32 @@
       </div>
     </div>
   </section>
+
+  <!-- BROADCAST -->
+  <section id="tab-broadcast" class="hidden">
+    <div class="card">
+      <h2>Toplu Bildirim Gönderme</h2>
+      <p style="color:#666; font-size:13px;">
+        Bildirim admin sync kuyruğuna düşer. Bağlantı olan kullanıcılar anında, çevrimdışı olanlar
+        bir sonraki sync döngüsünde alır.
+      </p>
+      <label>Başlık</label>
+      <input id="bTitle" placeholder="Hava Uyarısı" maxlength="120">
+      <label>Mesaj</label>
+      <textarea id="bBody" rows="5" placeholder="Yarın don bekleniyor, hassas bitkilerinizi koruyun." maxlength="500"></textarea>
+      <label>Önem Düzeyi</label>
+      <select id="bSeverity">
+        <option value="info">Bilgi (info)</option>
+        <option value="warning">Uyarı (warning)</option>
+        <option value="critical">Kritik (critical)</option>
+      </select>
+      <label>Hedef</label>
+      <input id="bTarget" placeholder="all veya kullanıcı anahtarı" value="all">
+      <div style="margin-top:14px;">
+        <button class="primary" onclick="sendBroadcast()">Gönder</button>
+      </div>
+    </div>
+  </section>
 </main>
 
 <script>
@@ -115,7 +142,7 @@ function showAlert(msg, type) {
   setTimeout(() => { el.className = ''; el.textContent = ''; }, 4000);
 }
 function showTab(name) {
-  ['users','traffic','content'].forEach(t => {
+  ['users','traffic','content','broadcast'].forEach(t => {
     document.getElementById('tab-'+t).classList.toggle('hidden', t !== name);
   });
   document.querySelectorAll('nav button').forEach(b => {
@@ -169,6 +196,26 @@ async function loadTraffic() {
     tbody.innerHTML = data.endpoints.map(e =>
       `<tr><td><code>${e.path}</code></td><td>${e.request_count}</td></tr>`).join('');
   } catch (e) { showAlert('Trafik verisi yüklenemedi: ' + e.message, 'err'); }
+}
+
+async function sendBroadcast() {
+  const title = document.getElementById('bTitle').value.trim();
+  const body = document.getElementById('bBody').value.trim();
+  if (!title || !body) {
+    showAlert('Başlık ve mesaj zorunlu.', 'err');
+    return;
+  }
+  try {
+    const res = await apiPost('/api/admin/broadcast', {
+      title: title,
+      body: body,
+      severity: document.getElementById('bSeverity').value,
+      target: document.getElementById('bTarget').value.trim() || 'all',
+    });
+    showAlert(res.message || 'Bildirim gönderildi', 'ok');
+    document.getElementById('bTitle').value = '';
+    document.getElementById('bBody').value = '';
+  } catch (e) { showAlert('Bildirim hatası: ' + e.message, 'err'); }
 }
 
 async function updateContent() {
