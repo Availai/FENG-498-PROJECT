@@ -10,6 +10,7 @@ import 'my_crops_screen.dart';
 import 'camera_screen.dart';
 import 'plant_database_screen.dart';
 import 'crop_calendar_screen.dart';
+import 'map_hub_screen.dart';
 
 class MainNavigationScreen extends ConsumerStatefulWidget {
   const MainNavigationScreen({super.key});
@@ -94,6 +95,28 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
                         fontSize: 13, color: Colors.grey.shade500)),
               const SizedBox(height: 24),
               // Archive button
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                      color: Colors.green.shade50,
+                      borderRadius: BorderRadius.circular(10)),
+                  child: Icon(Icons.map_rounded,
+                      color: Colors.green.shade700, size: 20),
+                ),
+                title: const Text('Harita Merkezi'),
+                subtitle: const Text('Tarla poligonlarını haritada görüntüle'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const MapHubScreen(),
+                    ),
+                  );
+                },
+              ),
+              const Divider(),
               ListTile(
                 leading: Container(
                   padding: const EdgeInsets.all(8),
