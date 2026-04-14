@@ -1,179 +1,183 @@
-/// Premium AgriApp Design System
+/// AgriApp Tasarım Sistemi — Çiftçi Dostu Sade Tema
 ///
-/// Palette: Deep forest green × ivory white × warm amber
-/// Typography: Outfit (headings) / Inter (body)
-/// Effects: Glassmorphism cards, soft shadows, subtle gradients
+/// Palet: Beyaz arka plan × krem kartlar × yonca yeşili aksan
+/// Tipografi: Outfit (başlıklar) / Inter (gövde) — sabah güneşinde okunaklı
+/// Hedef: Yüksek kontrast, dev fontlar, glassmorphism yok, blur yok.
 library;
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// RENK PALETİ
+// RENK PALETİ — Doğal, sıcak, kontrastlı
 // ─────────────────────────────────────────────────────────────────────────────
 
 abstract class AppColors {
-  // Backgrounds
-  static const bg = Color(0xFFF4F7F3);          // very light sage
-  static const bgDark = Color(0xFF0F1C14);       // deep forest
-  static const surface = Color(0xFFFFFFFF);
-  static const surfaceDark = Color(0xFF172218);  // dark card
+  // Zeminler — beyaz scaffold, krem kart
+  static const bg = Color(0xFFFFFFFF);           // scaffold: saf beyaz
+  static const bgDark = Color(0xFFF5F0E1);       // (legacy) — artık krem
+  static const surface = Color(0xFFFBF7EC);      // kart: sıcak krem
+  static const surfaceDark = Color(0xFFF0EADA);  // (legacy) — koyu krem
+  static const surfaceAlt = Color(0xFFF8F4E8);   // ikincil kart krem
 
-  // Primary greens
-  static const emerald = Color(0xFF059669);       // primary CTA
-  static const emeraldLight = Color(0xFF34D399);  // highlights
-  static const emeraldDark = Color(0xFF064E3B);   // deep accent
-  static const forest = Color(0xFF1B4332);        // hero backgrounds
-  static const sage = Color(0xFF6EAD8A);          // muted green
-  static const mint = Color(0xFFA7F3D0);          // soft tag bg
+  // Yonca yeşili aksanlar (neon değil, doğal)
+  static const emerald = Color(0xFF43A047);       // ana CTA — yonca yeşili
+  static const emeraldLight = Color(0xFF81C784);  // açık vurgu
+  static const emeraldDark = Color(0xFF2E7D32);   // koyu yaprak
+  static const forest = Color(0xFF1B5E20);        // hero / yoğun yeşil
+  static const sage = Color(0xFF8BAE8F);          // yumuşak adaçayı
+  static const mint = Color(0xFFE8F5E9);          // chip arka plan
 
-  // Text
-  static const textPrimary = Color(0xFF111827);
-  static const textSecondary = Color(0xFF6B7280);
-  static const textTertiary = Color(0xFF9CA3AF);
-  static const textOnDark = Color(0xFFF9FAFB);
-  static const textOnDarkMuted = Color(0xFF9DC4AE);
+  // Toprak tonları
+  static const soil = Color(0xFF8D6E63);          // toprak kahve
+  static const soilLight = Color(0xFFD7CCC8);     // açık toprak
+  static const wheat = Color(0xFFE8D48A);         // buğday sarısı
 
-  // Semantic
-  static const warning = Color(0xFFF59E0B);
-  static const warningBg = Color(0xFFFFF7ED);
-  static const error = Color(0xFFDC2626);
-  static const errorBg = Color(0xFFFEF2F2);
-  static const info = Color(0xFF0EA5E9);
-  static const infoBg = Color(0xFFF0F9FF);
-  static const success = Color(0xFF059669);
-  static const successBg = Color(0xFFF0FDF4);
+  // Metin — yüksek kontrast, göz yormayan koyu gri
+  static const textPrimary = Color(0xFF1F2937);   // neredeyse siyah
+  static const textSecondary = Color(0xFF4B5563); // koyu gri
+  static const textTertiary = Color(0xFF6B7280);  // orta gri
+  static const textOnDark = Color(0xFFFFFFFF);    // yeşil hero üstünde beyaz
+  static const textOnDarkMuted = Color(0xFFE0F2E4);
 
-  // Borders & dividers
-  static const border = Color(0xFFE5E7EB);
-  static const borderDark = Color(0xFF1F3027);
-  static const divider = Color(0xFFF3F4F6);
+  // Semantik — sade, uyarıcı tonlar
+  static const warning = Color(0xFFE67E22);       // hasat / uyarı turuncu
+  static const warningBg = Color(0xFFFFF4E6);
+  static const error = Color(0xFFD32F2F);
+  static const errorBg = Color(0xFFFFEBEE);
+  static const info = Color(0xFF1976D2);
+  static const infoBg = Color(0xFFE3F2FD);
+  static const success = Color(0xFF43A047);
+  static const successBg = Color(0xFFE8F5E9);
+  static const frost = Color(0xFF0288D1);         // zirai don mavisi
+  static const frostBg = Color(0xFFE1F5FE);
 
-  // Glass overlay
-  static const glassLight = Color(0xB3FFFFFF);   // 70% white
-  static const glassDark = Color(0x26FFFFFF);    // 15% white
+  // Çizgiler
+  static const border = Color(0xFFE5E1D3);        // krem kenarlık
+  static const borderDark = Color(0xFFCBC3AE);
+  static const divider = Color(0xFFEEE9DA);
+
+  // (legacy) Glass — artık tamamen opak, blur yok
+  static const glassLight = Color(0xFFFBF7EC);
+  static const glassDark = Color(0xFFF0EADA);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SHADOWS
+// GÖLGELER — Çok hafif, blursuz kart yükseltisi
 // ─────────────────────────────────────────────────────────────────────────────
 
 abstract class AppShadows {
   static const sm = [
-    BoxShadow(color: Color(0x0A000000), blurRadius: 4, offset: Offset(0, 1)),
-    BoxShadow(color: Color(0x06000000), blurRadius: 2, offset: Offset(0, 1)),
+    BoxShadow(color: Color(0x0F000000), blurRadius: 3, offset: Offset(0, 1)),
   ];
 
   static const md = [
-    BoxShadow(color: Color(0x10000000), blurRadius: 8, offset: Offset(0, 2)),
-    BoxShadow(color: Color(0x08000000), blurRadius: 4, offset: Offset(0, 1)),
+    BoxShadow(color: Color(0x14000000), blurRadius: 6, offset: Offset(0, 2)),
   ];
 
   static const lg = [
-    BoxShadow(color: Color(0x18000000), blurRadius: 16, offset: Offset(0, 4)),
-    BoxShadow(color: Color(0x0A000000), blurRadius: 8, offset: Offset(0, 2)),
+    BoxShadow(color: Color(0x1A000000), blurRadius: 10, offset: Offset(0, 3)),
   ];
 
+  // (legacy) Neon glow → sade emerald gölgesi
   static const emeraldGlow = [
-    BoxShadow(color: Color(0x30059669), blurRadius: 20, offset: Offset(0, 4)),
+    BoxShadow(color: Color(0x264CAF50), blurRadius: 8, offset: Offset(0, 2)),
   ];
 
   static const card = [
-    BoxShadow(color: Color(0x08000000), blurRadius: 12, offset: Offset(0, 4)),
-    BoxShadow(color: Color(0x05000000), blurRadius: 4, offset: Offset(0, 1)),
-    BoxShadow(color: Color(0x06FFFFFF), blurRadius: 1, offset: Offset(0, -1)),
+    BoxShadow(color: Color(0x0F000000), blurRadius: 6, offset: Offset(0, 2)),
   ];
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// BORDER RADIUS
+// KÖŞE YUMUŞAKLIĞI
 // ─────────────────────────────────────────────────────────────────────────────
 
 abstract class AppRadius {
-  static const xs = BorderRadius.all(Radius.circular(6));
-  static const sm = BorderRadius.all(Radius.circular(10));
-  static const md = BorderRadius.all(Radius.circular(14));
-  static const lg = BorderRadius.all(Radius.circular(20));
+  static const xs = BorderRadius.all(Radius.circular(8));
+  static const sm = BorderRadius.all(Radius.circular(12));
+  static const md = BorderRadius.all(Radius.circular(16));
+  static const lg = BorderRadius.all(Radius.circular(22));
   static const xl = BorderRadius.all(Radius.circular(28));
   static const full = BorderRadius.all(Radius.circular(999));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// TYPOGRAPHY
+// TİPOGRAFİ — Çiftçi gözü yormasın diye büyük, net
 // ─────────────────────────────────────────────────────────────────────────────
 
 abstract class AppText {
-  // Outfit — display / heading
+  // Outfit — başlık
   static TextStyle display(BuildContext context) =>
-      GoogleFonts.outfit(fontSize: 32, fontWeight: FontWeight.w700, color: AppColors.textPrimary, height: 1.15);
+      GoogleFonts.outfit(fontSize: 36, fontWeight: FontWeight.w800, color: AppColors.textPrimary, height: 1.15);
   static TextStyle h1(BuildContext context) =>
-      GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.w700, color: AppColors.textPrimary, height: 1.2);
+      GoogleFonts.outfit(fontSize: 28, fontWeight: FontWeight.w700, color: AppColors.textPrimary, height: 1.2);
   static TextStyle h2(BuildContext context) =>
-      GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.w600, color: AppColors.textPrimary, height: 1.25);
+      GoogleFonts.outfit(fontSize: 22, fontWeight: FontWeight.w700, color: AppColors.textPrimary, height: 1.25);
   static TextStyle h3(BuildContext context) =>
-      GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary, height: 1.3);
+      GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w600, color: AppColors.textPrimary, height: 1.3);
 
-  // Inter — body / captions
+  // Inter — gövde
   static TextStyle body(BuildContext context) =>
-      GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w400, color: AppColors.textPrimary, height: 1.5);
+      GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w400, color: AppColors.textPrimary, height: 1.5);
   static TextStyle bodyMd(BuildContext context) =>
-      GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.textPrimary, height: 1.5);
+      GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary, height: 1.5);
   static TextStyle sm(BuildContext context) =>
-      GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w400, color: AppColors.textSecondary, height: 1.4);
+      GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.textSecondary, height: 1.45);
   static TextStyle xs(BuildContext context) =>
-      GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w500, color: AppColors.textTertiary, height: 1.3);
+      GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textTertiary, height: 1.3);
   static TextStyle label(BuildContext context) =>
-      GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary, letterSpacing: 0.8, height: 1.2);
+      GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textSecondary, letterSpacing: 0.6, height: 1.2);
   static TextStyle mono(BuildContext context) =>
-      GoogleFonts.robotoMono(fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.textPrimary, height: 1.4);
+      GoogleFonts.robotoMono(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.textPrimary, height: 1.4);
 
-  // Dark variants
+  // Koyu zemin varyantları (yeşil hero kartlar için)
   static TextStyle h1Dark(BuildContext context) =>
-      GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.w700, color: AppColors.textOnDark, height: 1.2);
+      GoogleFonts.outfit(fontSize: 28, fontWeight: FontWeight.w700, color: AppColors.textOnDark, height: 1.2);
   static TextStyle h3Dark(BuildContext context) =>
-      GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textOnDark, height: 1.3);
+      GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w600, color: AppColors.textOnDark, height: 1.3);
   static TextStyle bodyDark(BuildContext context) =>
-      GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w400, color: AppColors.textOnDarkMuted, height: 1.5);
+      GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w500, color: AppColors.textOnDarkMuted, height: 1.5);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// GRADIENTS
+// GRADYANLAR — Doğal, cam/neon olmayan
 // ─────────────────────────────────────────────────────────────────────────────
 
 abstract class AppGradients {
   static const forestHero = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [Color(0xFF0F4C2A), Color(0xFF1B6B3A)],
+    colors: [Color(0xFF2E7D32), Color(0xFF1B5E20)],
   );
 
   static const emeraldCard = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [Color(0xFF059669), Color(0xFF047857)],
+    colors: [Color(0xFF43A047), Color(0xFF2E7D32)],
   );
 
   static const warmCard = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [Color(0xFFF59E0B), Color(0xFFD97706)],
+    colors: [Color(0xFFE67E22), Color(0xFFD35400)],
   );
 
   static const bgSubtle = LinearGradient(
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
-    colors: [Color(0xFFF4F7F3), Color(0xFFF0F4EF)],
+    colors: [Color(0xFFFFFFFF), Color(0xFFFBF7EC)],
   );
 
   static const dangerCard = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [Color(0xFFDC2626), Color(0xFFB91C1C)],
+    colors: [Color(0xFFD32F2F), Color(0xFFB71C1C)],
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// MATERIALAPP THEME
+// MATERIALAPP TEMA
 // ─────────────────────────────────────────────────────────────────────────────
 
 ThemeData buildAppTheme() {
@@ -195,18 +199,18 @@ ThemeData buildAppTheme() {
 
   return base.copyWith(
     appBarTheme: AppBarTheme(
-      backgroundColor: AppColors.surface,
+      backgroundColor: AppColors.bg,
       elevation: 0,
-      scrolledUnderElevation: 1,
-      shadowColor: const Color(0x14000000),
+      scrolledUnderElevation: 0,
+      shadowColor: Colors.transparent,
       surfaceTintColor: Colors.transparent,
       centerTitle: false,
       titleTextStyle: GoogleFonts.outfit(
-        fontSize: 18,
-        fontWeight: FontWeight.w600,
+        fontSize: 20,
+        fontWeight: FontWeight.w700,
         color: AppColors.textPrimary,
       ),
-      iconTheme: const IconThemeData(color: AppColors.textPrimary, size: 22),
+      iconTheme: const IconThemeData(color: AppColors.textPrimary, size: 24),
     ),
     cardTheme: CardThemeData(
       elevation: 0,
@@ -235,25 +239,25 @@ ThemeData buildAppTheme() {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: AppRadius.sm,
-        borderSide: const BorderSide(color: AppColors.emerald, width: 1.5),
+        borderSide: const BorderSide(color: AppColors.emerald, width: 2),
       ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      hintStyle: GoogleFonts.inter(fontSize: 14, color: AppColors.textTertiary),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      hintStyle: GoogleFonts.inter(fontSize: 15, color: AppColors.textTertiary),
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
         backgroundColor: AppColors.emerald,
         foregroundColor: Colors.white,
         elevation: 0,
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
         shape: const RoundedRectangleBorder(borderRadius: AppRadius.sm),
-        textStyle: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600),
+        textStyle: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w700),
       ),
     ),
     chipTheme: ChipThemeData(
       backgroundColor: AppColors.mint,
-      labelStyle: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.emeraldDark),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      labelStyle: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.emeraldDark),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       shape: const RoundedRectangleBorder(borderRadius: AppRadius.full),
       side: BorderSide.none,
     ),
@@ -261,10 +265,9 @@ ThemeData buildAppTheme() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SHARED WIDGETS — kullanışlı atom bileşenler
+// PAYLAŞIMLI WIDGETLAR
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Premium section header
 class AppSectionHeader extends StatelessWidget {
   final String title;
   final String? subtitle;
@@ -280,10 +283,10 @@ class AppSectionHeader extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: AppText.h3(context)),
+              Text(title, style: AppText.h2(context)),
               if (subtitle != null)
                 Padding(
-                  padding: const EdgeInsets.only(top: 2),
+                  padding: const EdgeInsets.only(top: 4),
                   child: Text(subtitle!, style: AppText.sm(context)),
                 ),
             ],
@@ -295,7 +298,6 @@ class AppSectionHeader extends StatelessWidget {
   }
 }
 
-/// Premium stat tile
 class AppStatTile extends StatelessWidget {
   final String label;
   final String value;
@@ -315,11 +317,10 @@ class AppStatTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = color ?? AppColors.emerald;
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: AppRadius.md,
-        boxShadow: AppShadows.sm,
         border: Border.all(color: AppColors.border),
       ),
       child: Column(
@@ -327,20 +328,20 @@ class AppStatTile extends StatelessWidget {
         children: [
           Row(children: [
             if (icon != null) ...[
-              Icon(icon, size: 14, color: c),
-              const SizedBox(width: 4),
+              Icon(icon, size: 16, color: c),
+              const SizedBox(width: 6),
             ],
-            Text(label, style: AppText.xs(context)),
+            Text(label, style: AppText.label(context)),
           ]),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(value, style: AppText.h2(context).copyWith(color: c)),
+              Text(value, style: AppText.h1(context).copyWith(color: c)),
               if (unit != null)
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 3, left: 3),
-                  child: Text(unit!, style: AppText.xs(context)),
+                  padding: const EdgeInsets.only(bottom: 5, left: 4),
+                  child: Text(unit!, style: AppText.sm(context)),
                 ),
             ],
           ),
@@ -350,7 +351,6 @@ class AppStatTile extends StatelessWidget {
   }
 }
 
-/// Badge / tag chip
 class AppTag extends StatelessWidget {
   final String label;
   final Color? color;
@@ -361,16 +361,16 @@ class AppTag extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = color ?? AppColors.emerald;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: bgColor ?? c.withValues(alpha: 0.1),
+        color: bgColor ?? c.withValues(alpha: 0.12),
         borderRadius: AppRadius.full,
       ),
       child: Text(
         label,
         style: GoogleFonts.inter(
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
           color: c,
         ),
       ),
@@ -378,12 +378,11 @@ class AppTag extends StatelessWidget {
   }
 }
 
-/// Progress bar with label
 class AppProgressBar extends StatelessWidget {
   final double value; // 0-1
   final Color? color;
   final double height;
-  const AppProgressBar({super.key, required this.value, this.color, this.height = 6});
+  const AppProgressBar({super.key, required this.value, this.color, this.height = 8});
 
   @override
   Widget build(BuildContext context) {

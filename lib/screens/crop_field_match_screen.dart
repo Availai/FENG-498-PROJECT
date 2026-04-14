@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'dart:math';
 import '../services/rule_engine.dart';
@@ -113,14 +112,13 @@ class _CropFieldMatchScreenState extends State<CropFieldMatchScreen>
     await Future.wait([
       () async {
         try {
-          final key = dotenv.env['WEATHER_API_KEY'] ?? '';
           final r = await http.get(Uri.parse(
-            'https://api.openweathermap.org/data/2.5/weather?lat=$lat&lon=$lng&appid=$key&units=metric',
+            'https://api.open-meteo.com/v1/forecast?latitude=$lat&longitude=$lng&current=temperature_2m,relative_humidity_2m&timezone=auto',
           )).timeout(const Duration(seconds: 8));
           if (r.statusCode == 200) {
-            final d = jsonDecode(r.body);
-            temp = (d['main']['temp'] as num).toDouble();
-            humidity = (d['main']['humidity'] as num).toDouble();
+            final cur = jsonDecode(r.body)['current'];
+            temp = (cur['temperature_2m'] as num?)?.toDouble() ?? temp;
+            humidity = (cur['relative_humidity_2m'] as num?)?.toDouble() ?? humidity;
           }
         } catch (_) {}
       }(),

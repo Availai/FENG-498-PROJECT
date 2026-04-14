@@ -1,12 +1,14 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import '../services/notification_service.dart';
+import '../services/frost_alarm_service.dart';
+import '../theme/app_theme.dart';
 import '../utils/location_utils.dart';
+import 'field_detail_screen.dart';
 import 'sensor_data_screen.dart';
 
 class AgriDashboard extends StatefulWidget {
@@ -30,7 +32,20 @@ class _AgriDashboardState extends State<AgriDashboard>
   late AnimationController _animController;
   late Animation<double> _fadeAnim;
 
-  static String get _weatherKey => dotenv.env['WEATHER_API_KEY'] ?? '';
+  static String _dashboardWmoCodeToTr(int code) {
+    if (code == 0) return 'açık';
+    if (code == 1) return 'az bulutlu';
+    if (code == 2) return 'parçalı bulutlu';
+    if (code == 3) return 'kapalı';
+    if (code == 45 || code == 48) return 'sisli';
+    if (code >= 51 && code <= 57) return 'çisenti';
+    if (code >= 61 && code <= 67) return 'yağmurlu';
+    if (code >= 71 && code <= 77) return 'karlı';
+    if (code >= 80 && code <= 82) return 'sağanak';
+    if (code >= 85 && code <= 86) return 'kar sağanağı';
+    if (code >= 95) return 'gök gürültülü fırtına';
+    return '';
+  }
 
   @override
   void initState() {
@@ -119,7 +134,7 @@ class _AgriDashboardState extends State<AgriDashboard>
 
       final results = await Future.wait([
         http.get(Uri.parse(
-          'https://api.openweathermap.org/data/2.5/weather?lat=${pos.latitude}&lon=${pos.longitude}&appid=$_weatherKey&units=metric&lang=tr',
+          'https://api.open-meteo.com/v1/forecast?latitude=${pos.latitude}&longitude=${pos.longitude}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code&wind_speed_unit=ms&timezone=auto',
         )),
         http.get(Uri.parse(
           'https://rest.isric.org/soilgrids/v2.0/properties/query?lon=${pos.longitude}&lat=${pos.latitude}&property=phh2o&depth=0-5cm&value=mean',
@@ -130,13 +145,14 @@ class _AgriDashboardState extends State<AgriDashboard>
         setState(() {
           _location = detailedAddress;
           if (results[0].statusCode == 200) {
-            final data = jsonDecode(results[0].body);
-            _temp = '${data['main']['temp'].round()}';
-            _humidity = '${data['main']['humidity']}';
-            _wind = data['wind']?['speed'] != null
-                ? '${data['wind']['speed']}'
-                : '--';
-            final desc = data['weather']?[0]?['description'] ?? '';
+            final cur = jsonDecode(results[0].body)['current'];
+            final t = (cur['temperature_2m'] as num?)?.toDouble();
+            _temp = t != null ? '${t.round()}' : '--';
+            _humidity = '${(cur['relative_humidity_2m'] as num?)?.round() ?? '--'}';
+            final w = (cur['wind_speed_10m'] as num?)?.toDouble();
+            _wind = w != null ? w.toStringAsFixed(1) : '--';
+            final desc = _dashboardWmoCodeToTr(
+                (cur['weather_code'] as num?)?.toInt() ?? 0);
             _weatherDesc = desc.isNotEmpty
                 ? desc[0].toUpperCase() + desc.substring(1)
                 : '';
@@ -191,6 +207,7 @@ class _AgriDashboardState extends State<AgriDashboard>
     () async {
       try {
         await NotificationService.checkWeatherAndAlert(lat, lng);
+        await FrostAlarmService.checkAndNotify(lat: lat, lon: lng);
         await settingsBox.put(
           'last_weather_check_at',
           now.toIso8601String(),
@@ -225,6 +242,10 @@ class _AgriDashboardState extends State<AgriDashboard>
                       _buildSectionHeader('Hava Durumu', Icons.wb_sunny),
                       const SizedBox(height: 12),
                       _buildWeatherGrid(),
+                      const SizedBox(height: 24),
+                      _buildSectionHeader('Tarlalarım', Icons.grass_rounded),
+                      const SizedBox(height: 12),
+                      _buildMyFieldsSection(),
                       const SizedBox(height: 24),
                       _buildSectionHeader('Tarla İstatistikleri', Icons.bar_chart),
                       const SizedBox(height: 12),
@@ -769,6 +790,201 @@ class _AgriDashboardState extends State<AgriDashboard>
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // ÇOKLU TARLA KARTLARI — Dashboard'da birden fazla tarlanın özeti tek bakışta
+  // ───────────────────────────────────────────────────────────────────────────
+  Widget _buildMyFieldsSection() {
+    return ValueListenableBuilder<Box>(
+      valueListenable: Hive.box('user_crops').listenable(),
+      builder: (context, box, _) {
+        final fields = <Map<String, dynamic>>[];
+        for (int i = 0; i < box.length; i++) {
+          final raw = box.getAt(i);
+          if (raw is Map) {
+            fields.add(Map<String, dynamic>.from(raw));
+          }
+        }
+
+        if (fields.isEmpty) {
+          return Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: AppRadius.md,
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.grass_rounded,
+                    color: AppColors.emeraldLight, size: 26),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Henüz tarla eklemediniz.\nHaritadan ilk tarlanızı çizerek başlayın.',
+                    style: AppText.body(context),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        // Yatay kaydırılabilir liste — çiftçi tek bakışta birkaç tarlayı görür.
+        return SizedBox(
+          height: 168,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: fields.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 12),
+            itemBuilder: (_, i) => _buildFieldCard(fields[i]),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildFieldCard(Map<String, dynamic> field) {
+    final name = field['name']?.toString() ?? 'İsimsiz Tarla';
+    final area = (field['area_dekar'] as num?)?.toDouble();
+    final crops = field['planted_crops'];
+    String cropLabel = '';
+    if (crops is List && crops.isNotEmpty) {
+      final first = crops.first;
+      if (first is Map && first['name'] != null) {
+        cropLabel = first['name'].toString();
+      } else if (first is String) {
+        cropLabel = first;
+      }
+    }
+    cropLabel = cropLabel.isEmpty ? 'Ürün seçilmemiş' : cropLabel;
+
+    final analysis = field['analysis'];
+    final soilMoisture = analysis is Map
+        ? (analysis['soil_moisture'] as num?)?.toDouble()
+        : null;
+
+    // Sağlık rozeti — toprak nemi eşiklerine göre
+    Color healthColor;
+    String healthLabel;
+    IconData healthIcon;
+    if (soilMoisture == null) {
+      healthColor = AppColors.textTertiary;
+      healthLabel = 'Analiz bekliyor';
+      healthIcon = Icons.help_outline_rounded;
+    } else if (soilMoisture < 0.25) {
+      healthColor = AppColors.error;
+      healthLabel = 'Sulama gerek';
+      healthIcon = Icons.water_drop_outlined;
+    } else if (soilMoisture < 0.45) {
+      healthColor = AppColors.warning;
+      healthLabel = 'Takip et';
+      healthIcon = Icons.visibility_outlined;
+    } else {
+      healthColor = AppColors.emerald;
+      healthLabel = 'Sağlıklı';
+      healthIcon = Icons.check_circle_outline_rounded;
+    }
+
+    // Sıradaki sulama tahmini — basit heuristik
+    final nextIrrigation = soilMoisture == null
+        ? 'Önce analiz yapın'
+        : soilMoisture < 0.3
+            ? 'Bugün / Yarın'
+            : soilMoisture < 0.5
+                ? '2-3 gün içinde'
+                : '4+ gün sonra';
+
+    return InkWell(
+      borderRadius: const BorderRadius.all(Radius.circular(16)),
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => FieldDetailScreen(fieldData: field),
+          ),
+        );
+      },
+      child: Container(
+        width: 240,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: AppRadius.md,
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    name,
+                    style: AppText.h3(context),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                Icon(healthIcon, color: healthColor, size: 20),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              area != null
+                  ? '${area.toStringAsFixed(1)} dekar · $cropLabel'
+                  : cropLabel,
+              style: AppText.sm(context),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const Spacer(),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: healthColor.withValues(alpha: 0.12),
+                borderRadius: AppRadius.full,
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: healthColor,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    healthLabel,
+                    style: AppText.xs(context).copyWith(color: healthColor),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Icon(Icons.water_drop_rounded,
+                    size: 14, color: AppColors.info),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    'Sulama: $nextIrrigation',
+                    style: AppText.sm(context),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );

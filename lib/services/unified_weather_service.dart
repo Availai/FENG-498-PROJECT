@@ -1,13 +1,12 @@
-/// Birleşik Hava Veri Kaynağı (MGM öncelikli, OpenWeather fallback).
+/// Birleşik Hava Veri Kaynağı (MGM öncelikli, Open-Meteo fallback).
 ///
-/// AGENTS.md "complete farming assistant" gereksinimi için:
 /// Türkiye için T.C. MGM gerçek istasyon ölçümleri global modellerden
-/// çok daha doğrudur. Ancak MGM bazı koordinatlarda istasyon bulamayabilir
-/// veya servisi geçici erişilemez olabilir → OpenWeather fallback gerekir.
+/// çok daha doğrudur. MGM istasyon bulunamazsa **ücretsiz, key gerektirmeyen**
+/// Open-Meteo servisine düşer.
 ///
 /// Kullanım:
 ///   final w = await UnifiedWeatherService.fetchCurrent(lat: 39.9, lon: 32.8);
-///   // w.source == 'MGM' veya 'OpenWeather'
+///   // w.source == 'MGM' veya 'Open-Meteo'
 library;
 
 import 'api/mgm_api.dart';
@@ -19,7 +18,7 @@ class UnifiedCurrentWeather {
   final double windMs;
   final double rainLast1hMm;
   final String description;
-  final String source;       // 'MGM' veya 'OpenWeather'
+  final String source;       // 'MGM' veya 'Open-Meteo'
   final String stationLabel; // Örn: "Ankara / Etimesgut" veya koordinat
 
   const UnifiedCurrentWeather({
@@ -51,7 +50,7 @@ class UnifiedCurrentWeather {
         windMs: o.windSpeedMs,
         rainLast1hMm: o.rainMm1h,
         description: o.description,
-        source: 'OpenWeather',
+        source: 'Open-Meteo',
         stationLabel:
             '${lat.toStringAsFixed(2)}, ${lon.toStringAsFixed(2)}',
       );
@@ -71,7 +70,7 @@ class UnifiedWeatherService {
       }
     } catch (_) {}
 
-    // 2) OpenWeather fallback
+    // 2) Open-Meteo fallback (key gerektirmez)
     final ow = await OpenWeatherApi.current(lat: lat, lon: lon);
     return UnifiedCurrentWeather.fromOpenWeather(ow, lat, lon);
   }

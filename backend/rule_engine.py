@@ -60,6 +60,9 @@ class RuleCategory(str, Enum):
     season = "season"
     compatibility = "compatibility"
     harvest = "harvest"
+    geography = "geography"
+    frost = "frost"
+    rotation = "rotation"
 
 
 class RuleResult(BaseModel):
@@ -89,6 +92,9 @@ class RuleResult(BaseModel):
             RuleCategory.season: "Mevsim",
             RuleCategory.compatibility: "Uyum",
             RuleCategory.harvest: "Hasat",
+            RuleCategory.geography: "Coğrafya",
+            RuleCategory.frost: "Zirai Don",
+            RuleCategory.rotation: "Münavebe",
         }
         self.emoji = emoji_map[self.level]
         self.category_label = label_map[self.category]
@@ -109,6 +115,18 @@ class AnalyzeRequest(BaseModel):
     wind_speed: float = 3.0
     month: int = 6
     precip_prob_next3h: float = 0.0
+
+    # Türkiye coğrafyası için ek girdiler
+    latitude: float = 39.9      # Ankara varsayılan
+    longitude: float = 32.8
+    slope_deg: float = 0.0      # tarla eğim açısı (0=düz, 30=dik yamaç)
+    aspect_deg: float = 180.0   # bakı: 0=K, 90=D, 180=G, 270=B (G=güney)
+    min_temp_c: float = 15.0    # son 24 saat min
+    max_temp_c: float = 25.0    # son 24 saat max
+    forecast_min_3day_c: float = 5.0  # önümüzdeki 3 gün min sıcaklık tahmini
+
+    # ÇKS / münavebe geçmişi (son 3 yılın ürünleri, en yeni önce)
+    crop_history: list[str] = []
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -144,6 +162,18 @@ def analyze(req: AnalyzeRequest) -> list[RuleResult]:
                                     req.soil_ph, req.weekly_rain,
                                     req.humidity, req.plant_details)
     results += _harvest_rules(name, req.plant_details)
+
+    # Türkiye coğrafyasına özgü kurallar
+    results += _turkey_geography_rules(
+        req.latitude, req.longitude, req.slope_deg, req.aspect_deg, req.month
+    )
+    results += _diurnal_stress_rules(
+        req.latitude, req.longitude, req.min_temp_c, req.max_temp_c, req.month, name
+    )
+    results += _agricultural_frost_rules(
+        req.latitude, req.min_temp_c, req.forecast_min_3day_c, req.month, name
+    )
+    results += _crop_rotation_rules(req.crop_history, name)
 
     results.sort(key=lambda r: _SEVERITY_ORDER[r.level])
     return results
@@ -639,6 +669,370 @@ def _harvest_rules(name, plant):
             title="Hasat Zamanlaması — Mısır",
             message="Silajlık mısırda kuru madde oranı %30-35 olmalıdır. Danelik için nem %15 civarı idealdir.",
             recommendation="Koçanlardaki süt çizgisinin seviyesini kontrol ederek doğru hasat zamanını belirleyin.",
+        ))
+
+    return r
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# TÜRKİYE'YE ÖZGÜ KURALLAR
+# Coğrafi konum (enlem/bakı/eğim), iç Anadolu stepi stresi, zirai don, münavebe
+# ═════════════════════════════════════════════════════════════════════════════
+
+import math
+
+
+def _solar_declination_deg(month: int) -> float:
+    """
+    Kaba güneş deklinasyonu (her ayın 15'i için NOAA yaklaşımı).
+    Kuzey yarımküre için + = yaz, - = kış.
+    """
+    # Yılın gününün kaba ortası (ayın 15'i)
+    day_of_year = int((month - 1) * 30.4 + 15)
+    # Cooper (1969) formülü: δ = 23.45 * sin(360/365 * (284 + n))
+    return 23.45 * math.sin(math.radians(360.0 / 365.0 * (284 + day_of_year)))
+
+
+def _day_length_hours(lat_deg: float, month: int) -> float:
+    """Basit gün ışığı süresi (hours). Kutupsal uç değerleri clamp eder."""
+    decl = math.radians(_solar_declination_deg(month))
+    lat = math.radians(lat_deg)
+    cos_h = -math.tan(lat) * math.tan(decl)
+    cos_h = max(-1.0, min(1.0, cos_h))
+    hour_angle = math.degrees(math.acos(cos_h))
+    return 2.0 * hour_angle / 15.0
+
+
+def _slope_sun_factor(lat_deg: float, slope_deg: float, aspect_deg: float, month: int) -> float:
+    """
+    Yamaç etkisi: eğimli ve farklı bakılı tarlaların düz zemine göre aldığı
+    güneş radyasyonu oranı (dimensionless ~0.5-1.5).
+
+    Mantık: Kuzey yarımkürede güneye bakan yamaç (aspect=180°) daha çok
+    güneş alır; kuzeye bakan (aspect=0°/360°) daha az alır. Doğu/batı bakı
+    simetrik olarak arada kalır. Matematiksel olarak öğle güneşinin yamaç
+    normalinden geliş açısı kosinüsü kullanılır.
+    """
+    decl = _solar_declination_deg(month)
+    # Güneşin öğle zenith açısı (düz zemin için)
+    zenith_flat_deg = abs(lat_deg - decl)
+    zenith_flat = math.radians(zenith_flat_deg)
+    slope = math.radians(slope_deg)
+    # Azimut sapması: güney bakıdan sapma. Kuzey yarımkürede güneye bakmak
+    # optimaldir → 180° referansı.
+    azimuth_offset = math.radians(abs(((aspect_deg - 180.0) + 180.0) % 360.0 - 180.0))
+
+    # Yamaç normali ile güneş ışını arasındaki açının kosinüsü
+    cos_theta = (
+        math.cos(slope) * math.cos(zenith_flat)
+        + math.sin(slope) * math.sin(zenith_flat) * math.cos(azimuth_offset)
+    )
+    # Negatif değer = güneş yamaca arkadan vuruyor → 0
+    cos_theta = max(0.0, cos_theta)
+    # Düz yüzeyin kosinüsüne göre normalize
+    flat_cos = max(math.cos(zenith_flat), 0.01)
+    return cos_theta / flat_cos
+
+
+def _turkey_geography_rules(latitude, longitude, slope_deg, aspect_deg, month):
+    """
+    Enlem + eğim + bakı kombinasyonundan güneşlenme tahmini yapar.
+    Türkiye örnekleri: Karadeniz kıyısında kuzey yamaç (aspect~0) güneye göre
+    ciddi dezavantajlı; Güneydoğu Anadolu'da güney yamaç aşırı ışınıma maruz.
+    """
+    r = []
+
+    # Türkiye sınırları dışında (yaklaşık) ise coğrafya kuralı atla
+    if not (35.5 <= latitude <= 42.5 and 25.5 <= longitude <= 45.0):
+        return r
+
+    day_hours = _day_length_hours(latitude, month)
+
+    # 1) Temel gün ışığı bilgisi
+    r.append(RuleResult(
+        level=RiskLevel.info, category=RuleCategory.geography,
+        title="Bölgesel Gün Işığı Süresi",
+        message=(
+            f"{latitude:.2f}°K enleminde bu ay günlük ışık süresi ~"
+            f"{day_hours:.1f} saat. Fotosentez planlamasında referans alın."
+        ),
+        recommendation=(
+            "Kısa gün (<10 sa): kış sebzeciliği için örtü altı düşünün. "
+            "Uzun gün (>14 sa): yaz bitkilerinde ara sulama önerilir."
+        ),
+        source_ref="NOAA Solar Position Formula (Cooper 1969)",
+    ))
+
+    # 2) Eğim + bakı etkisi (yalnızca kayda değer bir eğim varsa)
+    if slope_deg >= 5:
+        factor = _slope_sun_factor(latitude, slope_deg, aspect_deg, month)
+        pct = round((factor - 1.0) * 100)
+        # Bakı yönü etiketleme
+        if aspect_deg < 45 or aspect_deg >= 315:
+            aspect_name = "kuzey"
+        elif aspect_deg < 135:
+            aspect_name = "doğu"
+        elif aspect_deg < 225:
+            aspect_name = "güney"
+        else:
+            aspect_name = "batı"
+
+        if factor < 0.75:
+            # Kuzey yamaç — Karadeniz bölgesinde tipik sorun
+            level = RiskLevel.warning
+            rec = (
+                "Kuzey yamaç düz zemine göre güneş alımı çok düşük. "
+                "Ürün seçiminde gölgeye dayanıklı türleri (çay, ıhlamur, fındık, "
+                "bezelye) tercih edin. Hasat 7-14 gün gecikebilir."
+            )
+        elif factor > 1.25:
+            # Güney yamaç — Güneydoğu Anadolu'da aşırı ışınım
+            level = RiskLevel.info
+            rec = (
+                "Güney yamaç düz zemine göre güneş alımı yüksek. "
+                "Yaprak yanığı riskine karşı mulçlama ve gölgeleme filesi "
+                "kullanın. Sulamayı sabah erken yapın."
+            )
+        else:
+            level = RiskLevel.ok
+            rec = "Eğim/bakı kombinasyonu dengeli — özel önlem gerekmez."
+
+        r.append(RuleResult(
+            level=level, category=RuleCategory.geography,
+            title=f"Yamaç Etkisi — {aspect_name.capitalize()} Bakı",
+            message=(
+                f"Eğim {slope_deg:.0f}°, {aspect_name} bakı. "
+                f"Düz zemine göre güneşlenme farkı: %{pct:+d}."
+            ),
+            recommendation=rec,
+            source_ref="Cosine law of illumination on inclined surfaces",
+        ))
+
+    return r
+
+
+# ── İÇ ANADOLU DIURNAL STRES (GECE-GÜNDÜZ SICAKLIK FARKI) ─────────────────────
+
+def _is_central_anatolia(lat: float, lon: float) -> bool:
+    """İç Anadolu stepi yaklaşık sınırı (Konya, Ankara, Kayseri üçgeni)."""
+    return 37.5 <= lat <= 40.5 and 31.0 <= lon <= 37.0
+
+
+def _diurnal_stress_rules(latitude, longitude, min_c, max_c, month, name):
+    r = []
+    diurnal = max_c - min_c
+    if diurnal <= 0:
+        return r
+
+    in_ic_anadolu = _is_central_anatolia(latitude, longitude)
+
+    # İç Anadolu ilkbahar/yaz koşullarında 15°C üstü fark tipiktir ve çiçek
+    # dökümüne, döllenme bozukluğuna yol açar (domates, biber, üzüm, fasulye).
+    sensitive = any(k in name for k in ["domates", "biber", "üzüm", "fasulye", "patlıcan"])
+    spring_summer = 4 <= month <= 9
+
+    if in_ic_anadolu and diurnal >= 20 and spring_summer:
+        r.append(RuleResult(
+            level=RiskLevel.warning, category=RuleCategory.geography,
+            title="İç Anadolu Stepi — Aşırı Gece/Gündüz Farkı",
+            message=(
+                f"Günlük sıcaklık farkı {diurnal:.0f}°C (min {min_c:.0f} / max {max_c:.0f}). "
+                "İç Anadolu'da tipik ama bu ay sınırın üzerinde."
+            ),
+            recommendation=(
+                "Çiçek dönemindeki bitkilerde döllenme bozukluğu ve çiçek dökümü "
+                "riski var. Rüzgar kıran kullanın, akşam üzeri kısa süreli "
+                "yaprak sulaması gece soğumasını ılımlılaştırır."
+            ),
+        ))
+    elif in_ic_anadolu and diurnal >= 15 and sensitive and spring_summer:
+        r.append(RuleResult(
+            level=RiskLevel.info, category=RuleCategory.geography,
+            title="Gece-Gündüz Farkı Uyarısı",
+            message=(
+                f"Hassas tür (${name}) için {diurnal:.0f}°C'lik diurnal fark "
+                "ikinci derece streslidir."
+            ),
+            recommendation=(
+                "Potasyum ağırlıklı yaprak gübresi stres toleransını artırır. "
+                "Damla sulamayı akşam üstü yapın."
+            ),
+        ))
+    elif diurnal >= 25:
+        # İç Anadolu dışında bile aşırı ise uyarı ver
+        r.append(RuleResult(
+            level=RiskLevel.warning, category=RuleCategory.geography,
+            title="Yüksek Diurnal Stres",
+            message=f"Gece-gündüz farkı {diurnal:.0f}°C — bitki stresli.",
+            recommendation="Sulama sıklığını artırın, rüzgar kıran yapın.",
+        ))
+
+    return r
+
+
+# ── ZİRAİ DON ALARMI (MGM TARZI) ──────────────────────────────────────────────
+
+def _agricultural_frost_rules(latitude, min_c, forecast_min_3day_c, month, name):
+    """
+    MGM'nin Zirai Don Tahmin Haritası mantığıyla uyumlu uyarılar.
+    İlkbahar geç donları (Nis-May) ve sonbahar erken donları (Eki-Kas) özellikle
+    kritik. Türkiye'de tarımı tehdit eden en büyük iklim olaylarındandır.
+    """
+    r = []
+
+    # MGM kriterleri: min ≤ 0°C = don olayı; 0 < min ≤ 2 = don riski
+    is_spring_late = month in (4, 5)  # nisan-mayıs
+    is_autumn_early = month in (10, 11)  # ekim-kasım
+    is_winter = month in (12, 1, 2, 3)
+
+    sensitive_spring = any(
+        k in name for k in [
+            "kayısı", "şeftali", "erik", "kiraz", "elma", "armut", "üzüm",
+            "çilek", "badem", "ceviz",
+        ]
+    )
+    sensitive_autumn = any(
+        k in name for k in ["domates", "biber", "patlıcan", "fasulye", "kabak"]
+    )
+
+    # 24s içinde don olayı
+    if min_c <= 0 and (is_spring_late or is_autumn_early):
+        r.append(RuleResult(
+            level=RiskLevel.critical, category=RuleCategory.frost,
+            title="Zirai Don — Kritik (MGM Eşik)",
+            message=(
+                f"Min sıcaklık {min_c:.1f}°C — don olayı gerçekleşiyor. "
+                f"{'İlkbahar geç donu' if is_spring_late else 'Sonbahar erken donu'} "
+                "Türkiye'de en fazla zarar veren iklim olayıdır."
+            ),
+            recommendation=(
+                "Duman siperi, sulu savunma (sprinkler), örtü bezi veya don "
+                "mumu kullanın. Meyve ağaçlarında yağmurlama sulama çiçek "
+                "dokularını 0°C'de tutar."
+            ),
+            source_ref="MGM Zirai Don Tahmin ve Erken Uyarı Sistemi",
+        ))
+    elif 0 < min_c <= 2 and (is_spring_late or is_autumn_early):
+        lvl = RiskLevel.warning
+        if (is_spring_late and sensitive_spring) or (is_autumn_early and sensitive_autumn):
+            lvl = RiskLevel.critical
+        r.append(RuleResult(
+            level=lvl, category=RuleCategory.frost,
+            title="Zirai Don Hassasiyeti",
+            message=(
+                f"Min sıcaklık {min_c:.1f}°C — MGM don riski eşiği (0-2°C)."
+            ),
+            recommendation=(
+                "Gece sabahına doğru 04:00-06:00 saatlerinde radyasyon donu "
+                "beklenir. Hassas ürünleri örtü altına alın, sera kapılarını "
+                "kapalı tutun."
+            ),
+            source_ref="MGM Zirai Don Haritası",
+        ))
+
+    # 3 günlük tahmin ileri uyarı
+    if forecast_min_3day_c <= 2 and min_c > 2:
+        r.append(RuleResult(
+            level=RiskLevel.info, category=RuleCategory.frost,
+            title="Don Uyarısı — 3 Gün İleri",
+            message=(
+                f"Önümüzdeki 3 gün minimum {forecast_min_3day_c:.1f}°C'ye düşecek."
+            ),
+            recommendation=(
+                "Don koruma malzemelerinizi (bez, mum, sprinkler) şimdiden "
+                "hazırlayın. Sulama depolarını dolu tutun; ıslak toprak daha "
+                "geç donar."
+            ),
+        ))
+
+    # Kuzey Türkiye'de kış aylarında klasik uyarı
+    if is_winter and latitude >= 39.5 and min_c <= -5:
+        r.append(RuleResult(
+            level=RiskLevel.warning, category=RuleCategory.frost,
+            title="Şiddetli Kış Donu — Kuzey Türkiye",
+            message=f"Min {min_c:.0f}°C. Kuzey illerimizde kök bölgesi donabilir.",
+            recommendation=(
+                "Meyve ağaçlarının kök boğazına samanlı toprak yığını yapın. "
+                "Genç fidanlar için rüzgar kıran zorunludur."
+            ),
+        ))
+
+    return r
+
+
+# ── MÜNAVEBE (NÖBETLEŞE EKİM) KURALLARI ───────────────────────────────────────
+
+def _crop_rotation_rules(crop_history, current_name):
+    """
+    ÇKS/yerel ajanda kayıtlarından beslenen münavebe motoru.
+    2 yıl üst üste aynı familya → kök hastalıkları/nematod riski artar.
+    Türkiye'de özellikle buğday monokültürü, Fusarium ve kök boğazı
+    (Gaeumannomyces graminis) riskini çok artırır.
+    """
+    r = []
+    if not crop_history or not current_name:
+        return r
+
+    history = [h.lower() for h in crop_history if isinstance(h, str)]
+    curr = current_name.lower()
+
+    # Yakın 2 yılın ürünlerini bak
+    last1 = history[0] if len(history) >= 1 else ""
+    last2 = history[1] if len(history) >= 2 else ""
+
+    # Tahıl monokültürü — Türkiye'de en yaygın hata
+    grains = ("buğday", "arpa", "yulaf", "çavdar", "tritikale")
+    if curr.startswith(grains) and last1.startswith(grains) and last2.startswith(grains):
+        r.append(RuleResult(
+            level=RiskLevel.critical, category=RuleCategory.rotation,
+            title="Kök Boğazı Hastalığı Riski — Tahıl Monokültürü",
+            message=(
+                f"Son 3 yıldır tahıl ekimi yapılmış ({last2} → {last1} → {curr}). "
+                "Gaeumannomyces graminis ve Fusarium spp. toprakta birikmiştir."
+            ),
+            recommendation=(
+                "Bu yıl baklagil (nohut, mercimek, fiğ) veya ayçiçeği ekmeniz "
+                "verimi %20-35 artırır ve toprak azotunu bedava yeniler. "
+                "Ege/Trakya'da ayçiçeği, İç Anadolu'da nohut/mercimek idealdir."
+            ),
+            eppo_code="GAEUGR",
+            source_ref="TAGEM münavebe kılavuzu; FAO Crop Rotation Guide",
+        ))
+    elif curr.startswith(grains) and last1.startswith(grains):
+        r.append(RuleResult(
+            level=RiskLevel.warning, category=RuleCategory.rotation,
+            title="Tahıl Münavebesi — 2. Yıl",
+            message=f"Geçen yıl da tahıl ({last1}) ekilmiş. Bu yıl 3. yıla dikkat.",
+            recommendation=(
+                "Tahıl üst üste 2 yıl tolere edilebilir ama 3. yıl baklagil "
+                "veya yağlı tohum (ayçiçeği/kolza) dönüşü şarttır."
+            ),
+        ))
+
+    # Domates/patates/biber/patlıcan = Solanaceae familyası
+    solanaceae = ("domates", "patates", "biber", "patlıcan")
+    if any(s in curr for s in solanaceae) and any(s in last1 for s in solanaceae):
+        r.append(RuleResult(
+            level=RiskLevel.warning, category=RuleCategory.rotation,
+            title="Solanaceae Üst Üste — Nematod ve Fusarium Riski",
+            message=f"{last1} → {curr}: aynı familya üst üste.",
+            recommendation=(
+                "En az 3 yıl solanaceae dışı ekim yapın. Mısır, buğday veya "
+                "yeşil gübre (fiğ) ile toprak temizlenir."
+            ),
+            eppo_code="MELGSP",  # Meloidogyne spp. (kök ur nematodu)
+        ))
+
+    # Ayçiçeği kendini takip etmesin — sklerotinia riski
+    if "ayçiçek" in curr and "ayçiçek" in last1:
+        r.append(RuleResult(
+            level=RiskLevel.critical, category=RuleCategory.rotation,
+            title="Ayçiçeğinde Sklerotinia Riski",
+            message="Ayçiçeği üst üste iki yıl — toprakta Sclerotinia sclerotiorum birikir.",
+            recommendation=(
+                "En az 4 yıl ara verin. Bu yıl buğday veya mısır tercih edin."
+            ),
+            eppo_code="SCLESC",
         ))
 
     return r

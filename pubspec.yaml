@@ -89,6 +89,7 @@ flutter:
     - assets/weather/sunny.png
     - assets/weather/rainy.png
     - assets/weather/cloudy.png
+    - assets/crops/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

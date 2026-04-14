@@ -40,6 +40,8 @@ void main() async {
   await Hive.openBox('settingsBox');
   await Hive.openBox('sim_results_cache');
   await Hive.openBox('sensor_data');
+  await Hive.openBox('cost_ledger');     // ÇKS masraf defteri
+  await Hive.openBox('crop_history');    // münavebe geçmişi (field_id → [ürün])
 
 
   // 4. Push notification service

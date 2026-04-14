@@ -13,10 +13,10 @@ import '../widgets/glass_panel.dart';
 import '../widgets/zone_drawing_toolbar.dart';
 import '../widgets/crop_zone_legend.dart';
 import '../widgets/crop_zone_tooltip.dart';
-import '../widgets/field_panorama_view.dart';
 import '../widgets/crop_render_factory.dart';
 import 'seed_selector_screen.dart';
 import 'irrigation_schedule_screen.dart';
+import 'cost_ledger_screen.dart';
 
 class FieldDetailScreen extends ConsumerStatefulWidget {
   final dynamic fieldData;
@@ -26,7 +26,7 @@ class FieldDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   Map<String, dynamic>? _analysis;
   Map<String, dynamic>? _latestSuitabilityReport;
   List<Map<String, dynamic>> _fieldCrops = [];
@@ -287,36 +287,40 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        centerTitle: true,
+        toolbarHeight: 60,
+        leadingWidth: 48,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color(0xFF00E676)),
+          icon: const Icon(Icons.arrow_back, color: Color(0xFF00E676), size: 24),
           onPressed: () => Navigator.of(context).maybePop(),
         ),
-        title: AnimatedOpacity(
-          opacity: _uiFadeAnim.value,
-          duration: const Duration(milliseconds: 300),
-          child: Row(
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(4),
+              decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFF00E676)),
+              child: const Icon(Icons.eco_rounded, color: Colors.black, size: 16),
+            ),
+            const SizedBox(width: 8),
+            Text('Agri-Farm ', 
+              style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)
+            ),
+            Text('AR', 
+              style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, color: const Color(0xFF00E676))
+            ),
+          ],
+        ),
+        centerTitle: false,
+        actions: [
+          Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.architecture_rounded, color: Color(0xFF00E676)),
-              const SizedBox(width: 8),
-              Text(d['name']?.toUpperCase() ?? 'AGRI-FARM AR',
-                  style: GoogleFonts.outfit(
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 2.0,
-                      color: Colors.white,
-                      fontSize: 18)),
-              const SizedBox(width: 12),
-              const Text('3D TECH VIEW',
-                  style: TextStyle(
-                      color: Colors.white54, fontSize: 12, letterSpacing: 1.0)),
+              const Text('AKTİF', style: TextStyle(color: Colors.white70, fontSize: 10, letterSpacing: 1.2)),
+              const SizedBox(width: 6),
+              Container(width: 8, height: 8, decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFF00E676), boxShadow: [BoxShadow(color: Color(0xFF00E676), blurRadius: 4)])),
+              const SizedBox(width: 16),
             ],
-          ),
-        ),
-        actions: [
-          IconButton(
-              icon: const Icon(Icons.sync, color: Color(0xFF00E676)),
-              onPressed: _showSyncQueueDialog),
+          )
         ],
       ),
       body: Stack(
@@ -352,73 +356,18 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
           ),
 
           // 4. Center Top/Sides stats
-          // 4. Live Stats (sağ üst)
-          if (!_isLoading && _error == null && !_isZoneDrawingMode)
-            Positioned(
-              right: 12,
-              top: MediaQuery.of(context).padding.top + 56,
-              child: FadeTransition(
-                opacity: _uiFadeAnim,
-                child: SlideTransition(
-                  position: _uiSlideAnim,
-                  child: _buildLiveStatsPanel(a),
-                ),
-              ),
-            ),
-
-          // 4b. Uygunluk raporu (sol üst)
-          if (!_isLoading && _error == null && !_isZoneDrawingMode)
-            Positioned(
-              left: 12,
-              top: MediaQuery.of(context).padding.top + 56,
-              child: FadeTransition(
-                opacity: _uiFadeAnim,
-                child: SlideTransition(
-                  position: _uiSlideAnim,
-                  child: _buildSuitabilityCard(),
-                ),
-              ),
-            ),
-
-          // 4c. Field Details (sağ alt)
-          if (!_isLoading && _error == null && _fieldCrops.isNotEmpty && !_isZoneDrawingMode)
-            Positioned(
-              right: 12,
-              bottom: MediaQuery.of(context).padding.bottom + 90,
-              child: FadeTransition(
-                opacity: _uiFadeAnim,
-                child: _buildFieldDetailsCard(),
-              ),
-            ),
+          // 4. Karmaşık yüzer pencereler The user requested to simplify the screen and hide these blocks:
+          // Live Stats, Uygunluk Raporu, Field Details, Bölge Lejandı
+          // Bunların detaylarına alt kısımdaki Bottom Navigasyon barından (Görevler, Veri Trendleri vb.) ulaşılabilir.
 
           // 4d. Alert badges (sol taraf, harita üstü)
           if (!_isLoading && _error == null && !_isZoneDrawingMode)
             Positioned(
-              left: 60,
-              top: MediaQuery.of(context).size.height * 0.38,
+              left: 12,
+              top: MediaQuery.of(context).size.height * 0.15,
               child: FadeTransition(
                 opacity: _uiFadeAnim,
                 child: _buildAlertBadges(),
-              ),
-            ),
-
-          // 4e. Bölge lejandı (sol alt)
-          if (!_isLoading && _error == null && _fieldCrops.isNotEmpty && !_isZoneDrawingMode)
-            Positioned(
-              left: 12,
-              bottom: MediaQuery.of(context).padding.bottom + 90,
-              child: FadeTransition(
-                opacity: _uiFadeAnim,
-                child: CropZoneLegend(
-                  zones: _fieldCrops.map((crop) {
-                    final zoneJson = crop['zone_polygon_json']?.toString();
-                    return {
-                      'name': crop['name']?.toString() ?? 'Bitki',
-                      'color': _cropColor(crop),
-                      'has_zone': zoneJson != null && zoneJson.isNotEmpty,
-                    };
-                  }).toList(),
-                ),
               ),
             ),
 
@@ -484,18 +433,20 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
   }
 
   // ═══════════════════════════════════════════════════
-  // LIVE STATS PANEL — 6 canlı metrik
+  // LIVE STATS PANEL — 4 ana canli metrik (AR Tarzı)
   // ═══════════════════════════════════════════════════
   Widget _buildLiveStatsPanel(Map<String, dynamic>? a) {
-    final temp = a != null ? '${(a['temp'] as num?)?.round() ?? '--'}°C' : '--°C';
-    final humid = a != null ? '%${(a['humidity'] as num?)?.round() ?? '--'}' : '--%';
-    final wind = a != null ? '${(a['wind'] as num?)?.toStringAsFixed(1) ?? '--'} m/s' : '-- m/s';
-    final ph = a != null ? '${(a['ph'] as num?)?.toStringAsFixed(1) ?? '--'}' : '--';
     final soilTemp = a != null ? '${(a['soil_temp_c'] as num?)?.toStringAsFixed(0) ?? '--'}°C' : '--°C';
     final rain = a != null ? '${(a['total_weekly_rain'] as num?)?.toStringAsFixed(1) ?? '--'} mm' : '-- mm';
-    final soilMoisture = a != null ? '%${((a['soil_moisture'] as num?)?.toDouble() ?? 0.0) * 100 ~/ 1}' : '--%';
+    
+    final tempVal = (a?['temp'] as num?)?.toDouble() ?? 20.0;
+    final humidVal = (a?['humidity'] as num?)?.toDouble() ?? 50.0;
+    String pestLevel = 'Düşük';
+    Color pestColor = const Color(0xFF00E676);
+    if (humidVal > 70 && tempVal > 25) { pestLevel = 'Yüksek'; pestColor = const Color(0xFFEF5350); }
+    else if (humidVal > 60) { pestLevel = 'Orta'; pestColor = const Color(0xFFFFA726); }
 
-    // Bitki sağlığı skoru — ekili bitki uygunluk ortalaması
+    // Bitki sağlığı skoru
     String healthScore = '--';
     if (_fieldCrops.isNotEmpty && a != null) {
       final env = _envForSuitability();
@@ -514,52 +465,58 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
       if (count > 0) healthScore = '%${(total / count).round()}';
     }
 
-    return GlassPanel(
-      baseColor: const Color(0xFF1B5E20),
-      borderRadius: 14,
-      padding: const EdgeInsets.all(10),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 145),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(children: [
-              const Icon(Icons.monitor_heart_outlined, color: Color(0xFF00E676), size: 13),
-              const SizedBox(width: 5),
-              Text('Canlı Veriler', style: GoogleFonts.outfit(
-                fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white)),
-              const Spacer(),
-              Container(
-                width: 7, height: 7,
-                decoration: const BoxDecoration(color: Color(0xFF00E676), shape: BoxShape.circle),
-              ),
-            ]),
-            const SizedBox(height: 8),
-            _statRow(Icons.favorite_rounded, 'Sağlık', healthScore, const Color(0xFF00E676)),
-            _statRow(Icons.thermostat_rounded, 'Sıcaklık', temp, const Color(0xFFFFCC80)),
-            _statRow(Icons.opacity_rounded, 'Nem', humid, const Color(0xFFA5D6A7)),
-            _statRow(Icons.thermostat_auto_outlined, 'Toprak', soilTemp, const Color(0xFFFFAB91)),
-            _statRow(Icons.water_drop_outlined, 'T.Nem', soilMoisture, const Color(0xFF81D4FA)),
-            _statRow(Icons.cloud_outlined, 'Yağış', rain, const Color(0xFF90CAF9)),
-            _statRow(Icons.air_rounded, 'Rüzgar', wind, const Color(0xFFCE93D8)),
-            _statRow(Icons.science_outlined, 'pH', ph, const Color(0xFFA5D6A7)),
-          ],
-        ),
+    return Container(
+      width: 170,
+      decoration: BoxDecoration(
+        color: const Color(0xFF0D1811).withValues(alpha: 0.8),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF00E676).withValues(alpha: 0.7), width: 1.5),
+        boxShadow: [BoxShadow(color: const Color(0xFF00E676).withValues(alpha: 0.15), blurRadius: 10)],
+      ),
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Canlı Veriler', style: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white)),
+              const Icon(Icons.more_horiz, color: Colors.white54, size: 16),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _arStatCard(Icons.monitor_heart_rounded, 'Tarla Sağlığı', healthScore, const Color(0xFF00E676)),
+          _arStatCard(Icons.thermostat_rounded, 'Toprak Sıcaklık', soilTemp, const Color(0xFFFFB74D)),
+          _arStatCard(Icons.water_drop_rounded, 'Yağış', rain, const Color(0xFF4FC3F7)),
+          _arStatCard(Icons.bug_report_rounded, 'Zararlı Seviye', pestLevel, pestColor),
+        ],
       ),
     );
   }
 
-  Widget _statRow(IconData icon, String label, String value, Color iconColor) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
+  Widget _arStatCard(IconData icon, String label, String value, Color accentColor) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1B5E20).withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: accentColor.withValues(alpha: 0.5), width: 1),
+      ),
       child: Row(
         children: [
-          Icon(icon, color: iconColor, size: 14),
-          const SizedBox(width: 6),
-          Text(label, style: const TextStyle(color: Colors.white54, fontSize: 9, fontFamily: 'monospace')),
-          const Spacer(),
-          Text(value, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+          Icon(icon, color: accentColor, size: 24),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: const TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.w500)),
+                Text(value, style: TextStyle(color: accentColor, fontSize: 14, fontWeight: FontWeight.w800, letterSpacing: 0.5)),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -573,12 +530,11 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
     final area = (d['area_dekar'] as num?)?.toStringAsFixed(1) ?? '--';
     final crop = _fieldCrops.isNotEmpty ? _fieldCrops.first : null;
     final cropName = crop?['name']?.toString() ?? 'Ekilmedi';
-    final maturity = crop != null ? _computeMaturityPercent(crop) : 0.0;
-    final harvestDate = _computeHarvestDate(crop);
+    final fieldName = d['name']?.toString() ?? 'Tarla';
 
     // Sulama durumu
-    String irrigationStatus = 'BİLGİ YOK';
-    Color irrigationColor = Colors.grey;
+    String irrigationStatus = 'KAPALI';
+    Color irrigationColor = const Color(0xFFEF5350);
     String nextIrrDate = '--';
     final now = DateTime.now();
     for (final plan in _irrigationPlans) {
@@ -586,51 +542,52 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
       if (date != null && date.isAfter(now)) {
         irrigationStatus = plan['should_irrigate'] == true ? 'AKTİF' : 'KAPALI';
         irrigationColor = plan['should_irrigate'] == true
-            ? const Color(0xFF00E676) : Colors.orange;
+            ? const Color(0xFF00E676) : const Color(0xFFEF5350);
         nextIrrDate = DateFormat('dd/MM').format(date.toLocal());
         break;
       }
     }
 
-    return GlassPanel(
-      baseColor: const Color(0xFF1B5E20),
-      borderRadius: 14,
-      padding: const EdgeInsets.all(10),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 155),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(children: [
-              const Icon(Icons.info_outline_rounded, color: Color(0xFF00E676), size: 13),
-              const SizedBox(width: 5),
-              Text('Tarla Detayı', style: GoogleFonts.outfit(
-                fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white)),
-            ]),
-            const SizedBox(height: 8),
-            _detailRow('${_cropEmoji(cropName)} Ürün', cropName),
-            _detailRow('📐 Alan', '$area dönüm'),
-            _detailRow('💧 Sulama', irrigationStatus, valueColor: irrigationColor),
-            _detailRow('📅 Snr.Sulama', nextIrrDate),
-            _detailRow('🌱 Olgunluk', '%${maturity.toStringAsFixed(0)}',
-                valueColor: maturity >= 90 ? const Color(0xFF00E676) : Colors.white),
-            if (harvestDate != null)
-              _detailRow('🗓️ Hasat', DateFormat('dd.MM.yyyy').format(harvestDate)),
-          ],
-        ),
+    return Container(
+      width: 170,
+      decoration: BoxDecoration(
+        color: const Color(0xFF0D1811).withValues(alpha: 0.8),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF00E676).withValues(alpha: 0.5), width: 1.5),
+        boxShadow: [BoxShadow(color: const Color(0xFF00E676).withValues(alpha: 0.1), blurRadius: 8)],
+      ),
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text('$fieldName Detayları', style: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white)),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Text(_cropEmoji(cropName), style: const TextStyle(fontSize: 14)),
+              const SizedBox(width: 8),
+              Expanded(child: Text(cropName, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600))),
+            ],
+          ),
+          const SizedBox(height: 10),
+          _detailRow('Alan:', '$area Dönüm'),
+          _detailRow('Sulama:', irrigationStatus, valueColor: irrigationColor),
+          _detailRow('Snr Kontrol:', nextIrrDate),
+        ],
       ),
     );
   }
 
   Widget _detailRow(String label, String value, {Color? valueColor}) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
+      padding: const EdgeInsets.only(bottom: 6),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Expanded(child: Text(label, style: const TextStyle(color: Colors.white54, fontSize: 9))),
+          Text(label, style: const TextStyle(color: Colors.white54, fontSize: 11)),
           Text(value, style: TextStyle(
-            color: valueColor ?? Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
+            color: valueColor ?? Colors.white, fontSize: 12, fontWeight: FontWeight.w700)),
         ],
       ),
     );
@@ -718,27 +675,30 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
       children: alerts.take(3).map((alert) {
         final color = alert['color'] as Color;
         return Padding(
-          padding: const EdgeInsets.only(bottom: 6),
+          padding: const EdgeInsets.only(bottom: 12),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.7),
-              border: Border.all(color: color, width: 1.2),
-              borderRadius: BorderRadius.circular(10),
+              color: Colors.black.withValues(alpha: 0.85),
+              borderRadius: BorderRadius.circular(4), // Keskin AR tarzı köşe
+              border: Border.all(color: color, width: 2), // Kalın parlak çerçeve
+              boxShadow: [
+                BoxShadow(color: color.withValues(alpha: 0.4), blurRadius: 15, spreadRadius: 2)
+              ],
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(alert['icon'] as IconData, color: color, size: 16),
-                const SizedBox(width: 6),
+                Icon(alert['icon'] as IconData, color: color, size: 20),
+                const SizedBox(width: 10),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(alert['title'] as String, style: TextStyle(
-                      color: color, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 0.5)),
+                    Text(alert['title'] as String, style: GoogleFonts.outfit(
+                      color: color, fontSize: 13, fontWeight: FontWeight.w900, letterSpacing: 1.2)),
                     Text(alert['sub'] as String, style: const TextStyle(
-                      color: Colors.white60, fontSize: 8)),
+                      color: Colors.white, fontSize: 10)),
                   ],
                 ),
               ],
@@ -821,20 +781,38 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
   }
 
   Widget _buildHUDBottomBar() {
-    return GlassPanel(
-      baseColor: Colors.white,
-      borderRadius: 20,
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-      child: Row(
-        children: [
-          Expanded(child: _buildNavBtn(Icons.add_circle_rounded, 'Ekle', _showPlantPicker, primary: true)),
-          Expanded(child: _buildNavBtn(Icons.view_in_ar_rounded, '360°', _openPanoramaView)),
-          Expanded(child: _buildNavBtn(Icons.eco_rounded, 'Nöbetleşe', _showCropRecommendations)),
-          Expanded(child: _buildNavBtn(Icons.article_rounded, 'Detaylar', _showDetailModal)),
-          Expanded(child: _buildNavBtn(Icons.grain_rounded, 'Tohum', () => Navigator.push(context,
-              MaterialPageRoute(builder: (_) => const SeedSelectorScreen())))),
-          Expanded(child: _buildNavBtn(Icons.water_drop_rounded, 'Sulama', _openIrrigationSchedule)),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0D1811).withValues(alpha: 0.9),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFF00E676).withValues(alpha: 0.5), width: 1),
+        boxShadow: [
+          BoxShadow(color: const Color(0xFF00E676).withValues(alpha: 0.2), blurRadius: 20, spreadRadius: -5),
         ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          _buildNavBtn(Icons.radar_rounded, 'Tarlayı Tara', _showPlantPicker, primary: true),
+          _buildNavBtn(Icons.stacked_line_chart_rounded, 'Veri Trendleri', _showCropRecommendations),
+          _buildNavBtn(Icons.water_drop_rounded, 'Sulama Kontrolü', _openIrrigationSchedule),
+          _buildNavBtn(Icons.account_balance_wallet_rounded, 'Cüzdan', _openCostLedger),
+          _buildNavBtn(Icons.checklist_rtl_rounded, 'Görevler', _showDetailModal),
+        ],
+      ),
+    );
+  }
+
+  void _openCostLedger() {
+    final d = widget.fieldData;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CostLedgerScreen(
+          fieldId: d['id']?.toString(),
+          fieldName: d['name']?.toString(),
+        ),
       ),
     );
   }
@@ -869,56 +847,28 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
     );
   }
 
-  void _openPanoramaView() {
-    final d = widget.fieldData;
-    final polygon = _polygonPoints(d);
-    final crops = _plantedCrops(d);
-    final area = (d['area_dekar'] as num?)?.toDouble() ?? 1.0;
-    final name = d['name']?.toString() ?? 'Tarla';
-
-    if (polygon.length < 3) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('360° görünüm için tarlanın alan çizimi gereklidir.'),
-        ),
-      );
-      return;
-    }
-
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => FieldPanoramaView(
-          polygon: polygon,
-          crops: crops,
-          areaDekar: area,
-          fieldName: name,
-        ),
-      ),
-    );
-  }
-
   Widget _buildNavBtn(IconData icon, String text, VoidCallback onTap, {bool primary = false}) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-        decoration: primary ? BoxDecoration(
-          color: const Color(0xFF1B5E20),
-          borderRadius: BorderRadius.circular(14),
-        ) : null,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: primary ? Colors.white : const Color(0xFF2E7D32), size: 19),
-            const SizedBox(height: 3),
-            Text(text, style: GoogleFonts.inter(
-              color: primary ? Colors.white : const Color(0xFF2E7D32),
-              fontSize: 9,
-              fontWeight: FontWeight.w600,
-            )),
-          ],
-        ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: primary ? const Color(0xFF00E676) : Colors.transparent,
+              shape: BoxShape.circle,
+              border: primary ? null : Border.all(color: Colors.white24, width: 1),
+            ),
+            child: Icon(icon, color: primary ? Colors.black : Colors.white, size: 22),
+          ),
+          const SizedBox(height: 6),
+          Text(text, style: GoogleFonts.outfit(
+            color: primary ? const Color(0xFF00E676) : Colors.white70,
+            fontSize: 10,
+            fontWeight: primary ? FontWeight.w700 : FontWeight.w500,
+          )),
+        ],
       ),
     );
   }
@@ -1207,26 +1157,51 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
     return LatLng(lat, lng);
   }
 
-  /// Polygon iç bölgesi için axis-aligned bbox üzerinde grid noktaları üret,
-  /// yalnız polygon içine düşenleri tut. Ray-casting point-in-polygon.
+  /// Polygon iç bölgesi için, kullanıcının çizdiği "İLK KENAR" referans alınarak (row-aligned) 
+  /// düzgün sıralar halinde (setlere bölünmüş) grid noktaları üretir.
   List<LatLng> _gridInsidePolygon(List<LatLng> polygon, int targetCount) {
     if (polygon.length < 3 || targetCount <= 0) return const [];
-    double minLat = polygon.first.latitude, maxLat = polygon.first.latitude;
-    double minLng = polygon.first.longitude, maxLng = polygon.first.longitude;
-    for (final p in polygon) {
+    
+    // Anlamlı Çekim (Row Alignment): Set'in ilk kenarı (A -> B) sıra yönü olarak kabul edilir.
+    final origin = polygon[0];
+    final double dx = polygon[1].longitude - polygon[0].longitude;
+    final double dy = polygon[1].latitude - polygon[0].latitude;
+    final double angle = math.atan2(dy, dx);
+    
+    // Döndürme yardımcı fonksiyonu
+    LatLng rotate(LatLng p, double a, LatLng center) {
+      final x = p.longitude - center.longitude;
+      final y = p.latitude - center.latitude;
+      final rx = x * math.cos(a) - y * math.sin(a);
+      final ry = x * math.sin(a) + y * math.cos(a);
+      return LatLng(center.latitude + ry, center.longitude + rx);
+    }
+    
+    // Poligonu -angle ile döndürerek ilk kenarı düz (X) eksenine hizala
+    final rotatedPoly = polygon.map((p) => rotate(p, -angle, origin)).toList();
+
+    double minLat = rotatedPoly.first.latitude, maxLat = rotatedPoly.first.latitude;
+    double minLng = rotatedPoly.first.longitude, maxLng = rotatedPoly.first.longitude;
+    for (final p in rotatedPoly) {
       if (p.latitude < minLat) minLat = p.latitude;
       if (p.latitude > maxLat) maxLat = p.latitude;
       if (p.longitude < minLng) minLng = p.longitude;
       if (p.longitude > maxLng) maxLng = p.longitude;
     }
-    final steps = math.max(3, math.sqrt(targetCount).ceil() + 1);
+    
+    final steps = math.max(3, math.sqrt(targetCount).ceil() + 2);
     final result = <LatLng>[];
-    for (int i = 1; i < steps; i++) {
-      for (int j = 1; j < steps; j++) {
+    
+    for (int i = 0; i <= steps; i++) {
+      for (int j = 0; j <= steps; j++) {
         final lat = minLat + (maxLat - minLat) * (i / steps);
         final lng = minLng + (maxLng - minLng) * (j / steps);
-        if (_pointInPolygon(lat, lng, polygon)) {
-          result.add(LatLng(lat, lng));
+        
+        // Döndürülmüş poligon içinde mi?
+        if (_pointInPolygon(lat, lng, rotatedPoly)) {
+          // Noktayı tekrar orjinal açısına geri döndür! (Sıraları çapraz tarlaya oturt)
+          final originalPoint = rotate(LatLng(lat, lng), angle, origin);
+          result.add(originalPoint);
           if (result.length >= targetCount) return result;
         }
       }
@@ -1336,42 +1311,50 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
         final color = _cropColor(crop);
         zonePolygons.add(Polygon(
           points: zonePoly,
-          color: color.withValues(alpha: 0.35),
+          color: color.withValues(alpha: 0.15),
           borderColor: color,
-          borderStrokeWidth: 2.5,
+          borderStrokeWidth: 4.0,
         ));
 
-        // Bölge merkez marker'ı — dokunulabilir
-        double cLat = 0, cLng = 0;
-        for (final p in zonePoly) {
-          cLat += p.latitude;
-          cLng += p.longitude;
-        }
-        final zoneCenter = LatLng(cLat / zonePoly.length, cLng / zonePoly.length);
-
+        // Bölgeyi tamamen dolduran marker ağı oluştur — dokunulabilir
         final maturity = _computeMaturityPercent(crop);
-        zoneMarkers.add(Marker(
-          point: zoneCenter,
-          width: 36,
-          height: 42,
-          child: AnimatedBuilder(
-            animation: _harvestPulseCtrl,
-            builder: (_, __) => buildCropMarkerWidget(
-              cropName: crop['name']?.toString() ?? '',
-              cropColor: color,
-              maturityPercent: maturity,
-              harvestPulse: _harvestPulseCtrl.value,
-              onTap: () => _onCropZoneTap(crop),
+        final positions = _gridInsidePolygon(zonePoly, 80); // Yoğun grid
+        if (positions.isEmpty) {
+          double cLat = 0, cLng = 0;
+          for (final p in zonePoly) { cLat += p.latitude; cLng += p.longitude; }
+          positions.add(LatLng(cLat / zonePoly.length, cLng / zonePoly.length));
+        }
+
+        // Z-Index Sorting: Painter's Algorithm (Kuzeyden Güneye doğru sırala)
+        positions.sort((a, b) => b.latitude.compareTo(a.latitude));
+
+        for (final pos in positions) {
+          zoneMarkers.add(Marker(
+            point: pos,
+            width: 240,
+            height: 280,
+            child: AnimatedBuilder(
+              animation: _harvestPulseCtrl,
+              builder: (_, __) => buildCropMarkerWidget(
+                cropName: crop['name']?.toString() ?? '',
+                cropColor: color,
+                maturityPercent: maturity,
+                harvestPulse: _harvestPulseCtrl.value,
+                onTap: () => _onCropZoneTap(crop),
+              ),
             ),
-          ),
-        ));
+          ));
+        }
       } else {
         gridCrops.add(crop);
       }
     }
 
-    // Zone olmayan bitkiler için eski grid markerlar → CustomPainter
-    final positions = _gridInsidePolygon(polygon, 36);
+    // Zone olmayan bitkiler için eski grid markerlar
+    final positions = _gridInsidePolygon(polygon, 60);
+    // Z-Index Sorting
+    positions.sort((a, b) => b.latitude.compareTo(a.latitude));
+
     final markers = <Marker>[];
     if (gridCrops.isNotEmpty && positions.isNotEmpty) {
       for (int i = 0; i < positions.length; i++) {
@@ -1380,8 +1363,8 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
         markers.add(
           Marker(
             point: positions[i],
-            width: 32,
-            height: 38,
+            width: 240,
+            height: 280,
             child: AnimatedBuilder(
               animation: _harvestPulseCtrl,
               builder: (_, __) => buildCropMarkerWidget(
@@ -1450,21 +1433,20 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
       cornerMarkers.add(
         Marker(
           point: polygon[i],
-          width: 26,
-          height: 26,
+          width: 36,
+          height: 36,
           child: Container(
-            decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.65),
-              border: Border.all(color: borderColor, width: 1.5),
-              shape: BoxShape.circle,
-            ),
             alignment: Alignment.center,
             child: Text(
               String.fromCharCode(65 + i),
-              style: const TextStyle(
-                color: borderColor,
-                fontWeight: FontWeight.bold,
-                fontSize: 12,
+              style: GoogleFonts.outfit(
+                color: const Color(0xFF00E676),
+                fontWeight: FontWeight.w900,
+                fontSize: 24,
+                shadows: [
+                  Shadow(color: const Color(0xFF00E676).withValues(alpha: 0.8), blurRadius: 12),
+                  const Shadow(color: Colors.black, blurRadius: 4),
+                ],
               ),
             ),
           ),
@@ -1472,19 +1454,25 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
       );
     }
 
-    return FlutterMap(
-      mapController: _mapController,
-      options: MapOptions(
-        initialCenter: center,
-        initialZoom: 18.0,
-        minZoom: 16,
-        maxZoom: 21,
-        initialCameraFit: bounds != null
-            ? CameraFit.bounds(
-                bounds: bounds,
-                padding: const EdgeInsets.all(80),
-              )
-            : null,
+    return Transform(
+      transform: Matrix4.identity()
+        ..scale(1.5, 1.5, 1.0) // Rotate işlemi sonrası boş kalan tavan/taban siyahlıklarını ekran dışına itmek için genel büyütme
+        ..setEntry(3, 2, 0.001)
+        ..rotateX(-0.85), // Tarlayı geriye doğru 45 derece yatırır (doğru izometrik bakış)
+      alignment: FractionalOffset.center,
+      child: FlutterMap(
+        mapController: _mapController,
+        options: MapOptions(
+          initialCenter: center,
+          initialZoom: 18.0,
+          minZoom: 16,
+          maxZoom: 21,
+          initialCameraFit: bounds != null
+              ? CameraFit.bounds(
+                  bounds: bounds,
+                  padding: const EdgeInsets.all(80),
+                )
+              : null,
         cameraConstraint: bounds != null
             ? CameraConstraint.containCenter(bounds: bounds)
             : const CameraConstraint.unconstrained(),
@@ -1513,15 +1501,15 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
               Polygon(
                 points: polygon,
                 color: Colors.transparent,
-                borderColor: borderColor.withValues(alpha: 0.35),
-                borderStrokeWidth: 8.0,
+                borderColor: borderColor.withValues(alpha: 0.5),
+                borderStrokeWidth: 12.0,
               ),
               // Ana sınır + dolgu
               Polygon(
                 points: polygon,
-                color: polygonColor,
+                color: Colors.black.withValues(alpha: 0.2),
                 borderColor: borderColor,
-                borderStrokeWidth: 3.0,
+                borderStrokeWidth: 4.0,
               ),
               // Ekili bölge poligonları
               ...zonePolygons,
@@ -1534,6 +1522,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
         if (drawingMarkers.isNotEmpty) MarkerLayer(markers: drawingMarkers),
         if (cornerMarkers.isNotEmpty) MarkerLayer(markers: cornerMarkers),
       ],
+    ),
     );
   }
 

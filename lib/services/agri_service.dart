@@ -110,19 +110,18 @@ class AgriService {
 
       // Çevre verileri paralel olarak çekiliyor (toplam süre max(8,10,8,agro) sn)
       await Future.wait([
-        // 1) Anlık Hava (OpenWeatherMap)
+        // 1) Anlık Hava (Open-Meteo — ücretsiz, key gerektirmez)
         () async {
           try {
-            final weatherKey = dotenv.env['WEATHER_API_KEY'] ?? '';
             final wRes = await http
                 .get(Uri.parse(
-                  'https://api.openweathermap.org/data/2.5/weather?lat=$latitude&lon=$longitude&appid=$weatherKey&units=metric&lang=tr',
+                  'https://api.open-meteo.com/v1/forecast?latitude=$latitude&longitude=$longitude&current=temperature_2m,relative_humidity_2m&timezone=auto',
                 ))
                 .timeout(const Duration(seconds: 8));
             if (wRes.statusCode == 200) {
-              final wd = jsonDecode(wRes.body);
-              numericTemp = (wd['main']['temp'] as num).toDouble();
-              numericHumidity = (wd['main']['humidity'] as num).toDouble();
+              final cur = jsonDecode(wRes.body)['current'];
+              numericTemp = (cur['temperature_2m'] as num?)?.toDouble() ?? numericTemp;
+              numericHumidity = (cur['relative_humidity_2m'] as num?)?.toDouble() ?? numericHumidity;
             }
           } catch (_) {}
         }(),
@@ -491,6 +490,9 @@ class AgriService {
     double lat,
     double lng,
   ) async {
+    // Agromonitoring ücretli bir servistir. Key yoksa sessizce atla —
+    // kullanıcıdan asla key isteme (proje kuralı: sadece ücretsiz servisler).
+    if (_agroKey.isEmpty) return null;
     try {
       // Basit bir polygon oluştur (nokta etrafında ~100mx100m kare)
       final double offset = 0.0005;
@@ -972,21 +974,20 @@ class AgriService {
 
     // Tüm çevre verileri paralel çekiliyor
     await Future.wait([
-      // 1) Hava
+      // 1) Hava (Open-Meteo — key gerektirmez)
       () async {
         try {
-          final weatherKey = dotenv.env['WEATHER_API_KEY'] ?? '';
           final wRes = await http
               .get(Uri.parse(
-                'https://api.openweathermap.org/data/2.5/weather?lat=$latitude&lon=$longitude&appid=$weatherKey&units=metric&lang=tr',
+                'https://api.open-meteo.com/v1/forecast?latitude=$latitude&longitude=$longitude&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code&wind_speed_unit=ms&timezone=auto',
               ))
               .timeout(const Duration(seconds: 8));
           if (wRes.statusCode == 200) {
-            final wd = jsonDecode(wRes.body);
-            numericTemp = (wd['main']['temp'] as num).toDouble();
-            numericHumidity = (wd['main']['humidity'] as num).toDouble();
-            numericWind = (wd['wind']?['speed'] as num?)?.toDouble() ?? 0;
-            weatherDesc = wd['weather']?[0]?['description'] ?? '';
+            final cur = jsonDecode(wRes.body)['current'];
+            numericTemp = (cur['temperature_2m'] as num?)?.toDouble() ?? numericTemp;
+            numericHumidity = (cur['relative_humidity_2m'] as num?)?.toDouble() ?? numericHumidity;
+            numericWind = (cur['wind_speed_10m'] as num?)?.toDouble() ?? 0;
+            weatherDesc = _wmoCodeToTr((cur['weather_code'] as num?)?.toInt() ?? 0);
           }
         } catch (_) {}
       }(),
@@ -1122,11 +1123,10 @@ class AgriService {
       List<Map<String, dynamic>> weeklyForecast = [];
 
       try {
-        final weatherKey = dotenv.env['WEATHER_API_KEY'] ?? '';
-        // Anlık hava + 7 günlük tahmin paralel çek
+        // Anlık hava + 7 günlük tahmin paralel çek (Open-Meteo — key yok)
         final results = await Future.wait([
           http.get(Uri.parse(
-            'https://api.openweathermap.org/data/2.5/weather?lat=$lat&lon=$lng&appid=$weatherKey&units=metric&lang=tr',
+            'https://api.open-meteo.com/v1/forecast?latitude=$lat&longitude=$lng&current=temperature_2m,relative_humidity_2m&timezone=auto',
           )).timeout(const Duration(seconds: 5)),
           http.get(Uri.parse(
             'https://api.open-meteo.com/v1/forecast?latitude=$lat&longitude=$lng&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,relative_humidity_2m_mean,windspeed_10m_max,weathercode&timezone=auto',
@@ -1136,12 +1136,11 @@ class AgriService {
           )).timeout(const Duration(seconds: 5)),
         ]);
 
-        // Anlık hava
+        // Anlık hava (Open-Meteo — lokasyon adı yok, default kalır)
         if (results[0].statusCode == 200) {
-          final wd = jsonDecode(results[0].body);
-          temp = (wd['main']['temp'] as num).toDouble();
-          hum = (wd['main']['humidity'] as num).toDouble();
-          locationName = wd['name'] ?? locationName;
+          final cur = jsonDecode(results[0].body)['current'];
+          temp = (cur['temperature_2m'] as num?)?.toDouble() ?? temp;
+          hum = (cur['relative_humidity_2m'] as num?)?.toDouble() ?? hum;
         }
 
         // 7 günlük tahmin
@@ -1557,4 +1556,23 @@ class AgriService {
       return [];
     }
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WMO weather code → Türkçe kısa açıklama
+// (Open-Meteo weather_code; OpenWeatherMap "description" alanının karşılığı)
+// ─────────────────────────────────────────────────────────────────────────────
+String _wmoCodeToTr(int code) {
+  if (code == 0) return 'açık';
+  if (code == 1) return 'az bulutlu';
+  if (code == 2) return 'parçalı bulutlu';
+  if (code == 3) return 'kapalı';
+  if (code == 45 || code == 48) return 'sisli';
+  if (code >= 51 && code <= 57) return 'çisenti';
+  if (code >= 61 && code <= 67) return 'yağmurlu';
+  if (code >= 71 && code <= 77) return 'karlı';
+  if (code >= 80 && code <= 82) return 'sağanak';
+  if (code >= 85 && code <= 86) return 'kar sağanağı';
+  if (code >= 95) return 'gök gürültülü fırtına';
+  return '';
 }

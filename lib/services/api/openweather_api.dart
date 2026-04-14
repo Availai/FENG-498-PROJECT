@@ -1,15 +1,16 @@
-/// OpenWeather API — Current weather + 5-day/3-hour forecast
+/// Ücretsiz hava servisi (Open-Meteo tabanlı).
 ///
-/// Requires OPENWEATHER_API_KEY in .env
-/// Endpoint docs: https://openweathermap.org/api/one-call-3
+/// Eski ad `OpenWeatherApi` geriye dönük uyumluluk için korunuyor ama
+/// iç implementasyon tamamen Open-Meteo'ya geçti. API key **gerektirmez**.
+///
+/// Endpoint: https://api.open-meteo.com/v1/forecast
 library;
 
 import 'dart:convert';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 
 // ─────────────────────────────────────────────────────────────────────────────
-// MODELLER
+// MODELLER — isimler (OW*) geriye dönük uyum için korunuyor
 // ─────────────────────────────────────────────────────────────────────────────
 
 class OWCurrentWeather {
@@ -21,7 +22,7 @@ class OWCurrentWeather {
   final double pressureHpa;
   final double visibilityKm;
   final double uvIndex;
-  final double rainMm1h;   // may be 0
+  final double rainMm1h;
   final String description;
   final String iconCode;
   final DateTime observedAt;
@@ -41,26 +42,26 @@ class OWCurrentWeather {
     required this.observedAt,
   });
 
-  factory OWCurrentWeather.fromJson(Map<String, dynamic> j) {
-    final weather = (j['weather'] as List).first as Map<String, dynamic>;
-    final rain = j['rain'] as Map<String, dynamic>?;
+  factory OWCurrentWeather.fromOpenMeteo(Map<String, dynamic> j) {
+    final cur = j['current'] as Map<String, dynamic>;
+    final code = (cur['weather_code'] as num?)?.toInt() ?? 0;
+    final (desc, icon) = _weatherCodeToTr(code);
     return OWCurrentWeather(
-      tempC: (j['main']['temp'] as num).toDouble() - 273.15,
-      feelsLikeC: (j['main']['feels_like'] as num).toDouble() - 273.15,
-      humidityPct: (j['main']['humidity'] as num).toDouble(),
-      windSpeedMs: (j['wind']['speed'] as num).toDouble(),
-      windDirDeg: (j['wind']['deg'] as num?)?.toDouble() ?? 0,
-      pressureHpa: (j['main']['pressure'] as num).toDouble(),
-      visibilityKm: ((j['visibility'] as num?)?.toDouble() ?? 0) / 1000,
-      uvIndex: 0, // not in current endpoint — needs One Call
-      rainMm1h: (rain?['1h'] as num?)?.toDouble() ?? 0,
-      description: weather['description'] as String,
-      iconCode: weather['icon'] as String,
-      observedAt: DateTime.fromMillisecondsSinceEpoch((j['dt'] as int) * 1000),
+      tempC: (cur['temperature_2m'] as num?)?.toDouble() ?? 0,
+      feelsLikeC: (cur['apparent_temperature'] as num?)?.toDouble() ?? 0,
+      humidityPct: (cur['relative_humidity_2m'] as num?)?.toDouble() ?? 0,
+      windSpeedMs: (cur['wind_speed_10m'] as num?)?.toDouble() ?? 0,
+      windDirDeg: (cur['wind_direction_10m'] as num?)?.toDouble() ?? 0,
+      pressureHpa: (cur['pressure_msl'] as num?)?.toDouble() ?? 0,
+      visibilityKm: 0,
+      uvIndex: 0,
+      rainMm1h: (cur['precipitation'] as num?)?.toDouble() ?? 0,
+      description: desc,
+      iconCode: icon,
+      observedAt: DateTime.tryParse(cur['time']?.toString() ?? '') ?? DateTime.now(),
     );
   }
 
-  /// Agronomic summary string (Turkish)
   String get agronomicSummary {
     final parts = <String>[];
     if (tempC > 35) parts.add('Aşırı sıcaklık riski (${tempC.toStringAsFixed(0)}°C)');
@@ -93,21 +94,6 @@ class OWForecastPoint {
     required this.precipProbPct,
     required this.description,
   });
-
-  factory OWForecastPoint.fromJson(Map<String, dynamic> j) {
-    final weather = (j['weather'] as List).first as Map<String, dynamic>;
-    final rain = j['rain'] as Map<String, dynamic>?;
-    return OWForecastPoint(
-      time: DateTime.fromMillisecondsSinceEpoch((j['dt'] as int) * 1000),
-      tempC: (j['main']['temp'] as num).toDouble() - 273.15,
-      precipMm: (rain?['3h'] as num?)?.toDouble() ?? 0,
-      windSpeedMs: (j['wind']['speed'] as num).toDouble(),
-      windDirDeg: (j['wind']['deg'] as num?)?.toDouble() ?? 0,
-      humidityPct: (j['main']['humidity'] as num).toDouble(),
-      precipProbPct: ((j['pop'] as num?)?.toDouble() ?? 0 * 100).round(),
-      description: weather['description'] as String,
-    );
-  }
 }
 
 class OWDailyAggregation {
@@ -133,49 +119,99 @@ class OWDailyAggregation {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SERVİS
+// WMO weather code → Türkçe özet + legacy icon kodu
+// ─────────────────────────────────────────────────────────────────────────────
+
+(String, String) _weatherCodeToTr(int code) {
+  if (code == 0) return ('Açık', '01d');
+  if (code == 1) return ('Az bulutlu', '02d');
+  if (code == 2) return ('Parçalı bulutlu', '03d');
+  if (code == 3) return ('Kapalı', '04d');
+  if (code == 45 || code == 48) return ('Sisli', '50d');
+  if (code >= 51 && code <= 57) return ('Çisenti', '09d');
+  if (code >= 61 && code <= 67) return ('Yağmurlu', '10d');
+  if (code >= 71 && code <= 77) return ('Karlı', '13d');
+  if (code >= 80 && code <= 82) return ('Sağanak', '09d');
+  if (code >= 85 && code <= 86) return ('Kar sağanağı', '13d');
+  if (code >= 95) return ('Gök gürültülü fırtına', '11d');
+  return ('Belirsiz', '01d');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SERVİS — Open-Meteo (ücretsiz, key yok)
 // ─────────────────────────────────────────────────────────────────────────────
 
 class OpenWeatherApi {
-  static const _baseUrl = 'https://api.openweathermap.org/data/2.5';
+  static const _baseUrl = 'https://api.open-meteo.com/v1/forecast';
   static const _timeout = Duration(seconds: 10);
 
-  static String get _key {
-    final k = dotenv.env['OPENWEATHER_API_KEY'] ?? '';
-    if (k.isEmpty) throw Exception('OPENWEATHER_API_KEY not set in .env');
-    return k;
-  }
-
-  /// Anlık hava durumu
+  /// Anlık hava durumu (Open-Meteo)
   static Future<OWCurrentWeather> current({
     required double lat,
     required double lon,
   }) async {
-    final uri = Uri.parse('$_baseUrl/weather?lat=$lat&lon=$lon&appid=$_key');
+    final uri = Uri.parse(
+      '$_baseUrl?latitude=$lat&longitude=$lon'
+      '&current=temperature_2m,relative_humidity_2m,apparent_temperature,'
+      'precipitation,weather_code,wind_speed_10m,wind_direction_10m,pressure_msl'
+      '&wind_speed_unit=ms&timezone=auto',
+    );
     final resp = await http.get(uri).timeout(_timeout);
     if (resp.statusCode != 200) {
-      throw Exception('OpenWeather current: HTTP ${resp.statusCode}');
+      throw Exception('Open-Meteo current: HTTP ${resp.statusCode}');
     }
-    return OWCurrentWeather.fromJson(jsonDecode(resp.body) as Map<String, dynamic>);
+    return OWCurrentWeather.fromOpenMeteo(
+      jsonDecode(resp.body) as Map<String, dynamic>,
+    );
   }
 
-  /// 5 günlük / 3 saatlik tahmin (40 nokta)
+  /// 7 günlük saatlik tahmin (56 nokta = her 3 saatte ~bir örnek)
   static Future<List<OWForecastPoint>> forecast5Day({
     required double lat,
     required double lon,
   }) async {
-    final uri = Uri.parse('$_baseUrl/forecast?lat=$lat&lon=$lon&appid=$_key');
+    final uri = Uri.parse(
+      '$_baseUrl?latitude=$lat&longitude=$lon'
+      '&hourly=temperature_2m,relative_humidity_2m,precipitation,'
+      'precipitation_probability,wind_speed_10m,wind_direction_10m,weather_code'
+      '&wind_speed_unit=ms&forecast_days=7&timezone=auto',
+    );
     final resp = await http.get(uri).timeout(_timeout);
     if (resp.statusCode != 200) {
-      throw Exception('OpenWeather forecast: HTTP ${resp.statusCode}');
+      throw Exception('Open-Meteo forecast: HTTP ${resp.statusCode}');
     }
     final body = jsonDecode(resp.body) as Map<String, dynamic>;
-    final list = (body['list'] as List).cast<Map<String, dynamic>>();
-    return list.map(OWForecastPoint.fromJson).toList();
+    final h = body['hourly'] as Map<String, dynamic>;
+    final times = (h['time'] as List).cast<String>();
+    final temps = (h['temperature_2m'] as List).cast<num>();
+    final hums = (h['relative_humidity_2m'] as List).cast<num>();
+    final precs = (h['precipitation'] as List).cast<num>();
+    final probs = (h['precipitation_probability'] as List? ?? []).cast<num?>();
+    final winds = (h['wind_speed_10m'] as List).cast<num>();
+    final wdirs = (h['wind_direction_10m'] as List).cast<num>();
+    final codes = (h['weather_code'] as List).cast<num>();
+
+    final points = <OWForecastPoint>[];
+    // 3 saatte bir örnekle (OpenWeather 5day/3h ile uyum)
+    for (var i = 0; i < times.length; i += 3) {
+      final (desc, _) = _weatherCodeToTr(codes[i].toInt());
+      points.add(OWForecastPoint(
+        time: DateTime.tryParse(times[i]) ?? DateTime.now(),
+        tempC: temps[i].toDouble(),
+        precipMm: precs[i].toDouble(),
+        windSpeedMs: winds[i].toDouble(),
+        windDirDeg: wdirs[i].toDouble(),
+        humidityPct: hums[i].toDouble(),
+        precipProbPct: (i < probs.length ? (probs[i]?.toInt() ?? 0) : 0),
+        description: desc,
+      ));
+    }
+    return points;
   }
 
-  /// 5 günlük tahmini günlük özete dönüştür
+  /// Saatlik noktaları günlük özete çevir
   static List<OWDailyAggregation> aggregateDaily(List<OWForecastPoint> pts) {
+    if (pts.isEmpty) return [];
     final map = <String, List<OWForecastPoint>>{};
     for (final p in pts) {
       final key = '${p.time.year}-${p.time.month.toString().padLeft(2,'0')}-${p.time.day.toString().padLeft(2,'0')}';
@@ -197,17 +233,14 @@ class OpenWeatherApi {
     }).toList()..sort((a, b) => a.date.compareTo(b.date));
   }
 
-  /// Sulama kararı: gerçek veriye dayalı
-  /// Returns: (shouldIrrigate, reasonTr)
+  /// Sulama kararı — Türkçe gerekçe
   static (bool, String) irrigationDecision({
     required OWCurrentWeather current,
     required List<OWDailyAggregation> forecast,
     required double soilMoisturePct,
     required String cropTr,
   }) {
-    // Son 3 günde yağış var mı?
     final recent3 = forecast.take(3).map((d) => d.totalPrecipMm).fold(0.0, (a, b) => a + b);
-    // Önümüzdeki 24s yağış var mı?
     final upcomingRain = forecast.isNotEmpty ? forecast.first.totalPrecipMm : 0.0;
 
     if (upcomingRain > 8) {
