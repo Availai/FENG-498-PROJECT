@@ -1,5 +1,7 @@
 # AGENTS.md — Akıllı Tarım Asistanı v2.0
 
+> **Not:** Hızlı proje brifingi için [CLAUDE.md](CLAUDE.md) dosyasına bakın (her Claude Code turunda otomatik yüklenir). Bu dosya **detaylı envanter + yarım modül + öncelik listesi** referansı olarak kalır.
+
 ## Proje Kimliği
 Türkiye'nin kırsal bölgelerindeki çiftçilere yönelik, çevrimdışı öncelikli, kapsamlı bir tarım yönetim
 ve rehberlik uygulaması. Ana hedef: internet erişimi istikrarsız olan Anadolu kırsalında her çiftçinin

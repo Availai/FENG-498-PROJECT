@@ -4,12 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:maps_toolkit/maps_toolkit.dart' as toolkit;
 import 'package:intl/intl.dart';
-import '../data/turkish_crops_repository.dart';
 import '../services/app_providers.dart';
 import '../theme/app_theme.dart';
 import '../widgets/floating_toast.dart';
 import '../widgets/glass_panel.dart';
-import 'turkish_crops_search_screen.dart';
 
 class Field3DPlannerScreen extends ConsumerStatefulWidget {
   final double initialLat;
@@ -32,47 +30,16 @@ class Field3DPlannerScreen extends ConsumerStatefulWidget {
 class _Field3DPlannerScreenState extends ConsumerState<Field3DPlannerScreen> {
   final MapController _mapController = MapController();
   List<LatLng> _points = [];
-  TurkishCrop? _selectedCrop;
-  String? _selectedCropName;
   double _calculatedAreaSqm = 0.0;
 
   @override
   void initState() {
     super.initState();
-    if (widget.existingField != null) {
-      if (widget.existingField!['polygon'] != null) {
-        _points = (widget.existingField!['polygon'] as List)
-            .map((e) => LatLng(e['lat'], e['lng']))
-            .toList();
-        _calculateArea();
-      }
-      if (widget.existingField!['crop'] != null) {
-        _selectedCropName = widget.existingField!['crop'] as String;
-        _hydrateCropFromName(_selectedCropName!);
-      }
-    }
-  }
-
-  Future<void> _hydrateCropFromName(String name) async {
-    final repo = TurkishCropsRepository.instance;
-    await repo.ensureReady();
-    final crop = repo.findByName(name);
-    if (crop != null && mounted) {
-      setState(() => _selectedCrop = crop);
-    }
-  }
-
-  Future<void> _openCropPicker() async {
-    final picked = await Navigator.of(context).push<TurkishCrop>(
-      MaterialPageRoute(
-        builder: (_) => const TurkishCropsSearchScreen(pickerMode: true),
-      ),
-    );
-    if (picked != null && mounted) {
-      setState(() {
-        _selectedCrop = picked;
-        _selectedCropName = picked.nameTr;
-      });
+    if (widget.existingField != null && widget.existingField!['polygon'] != null) {
+      _points = (widget.existingField!['polygon'] as List)
+          .map((e) => LatLng(e['lat'], e['lng']))
+          .toList();
+      _calculateArea();
     }
   }
 
@@ -140,7 +107,7 @@ class _Field3DPlannerScreenState extends ConsumerState<Field3DPlannerScreen> {
           autofocus: true,
           decoration: InputDecoration(
             hintText: 'Örn: Kuzey Tarlası',
-            helperText: '${dekar.toStringAsFixed(1)} Dekar ${_selectedCropName ?? "(bitki seçilmedi)"} alanı eklenecek',
+            helperText: '${dekar.toStringAsFixed(1)} Dekar alan eklenecek',
           ),
         ),
         actions: [
@@ -154,7 +121,6 @@ class _Field3DPlannerScreenState extends ConsumerState<Field3DPlannerScreen> {
                 final data = {
                   'id': widget.existingField?['id'],
                   'name': '${name.trim()} (${dekar.toStringAsFixed(1)} da)',
-                  'crop': _selectedCropName ?? '',
                   'date': DateFormat('dd.MM.yyyy').format(DateTime.now()),
                   'latitude': centerLat,
                   'longitude': centerLng,
@@ -185,32 +151,24 @@ class _Field3DPlannerScreenState extends ConsumerState<Field3DPlannerScreen> {
     );
   }
 
-  // Tarla içi bitki yerleşimi paterni
+  // Tarla içi yerleşim paterni
   List<Polygon> _buildCropPattern() {
     if (_points.length < 3) return [];
-    
-    // Pseudo-3D effect: using an image overlay or a pattern fill
-    // Since flutter_map doesn't support 3D natively, we use multiple semitransparent layers
-    // to give a volumetric feel to the crop.
-    
-    final cropColor = _colorForCategory(_selectedCrop?.category);
+
+    const cropColor = AppColors.emerald;
 
     return [
-      // Base shadow layer
       Polygon(
         points: _points,
         color: Colors.black.withValues(alpha: 0.3),
         borderStrokeWidth: 0,
       ),
-      // Base solid crop color
       Polygon(
         points: _points,
         color: cropColor.withValues(alpha: 0.6),
         borderColor: cropColor,
         borderStrokeWidth: 2.0,
       ),
-      // Overlay pattern: In a real app we'd use a PatternBuilder or ImageProvider overlay.
-      // We simulate volume with an inner border layer.
       Polygon(
         points: _calculateInnerPolygon(),
         color: Colors.white.withValues(alpha: 0.1),
@@ -218,23 +176,6 @@ class _Field3DPlannerScreenState extends ConsumerState<Field3DPlannerScreen> {
         borderStrokeWidth: 1.0,
       ),
     ];
-  }
-  
-  Color _colorForCategory(String? category) {
-    switch (category) {
-      case 'Tahıl': return const Color(0xFFF59E0B); // Amber
-      case 'Baklagil': return const Color(0xFF84CC16); // Lime
-      case 'Yağlı Tohum': return const Color(0xFFFCD34D); // Yellow
-      case 'Endüstri Bitkisi': return const Color(0xFFE5E7EB); // Gray
-      case 'Yem Bitkisi': return const Color(0xFF65A30D); // Dark lime
-      case 'Sebze': return const Color(0xFFEF4444); // Red
-      case 'Meyve': return const Color(0xFFEC4899); // Pink
-      case 'Sert Kabuklu': return const Color(0xFF92400E); // Brown
-      case 'Bahçe Otu': return const Color(0xFF16A34A); // Green
-      case 'Tıbbi Bitki': return const Color(0xFF8B5CF6); // Purple
-      case 'Süs Bitkisi': return const Color(0xFFF472B6); // Light pink
-      default: return AppColors.emerald;
-    }
   }
 
   // Shrinks polygon to create a pseudo 3d 'top' surface
@@ -256,7 +197,6 @@ class _Field3DPlannerScreenState extends ConsumerState<Field3DPlannerScreen> {
   @override
   Widget build(BuildContext context) {
     double dekar = _calculatedAreaSqm / 1000;
-    final harvestDays = _selectedCrop?.daysToHarvest;
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -309,40 +249,6 @@ class _Field3DPlannerScreenState extends ConsumerState<Field3DPlannerScreen> {
             ],
           ),
           
-          // TOP GLASS PANEL (Crop picker)
-          Positioned(
-            top: 100,
-            left: 16,
-            right: 16,
-            child: GlassPanel(
-              borderRadius: 16,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: InkWell(
-                onTap: _openCropPicker,
-                borderRadius: BorderRadius.circular(12),
-                child: Row(
-                  children: [
-                    Icon(Icons.grass, color: AppColors.emerald, size: 24),
-                    const SizedBox(width: 12),
-                    Text('Ekim Planı:', style: AppText.body(context).copyWith(fontWeight: FontWeight.w600)),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        _selectedCropName ?? 'Bitki seç (292 çeşit)',
-                        style: AppText.body(context).copyWith(
-                          color: _selectedCropName == null ? AppColors.textSecondary : AppColors.textPrimary,
-                          fontWeight: FontWeight.w600,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    const Icon(Icons.search_rounded, color: AppColors.emerald, size: 22),
-                  ],
-                ),
-              ),
-            ),
-          ),
-
           // BOTTOM GLASS PANELS (Stats & Save)
           Positioned(
             bottom: 30,
@@ -359,13 +265,7 @@ class _Field3DPlannerScreenState extends ConsumerState<Field3DPlannerScreen> {
                       children: [
                         _buildStatBox('Alan', dekar.toStringAsFixed(2), 'Dekar'),
                         Container(width: 1, height: 40, color: AppColors.border),
-                        _buildStatBox(
-                          'Hasat',
-                          harvestDays == null ? '—' : harvestDays.toString(),
-                          harvestDays == null ? 'Bitki seç' : 'Gün',
-                        ),
-                        Container(width: 1, height: 40, color: AppColors.border),
-                        _buildStatBox('Kategori', _selectedCrop?.category ?? '—', _selectedCrop?.waterNeed ?? ''),
+                        _buildStatBox('Köşe', _points.length.toString(), 'Nokta'),
                       ],
                     ),
                   ),

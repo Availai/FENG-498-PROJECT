@@ -41,6 +41,7 @@ void main() async {
   await Hive.openBox('sensor_data');
   await Hive.openBox('cost_ledger');     // ÇKS masraf defteri
   await Hive.openBox('crop_history');    // münavebe geçmişi (field_id → [ürün])
+  await Hive.openBox('fuel_cache');      // EPDK mazot/benzin fiyat cache
 
 
   // 4. Push notification service

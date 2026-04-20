@@ -67,15 +67,18 @@ class _AgriDashboardState extends State<AgriDashboard>
     super.dispose();
   }
 
-  String _getWeatherImage() {
-    switch (_weatherCondition) {
-      case 'rainy':
-        return 'assets/weather/rainy.png';
-      case 'cloudy':
-        return 'assets/weather/cloudy.png';
-      default:
-        return 'assets/weather/sunny.png';
-    }
+  // HD tarım alanı arka plan görseli — çevrimdışı öncelikli, sabit asset.
+
+  Widget _fallbackGradient() {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF1B5E20), Color(0xFF4CAF50), Color(0xFFFFB300)],
+        ),
+      ),
+    );
   }
 
   String _mapWeatherCondition(String description) {
@@ -228,12 +231,24 @@ class _AgriDashboardState extends State<AgriDashboard>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: RefreshIndicator(
-        onRefresh: _refreshData,
-        color: Colors.green,
-        child: CustomScrollView(
-          slivers: [
-            _buildHeroSliverAppBar(),
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: Image.asset(
+              'assets/dashboard_bg.png',
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => _fallbackGradient(),
+            ),
+          ),
+          Positioned.fill(
+            child: Container(color: Colors.black.withValues(alpha: 0.45)),
+          ),
+          RefreshIndicator(
+            onRefresh: _refreshData,
+            color: Colors.green,
+            child: CustomScrollView(
+              slivers: [
+                _buildHeroSliverAppBar(),
             SliverToBoxAdapter(
               child: FadeTransition(
                 opacity: _fadeAnim,
@@ -266,8 +281,10 @@ class _AgriDashboardState extends State<AgriDashboard>
                 ),
               ),
             ),
-          ],
-        ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -290,24 +307,15 @@ class _AgriDashboardState extends State<AgriDashboard>
         background: Stack(
           fit: StackFit.expand,
           children: [
-            // Weather image background
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 700),
-              child: Image.asset(
-                _getWeatherImage(),
-                key: ValueKey(_weatherCondition),
-                fit: BoxFit.cover,
-              ),
-            ),
-            // Gradient overlay
+            // Gradient overlay (dashboard HD bg lives behind Scaffold body)
             Container(
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    Color(0x44000000),
-                    Color(0xCC000000),
+                    Color(0x22000000),
+                    Color(0x88000000),
                   ],
                 ),
               ),

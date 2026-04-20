@@ -87,11 +87,9 @@ flutter:
   assets:
     # tire işareti içeriden 4 boşlukla başlamalı, tireden sonra 1 boşluk olmalı
     - .env
-    - assets/weather/sunny.png
-    - assets/weather/rainy.png
-    - assets/weather/cloudy.png
     - assets/crops/
     - assets/data/
+    - assets/dashboard_bg.png
 
   # To add assets to your application, add an assets section, like this:
   # assets:

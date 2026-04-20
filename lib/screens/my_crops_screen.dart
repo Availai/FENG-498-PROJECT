@@ -9,7 +9,6 @@ import '../widgets/shimmer_loader.dart';
 import '../widgets/tap_scale.dart';
 import 'field_3d_planner_screen.dart';
 import 'field_detail_screen.dart';
-import 'turkish_crops_search_screen.dart';
 import '../theme/app_theme.dart';
 
 class MyCropsScreen extends ConsumerWidget {
@@ -26,57 +25,34 @@ class MyCropsScreen extends ConsumerWidget {
         backgroundColor: AppColors.surface,
         elevation: 0,
         centerTitle: false,
-        actions: [
-          IconButton(
-            tooltip: 'Bitki Veritabanı',
-            icon: const Icon(Icons.local_florist_rounded, color: AppColors.emerald),
-            onPressed: () {
-              Navigator.of(context).push(
-                AnimatedRoute.slideUp(const TurkishCropsSearchScreen()),
-              );
-            },
-          ),
-        ],
       ),
-      floatingActionButton: Column(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          FloatingActionButton.extended(
-            heroTag: 'calcBtn',
-            onPressed: () async {
-              try {
-                final pos = await getCurrentPosition();
-                if (context.mounted) {
-                  Navigator.of(context).push(AnimatedRoute.slideUp(
-                    Field3DPlannerScreen(
-                      initialLat: pos.latitude,
-                      initialLng: pos.longitude,
-                    ),
-                  ));
-                }
-              } catch (e) {
-                if (context.mounted) {
-                  AppToast.show(
-                    context,
-                    message: 'Sinyal hatası: $e',
-                    type: ToastType.error,
-                  );
-                }
-              }
-            },
-            backgroundColor: AppColors.emerald,
-            icon: const Icon(Icons.satellite_alt, color: Colors.white),
-            label: Text('YENİ ALAN ÇİZ',
-                style: AppText.label(context).copyWith(color: Colors.white)),
-          ),
-          const SizedBox(height: 12),
-          FloatingActionButton(
-            heroTag: 'addBtn',
-            onPressed: () => _showAddDialog(context, ref),
-            backgroundColor: AppColors.surface,
-            child: const Icon(Icons.add_location_alt, color: AppColors.emerald),
-          ),
-        ],
+      floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'calcBtn',
+        onPressed: () async {
+          try {
+            final pos = await getCurrentPosition();
+            if (context.mounted) {
+              Navigator.of(context).push(AnimatedRoute.slideUp(
+                Field3DPlannerScreen(
+                  initialLat: pos.latitude,
+                  initialLng: pos.longitude,
+                ),
+              ));
+            }
+          } catch (e) {
+            if (context.mounted) {
+              AppToast.show(
+                context,
+                message: 'Sinyal hatası: $e',
+                type: ToastType.error,
+              );
+            }
+          }
+        },
+        backgroundColor: AppColors.emerald,
+        icon: const Icon(Icons.satellite_alt, color: Colors.white),
+        label: Text('YENİ ALAN ÇİZ',
+            style: AppText.label(context).copyWith(color: Colors.white)),
       ),
       body: fieldsAsync.when(
         loading: () => ListView.builder(
@@ -245,54 +221,6 @@ class MyCropsScreen extends ConsumerWidget {
             },
           );
         },
-      ),
-    );
-  }
-
-  void _showAddDialog(BuildContext context, WidgetRef ref) async {
-    double? lat, lng;
-    try {
-      final pos = await getCurrentPosition();
-      lat = pos.latitude;
-      lng = pos.longitude;
-    } catch (_) {}
-
-    if (!context.mounted) return;
-
-    String name = '';
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        title: Text('Manuel Konum Ekle', style: AppText.h2(context)),
-        content: TextField(
-          onChanged: (v) => name = v,
-          style: AppText.body(context),
-          decoration: const InputDecoration(
-            hintText: 'Tanımlayıcı Giriniz',
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text('İptal', style: TextStyle(color: AppColors.textSecondary)),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              if (name.isNotEmpty) {
-                await ref.read(fieldRepositoryProvider).createManualField(
-                      name: name,
-                      latitude: lat,
-                      longitude: lng,
-                    );
-                if (context.mounted) {
-                  Navigator.pop(ctx);
-                }
-              }
-            },
-            child: const Text('Kaydet'),
-          ),
-        ],
       ),
     );
   }

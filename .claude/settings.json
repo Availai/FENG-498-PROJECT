@@ -34,7 +34,16 @@
       "Bash(adb -s emulator-5554 shell \"dumpsys activity activities | grep -i 'ResumedActivity\\\\|mResumedActivity\\\\|topResumed\\\\|ActivityRecord' | head -10\")",
       "Bash(adb -s emulator-5554 shell input tap 540 1200)",
       "Bash(python data_pipeline/build_turkish_crops_db.py)",
-      "Bash(python -c \"import json; data=json.load\\(open\\('seed_plants.json',encoding='utf-8'\\)\\); print\\('TOTAL:', len\\(data['plants']\\)\\); [print\\(p['category'], '-', p['name_tr']\\) for p in data['plants']]\")"
+      "Bash(python -c \"import json; data=json.load\\(open\\('seed_plants.json',encoding='utf-8'\\)\\); print\\('TOTAL:', len\\(data['plants']\\)\\); [print\\(p['category'], '-', p['name_tr']\\) for p in data['plants']]\")",
+      "Read(//c/Users/Hp/.claude\" 2>/dev/**)",
+      "Read(//c/Users/Hp/.claude/**)",
+      "Read(//c/c/FENG 498/**)",
+      "Edit(/.claude/skills/add-crop/**)",
+      "Edit(/.claude/skills/rebuild-crops-db/**)",
+      "Edit(/.claude/skills/new-screen/**)",
+      "Edit(/.claude/skills/tr-ui-lint/**)",
+      "Edit(/.claude/skills/drift-migration/**)",
+      "Edit(/.claude/skills/analyze-all/**)"
     ]
   }
 }

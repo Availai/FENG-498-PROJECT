@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/intl.dart';
+import '../data/fertilizer_prices.dart';
+import '../services/api/epdk_prices_api.dart';
 import '../theme/app_theme.dart';
 import '../widgets/floating_toast.dart';
+import '../widgets/shimmer_loader.dart';
 
 /// ÇKS (Çiftçi Kayıt Sistemi) uyumlu basit maliyet defteri.
 ///
@@ -22,6 +25,19 @@ class CostLedgerScreen extends StatefulWidget {
 
 class _CostLedgerScreenState extends State<CostLedgerScreen> {
   Box get _box => Hive.box('cost_ledger');
+
+  late Future<FuelPrices?> _fuelFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _fuelFuture = EpdkPricesApi.fetchFuel();
+  }
+
+  Future<void> _refreshFuel() async {
+    setState(() => _fuelFuture = EpdkPricesApi.fetchFuel());
+    await _fuelFuture;
+  }
 
   List<Map<String, dynamic>> _fieldEntries() {
     final all = <Map<String, dynamic>>[];
@@ -61,6 +77,7 @@ class _CostLedgerScreenState extends State<CostLedgerScreen> {
           return Column(
             children: [
               _buildSummaryCard(total, list.length),
+              _buildLivePricesCard(),
               Expanded(
                 child: list.isEmpty
                     ? _buildEmpty()
@@ -113,6 +130,178 @@ class _CostLedgerScreenState extends State<CostLedgerScreen> {
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  /// Canlı piyasa fiyatları — EPDK mazot + TZOB gübre.
+  /// Hive cache fallback ile çevrimdışı çalışır.
+  Widget _buildLivePricesCard() {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: AppRadius.lg,
+        border: Border.all(color: AppColors.border),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.trending_up_rounded, color: AppColors.emerald, size: 20),
+              const SizedBox(width: 8),
+              Text('Canlı Piyasa Fiyatları',
+                  style: AppText.bodyMd(context).copyWith(fontWeight: FontWeight.w700)),
+              const Spacer(),
+              GestureDetector(
+                onTap: _refreshFuel,
+                child: Icon(Icons.refresh_rounded,
+                    color: AppColors.textSecondary, size: 18),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // ── Akaryakıt — EPDK Canlı Veri ──
+          FutureBuilder<FuelPrices?>(
+            future: _fuelFuture,
+            builder: (context, snap) {
+              if (snap.connectionState == ConnectionState.waiting) {
+                return _priceShimmerRow();
+              }
+              final fp = snap.data;
+              if (fp == null) {
+                return _priceRow(
+                  icon: Icons.local_gas_station_rounded,
+                  label: 'Mazot (Motorin)',
+                  value: 'Veri alınamadı',
+                  sub: 'İnternet bağlantısını kontrol edin',
+                  color: Colors.orange,
+                );
+              }
+              final dieselStr = fp.dieselTry > 0
+                  ? '${fp.dieselTry.toStringAsFixed(2)} ₺/lt'
+                  : '--';
+              final gasolineStr = fp.gasolineTry > 0
+                  ? '${fp.gasolineTry.toStringAsFixed(2)} ₺/lt'
+                  : '--';
+              final dateStr = DateFormat('dd.MM.yyyy HH:mm').format(fp.fetchedAt);
+              final srcLabel = fp.fromCache ? 'Önbellek' : 'EPDK ${fp.city}';
+              return Column(
+                children: [
+                  _priceRow(
+                    icon: Icons.local_gas_station_rounded,
+                    label: 'Mazot (Motorin)',
+                    value: dieselStr,
+                    sub: '$srcLabel · $dateStr',
+                    color: AppColors.emeraldDark,
+                  ),
+                  const SizedBox(height: 8),
+                  _priceRow(
+                    icon: Icons.local_gas_station_outlined,
+                    label: 'Benzin (95 Oktan)',
+                    value: gasolineStr,
+                    sub: '$srcLabel · $dateStr',
+                    color: AppColors.emeraldDark,
+                  ),
+                ],
+              );
+            },
+          ),
+
+          const Divider(height: 20),
+
+          // ── Gübre Fiyatları — TZOB / Tarım Bakanlığı ──
+          Text('Gübre Fiyatları (TZOB)',
+              style: AppText.xs(context).copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textSecondary)),
+          const SizedBox(height: 6),
+          ...fertilizerPrices.map((fp) => _priceRow(
+                icon: Icons.science_outlined,
+                label: fp.name,
+                value: '${fp.tryPrice.toStringAsFixed(0)} ₺ / ${fp.unit}',
+                sub: 'Güncelleme: $fertilizerPricesUpdatedAt',
+                color: Colors.teal.shade700,
+              )),
+          const SizedBox(height: 6),
+          Text(
+            'Kaynak: EPDK Haftalık Bülten · TZOB Gübre Bülteni',
+            style: AppText.xs(context).copyWith(
+                fontSize: 10, color: AppColors.textTertiary),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _priceRow({
+    required IconData icon,
+    required String label,
+    required String value,
+    required String sub,
+    required Color color,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+              borderRadius: AppRadius.sm,
+            ),
+            child: Icon(icon, color: color, size: 16),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: AppText.sm(context).copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary)),
+                Text(sub, style: AppText.xs(context).copyWith(fontSize: 10)),
+              ],
+            ),
+          ),
+          Text(value,
+              style: AppText.bodyMd(context).copyWith(
+                  fontWeight: FontWeight.w700, color: color)),
+        ],
+      ),
+    );
+  }
+
+  Widget _priceShimmerRow() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          ShimmerBox(width: 28, height: 28, borderRadius: 6),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ShimmerBox(width: 140, height: 12, borderRadius: 4),
+                const SizedBox(height: 4),
+                ShimmerBox(width: 100, height: 10, borderRadius: 4),
+              ],
+            ),
+          ),
+          ShimmerBox(width: 70, height: 16, borderRadius: 4),
         ],
       ),
     );

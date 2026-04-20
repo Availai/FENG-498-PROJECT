@@ -15,7 +15,6 @@ import '../widgets/glass_panel.dart';
 import '../widgets/zone_drawing_toolbar.dart';
 import '../widgets/crop_zone_tooltip.dart';
 import '../widgets/crop_render_factory.dart';
-import 'irrigation_schedule_screen.dart';
 import 'cost_ledger_screen.dart';
 
 class FieldDetailScreen extends ConsumerStatefulWidget {
@@ -799,7 +798,6 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
         children: [
           _buildNavBtn(Icons.radar_rounded, 'Tarlayı Tara', _showPlantPicker, primary: true),
           _buildNavBtn(Icons.stacked_line_chart_rounded, 'Veri Trendleri', _showCropRecommendations),
-          _buildNavBtn(Icons.water_drop_rounded, 'Sulama Kontrolü', _openIrrigationSchedule),
           _buildNavBtn(Icons.account_balance_wallet_rounded, 'Cüzdan', _openCostLedger),
           _buildNavBtn(Icons.checklist_rtl_rounded, 'Görevler', _showDetailModal),
         ],
@@ -815,38 +813,6 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
         builder: (_) => CostLedgerScreen(
           fieldId: d['id']?.toString(),
           fieldName: d['name']?.toString(),
-        ),
-      ),
-    );
-  }
-
-  void _openIrrigationSchedule() {
-    final d = widget.fieldData;
-    final lat = (d['latitude'] as num?)?.toDouble();
-    final lon = (d['longitude'] as num?)?.toDouble();
-    final crop = (d['crop']?.toString().isNotEmpty ?? false)
-        ? d['crop'].toString()
-        : 'Genel';
-    final name = d['name']?.toString() ?? 'Tarla';
-
-    if (lat == null || lon == null) {
-      AppToast.show(
-        context,
-        message: 'Tarlanın konumu bulunamadı.',
-        type: ToastType.warning,
-      );
-      return;
-    }
-
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => IrrigationScheduleScreen(
-          fieldId: d['id']?.toString(),
-          latitude: lat,
-          longitude: lon,
-          cropTr: crop,
-          fieldName: name,
         ),
       ),
     );
@@ -959,9 +925,43 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
         scored: scored,
         onPick: (plant) async {
           Navigator.pop(context);
-          _startZoneDrawing(plant);
+          await _addCropDirectly(plant);
         },
       ),
+    );
+  }
+
+  Future<void> _addCropDirectly(AgriPlant plant) async {
+    final fieldId = widget.fieldData['id']?.toString();
+    if (fieldId == null || fieldId.isEmpty) return;
+
+    final polygon = _polygonPoints(widget.fieldData);
+    final zoneJson = polygon.length >= 3
+        ? jsonEncode(
+            polygon
+                .map((p) => {'lat': p.latitude, 'lng': p.longitude})
+                .toList(),
+          )
+        : null;
+
+    final repo = ref.read(localDataRepositoryProvider);
+    await repo.addSingleCropToField(
+      fieldId: fieldId,
+      name: plant.nameTr,
+      colorValue: plant.renderColor.toARGB32(),
+      plantedDate:
+          '${DateTime.now().day.toString().padLeft(2, '0')}.${DateTime.now().month.toString().padLeft(2, '0')}.${DateTime.now().year}',
+      harvestDays: plant.daysToHarvest,
+      waterIntervalDays: 7,
+      zonePolygonJson: zoneJson,
+    );
+
+    await _loadFieldCrops();
+    if (!mounted) return;
+    AppToast.show(
+      context,
+      message: '${plant.nameTr} tarlaya eklendi',
+      type: ToastType.success,
     );
   }
 
@@ -1024,15 +1024,6 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
   // ═════════════════════════════════════════════════
   // BÖLGE ÇİZME MODU — İnteraktif ürün yerleştirme
   // ═════════════════════════════════════════════════
-
-  void _startZoneDrawing(AgriPlant plant) {
-    setState(() {
-      _isZoneDrawingMode = true;
-      _zoneDrawingPoints = [];
-      _pendingPlant = plant;
-      _selectedCropForTooltip = null;
-    });
-  }
 
   void _cancelZoneDrawing() {
     setState(() {
@@ -1924,15 +1915,7 @@ class _DetailModalContent extends StatelessWidget {
                   const SizedBox(height: 20),
                 ],
 
-                // 4. Sulama Takvimi
-                if (irrigationPlans.isNotEmpty) ...[
-                  _sectionHeader('💧 Sulama Takvimi'),
-                  const SizedBox(height: 8),
-                  _buildIrrigationSchedule(),
-                  const SizedBox(height: 20),
-                ],
-
-                // 5. Gübreleme Önerisi
+                // 4. Gübreleme Önerisi
                 if (a != null) ...[
                   _sectionHeader('🧪 Gübreleme Önerisi'),
                   const SizedBox(height: 8),
@@ -2124,66 +2107,6 @@ class _DetailModalContent extends StatelessWidget {
             );
           }),
         ],
-      ),
-    );
-  }
-
-  // ── Sulama Takvimi ───────────────────────────────────────────
-  Widget _buildIrrigationSchedule() {
-    final now = DateTime.now();
-    final upcoming = irrigationPlans.where((p) {
-      final date = p['scheduled_date'] as DateTime?;
-      return date != null && date.isAfter(now.subtract(const Duration(days: 1)));
-    }).take(10).toList();
-
-    if (upcoming.isEmpty) {
-      return _textCard('Yaklaşan sulama planı bulunamadı.');
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Column(
-        children: upcoming.map((plan) {
-          final date = plan['scheduled_date'] as DateTime;
-          final shouldIrrigate = plan['should_irrigate'] == true;
-          final reason = plan['reason']?.toString() ?? '';
-          final recommendation = plan['recommendation']?.toString() ?? '';
-          final display = recommendation.isNotEmpty ? recommendation : reason;
-
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(
-                  shouldIrrigate ? Icons.water_drop_rounded : Icons.cloud_off_rounded,
-                  color: shouldIrrigate ? const Color(0xFF42A5F5) : Colors.orange,
-                  size: 16,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '${DateFormat('dd.MM (EEEE)', 'tr').format(date.toLocal())} — ${shouldIrrigate ? 'SULA' : 'ATLA'}',
-                        style: TextStyle(
-                          color: shouldIrrigate ? Colors.white : Colors.white54,
-                          fontSize: 12, fontWeight: FontWeight.w600),
-                      ),
-                      if (display.isNotEmpty)
-                        Text(display, style: const TextStyle(color: Colors.white38, fontSize: 10)),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          );
-        }).toList(),
       ),
     );
   }
