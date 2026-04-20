@@ -26,33 +26,37 @@ class MyCropsScreen extends ConsumerWidget {
         elevation: 0,
         centerTitle: false,
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        heroTag: 'calcBtn',
-        onPressed: () async {
-          try {
-            final pos = await getCurrentPosition();
-            if (context.mounted) {
-              Navigator.of(context).push(AnimatedRoute.slideUp(
-                Field3DPlannerScreen(
-                  initialLat: pos.latitude,
-                  initialLng: pos.longitude,
-                ),
-              ));
+      floatingActionButton: Padding(
+        // Ana nav bar (~96px float) üzerinden yukarıda kalması için offset
+        padding: const EdgeInsets.only(bottom: 92),
+        child: FloatingActionButton.extended(
+          heroTag: 'calcBtn',
+          onPressed: () async {
+            try {
+              final pos = await getCurrentPosition();
+              if (context.mounted) {
+                Navigator.of(context).push(AnimatedRoute.slideUp(
+                  Field3DPlannerScreen(
+                    initialLat: pos.latitude,
+                    initialLng: pos.longitude,
+                  ),
+                ));
+              }
+            } catch (e) {
+              if (context.mounted) {
+                AppToast.show(
+                  context,
+                  message: 'Sinyal hatası: $e',
+                  type: ToastType.error,
+                );
+              }
             }
-          } catch (e) {
-            if (context.mounted) {
-              AppToast.show(
-                context,
-                message: 'Sinyal hatası: $e',
-                type: ToastType.error,
-              );
-            }
-          }
-        },
-        backgroundColor: AppColors.emerald,
-        icon: const Icon(Icons.satellite_alt, color: Colors.white),
-        label: Text('YENİ ALAN ÇİZ',
-            style: AppText.label(context).copyWith(color: Colors.white)),
+          },
+          backgroundColor: AppColors.emerald,
+          icon: const Icon(Icons.satellite_alt, color: Colors.white),
+          label: Text('YENİ ALAN ÇİZ',
+              style: AppText.label(context).copyWith(color: Colors.white)),
+        ),
       ),
       body: fieldsAsync.when(
         loading: () => ListView.builder(

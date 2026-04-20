@@ -16,6 +16,8 @@ import '../widgets/zone_drawing_toolbar.dart';
 import '../widgets/crop_zone_tooltip.dart';
 import '../widgets/crop_render_factory.dart';
 import 'cost_ledger_screen.dart';
+import 'plant_zone_drawing_screen.dart';
+import '../widgets/animated_route.dart';
 
 class FieldDetailScreen extends ConsumerStatefulWidget {
   final dynamic fieldData;
@@ -925,24 +927,40 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
         scored: scored,
         onPick: (plant) async {
           Navigator.pop(context);
-          await _addCropDirectly(plant);
+          await _startZoneDrawingForPlant(plant);
         },
       ),
     );
   }
 
-  Future<void> _addCropDirectly(AgriPlant plant) async {
+  Future<void> _startZoneDrawingForPlant(AgriPlant plant) async {
+    final polygon = _polygonPoints(widget.fieldData);
+    if (polygon.length < 3) {
+      AppToast.show(
+        context,
+        message: 'Önce tarla sınırlarını çizmeniz gerekiyor.',
+        type: ToastType.warning,
+      );
+      return;
+    }
+
+    final zoneJson = await Navigator.of(context).push<String>(
+      AnimatedRoute.slideUp(
+        PlantZoneDrawingScreen(
+          plantName: plant.nameTr,
+          plantColor: plant.renderColor,
+          fieldPolygon: polygon,
+        ),
+      ),
+    );
+
+    if (zoneJson == null || !mounted) return;
+    await _addCropWithZone(plant, zoneJson);
+  }
+
+  Future<void> _addCropWithZone(AgriPlant plant, String zonePolygonJson) async {
     final fieldId = widget.fieldData['id']?.toString();
     if (fieldId == null || fieldId.isEmpty) return;
-
-    final polygon = _polygonPoints(widget.fieldData);
-    final zoneJson = polygon.length >= 3
-        ? jsonEncode(
-            polygon
-                .map((p) => {'lat': p.latitude, 'lng': p.longitude})
-                .toList(),
-          )
-        : null;
 
     final repo = ref.read(localDataRepositoryProvider);
     await repo.addSingleCropToField(
@@ -953,7 +971,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
           '${DateTime.now().day.toString().padLeft(2, '0')}.${DateTime.now().month.toString().padLeft(2, '0')}.${DateTime.now().year}',
       harvestDays: plant.daysToHarvest,
       waterIntervalDays: 7,
-      zonePolygonJson: zoneJson,
+      zonePolygonJson: zonePolygonJson,
     );
 
     await _loadFieldCrops();
@@ -1682,13 +1700,46 @@ class _VerifiedRecommendationSheet extends StatelessWidget {
   }
 }
 
-class _PlantPickerSheet extends StatelessWidget {
+class _PlantPickerSheet extends StatefulWidget {
   final List<Map<String, dynamic>> scored;
   final void Function(AgriPlant plant) onPick;
   const _PlantPickerSheet({required this.scored, required this.onPick});
 
   @override
+  State<_PlantPickerSheet> createState() => _PlantPickerSheetState();
+}
+
+class _PlantPickerSheetState extends State<_PlantPickerSheet> {
+  final TextEditingController _searchCtrl = TextEditingController();
+  String _query = '';
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  String _normalize(String s) => s
+      .toLowerCase()
+      .replaceAll('ı', 'i')
+      .replaceAll('ğ', 'g')
+      .replaceAll('ü', 'u')
+      .replaceAll('ş', 's')
+      .replaceAll('ö', 'o')
+      .replaceAll('ç', 'c');
+
+  List<Map<String, dynamic>> get _filtered {
+    if (_query.trim().isEmpty) return widget.scored;
+    final q = _normalize(_query.trim());
+    return widget.scored.where((e) {
+      final p = e['plant'] as AgriPlant;
+      return _normalize(p.nameTr).contains(q);
+    }).toList();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final filtered = _filtered;
     return Container(
       height: MediaQuery.of(context).size.height * 0.82,
       decoration: const BoxDecoration(
@@ -1732,15 +1783,55 @@ class _PlantPickerSheet extends StatelessWidget {
             ),
           ]),
           const SizedBox(height: 12),
+          TextField(
+            controller: _searchCtrl,
+            onChanged: (v) => setState(() => _query = v),
+            textInputAction: TextInputAction.search,
+            decoration: InputDecoration(
+              hintText: 'Bitki ara (ör. buğday, domates)',
+              prefixIcon: const Icon(Icons.search_rounded,
+                  color: Color(0xFF2E7D32)),
+              suffixIcon: _query.isEmpty
+                  ? null
+                  : IconButton(
+                      icon: const Icon(Icons.close_rounded),
+                      onPressed: () {
+                        _searchCtrl.clear();
+                        setState(() => _query = '');
+                      },
+                    ),
+              filled: true,
+              fillColor: const Color(0xFFF5F7F5),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
           const Divider(height: 1),
           Expanded(
-            child: ListView.builder(
-              itemCount: scored.length,
-              itemBuilder: (context, i) {
-                final AgriPlant p = scored[i]['plant'] as AgriPlant;
-                final int score = (scored[i]['score'] as double).round();
-                final List<String> reasons =
-                    (scored[i]['reasons'] as List).cast<String>();
+            child: filtered.isEmpty
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Text(
+                        'Sonuç bulunamadı.\nFarklı bir isim deneyin.',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.inter(
+                            fontSize: 13, color: Colors.grey.shade600),
+                      ),
+                    ),
+                  )
+                : ListView.builder(
+                    itemCount: filtered.length,
+                    itemBuilder: (context, i) {
+                      final AgriPlant p = filtered[i]['plant'] as AgriPlant;
+                      final int score = (filtered[i]['score'] as double).round();
+                      final List<String> reasons =
+                          (filtered[i]['reasons'] as List).cast<String>();
                 final Color sColor = score >= 75
                     ? const Color(0xFF2E7D32)
                     : score >= 50
@@ -1758,7 +1849,7 @@ class _PlantPickerSheet extends StatelessWidget {
                     borderRadius: BorderRadius.circular(12),
                     child: InkWell(
                       borderRadius: BorderRadius.circular(12),
-                      onTap: () => onPick(p),
+                      onTap: () => widget.onPick(p),
                       child: Padding(
                         padding: const EdgeInsets.all(12),
                         child: Row(

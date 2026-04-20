@@ -43,7 +43,15 @@
       "Edit(/.claude/skills/new-screen/**)",
       "Edit(/.claude/skills/tr-ui-lint/**)",
       "Edit(/.claude/skills/drift-migration/**)",
-      "Edit(/.claude/skills/analyze-all/**)"
+      "Edit(/.claude/skills/analyze-all/**)",
+      "Bash(python -c \"import rembg; print\\('rembg:', rembg.__version__\\)\")",
+      "Bash(python -m pip install --quiet rembg onnxruntime)",
+      "Bash(python -c \"import rembg; from PIL import Image; print\\('ok'\\)\")",
+      "Bash(python scripts/strip_crop_backgrounds.py)",
+      "Bash(python -c ' *)"
+    ],
+    "additionalDirectories": [
+      "c:\\FENG 498\\feng_498"
     ]
   }
 }
