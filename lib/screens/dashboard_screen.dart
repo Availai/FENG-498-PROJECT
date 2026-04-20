@@ -11,6 +11,7 @@ import '../utils/location_utils.dart';
 import '../widgets/animated_route.dart';
 import '../widgets/floating_toast.dart';
 import '../widgets/tap_scale.dart';
+import 'farm_journal_screen.dart';
 import 'field_detail_screen.dart';
 import 'sensor_data_screen.dart';
 
@@ -274,6 +275,8 @@ class _AgriDashboardState extends State<AgriDashboard>
                       _buildSoilCard(),
                       const SizedBox(height: 24),
                       _buildSensorButton(),
+                      const SizedBox(height: 12),
+                      _buildJournalButton(),
                       const SizedBox(height: 12),
                       _buildArchiveButton(),
                     ],
@@ -742,6 +745,32 @@ class _AgriDashboardState extends State<AgriDashboard>
           minimumSize: const Size.fromHeight(48),
           foregroundColor: Colors.teal.shade700,
           side: BorderSide(color: Colors.teal.shade300),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildJournalButton() {
+    return TapScale(
+      scale: 0.97,
+      onTap: () {
+        Navigator.of(context).push(
+          AnimatedRoute.slideX(const FarmJournalScreen()),
+        );
+      },
+      child: OutlinedButton.icon(
+        onPressed: () {
+          Navigator.of(context).push(
+            AnimatedRoute.slideX(const FarmJournalScreen()),
+          );
+        },
+        icon: const Icon(Icons.event_note_rounded),
+        label: const Text('TARLAM GÜNLÜĞÜ'),
+        style: OutlinedButton.styleFrom(
+          minimumSize: const Size.fromHeight(48),
+          foregroundColor: AppColors.emeraldDark,
+          side: BorderSide(color: AppColors.emerald.withValues(alpha: 0.5)),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         ),
       ),

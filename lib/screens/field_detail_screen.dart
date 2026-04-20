@@ -8,14 +8,17 @@ import 'package:latlong2/latlong.dart';
 import '../services/agri_service.dart';
 import '../services/app_providers.dart';
 import '../services/crop_placement.dart';
+import '../data/activity_types.dart';
 import '../data/verified_agri_database.dart';
 import '../data/turkish_crops_repository.dart';
+import '../widgets/activity_quick_log.dart';
 import '../widgets/floating_toast.dart';
 import '../widgets/glass_panel.dart';
 import '../widgets/zone_drawing_toolbar.dart';
 import '../widgets/crop_zone_tooltip.dart';
 import '../widgets/crop_render_factory.dart';
 import 'cost_ledger_screen.dart';
+import 'farm_journal_screen.dart';
 import 'plant_zone_drawing_screen.dart';
 import '../widgets/animated_route.dart';
 
@@ -381,7 +384,19 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
                 opacity: _uiFadeAnim,
                 child: SlideTransition(
                   position: _uiSlideAnim,
-                  child: _buildHUDBottomBar(),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if ((widget.fieldData['id']?.toString() ?? '').isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: ActivityQuickLog(
+                            fieldId: widget.fieldData['id'].toString(),
+                          ),
+                        ),
+                      _buildHUDBottomBar(),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -799,7 +814,8 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           _buildNavBtn(Icons.radar_rounded, 'Tarlayı Tara', _showPlantPicker, primary: true),
-          _buildNavBtn(Icons.stacked_line_chart_rounded, 'Veri Trendleri', _showCropRecommendations),
+          _buildNavBtn(Icons.stacked_line_chart_rounded, 'Trendler', _showCropRecommendations),
+          _buildNavBtn(Icons.event_note_rounded, 'Günlük', _openFarmJournal),
           _buildNavBtn(Icons.account_balance_wallet_rounded, 'Cüzdan', _openCostLedger),
           _buildNavBtn(Icons.checklist_rtl_rounded, 'Görevler', _showDetailModal),
         ],
@@ -816,6 +832,16 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
           fieldId: d['id']?.toString(),
           fieldName: d['name']?.toString(),
         ),
+      ),
+    );
+  }
+
+  void _openFarmJournal() {
+    final id = widget.fieldData['id']?.toString();
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => FarmJournalScreen(fieldId: id),
       ),
     );
   }
@@ -986,6 +1012,12 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
       harvestDays: plant.daysToHarvest,
       waterIntervalDays: 7,
       zonePolygonJson: zonePolygonJson,
+    );
+
+    await repo.logActivity(
+      fieldId: fieldId,
+      type: ActivityType.planting,
+      note: '${plant.nameTr} tarlaya eklendi',
     );
 
     await _loadFieldCrops();

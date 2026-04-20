@@ -10,6 +10,7 @@ kullanılan resmi standart taksonomi tanımlayıcılardır.
 EPPO PP1 standartları: https://pp1.eppo.int
 """
 
+import math
 from enum import Enum
 from typing import Optional
 from pydantic import BaseModel
@@ -75,6 +76,9 @@ class RuleResult(BaseModel):
     category_label: str = ""
     eppo_code: Optional[str] = None        # EPPO Global DB kod (varsa)
     source_ref: Optional[str] = None       # Bilimsel/resmi kaynak referansı
+    # Veri kalitesi: input doğrulama veya yetersiz girdi sebebiyle güven düşükse
+    # confidence 'medium' veya 'low' döner. UI bu değeri rozet olarak gösterir.
+    confidence: str = "high"               # 'high' | 'medium' | 'low'
 
     def model_post_init(self, __context):
         emoji_map = {
@@ -141,9 +145,85 @@ _SEVERITY_ORDER = {
 }
 
 
+# Türkiye tarımında makul fiziksel sınırlar. Kaynak: MGM iklim normalleri
+# 1991-2020 (https://mgm.gov.tr/veridegerlendirme/il-ve-ilceler-istatistik.aspx)
+# ve Tarım Orman Bakanlığı Toprak ve Bitki Analiz Rehberi (2021).
+_LIMITS = {
+    "temperature": (-40.0, 55.0),      # °C; en düşük: Ağrı/Karaköse -45.6; en yüksek: Cizre 48.8
+    "avg_weekly_temp": (-35.0, 50.0),
+    "humidity": (0.0, 100.0),          # %
+    "weekly_rain": (0.0, 500.0),       # mm/hafta; aşırı yağış üst sınırı
+    "soil_ph": (3.0, 10.0),            # pH; ekim yapılabilir dışı: < 3 veya > 10
+    "soil_moisture": (0.0, 1.0),       # fraction 0..1
+    "soil_temp_c": (-20.0, 60.0),
+    "ndvi": (-1.0, 1.0),               # NDVI teknik aralığı
+    "wind_speed": (0.0, 60.0),         # m/s; 60+ hortum/fırtına
+    "month": (1, 12),
+    "precip_prob_next3h": (0.0, 1.0),
+    "latitude": (35.0, 43.0),          # Türkiye enlem aralığı
+    "longitude": (25.0, 45.5),         # Türkiye boylam aralığı
+    "slope_deg": (0.0, 60.0),
+    "aspect_deg": (0.0, 360.0),
+    "min_temp_c": (-45.0, 50.0),
+    "max_temp_c": (-40.0, 55.0),
+    "forecast_min_3day_c": (-45.0, 50.0),
+}
+
+
+def _validate_env(req: "AnalyzeRequest") -> tuple["AnalyzeRequest", list[str]]:
+    """Sensör veya API verisinin defansif doğrulaması.
+
+    Neden: Donmuş/bozuk sensör NaN, negatif veya fiziksel olarak imkânsız değer
+    döndürebilir. Çiftçi bu motora koşulsuz güveniyor; sessiz `max(0, ...)`
+    maskesiyle hatalı öneri üretmek kabul edilemez.
+
+    Davranış: Geçersiz değerleri güvenli varsayılana (sınırlara clamp veya
+    Pydantic varsayılanına) çeker ve ilgili alanları issue listesine yazar.
+    `analyze()` bu listeden düşük-güven RuleResult üretir.
+    """
+    issues: list[str] = []
+    defaults = AnalyzeRequest()  # varsayılan değerler
+    for field, (lo, hi) in _LIMITS.items():
+        val = getattr(req, field)
+        if val is None:
+            issues.append(f"{field}: veri yok")
+            setattr(req, field, getattr(defaults, field))
+            continue
+        if isinstance(val, float) and (math.isnan(val) or math.isinf(val)):
+            issues.append(f"{field}: geçersiz (NaN/Inf)")
+            setattr(req, field, getattr(defaults, field))
+            continue
+        if val < lo or val > hi:
+            issues.append(f"{field}: aralık dışı ({val})")
+            # clamp — yakın sınıra çek
+            setattr(req, field, max(lo, min(hi, val)))
+    return req, issues
+
+
 def analyze(req: AnalyzeRequest) -> list[RuleResult]:
     results: list[RuleResult] = []
+    # Giriş doğrulaması — geçersiz sensör verilerini sınıra çek, listele.
+    req, _input_issues = _validate_env(req)
     name = req.common_name.lower()
+
+    # Yetersiz girdi → kullanıcıya şeffaf veri-kalitesi rozeti ver.
+    if _input_issues:
+        conf = "low" if len(_input_issues) >= 3 else "medium"
+        results.append(RuleResult(
+            level=RiskLevel.info, category=RuleCategory.weather,
+            title="Veri Kalitesi Düşük",
+            message=(
+                "Sensör veya hava API verilerinin bir kısmı eksik / aralık "
+                "dışı: " + ", ".join(_input_issues[:4]) +
+                ("..." if len(_input_issues) > 4 else "")
+            ),
+            recommendation=(
+                "Önerilere temkinli yaklaşın; mümkünse sensör kalibrasyonunu "
+                "veya internet bağlantısını kontrol edin."
+            ),
+            confidence=conf,
+            source_ref="MGM iklim normalleri 1991-2020; sensör veri doğrulaması",
+        ))
 
     results += _weather_rules(req.temperature, req.avg_weekly_temp,
                               req.humidity, req.weekly_rain,
@@ -334,12 +414,15 @@ def _disease_rules(name, temp, humidity, weekly_rain, soil_moisture, month):
             source_ref="EPPO PP1/152 — Botrytis ve Alternaria yönetimi",
         ))
 
+    # Eşik kaynağı: Agrios "Plant Pathology" 5. baskı (2005) Tablo 11.3 —
+    # geniş fungal patojenler için elverişli aralık: >85% RH + 18-28°C.
     if humidity > 85 and 18 <= temp <= 28:
         r.append(RuleResult(
             level=RiskLevel.warning, category=RuleCategory.disease,
             title="Genel Mantar Hastalık Riski",
             message=f"Nem %{round(humidity)} + {temp:.1f}°C — fungal hastalıklar için elverişli.",
             recommendation="Sabah sulaması yapın. Hava sirkülasyonu için budama düşünün.",
+            source_ref="Agrios Plant Pathology 5e (2005) §11.3",
         ))
 
     if ("patates" in name or "domates" in name) and humidity > 85 and 10 <= temp <= 20:
@@ -372,12 +455,16 @@ def _disease_rules(name, temp, humidity, weekly_rain, soil_moisture, month):
             source_ref="EPPO PP1/119 — Toprak kaynaklı fungal patojenler",
         ))
 
+    # Eşik kaynağı: Tarım Orman Bakanlığı Zirai Mücadele Teknik Talimatları
+    # (2019-2023) — >40 mm/hafta yağış + >80% RH = fungal spor patlaması
+    # (bakınız: Bağ Hastalıkları Rehberi 2019).
     if weekly_rain > 40 and humidity > 80:
         r.append(RuleResult(
             level=RiskLevel.warning, category=RuleCategory.disease,
             title="Yağış Sonrası Patojen Baskısı",
             message=f"Haftalık {round(weekly_rain)} mm yağış ve yüksek nem yüzeyde fungal sporların hızla yayılmasına yol açabilir.",
             recommendation="Yağış bittikten sonra geniş spektrumlu koruyucu fungisit kullanmayı değerlendirin.",
+            source_ref="T.C. Tarım Orman Bakanlığı Zirai Mücadele Teknik Talimatları (2019-2023)",
         ))
 
     return r

@@ -231,24 +231,38 @@ class TurkishCrop {
   }
 
   /// Tarla çevre koşullarına göre 0-100 uygunluk skoru + sebep listesi.
+  ///
+  /// NaN/Inf/null değerler sessizce ignore edilir ve [SuitabilityScore.confidence]
+  /// alanı 'medium' veya 'low' olarak döner — UI bunu kullanıcıya rozet olarak
+  /// göstermelidir (sensör arızası veya eksik API cevabı sinyali).
   SuitabilityScore scoreFor({
-    required double temperature,
-    required double soilPh,
-    required double weeklyRain,
-    required int month,
+    double? temperature,
+    double? soilPh,
+    double? weeklyRain,
+    int? month,
     String? region,
   }) {
+    double? safe(double? v) =>
+        (v == null || v.isNaN || v.isInfinite) ? null : v;
+    final t = safe(temperature);
+    final ph = safe(soilPh);
+    final rain = safe(weeklyRain);
+    final m = (month == null || month < 1 || month > 12) ? null : month;
+
     double score = 70;
     final reasons = <String>[];
+    int missing = 0;
 
-    if (tempMinC != null && temperature < tempMinC!) {
+    if (t == null) {
+      missing++;
+    } else if (tempMinC != null && t < tempMinC!) {
       score -= 25;
       reasons.add('Sıcaklık minimum ${tempMinC!.toStringAsFixed(0)}°C altında');
-    } else if (tempMaxC != null && temperature > tempMaxC!) {
+    } else if (tempMaxC != null && t > tempMaxC!) {
       score -= 25;
       reasons.add('Sıcaklık maksimum ${tempMaxC!.toStringAsFixed(0)}°C üstünde');
     } else if (optimalTempC != null) {
-      final diff = (temperature - optimalTempC!).abs();
+      final diff = (t - optimalTempC!).abs();
       if (diff <= 3) {
         score += 10;
       } else if (diff <= 7) {
@@ -258,19 +272,23 @@ class TurkishCrop {
       }
     }
 
-    if (soilPhMin != null && soilPhMax != null) {
-      if (soilPh >= soilPhMin! && soilPh <= soilPhMax!) {
+    if (ph == null) {
+      missing++;
+    } else if (soilPhMin != null && soilPhMax != null) {
+      if (ph >= soilPhMin! && ph <= soilPhMax!) {
         score += 8;
-        reasons.add('pH uygun (${soilPh.toStringAsFixed(1)})');
+        reasons.add('pH uygun (${ph.toStringAsFixed(1)})');
       } else {
         score -= 15;
         reasons.add('pH uygun değil (tercih ${soilPhMin!.toStringAsFixed(1)}-${soilPhMax!.toStringAsFixed(1)})');
       }
     }
 
-    if (sowingMonths.isNotEmpty) {
+    if (m == null) {
+      missing++;
+    } else if (sowingMonths.isNotEmpty) {
       // Mevsime hoşgörülü: ±1 ay kabul.
-      final ok = sowingMonths.any((m) => (m - month).abs() <= 1 || (12 - (m - month).abs()) <= 1);
+      final ok = sowingMonths.any((mm) => (mm - m).abs() <= 1 || (12 - (mm - m).abs()) <= 1);
       if (ok) {
         score += 6;
       } else {
@@ -279,11 +297,13 @@ class TurkishCrop {
       }
     }
 
-    if (waterNeed != null) {
-      if (waterNeed == 'high' && weeklyRain < 10) {
+    if (rain == null) {
+      missing++;
+    } else if (waterNeed != null) {
+      if (waterNeed == 'high' && rain < 10) {
         score -= 5;
         reasons.add('Yüksek su ihtiyacı, yağış az (sulama gerekir)');
-      } else if (waterNeed == 'low' && weeklyRain > 30) {
+      } else if (waterNeed == 'low' && rain > 30) {
         score -= 3;
       }
     }
@@ -297,9 +317,18 @@ class TurkishCrop {
       }
     }
 
+    // Çok sayıda eksik veri varsa güven düşer — kullanıcı uyarılmalı.
+    final confidence = missing >= 3
+        ? 'low'
+        : (missing >= 1 ? 'medium' : 'high');
+    if (missing >= 2) {
+      reasons.add('Bazı çevre verileri eksik ($missing alan)');
+    }
+
     return SuitabilityScore(
       score: score.clamp(0, 100).toDouble(),
       reasons: reasons,
+      confidence: confidence,
     );
   }
 }
@@ -307,5 +336,11 @@ class TurkishCrop {
 class SuitabilityScore {
   final double score;
   final List<String> reasons;
-  const SuitabilityScore({required this.score, required this.reasons});
+  /// 'high' | 'medium' | 'low' — giriş veri kalitesine göre.
+  final String confidence;
+  const SuitabilityScore({
+    required this.score,
+    required this.reasons,
+    this.confidence = 'high',
+  });
 }

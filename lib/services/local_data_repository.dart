@@ -428,9 +428,11 @@ class LocalDataRepository {
     required String title,
     required String eventType,
     required DateTime eventDate,
+    Map<String, dynamic>? metadata,
   }) async {
     final now = DateTime.now().toUtc();
     final id = _newId('event');
+    final metaJson = metadata == null ? null : jsonEncode(metadata);
     await _db.into(_db.calendarEvents).insert(
           CalendarEventsCompanion.insert(
             id: id,
@@ -441,7 +443,7 @@ class LocalDataRepository {
             updatedAt: now,
             fieldId: Value(fieldId),
             cropId: Value(cropId),
-            metadataJson: const Value(null),
+            metadataJson: Value(metaJson),
           ),
         );
 
@@ -456,7 +458,118 @@ class LocalDataRepository {
         'title': title,
         'event_type': eventType,
         'event_date': eventDate.toUtc().toIso8601String(),
+        'metadata': metadata,
       },
+      updatedAt: now,
+    );
+  }
+
+  /// Çiftçi dostu aktivite kaydı. Tek çağrıda Calendar event + sync outbox.
+  /// [type] için [ActivityType] sabitlerini kullan.
+  Future<void> logActivity({
+    required String fieldId,
+    required String type,
+    String? cropId,
+    String? note,
+    double? quantity,
+    String? quantityUnit,
+    DateTime? at,
+  }) async {
+    final field = await (_db.select(_db.fields)
+          ..where((tbl) => tbl.id.equals(fieldId))
+          ..limit(1))
+        .getSingleOrNull();
+    final fieldName = field?.name ?? 'Tarla';
+    final title = _composeActivityTitle(fieldName, type);
+    final meta = <String, dynamic>{};
+    if (note != null && note.trim().isNotEmpty) meta['note'] = note.trim();
+    if (quantity != null) meta['quantity'] = quantity;
+    if (quantityUnit != null) meta['quantity_unit'] = quantityUnit;
+    await addCalendarEvent(
+      fieldId: fieldId,
+      cropId: cropId,
+      title: title,
+      eventType: type,
+      eventDate: at ?? DateTime.now(),
+      metadata: meta.isEmpty ? null : meta,
+    );
+  }
+
+  String _composeActivityTitle(String fieldName, String type) {
+    switch (type) {
+      case 'watering':
+        return '$fieldName — Sulama';
+      case 'fertilizing':
+        return '$fieldName — Gübreleme';
+      case 'spraying':
+        return '$fieldName — İlaçlama';
+      case 'harvest':
+        return '$fieldName — Hasat';
+      case 'planting':
+        return '$fieldName — Ekim';
+      default:
+        return '$fieldName — Aktivite';
+    }
+  }
+
+  /// Takvim olaylarını tarla/tipe göre watch eder.
+  /// UI StreamBuilder ile dinler; yeni `addCalendarEvent` anında stream'e düşer.
+  Stream<List<Map<String, dynamic>>> watchActivityLog({
+    String? fieldId,
+    Set<String>? types,
+    int limit = 500,
+  }) {
+    final query = _db.select(_db.calendarEvents)
+      ..where((tbl) => tbl.deletedAt.isNull());
+    if (fieldId != null) {
+      query.where((tbl) => tbl.fieldId.equals(fieldId));
+    }
+    query
+      ..orderBy([(tbl) => OrderingTerm.desc(tbl.eventDate)])
+      ..limit(limit);
+    return query.watch().asyncMap((rows) async {
+      final fields = await _activeFieldsQuery().get();
+      final names = {for (final f in fields) f.id: f.name};
+      final filtered = types == null || types.isEmpty
+          ? rows
+          : rows.where((r) => types.contains(r.eventType)).toList();
+      return filtered.map((ev) {
+        Map<String, dynamic>? meta;
+        final raw = ev.metadataJson;
+        if (raw != null && raw.isNotEmpty) {
+          try {
+            final decoded = jsonDecode(raw);
+            if (decoded is Map) meta = Map<String, dynamic>.from(decoded);
+          } catch (_) {}
+        }
+        return <String, dynamic>{
+          'id': ev.id,
+          'field_id': ev.fieldId,
+          'field_name': ev.fieldId == null ? null : names[ev.fieldId],
+          'crop_id': ev.cropId,
+          'title': ev.title,
+          'type': ev.eventType,
+          'date': ev.eventDate.toLocal(),
+          'source': ev.source,
+          'metadata': meta,
+        };
+      }).toList();
+    });
+  }
+
+  /// Aktivite kaydını soft-delete yapar.
+  Future<void> deleteActivity(String id) async {
+    final now = DateTime.now().toUtc();
+    await (_db.update(_db.calendarEvents)..where((tbl) => tbl.id.equals(id)))
+        .write(CalendarEventsCompanion(
+      deletedAt: Value(now),
+      updatedAt: Value(now),
+    ));
+    await _enqueueSyncJob(
+      entityType: 'calendar_events',
+      entityId: id,
+      operation: 'delete',
+      payload: {'id': id, 'deleted_at': now.toIso8601String()},
       updatedAt: now,
     );
   }
