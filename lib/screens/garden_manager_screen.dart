@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/crop_layer.dart';
 import '../services/app_providers.dart';
 import '../services/companion_service.dart';
+import '../widgets/floating_toast.dart';
 import '../widgets/top_down_field_view.dart';
 
 class GardenManagerScreen extends ConsumerStatefulWidget {
@@ -61,8 +62,10 @@ class _GardenManagerScreenState extends ConsumerState<GardenManagerScreen> {
     final fieldId = widget.fieldData['id']?.toString();
     if (fieldId == null) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Alan kimliği bulunamadı, kayıt yapılamadı.')),
+      AppToast.show(
+        context,
+        message: 'Alan kimliği bulunamadı, kayıt yapılamadı.',
+        type: ToastType.error,
       );
       return;
     }
@@ -73,8 +76,10 @@ class _GardenManagerScreenState extends ConsumerState<GardenManagerScreen> {
         );
     if (!mounted) return;
     setState(() => _dirty = false);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Bahçe kaydedildi!')),
+    AppToast.show(
+      context,
+      message: 'Bahçe kaydedildi!',
+      type: ToastType.success,
     );
   }
 

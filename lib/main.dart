@@ -11,7 +11,6 @@ import 'screens/auth_screen.dart';
 import 'services/notification_service.dart';
 import 'services/offline_encyclopedia.dart';
 import 'services/app_providers.dart';
-import 'services/local_data_repository.dart';
 import 'services/background_sync_service.dart';
 import 'theme/app_theme.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -51,11 +50,16 @@ void main() async {
   OfflineEncyclopedia.preSeed(); // fire-and-forget; doesn't block startup
 
   final database = AppDatabase();
-  final localDataRepository = LocalDataRepository(database: database);
-  await localDataRepository.bootstrapFromLegacyHive();
 
   // 6. Background periodic tasks (Android'de aktif, diğer platformlarda no-op)
   await BackgroundSyncService.initialize();
+
+  // Widget build hatası olursa varsayılan kırmızı ErrorWidget yerine
+  // sessiz bir placeholder göster — kullanıcıyı korkutmaz, tek bir child'da
+  // kalır ve uygulamanın geri kalanını etkilemez.
+  ErrorWidget.builder = (FlutterErrorDetails details) {
+    return const SizedBox.shrink();
+  };
 
   runApp(
     ProviderScope(
@@ -94,15 +98,23 @@ class SmartAgriApp extends StatelessWidget {
 }
 
 /// Listens to Firebase Auth state and routes to Auth or Main screen.
-class _AuthGate extends ConsumerWidget {
+class _AuthGate extends ConsumerStatefulWidget {
   const _AuthGate();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_AuthGate> createState() => _AuthGateState();
+}
+
+class _AuthGateState extends ConsumerState<_AuthGate> {
+  String? _lastBootstrappedUid;
+
+  @override
+  Widget build(BuildContext context) {
     final authStateAsync = ref.watch(authStateChangesProvider);
 
     return authStateAsync.when(
       loading: () => const Scaffold(
+        backgroundColor: Colors.white,
         body: Center(
           child: CircularProgressIndicator(color: Color(0xFF00E676)),
         ),
@@ -110,6 +122,16 @@ class _AuthGate extends ConsumerWidget {
       error: (_, __) => const AuthScreen(),
       data: (user) {
         if (user != null) {
+          // Kullanıcı ilk kez giriş yaptığında Hive → Drift bootstrap'i tetikle.
+          if (_lastBootstrappedUid != user.uid) {
+            _lastBootstrappedUid = user.uid;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              ref
+                  .read(localDataRepositoryProvider)
+                  .bootstrapFromLegacyHive()
+                  .ignore();
+            });
+          }
           return const MainNavigationScreen();
         }
         return const AuthScreen();

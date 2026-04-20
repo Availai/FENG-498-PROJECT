@@ -8,6 +8,8 @@ import '../utils/image_compressor.dart';
 import '../utils/location_utils.dart';
 import 'analysis_result_screen.dart';
 import '../theme/app_theme.dart';
+import '../widgets/animated_route.dart';
+import '../widgets/floating_toast.dart';
 import '../widgets/glass_panel.dart';
 
 class CameraScreen extends StatefulWidget {
@@ -147,7 +149,6 @@ class _CameraScreenState extends State<CameraScreen> {
   Future<void> _analyze(int index) async {
     setState(() => _isLoading = true);
     final navigator = Navigator.of(context);
-    final messenger = ScaffoldMessenger.of(context);
     try {
       final pos = await getCurrentPosition();
 
@@ -171,8 +172,8 @@ class _CameraScreenState extends State<CameraScreen> {
       }
       if (mounted) {
         navigator.push(
-          MaterialPageRoute(
-            builder: (_) => AnalysisResultScreen(
+          AnimatedRoute.scaleFade(
+            AnalysisResultScreen(
               image: _photos[index],
               result: res,
             ),
@@ -181,7 +182,7 @@ class _CameraScreenState extends State<CameraScreen> {
       }
     } catch (e) {
       if (mounted) {
-        messenger.showSnackBar(SnackBar(content: Text('Hata: $e'), backgroundColor: AppColors.error));
+        AppToast.show(context, message: 'Hata: $e', type: ToastType.error);
       }
     } finally {
       if (mounted) {

@@ -9,6 +9,7 @@ part 'app_database.g.dart';
 
 class Fields extends Table {
   TextColumn get id => text()();
+  TextColumn get farmerUid => text().nullable()();
   TextColumn get name => text()();
   TextColumn get crop => text().nullable()();
   TextColumn get date => text()();
@@ -132,7 +133,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -141,8 +142,12 @@ class AppDatabase extends _$AppDatabase {
         },
         onUpgrade: (m, from, to) async {
           if (from < 2) {
-            // v2: FieldCrops tablosuna zonePolygonJson TEXT nullable sütun ekle
             await m.addColumn(fieldCrops, fieldCrops.zonePolygonJson);
+          }
+          if (from < 3) {
+            // v3: Fields tablosuna farmerUid TEXT nullable sütun ekle
+            await customStatement(
+                'ALTER TABLE fields ADD COLUMN farmer_uid TEXT;');
           }
         },
       );

@@ -14,7 +14,27 @@
       "Bash(adb -s emulator-5554 logcat -d)",
       "Bash(grep -v \"^$\")",
       "Bash(python3 -c ':*)",
-      "Bash(node -e ':*)"
+      "Bash(node -e ':*)",
+      "Bash(flutter devices *)",
+      "Bash(flutter logs *)",
+      "Bash(adb -s emulator-5554 logcat -d -t 200 flutter:V ActivityManager:I AndroidRuntime:E *:S)",
+      "Bash(adb -s emulator-5554 shell getprop ro.build.version.sdk)",
+      "Bash(adb -s emulator-5554 logcat -d -t 300)",
+      "Bash(adb -s emulator-5554 logcat -d -t 500)",
+      "Bash(adb -s emulator-5554 install -r \"c:/FENG 498/feng_498/build/app/outputs/flutter-apk/app-debug.apk\")",
+      "Bash(adb -s emulator-5554 shell am start -n com.example.feng_498/.MainActivity)",
+      "Bash(adb -s emulator-5554 exec-out screencap -p)",
+      "Bash(adb -s emulator-5554 logcat -d -t 200)",
+      "Bash(adb -s emulator-5554 shell input tap 540 2100)",
+      "Bash(adb -s emulator-5554 logcat -d -t 2000)",
+      "Bash(adb -s emulator-5554 shell am force-stop com.example.feng_498)",
+      "Bash(adb -s emulator-5554 logcat -d -t 400)",
+      "Bash(adb -s emulator-5554 shell dumpsys window)",
+      "Bash(adb -s emulator-5554 shell dumpsys SurfaceFlinger --list)",
+      "Bash(adb -s emulator-5554 shell \"dumpsys activity activities | grep -i 'ResumedActivity\\\\|mResumedActivity\\\\|topResumed\\\\|ActivityRecord' | head -10\")",
+      "Bash(adb -s emulator-5554 shell input tap 540 1200)",
+      "Bash(python data_pipeline/build_turkish_crops_db.py)",
+      "Bash(python -c \"import json; data=json.load\\(open\\('seed_plants.json',encoding='utf-8'\\)\\); print\\('TOTAL:', len\\(data['plants']\\)\\); [print\\(p['category'], '-', p['name_tr']\\) for p in data['plants']]\")"
     ]
   }
 }

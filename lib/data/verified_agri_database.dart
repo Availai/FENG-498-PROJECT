@@ -62,8 +62,9 @@ class AgriPlant {
   /// Evaluates how suitable a given environment is (0 to 100 score).
   int evaluateSuitability(double soilPh, double currentTemp, double annualRainMm) {
     double tempScore = 100.0;
-    if (currentTemp < minTemp || currentTemp > maxTemp) tempScore = 20.0;
-    else if (currentTemp != optimalTemp) {
+    if (currentTemp < minTemp || currentTemp > maxTemp) {
+      tempScore = 20.0;
+    } else if (currentTemp != optimalTemp) {
       tempScore = 100.0 - ((currentTemp - optimalTemp).abs() * 5);
     }
     

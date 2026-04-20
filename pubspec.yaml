@@ -59,6 +59,7 @@ dependencies:
   google_fonts: ^6.2.1
   workmanager: ^0.9.0+3
   flutter_image_compress: ^2.3.0
+  sqlite3: ^2.4.0
 
 
 dev_dependencies:
@@ -90,6 +91,7 @@ flutter:
     - assets/weather/rainy.png
     - assets/weather/cloudy.png
     - assets/crops/
+    - assets/data/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

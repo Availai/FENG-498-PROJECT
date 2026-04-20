@@ -360,7 +360,7 @@ class _CropCalendarScreenState extends ConsumerState<CropCalendarScreen> {
                       eventDate: pickedDate,
                     );
                 await _buildEventsFromRepository();
-                if (!mounted) return;
+                if (!ctx.mounted) return;
                 Navigator.pop(ctx);
               },
               child: const Text('Kaydet'),

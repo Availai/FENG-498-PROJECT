@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/intl.dart';
 import '../theme/app_theme.dart';
+import '../widgets/floating_toast.dart';
 
 /// ÇKS (Çiftçi Kayıt Sistemi) uyumlu basit maliyet defteri.
 ///
@@ -356,8 +357,10 @@ class _AddCostSheetState extends State<_AddCostSheet> {
     final perDekar = double.tryParse(_perDekarCtrl.text.replaceAll(',', '.')) ?? 0;
     final dekar = double.tryParse(_dekarCtrl.text.replaceAll(',', '.')) ?? 0;
     if (perDekar <= 0 || dekar <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Tutar ve dekar pozitif olmalı.')),
+      AppToast.show(
+        context,
+        message: 'Tutar ve dekar pozitif olmalı.',
+        type: ToastType.warning,
       );
       return;
     }

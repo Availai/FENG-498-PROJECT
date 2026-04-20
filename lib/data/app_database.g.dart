@@ -13,6 +13,12 @@ class $FieldsTable extends Fields with TableInfo<$FieldsTable, Field> {
   late final GeneratedColumn<String> id = GeneratedColumn<String>(
       'id', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _farmerUidMeta =
+      const VerificationMeta('farmerUid');
+  @override
+  late final GeneratedColumn<String> farmerUid = GeneratedColumn<String>(
+      'farmer_uid', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _nameMeta = const VerificationMeta('name');
   @override
   late final GeneratedColumn<String> name = GeneratedColumn<String>(
@@ -79,6 +85,7 @@ class $FieldsTable extends Fields with TableInfo<$FieldsTable, Field> {
   @override
   List<GeneratedColumn> get $columns => [
         id,
+        farmerUid,
         name,
         crop,
         date,
@@ -105,6 +112,10 @@ class $FieldsTable extends Fields with TableInfo<$FieldsTable, Field> {
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
     } else if (isInserting) {
       context.missing(_idMeta);
+    }
+    if (data.containsKey('farmer_uid')) {
+      context.handle(_farmerUidMeta,
+          farmerUid.isAcceptableOrUnknown(data['farmer_uid']!, _farmerUidMeta));
     }
     if (data.containsKey('name')) {
       context.handle(
@@ -171,6 +182,8 @@ class $FieldsTable extends Fields with TableInfo<$FieldsTable, Field> {
     return Field(
       id: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      farmerUid: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}farmer_uid']),
       name: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}name'])!,
       crop: attachedDatabase.typeMapping
@@ -204,6 +217,7 @@ class $FieldsTable extends Fields with TableInfo<$FieldsTable, Field> {
 
 class Field extends DataClass implements Insertable<Field> {
   final String id;
+  final String? farmerUid;
   final String name;
   final String? crop;
   final String date;
@@ -217,6 +231,7 @@ class Field extends DataClass implements Insertable<Field> {
   final DateTime? deletedAt;
   const Field(
       {required this.id,
+      this.farmerUid,
       required this.name,
       this.crop,
       required this.date,
@@ -232,6 +247,9 @@ class Field extends DataClass implements Insertable<Field> {
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
+    if (!nullToAbsent || farmerUid != null) {
+      map['farmer_uid'] = Variable<String>(farmerUid);
+    }
     map['name'] = Variable<String>(name);
     if (!nullToAbsent || crop != null) {
       map['crop'] = Variable<String>(crop);
@@ -263,6 +281,9 @@ class Field extends DataClass implements Insertable<Field> {
   FieldsCompanion toCompanion(bool nullToAbsent) {
     return FieldsCompanion(
       id: Value(id),
+      farmerUid: farmerUid == null && nullToAbsent
+          ? const Value.absent()
+          : Value(farmerUid),
       name: Value(name),
       crop: crop == null && nullToAbsent ? const Value.absent() : Value(crop),
       date: Value(date),
@@ -294,6 +315,7 @@ class Field extends DataClass implements Insertable<Field> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return Field(
       id: serializer.fromJson<String>(json['id']),
+      farmerUid: serializer.fromJson<String?>(json['farmerUid']),
       name: serializer.fromJson<String>(json['name']),
       crop: serializer.fromJson<String?>(json['crop']),
       date: serializer.fromJson<String>(json['date']),
@@ -312,6 +334,7 @@ class Field extends DataClass implements Insertable<Field> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
+      'farmerUid': serializer.toJson<String?>(farmerUid),
       'name': serializer.toJson<String>(name),
       'crop': serializer.toJson<String?>(crop),
       'date': serializer.toJson<String>(date),
@@ -328,6 +351,7 @@ class Field extends DataClass implements Insertable<Field> {
 
   Field copyWith(
           {String? id,
+          Value<String?> farmerUid = const Value.absent(),
           String? name,
           Value<String?> crop = const Value.absent(),
           String? date,
@@ -341,6 +365,7 @@ class Field extends DataClass implements Insertable<Field> {
           Value<DateTime?> deletedAt = const Value.absent()}) =>
       Field(
         id: id ?? this.id,
+        farmerUid: farmerUid.present ? farmerUid.value : this.farmerUid,
         name: name ?? this.name,
         crop: crop.present ? crop.value : this.crop,
         date: date ?? this.date,
@@ -356,6 +381,7 @@ class Field extends DataClass implements Insertable<Field> {
   Field copyWithCompanion(FieldsCompanion data) {
     return Field(
       id: data.id.present ? data.id.value : this.id,
+      farmerUid: data.farmerUid.present ? data.farmerUid.value : this.farmerUid,
       name: data.name.present ? data.name.value : this.name,
       crop: data.crop.present ? data.crop.value : this.crop,
       date: data.date.present ? data.date.value : this.date,
@@ -375,6 +401,7 @@ class Field extends DataClass implements Insertable<Field> {
   String toString() {
     return (StringBuffer('Field(')
           ..write('id: $id, ')
+          ..write('farmerUid: $farmerUid, ')
           ..write('name: $name, ')
           ..write('crop: $crop, ')
           ..write('date: $date, ')
@@ -391,13 +418,26 @@ class Field extends DataClass implements Insertable<Field> {
   }
 
   @override
-  int get hashCode => Object.hash(id, name, crop, date, latitude, longitude,
-      areaDekar, areaSqm, polygonJson, createdAt, updatedAt, deletedAt);
+  int get hashCode => Object.hash(
+      id,
+      farmerUid,
+      name,
+      crop,
+      date,
+      latitude,
+      longitude,
+      areaDekar,
+      areaSqm,
+      polygonJson,
+      createdAt,
+      updatedAt,
+      deletedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is Field &&
           other.id == this.id &&
+          other.farmerUid == this.farmerUid &&
           other.name == this.name &&
           other.crop == this.crop &&
           other.date == this.date &&
@@ -413,6 +453,7 @@ class Field extends DataClass implements Insertable<Field> {
 
 class FieldsCompanion extends UpdateCompanion<Field> {
   final Value<String> id;
+  final Value<String?> farmerUid;
   final Value<String> name;
   final Value<String?> crop;
   final Value<String> date;
@@ -427,6 +468,7 @@ class FieldsCompanion extends UpdateCompanion<Field> {
   final Value<int> rowid;
   const FieldsCompanion({
     this.id = const Value.absent(),
+    this.farmerUid = const Value.absent(),
     this.name = const Value.absent(),
     this.crop = const Value.absent(),
     this.date = const Value.absent(),
@@ -442,6 +484,7 @@ class FieldsCompanion extends UpdateCompanion<Field> {
   });
   FieldsCompanion.insert({
     required String id,
+    this.farmerUid = const Value.absent(),
     required String name,
     this.crop = const Value.absent(),
     required String date,
@@ -461,6 +504,7 @@ class FieldsCompanion extends UpdateCompanion<Field> {
         updatedAt = Value(updatedAt);
   static Insertable<Field> custom({
     Expression<String>? id,
+    Expression<String>? farmerUid,
     Expression<String>? name,
     Expression<String>? crop,
     Expression<String>? date,
@@ -476,6 +520,7 @@ class FieldsCompanion extends UpdateCompanion<Field> {
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
+      if (farmerUid != null) 'farmer_uid': farmerUid,
       if (name != null) 'name': name,
       if (crop != null) 'crop': crop,
       if (date != null) 'date': date,
@@ -493,6 +538,7 @@ class FieldsCompanion extends UpdateCompanion<Field> {
 
   FieldsCompanion copyWith(
       {Value<String>? id,
+      Value<String?>? farmerUid,
       Value<String>? name,
       Value<String?>? crop,
       Value<String>? date,
@@ -507,6 +553,7 @@ class FieldsCompanion extends UpdateCompanion<Field> {
       Value<int>? rowid}) {
     return FieldsCompanion(
       id: id ?? this.id,
+      farmerUid: farmerUid ?? this.farmerUid,
       name: name ?? this.name,
       crop: crop ?? this.crop,
       date: date ?? this.date,
@@ -527,6 +574,9 @@ class FieldsCompanion extends UpdateCompanion<Field> {
     final map = <String, Expression>{};
     if (id.present) {
       map['id'] = Variable<String>(id.value);
+    }
+    if (farmerUid.present) {
+      map['farmer_uid'] = Variable<String>(farmerUid.value);
     }
     if (name.present) {
       map['name'] = Variable<String>(name.value);
@@ -571,6 +621,7 @@ class FieldsCompanion extends UpdateCompanion<Field> {
   String toString() {
     return (StringBuffer('FieldsCompanion(')
           ..write('id: $id, ')
+          ..write('farmerUid: $farmerUid, ')
           ..write('name: $name, ')
           ..write('crop: $crop, ')
           ..write('date: $date, ')
@@ -3575,6 +3626,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
 
 typedef $$FieldsTableCreateCompanionBuilder = FieldsCompanion Function({
   required String id,
+  Value<String?> farmerUid,
   required String name,
   Value<String?> crop,
   required String date,
@@ -3590,6 +3642,7 @@ typedef $$FieldsTableCreateCompanionBuilder = FieldsCompanion Function({
 });
 typedef $$FieldsTableUpdateCompanionBuilder = FieldsCompanion Function({
   Value<String> id,
+  Value<String?> farmerUid,
   Value<String> name,
   Value<String?> crop,
   Value<String> date,
@@ -3683,6 +3736,9 @@ class $$FieldsTableFilterComposer
   });
   ColumnFilters<String> get id => $composableBuilder(
       column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get farmerUid => $composableBuilder(
+      column: $table.farmerUid, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get name => $composableBuilder(
       column: $table.name, builder: (column) => ColumnFilters(column));
@@ -3814,6 +3870,9 @@ class $$FieldsTableOrderingComposer
   ColumnOrderings<String> get id => $composableBuilder(
       column: $table.id, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get farmerUid => $composableBuilder(
+      column: $table.farmerUid, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<String> get name => $composableBuilder(
       column: $table.name, builder: (column) => ColumnOrderings(column));
 
@@ -3859,6 +3918,9 @@ class $$FieldsTableAnnotationComposer
   });
   GeneratedColumn<String> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get farmerUid =>
+      $composableBuilder(column: $table.farmerUid, builder: (column) => column);
 
   GeneratedColumn<String> get name =>
       $composableBuilder(column: $table.name, builder: (column) => column);
@@ -4007,6 +4069,7 @@ class $$FieldsTableTableManager extends RootTableManager<
               $$FieldsTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback: ({
             Value<String> id = const Value.absent(),
+            Value<String?> farmerUid = const Value.absent(),
             Value<String> name = const Value.absent(),
             Value<String?> crop = const Value.absent(),
             Value<String> date = const Value.absent(),
@@ -4022,6 +4085,7 @@ class $$FieldsTableTableManager extends RootTableManager<
           }) =>
               FieldsCompanion(
             id: id,
+            farmerUid: farmerUid,
             name: name,
             crop: crop,
             date: date,
@@ -4037,6 +4101,7 @@ class $$FieldsTableTableManager extends RootTableManager<
           ),
           createCompanionCallback: ({
             required String id,
+            Value<String?> farmerUid = const Value.absent(),
             required String name,
             Value<String?> crop = const Value.absent(),
             required String date,
@@ -4052,6 +4117,7 @@ class $$FieldsTableTableManager extends RootTableManager<
           }) =>
               FieldsCompanion.insert(
             id: id,
+            farmerUid: farmerUid,
             name: name,
             crop: crop,
             date: date,

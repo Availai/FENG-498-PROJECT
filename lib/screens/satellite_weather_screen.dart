@@ -243,7 +243,7 @@ class _SatelliteWeatherScreenState extends ConsumerState<SatelliteWeatherScreen>
 
   String _formatUpdatedAt(DateTime dt) {
     final local = dt.toLocal();
-    final two = (int v) => v.toString().padLeft(2, '0');
+    String two(int v) => v.toString().padLeft(2, '0');
     return '${two(local.day)}.${two(local.month)}.${local.year} ${two(local.hour)}:${two(local.minute)}';
   }
 

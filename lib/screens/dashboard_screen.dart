@@ -8,6 +8,9 @@ import '../services/notification_service.dart';
 import '../services/frost_alarm_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/location_utils.dart';
+import '../widgets/animated_route.dart';
+import '../widgets/floating_toast.dart';
+import '../widgets/tap_scale.dart';
 import 'field_detail_screen.dart';
 import 'sensor_data_screen.dart';
 
@@ -712,20 +715,27 @@ class _AgriDashboardState extends State<AgriDashboard>
 
 
   Widget _buildSensorButton() {
-    return OutlinedButton.icon(
-      onPressed: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const SensorDataScreen()),
+    return TapScale(
+      scale: 0.97,
+      onTap: () {
+        Navigator.of(context).push(
+          AnimatedRoute.slideX(const SensorDataScreen()),
         );
       },
-      icon: const Icon(Icons.sensors_rounded),
-      label: const Text('CANLI SENSÖR PANELİ'),
-      style: OutlinedButton.styleFrom(
-        minimumSize: const Size.fromHeight(48),
-        foregroundColor: Colors.teal.shade700,
-        side: BorderSide(color: Colors.teal.shade300),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      child: OutlinedButton.icon(
+        onPressed: () {
+          Navigator.of(context).push(
+            AnimatedRoute.slideX(const SensorDataScreen()),
+          );
+        },
+        icon: const Icon(Icons.sensors_rounded),
+        label: const Text('CANLI SENSÖR PANELİ'),
+        style: OutlinedButton.styleFrom(
+          minimumSize: const Size.fromHeight(48),
+          foregroundColor: Colors.teal.shade700,
+          side: BorderSide(color: Colors.teal.shade300),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        ),
       ),
     );
   }
@@ -760,14 +770,10 @@ class _AgriDashboardState extends State<AgriDashboard>
               'location': _location.split('\n').first,
             });
             if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: const Text('Veriler arşive kaydedildi!'),
-                  backgroundColor: Colors.green.shade700,
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
-                ),
+              AppToast.show(
+                context,
+                message: 'Veriler arşive kaydedildi!',
+                type: ToastType.success,
               );
             }
           },
@@ -899,14 +905,11 @@ class _AgriDashboardState extends State<AgriDashboard>
                 ? '2-3 gün içinde'
                 : '4+ gün sonra';
 
-    return InkWell(
-      borderRadius: const BorderRadius.all(Radius.circular(16)),
+    return TapScale(
+      scale: 0.96,
       onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => FieldDetailScreen(fieldData: field),
-          ),
+        Navigator.of(context).push(
+          AnimatedRoute.scaleFade(FieldDetailScreen(fieldData: field)),
         );
       },
       child: Container(

@@ -3,8 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../services/app_providers.dart';
 import '../utils/location_utils.dart';
+import '../widgets/animated_route.dart';
+import '../widgets/floating_toast.dart';
+import '../widgets/shimmer_loader.dart';
+import '../widgets/tap_scale.dart';
 import 'field_3d_planner_screen.dart';
 import 'field_detail_screen.dart';
+import 'turkish_crops_search_screen.dart';
 import '../theme/app_theme.dart';
 
 class MyCropsScreen extends ConsumerWidget {
@@ -21,6 +26,17 @@ class MyCropsScreen extends ConsumerWidget {
         backgroundColor: AppColors.surface,
         elevation: 0,
         centerTitle: false,
+        actions: [
+          IconButton(
+            tooltip: 'Bitki Veritabanı',
+            icon: const Icon(Icons.local_florist_rounded, color: AppColors.emerald),
+            onPressed: () {
+              Navigator.of(context).push(
+                AnimatedRoute.slideUp(const TurkishCropsSearchScreen()),
+              );
+            },
+          ),
+        ],
       ),
       floatingActionButton: Column(
         mainAxisAlignment: MainAxisAlignment.end,
@@ -31,23 +47,19 @@ class MyCropsScreen extends ConsumerWidget {
               try {
                 final pos = await getCurrentPosition();
                 if (context.mounted) {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => Field3DPlannerScreen(
-                        initialLat: pos.latitude,
-                        initialLng: pos.longitude,
-                      ),
+                  Navigator.of(context).push(AnimatedRoute.slideUp(
+                    Field3DPlannerScreen(
+                      initialLat: pos.latitude,
+                      initialLng: pos.longitude,
                     ),
-                  );
+                  ));
                 }
               } catch (e) {
                 if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Sinyal hatası: $e'),
-                      backgroundColor: AppColors.error,
-                    )
+                  AppToast.show(
+                    context,
+                    message: 'Sinyal hatası: $e',
+                    type: ToastType.error,
                   );
                 }
               }
@@ -67,8 +79,17 @@ class MyCropsScreen extends ConsumerWidget {
         ],
       ),
       body: fieldsAsync.when(
-        loading: () => const Center(
-          child: CircularProgressIndicator(color: AppColors.emerald),
+        loading: () => ListView.builder(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+          itemCount: 5,
+          itemBuilder: (_, __) => Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: ShimmerBox(
+              width: double.infinity,
+              height: 96,
+              borderRadius: 16,
+            ),
+          ),
         ),
         error: (error, _) => Center(
           child: Padding(
@@ -125,20 +146,24 @@ class MyCropsScreen extends ConsumerWidget {
               
               return Padding(
                 padding: const EdgeInsets.only(bottom: 12),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: AppRadius.md,
-                    boxShadow: AppShadows.sm,
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: InkWell(
-                    borderRadius: AppRadius.md,
-                    onTap: hasLocation ? () {
-                      Navigator.push(context, MaterialPageRoute(
-                        builder: (_) => FieldDetailScreen(fieldData: item)
-                      ));
-                    } : null,
+                child: TapScale(
+                  scale: 0.97,
+                  onTap: hasLocation
+                      ? () {
+                          Navigator.of(context).push(
+                            AnimatedRoute.scaleFade(
+                              FieldDetailScreen(fieldData: item),
+                            ),
+                          );
+                        }
+                      : null,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: AppRadius.md,
+                      boxShadow: AppShadows.sm,
+                      border: Border.all(color: AppColors.border),
+                    ),
                     child: Padding(
                       padding: const EdgeInsets.all(16),
                       child: Row(

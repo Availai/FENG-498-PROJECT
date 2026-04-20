@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/intl.dart';
+import '../widgets/floating_toast.dart';
 
 class SensorDataScreen extends StatefulWidget {
   const SensorDataScreen({super.key});
@@ -53,8 +54,10 @@ class _SensorDataScreenState extends State<SensorDataScreen> {
 
   void _toggleStream() {
     if (_selectedFieldId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Önce bir tarla seçin.')),
+      AppToast.show(
+        context,
+        message: 'Önce bir tarla seçin.',
+        type: ToastType.warning,
       );
       return;
     }
@@ -125,7 +128,7 @@ class _SensorDataScreenState extends State<SensorDataScreen> {
               padding: const EdgeInsets.all(16),
               children: [
                 DropdownButtonFormField<String>(
-                  value: _selectedFieldId,
+                  initialValue: _selectedFieldId,
                   decoration: const InputDecoration(
                     labelText: 'Tarla Seçimi',
                     border: OutlineInputBorder(),

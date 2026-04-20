@@ -9,12 +9,12 @@ import 'package:latlong2/latlong.dart';
 import '../services/agri_service.dart';
 import '../services/app_providers.dart';
 import '../data/verified_agri_database.dart';
+import '../data/turkish_crops_repository.dart';
+import '../widgets/floating_toast.dart';
 import '../widgets/glass_panel.dart';
 import '../widgets/zone_drawing_toolbar.dart';
-import '../widgets/crop_zone_legend.dart';
 import '../widgets/crop_zone_tooltip.dart';
 import '../widgets/crop_render_factory.dart';
-import 'seed_selector_screen.dart';
 import 'irrigation_schedule_screen.dart';
 import 'cost_ledger_screen.dart';
 
@@ -222,6 +222,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
   }
 
 
+  // ignore: unused_element
   Future<void> _showSyncQueueDialog() async {
     final syncRepository = ref.read(syncRepositoryProvider);
     final stats = await syncRepository.getQueueStats();
@@ -258,15 +259,14 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
               final report = await ref.read(syncServiceProvider).runPushCycleWithApi(
                     apiClient: ref.read(syncApiClientProvider),
                   );
-              if (!mounted) return;
+              if (!ctx.mounted) return;
               Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    '$moved kayıt tekrar kuyruğa alındı • '
-                    'Push: ${report.completed}/${report.picked} başarılı',
-                  ),
-                ),
+              if (!mounted) return;
+              AppToast.show(
+                context,
+                message:
+                    '$moved kayıt tekrar kuyruğa alındı • Push: ${report.completed}/${report.picked} başarılı',
+                type: ToastType.info,
               );
             },
             child: const Text('Hatalıları Tekrar Dene'),
@@ -279,7 +279,6 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
   @override
   Widget build(BuildContext context) {
     final d = widget.fieldData;
-    final a = _analysis;
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -435,6 +434,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
   // ═══════════════════════════════════════════════════
   // LIVE STATS PANEL — 4 ana canli metrik (AR Tarzı)
   // ═══════════════════════════════════════════════════
+  // ignore: unused_element
   Widget _buildLiveStatsPanel(Map<String, dynamic>? a) {
     final soilTemp = a != null ? '${(a['soil_temp_c'] as num?)?.toStringAsFixed(0) ?? '--'}°C' : '--°C';
     final rain = a != null ? '${(a['total_weekly_rain'] as num?)?.toStringAsFixed(1) ?? '--'} mm' : '-- mm';
@@ -525,6 +525,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
   // ═══════════════════════════════════════════════════
   // FIELD DETAILS CARD — ekili bitki bilgileri
   // ═══════════════════════════════════════════════════
+  // ignore: unused_element
   Widget _buildFieldDetailsCard() {
     final d = widget.fieldData;
     final area = (d['area_dekar'] as num?)?.toStringAsFixed(1) ?? '--';
@@ -608,6 +609,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
     return ((elapsed / harvestDays) * 100).clamp(0, 100);
   }
 
+  // ignore: unused_element
   DateTime? _computeHarvestDate(Map<String, dynamic>? crop) {
     if (crop == null) return null;
     final plantedDateStr = crop['planted_date']?.toString();
@@ -709,6 +711,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
     );
   }
 
+  // ignore: unused_element
   Widget _buildSuitabilityCard() {
     final report = _latestSuitabilityReport;
     final reportBody = report?['report'];
@@ -827,8 +830,10 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
     final name = d['name']?.toString() ?? 'Tarla';
 
     if (lat == null || lon == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Tarlanın konumu bulunamadı.')),
+      AppToast.show(
+        context,
+        message: 'Tarlanın konumu bulunamadı.',
+        type: ToastType.warning,
       );
       return;
     }
@@ -923,27 +928,29 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
     return (ph: ph, temp: t, annualRain: rain);
   }
 
-  void _showPlantPicker() {
+  void _showPlantPicker() async {
     final env = _envForSuitability();
-    final scored = VerifiedAgriDatabase.plants.map((p) {
-      final score = p.evaluateSuitability(env.ph, env.temp, env.annualRain);
-      final reasons = <String>[];
-      if (env.temp < p.minTemp || env.temp > p.maxTemp) {
-        reasons.add(
-            'Sıcaklık ${env.temp.toStringAsFixed(0)}°C — ideal ${p.minTemp.toInt()}–${p.maxTemp.toInt()}°C dışında');
-      }
-      if (env.ph < p.minPh || env.ph > p.maxPh) {
-        reasons.add(
-            'Toprak pH ${env.ph.toStringAsFixed(1)} — ideal ${p.minPh}–${p.maxPh} dışında');
-      }
-      if (env.annualRain < p.waterReqMmPerSeason * 0.4) {
-        reasons.add(
-            'Yıllık yağış ${env.annualRain.toStringAsFixed(0)}mm — ${p.nameTr} için ${p.waterReqMmPerSeason.toStringAsFixed(0)}mm gerek');
-      }
-      return {'plant': p, 'score': score, 'reasons': reasons};
-    }).toList()
-      ..sort((a, b) => (b['score'] as int).compareTo(a['score'] as int));
+    final repo = TurkishCropsRepository.instance;
+    await repo.ensureReady();
+    final month = DateTime.now().month;
 
+    final scored = repo.search(query: '', limit: 500).map((tc) {
+      final result = tc.scoreFor(
+        temperature: env.temp,
+        soilPh: env.ph,
+        weeklyRain: env.annualRain / 52.0,
+        month: month,
+      );
+      return {
+        'plant': _turkishCropToAgriPlant(tc),
+        'tcrop': tc,
+        'score': result.score,
+        'reasons': result.reasons,
+      };
+    }).toList()
+      ..sort((a, b) => (b['score'] as double).compareTo(a['score'] as double));
+
+    if (!mounted) return;
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -956,6 +963,62 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
         },
       ),
     );
+  }
+
+  AgriPlant _turkishCropToAgriPlant(TurkishCrop tc) {
+    final waterReq = switch (tc.waterNeed) {
+      'low' => 300.0,
+      'high' => 800.0,
+      _ => 500.0,
+    };
+    final renderType = switch (tc.category) {
+      'Tahıl' || 'Yağlı Tohum' || 'Yem Bitkisi' || 'Bahçe Otu' || 'Tıbbi Bitki' => PlantRenderType.stalk,
+      'Sebze' || 'Baklagil' => PlantRenderType.bush,
+      'Meyve' || 'Sert Kabuklu' || 'Süs Bitkisi' => PlantRenderType.broadleaf,
+      _ => PlantRenderType.broadleaf,
+    };
+    final categoryEnum = switch (tc.category) {
+      'Tahıl' => PlantDbCategory.grain,
+      'Baklagil' => PlantDbCategory.legume,
+      'Yağlı Tohum' || 'Endüstri Bitkisi' => PlantDbCategory.industrial,
+      'Sebze' => PlantDbCategory.vegetable,
+      'Meyve' || 'Sert Kabuklu' => PlantDbCategory.fruit,
+      _ => PlantDbCategory.vegetable,
+    };
+    return AgriPlant(
+      id: 'tc_${tc.id}',
+      nameTr: tc.nameTr,
+      category: categoryEnum,
+      cycle: (tc.daysToHarvest ?? 120) > 365 ? 'Çok Yıllık' : 'Yıllık',
+      minPh: tc.soilPhMin ?? 5.5,
+      maxPh: tc.soilPhMax ?? 7.5,
+      optimalTemp: tc.optimalTempC ?? 22,
+      minTemp: tc.tempMinC ?? 5,
+      maxTemp: tc.tempMaxC ?? 35,
+      waterReqMmPerSeason: waterReq,
+      daysToHarvest: tc.daysToHarvest ?? 120,
+      plantDensityPerDekar: 5000,
+      maxVisualHeight: 20.0,
+      renderColor: _colorForCategory(tc.category),
+      renderType: renderType,
+    );
+  }
+
+  Color _colorForCategory(String category) {
+    switch (category) {
+      case 'Tahıl': return const Color(0xFFF59E0B);
+      case 'Baklagil': return const Color(0xFF84CC16);
+      case 'Yağlı Tohum': return const Color(0xFFFCD34D);
+      case 'Endüstri Bitkisi': return const Color(0xFFE5E7EB);
+      case 'Yem Bitkisi': return const Color(0xFF65A30D);
+      case 'Sebze': return const Color(0xFFEF4444);
+      case 'Meyve': return const Color(0xFFEC4899);
+      case 'Sert Kabuklu': return const Color(0xFF92400E);
+      case 'Bahçe Otu': return const Color(0xFF16A34A);
+      case 'Tıbbi Bitki': return const Color(0xFF8B5CF6);
+      case 'Süs Bitkisi': return const Color(0xFFF472B6);
+      default: return const Color(0xFF43A047);
+    }
   }
 
   // ═════════════════════════════════════════════════
@@ -995,11 +1058,11 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
 
     // Nokta tarla poligonu içinde mi kontrol et
     if (!_pointInPolygon(point.latitude, point.longitude, polygon)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Bu nokta tarla sınırları dışında.'),
-          duration: Duration(seconds: 2),
-        ),
+      AppToast.show(
+        context,
+        message: 'Bu nokta tarla sınırları dışında.',
+        type: ToastType.warning,
+        duration: const Duration(seconds: 2),
       );
       return;
     }
@@ -1043,10 +1106,10 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
 
     await _loadFieldCrops();
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('${plant.nameTr} seçilen bölgeye yerleştirildi.'),
-      ),
+    AppToast.show(
+      context,
+      message: '${plant.nameTr} seçilen bölgeye yerleştirildi.',
+      type: ToastType.success,
     );
   }
 
@@ -1090,8 +1153,10 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
       _closeTooltip();
       await _loadFieldCrops();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${crop['name']} bölgesi silindi.')),
+      AppToast.show(
+        context,
+        message: '${crop['name']} bölgesi silindi.',
+        type: ToastType.info,
       );
     }
   }
@@ -1101,8 +1166,10 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
   Future<void> _plantCrop(AgriPlant plant) async {
     final fieldId = widget.fieldData['id']?.toString();
     if (fieldId == null || fieldId.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Tarla kimliği bulunamadı.')),
+      AppToast.show(
+        context,
+        message: 'Tarla kimliği bulunamadı.',
+        type: ToastType.error,
       );
       return;
     }
@@ -1120,8 +1187,10 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
 
     await _loadFieldCrops();
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('${plant.nameTr} tarlaya eklendi.')),
+    AppToast.show(
+      context,
+      message: '${plant.nameTr} tarlaya eklendi.',
+      type: ToastType.success,
     );
   }
 
@@ -1422,11 +1491,6 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
       }
     }
 
-    // Ana tarla polygon rengi
-    final polygonColor = crops.isNotEmpty
-        ? _cropColor(crops.first).withValues(alpha: 0.15)
-        : const Color(0xFF00E676).withValues(alpha: 0.15);
-
     // Köşe etiketleri (A, B, C, D ...)
     final cornerMarkers = <Marker>[];
     for (int i = 0; i < polygon.length && i < 26; i++) {
@@ -1456,7 +1520,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
 
     return Transform(
       transform: Matrix4.identity()
-        ..scale(1.5, 1.5, 1.0) // Rotate işlemi sonrası boş kalan tavan/taban siyahlıklarını ekran dışına itmek için genel büyütme
+        ..scaleByDouble(1.5, 1.5, 1.0, 1.0)
         ..setEntry(3, 2, 0.001)
         ..rotateX(-0.85), // Tarlayı geriye doğru 45 derece yatırır (doğru izometrik bakış)
       alignment: FractionalOffset.center,
@@ -1683,7 +1747,7 @@ class _PlantPickerSheet extends StatelessWidget {
               itemCount: scored.length,
               itemBuilder: (context, i) {
                 final AgriPlant p = scored[i]['plant'] as AgriPlant;
-                final int score = scored[i]['score'] as int;
+                final int score = (scored[i]['score'] as double).round();
                 final List<String> reasons =
                     (scored[i]['reasons'] as List).cast<String>();
                 final Color sColor = score >= 75
@@ -2053,7 +2117,7 @@ class _DetailModalContent extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     if (hasRain) const Icon(Icons.water_drop, color: Color(0xFF42A5F5), size: 10),
-                    Text('$rain', style: TextStyle(color: hasRain ? const Color(0xFF42A5F5) : Colors.white54, fontSize: 11), textAlign: TextAlign.center),
+                    Text(rain, style: TextStyle(color: hasRain ? const Color(0xFF42A5F5) : Colors.white54, fontSize: 11), textAlign: TextAlign.center),
                   ],
                 )),
               ]),

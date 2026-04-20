@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'dart:math';
+import '../data/turkish_crops_repository.dart';
 import '../services/rule_engine.dart';
 import '../services/offline_encyclopedia.dart';
+import '../widgets/floating_toast.dart';
 
 /// Seçilen ürünün kayıtlı tarlalara uygunluğunu animasyonlu gösterir.
 class CropFieldMatchScreen extends StatefulWidget {
@@ -23,15 +25,9 @@ class _CropFieldMatchScreenState extends State<CropFieldMatchScreen>
   // Her kart için staggered animasyon
   late AnimationController _staggerController;
 
-  final List<String> _quickCrops = [
-    '🍅 Domates',
-    '🌽 Mısır',
-    '🥒 Salatalık',
-    '🍆 Patlıcan',
-    '🌾 Buğday',
-    '🫑 Biber',
-    '🥔 Patates',
-    '🧅 Soğan',
+  List<String> _quickCrops = const [
+    'Domates', 'Mısır', 'Salatalık', 'Patlıcan',
+    'Buğday', 'Biber', 'Patates', 'Soğan',
   ];
 
   @override
@@ -41,6 +37,16 @@ class _CropFieldMatchScreenState extends State<CropFieldMatchScreen>
       vsync: this,
       duration: const Duration(milliseconds: 1500),
     );
+    _loadQuickCropsFromDb();
+  }
+
+  Future<void> _loadQuickCropsFromDb() async {
+    await TurkishCropsRepository.instance.ensureReady();
+    final popular = TurkishCropsRepository.instance.popular(limit: 10);
+    if (!mounted || popular.isEmpty) return;
+    setState(() {
+      _quickCrops = popular.map((c) => c.nameTr).toList();
+    });
   }
 
   @override
@@ -64,8 +70,10 @@ class _CropFieldMatchScreenState extends State<CropFieldMatchScreen>
 
     if (fields.isEmpty) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Konum bilgisi olan kayıtlı tarla bulunamadı.')),
+        AppToast.show(
+          context,
+          message: 'Konum bilgisi olan kayıtlı tarla bulunamadı.',
+          type: ToastType.warning,
         );
       }
       return;
@@ -99,8 +107,10 @@ class _CropFieldMatchScreenState extends State<CropFieldMatchScreen>
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Hata: $e')),
+        AppToast.show(
+          context,
+          message: 'Hata: $e',
+          type: ToastType.error,
         );
       }
     }
@@ -156,8 +166,12 @@ class _CropFieldMatchScreenState extends State<CropFieldMatchScreen>
     List<Map<String, dynamic>> fields,
     List<Map<String, double>> envList,
   ) async {
+    // Önce yeni küratörlü DB'de ara, yoksa eski OfflineEncyclopedia fallback.
+    await TurkishCropsRepository.instance.ensureReady();
+    final tcrop = TurkishCropsRepository.instance.findByName(crop);
     final plantDetails = OfflineEncyclopedia.getByName(crop) ?? {};
     final results = <FieldMatch>[];
+    final month = DateTime.now().month;
 
     for (int i = 0; i < fields.length; i++) {
       final f = fields[i];
@@ -168,6 +182,21 @@ class _CropFieldMatchScreenState extends State<CropFieldMatchScreen>
       final rain = e['rain'] ?? 15.0;
       final humidity = e['humidity'] ?? 50.0;
 
+      // Yeni DB skorlaması (varsa)
+      double score = 70.0;
+      final reasons = <String>[];
+      if (tcrop != null) {
+        final s = tcrop.scoreFor(
+          temperature: temp,
+          soilPh: ph,
+          weeklyRain: rain,
+          month: month,
+        );
+        score = s.score;
+        reasons.addAll(s.reasons);
+      }
+
+      // Eski kural motoru ek risk tespiti
       final ruleResults = RuleEngine.analyze(
         commonName: crop,
         plantDetails: plantDetails,
@@ -176,32 +205,37 @@ class _CropFieldMatchScreenState extends State<CropFieldMatchScreen>
         humidity: humidity,
         weeklyRain: rain,
         soilPh: ph,
-        month: DateTime.now().month,
+        month: month,
       );
-
-      // Uygunluk skoru: kritik kurallar -20, uyarılar -8, ok kurallar +5
-      double score = 70.0;
-      for (final r in ruleResults) {
-        if (r.level == RiskLevel.critical) score -= 20;
-        if (r.level == RiskLevel.warning) score -= 8;
-        if (r.level == RiskLevel.ok) score += 5;
+      if (tcrop == null) {
+        // TurkishCrop yoksa skor tamamen RuleEngine'den gelir.
+        for (final r in ruleResults) {
+          if (r.level == RiskLevel.critical) score -= 20;
+          if (r.level == RiskLevel.warning) score -= 8;
+          if (r.level == RiskLevel.ok) score += 5;
+        }
+        score = score.clamp(0.0, 100.0);
       }
-      score = score.clamp(0.0, 100.0);
 
-      // Verim tahmini: tür bazlı yaklaşık değer
-      final harvestDays = (plantDetails['harvest_days'] as num?)?.toInt() ?? 90;
+      // Verim tahmini
+      final harvestDays = tcrop?.daysToHarvest ??
+          (plantDetails['harvest_days'] as num?)?.toInt() ??
+          90;
       final rowSp = (plantDetails['row_spacing_cm'] as num?)?.toInt() ?? 60;
       final plantSp = (plantDetails['plant_spacing_cm'] as num?)?.toInt() ?? 40;
       final maxPlants = ((10000 * dekar) / (rowSp * plantSp)).round();
-      final yieldPerDekar = 2000.0 + (score - 50) * 30; // yaklaşık kg/dekar
+      final yieldPerDekar = 2000.0 + (score - 50) * 30;
       final totalYield = yieldPerDekar * dekar;
 
-      // Özet mesajlar
-      final criticals = ruleResults.where((r) => r.level == RiskLevel.critical).toList();
-      final reason = criticals.isNotEmpty
-          ? criticals.first.message
-          : 'pH ${ph.toStringAsFixed(1)} ve ${temp.toStringAsFixed(1)}°C koşulları değerlendirildi.';
-      final suggestion = 'Hasat ~$harvestDays gün. Damla sulama ile verim artırılabilir.';
+      final criticals =
+          ruleResults.where((r) => r.level == RiskLevel.critical).toList();
+      final reason = reasons.isNotEmpty
+          ? reasons.join(' • ')
+          : (criticals.isNotEmpty
+              ? criticals.first.message
+              : 'pH ${ph.toStringAsFixed(1)}, ${temp.toStringAsFixed(1)}°C — koşullar değerlendirildi.');
+      final suggestion = tcrop?.growingTips ??
+          'Hasat ~$harvestDays gün. Damla sulama ile verim artırılabilir.';
 
       results.add(FieldMatch(
         fieldName: f['name'] ?? 'Tarla',

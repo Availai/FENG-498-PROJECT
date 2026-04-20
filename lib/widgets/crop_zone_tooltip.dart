@@ -36,9 +36,7 @@ class CropZoneTooltip extends StatelessWidget {
     }
 
     final harvestDate = planted?.add(Duration(days: harvestDays));
-    final remaining = harvestDate != null
-        ? harvestDate.difference(DateTime.now()).inDays
-        : null;
+    final remaining = harvestDate?.difference(DateTime.now()).inDays;
 
     return Container(
       width: 220,

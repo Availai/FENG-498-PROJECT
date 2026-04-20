@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/agri_service.dart';
 import '../services/encyclopedia_extensions.dart';
 import '../utils/location_utils.dart';
+import '../widgets/floating_toast.dart';
 import '../widgets/weekly_water_card.dart';
 
 
@@ -23,8 +24,11 @@ class _GrowingGuideScreenState extends State<GrowingGuideScreen> {
   void _getGuide() async {
     final query = _searchCtrl.text.trim();
     if (query.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Lütfen bir bitki adı girin.')));
+      AppToast.show(
+        context,
+        message: 'Lütfen bir bitki adı girin.',
+        type: ToastType.warning,
+      );
       return;
     }
     setState(() {

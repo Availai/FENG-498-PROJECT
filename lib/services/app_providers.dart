@@ -18,7 +18,9 @@ final appDatabaseProvider = Provider<AppDatabase>((ref) {
 });
 
 final localDataRepositoryProvider = Provider<LocalDataRepository>((ref) {
-  return LocalDataRepository(database: ref.watch(appDatabaseProvider));
+  final db = ref.watch(appDatabaseProvider);
+  final uid = ref.watch(authStateChangesProvider).valueOrNull?.uid;
+  return LocalDataRepository(database: db, currentUid: uid);
 });
 
 

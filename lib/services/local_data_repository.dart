@@ -10,49 +10,60 @@ import '../data/app_database.dart';
 class LocalDataRepository {
   LocalDataRepository({
     required AppDatabase database,
+    this.currentUid,
   }) : _db = database;
 
   final AppDatabase _db;
+  final String? currentUid;
 
   Box get _legacyFieldsBox => Hive.box('user_crops');
   Box get _settingsBox => Hive.box('settingsBox');
 
   Future<void> bootstrapFromLegacyHive() async {
-    final migrated = _settingsBox.get('drift_user_crops_bootstrap_v1') == true;
-    if (migrated) {
-      await _mirrorActiveFieldsToHive();
-      return;
-    }
+    // Kullanıcı girişi olmadan bootstrap yapma — tarlalar hesaba özel.
+    if (currentUid == null) return;
 
-    final fieldCount = await _db.select(_db.fields).get().then((rows) => rows.length);
-    if (fieldCount == 0 && _legacyFieldsBox.isNotEmpty) {
-      for (int i = 0; i < _legacyFieldsBox.length; i++) {
-        final raw = _legacyFieldsBox.getAt(i);
-        if (raw is! Map) continue;
-        final legacy = Map<String, dynamic>.from(raw);
-        final fieldId = await upsertFieldFromLegacyMap(
-          legacy,
-          enqueueSync: false,
-          mirrorLegacy: false,
-        );
+    // Global migration flag — pre-Drift Hive verisi TEK SEFER migrate edilir.
+    // Bu flag set edildikten sonra user_crops box'ı artık veri kaynağı değil;
+    // sadece UI reaktivitesi için aynalama (mirror) amacıyla kullanılır.
+    const globalMigrationKey = 'drift_legacy_hive_migrated_v2';
+    final alreadyMigratedGlobally = _settingsBox.get(globalMigrationKey) == true;
 
-        final planted = legacy['planted_crops'];
-        if (planted is List) {
-          final crops = planted
-              .whereType<Map>()
-              .map((item) => Map<String, dynamic>.from(item))
-              .toList();
-          await replaceFieldCrops(
-            fieldId: fieldId,
-            crops: crops,
+    if (!alreadyMigratedGlobally) {
+      // İlk Drift migrasyonu — Hive user_crops'taki pre-existing veriyi
+      // mevcut kullanıcıya atfederek Drift'e aktar.
+      if (_legacyFieldsBox.isNotEmpty) {
+        for (int i = 0; i < _legacyFieldsBox.length; i++) {
+          final raw = _legacyFieldsBox.getAt(i);
+          if (raw is! Map) continue;
+          final legacy = Map<String, dynamic>.from(raw);
+          final fieldId = await upsertFieldFromLegacyMap(
+            legacy,
             enqueueSync: false,
             mirrorLegacy: false,
           );
+
+          final planted = legacy['planted_crops'];
+          if (planted is List) {
+            final crops = planted
+                .whereType<Map>()
+                .map((item) => Map<String, dynamic>.from(item))
+                .toList();
+            await replaceFieldCrops(
+              fieldId: fieldId,
+              crops: crops,
+              enqueueSync: false,
+              mirrorLegacy: false,
+            );
+          }
         }
       }
+      await _settingsBox.put(globalMigrationKey, true);
     }
 
-    await _settingsBox.put('drift_user_crops_bootstrap_v1', true);
+    // Aktif kullanıcı değiştiğinde Hive mirror'ı temizle — önceki kullanıcının
+    // aynasındaki kayıtlar yeni kullanıcıya sızmasın.
+    await _legacyFieldsBox.clear();
     await _mirrorActiveFieldsToHive();
   }
 
@@ -107,6 +118,7 @@ class LocalDataRepository {
     await _db.into(_db.fields).insertOnConflictUpdate(
           FieldsCompanion(
             id: Value(fieldId),
+            farmerUid: Value(currentUid),
             name: Value((raw['name'] ?? 'İsimsiz Tarla').toString()),
             crop: Value(raw['crop']?.toString()),
             date: Value((raw['date'] ?? _formatDate(DateTime.now())).toString()),
@@ -809,8 +821,10 @@ class LocalDataRepository {
   }
 
   SimpleSelectStatement<$FieldsTable, Field> _activeFieldsQuery() {
+    final uid = currentUid;
     return _db.select(_db.fields)
-      ..where((tbl) => tbl.deletedAt.isNull())
+      ..where((tbl) => tbl.deletedAt.isNull() &
+          (uid != null ? tbl.farmerUid.equals(uid) : tbl.farmerUid.isNull()))
       ..orderBy([(tbl) => OrderingTerm.asc(tbl.createdAt)]);
   }
 

@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import '../services/app_providers.dart';
+import '../services/haptic_service.dart';
 import '../widgets/glass_panel.dart';
+import '../widgets/tap_scale.dart';
 import 'dashboard_screen.dart';
 import 'growing_guide_screen.dart';
 import 'my_crops_screen.dart';
@@ -22,6 +24,16 @@ class MainNavigationScreen extends ConsumerStatefulWidget {
 class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
     with TickerProviderStateMixin {
   int _currentIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    // Foreground sync'i sadece bir kez tetikle — build içinde watch etmek
+    // her tab değişiminde gereksiz rebuild'e yol açıyordu.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) ref.read(foregroundSyncProvider);
+    });
+  }
 
   // Page order — camera (index 2) is exposed as FAB
   static const List<Widget> _pages = [
@@ -43,10 +55,15 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
     return idx; // -1 if page 5 (Arşiv) is active
   }
 
-  void _onNavTap(int navIdx) =>
-      setState(() => _currentIndex = _navToPage[navIdx]);
+  void _onNavTap(int navIdx) {
+    HapticService.instance.selection();
+    setState(() => _currentIndex = _navToPage[navIdx]);
+  }
 
-  void _onFabTap() => setState(() => _currentIndex = 2);
+  void _onFabTap() {
+    HapticService.instance.medium();
+    setState(() => _currentIndex = 2);
+  }
 
   // ── Profile / Logout bottom sheet ────────────────────────────────────────
 
@@ -162,10 +179,6 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
 
   @override
   Widget build(BuildContext context) {
-    // Foreground sync: uygulama açıldığında otomatik senkronizasyon tetikle.
-    // Sonucu dinlemiyoruz — arka planda sessizce çalışır, hata UI'ı etkilemez.
-    ref.watch(foregroundSyncProvider);
-
     return Scaffold(
       extendBody: true,
       body: IndexedStack(index: _currentIndex, children: _pages),
@@ -179,8 +192,9 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
     final isActive = _currentIndex == 2;
     return Padding(
       padding: const EdgeInsets.only(top: 24.0),
-      child: GestureDetector(
+      child: TapScale(
         onTap: _onFabTap,
+        haptic: false, // haptic zaten _onFabTap içinde tetikleniyor
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 250),
           curve: Curves.easeOut,
@@ -328,6 +342,18 @@ class _NavButton extends StatelessWidget {
                 letterSpacing: 0.1,
               ),
               child: Text(label),
+            ),
+            // Aktif öğe altında spring-animated gösterge noktası
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 260),
+              curve: Curves.elasticOut,
+              margin: const EdgeInsets.only(top: 3),
+              height: 3,
+              width: isActive ? 16 : 0,
+              decoration: BoxDecoration(
+                color: AppColors.emerald,
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
           ],
         ),

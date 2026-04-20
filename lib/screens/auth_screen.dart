@@ -3,6 +3,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../services/app_providers.dart';
+import '../services/haptic_service.dart';
+import '../widgets/particle_background.dart';
 
 /// Email / password authentication screen.
 /// Fulfills: "Registration and Authentication via email/password"
@@ -46,13 +48,16 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
 
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
+    HapticService.instance.light();
     setState(() { _loading = true; _error = null; });
     try {
       await ref.read(authRepositoryProvider).signInWithEmailAndPassword(
         email: _emailCtrl.text.trim(),
         password: _passCtrl.text,
       );
+      HapticService.instance.success();
     } on FirebaseAuthException catch (e) {
+      HapticService.instance.heavy();
       setState(() => _error = _mapError(e.code));
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -61,6 +66,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
 
   Future<void> _register() async {
     if (!_formKey.currentState!.validate()) return;
+    HapticService.instance.light();
     setState(() { _loading = true; _error = null; });
     try {
       await ref.read(authRepositoryProvider).registerWithEmailAndPassword(
@@ -68,20 +74,10 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
         password: _passCtrl.text,
         displayName: _nameCtrl.text,
       );
+      HapticService.instance.success();
     } on FirebaseAuthException catch (e) {
+      HapticService.instance.heavy();
       setState(() => _error = _mapError(e.code));
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
-  }
-
-  Future<void> _continueAsGuest() async {
-    setState(() { _loading = true; _error = null; });
-    try {
-      await ref.read(authRepositoryProvider).signInAnonymously();
-    } catch (e) {
-      // Even if anon fails, navigate anyway — non-cloud features still work
-      if (mounted) Navigator.of(context).pushReplacementNamed('/home');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -90,9 +86,10 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
   String _mapError(String code) {
     switch (code) {
       case 'user-not-found':
-        return 'Bu e-posta ile kayıtlı hesap bulunamadı.';
       case 'wrong-password':
-        return 'Şifre hatalı. Lütfen tekrar deneyin.';
+      case 'invalid-credential':
+      case 'INVALID_LOGIN_CREDENTIALS':
+        return 'E-posta veya şifre hatalı. Lütfen tekrar deneyin.';
       case 'email-already-in-use':
         return 'Bu e-posta zaten kayıtlı. Giriş yapmayı deneyin.';
       case 'weak-password':
@@ -101,8 +98,12 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
         return 'Geçersiz e-posta adresi.';
       case 'too-many-requests':
         return 'Çok fazla deneme. Lütfen birkaç dakika bekleyin.';
+      case 'network-request-failed':
+        return 'İnternet bağlantısı yok. Lütfen bağlantınızı kontrol edin.';
+      case 'operation-not-allowed':
+        return 'Bu giriş yöntemi etkin değil. Yöneticiyle iletişime geçin.';
       default:
-        return 'Bir hata oluştu. Lütfen tekrar deneyin.';
+        return 'Bir hata oluştu ($code). Lütfen tekrar deneyin.';
     }
   }
 
@@ -120,35 +121,12 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [Color(0xFF1B5E20), Color(0xFF2E7D32), Color(0xFF43A047)],
+                colors: [Color(0xFF0D3B15), Color(0xFF1B5E20), Color(0xFF2E7D32)],
               ),
             ),
           ),
-          // Decorative circles
-          Positioned(
-            top: -60,
-            right: -60,
-            child: Container(
-              width: 220,
-              height: 220,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withValues(alpha: 0.07),
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: -80,
-            left: -40,
-            child: Container(
-              width: 280,
-              height: 280,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withValues(alpha: 0.05),
-              ),
-            ),
-          ),
+          // Hafif hareketli yeşil partiküller (atmosferik derinlik)
+          const ParticleBackground(particleCount: 32),
           // Content
           SafeArea(
             child: SingleChildScrollView(
@@ -167,21 +145,29 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                   ),
                   const SizedBox(height: 20),
                   const Text(
-                    'Akıllı Tarım',
+                    'Tarlam',
                     style: TextStyle(
-                      fontSize: 30,
-                      fontWeight: FontWeight.w800,
+                      fontSize: 44,
+                      fontWeight: FontWeight.w900,
                       color: Colors.white,
-                      letterSpacing: 0.5,
+                      letterSpacing: 1.2,
+                      shadows: [
+                        Shadow(
+                          color: Color(0x55000000),
+                          blurRadius: 12,
+                          offset: Offset(0, 3),
+                        ),
+                      ],
                     ),
                   ),
+                  const SizedBox(height: 4),
                   const Text(
-                    'Asistan',
+                    'Toprağınla akıllı bağ kur',
                     style: TextStyle(
-                      fontSize: 18,
+                      fontSize: 13,
                       fontWeight: FontWeight.w300,
                       color: Colors.white70,
-                      letterSpacing: 2,
+                      letterSpacing: 1.5,
                     ),
                   ),
                   const SizedBox(height: 36),
@@ -360,18 +346,6 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                           ),
                         ),
                       ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // Guest continue
-                  TextButton.icon(
-                    onPressed: _loading ? null : _continueAsGuest,
-                    icon: const Icon(Icons.person_outline, color: Colors.white70, size: 18),
-                    label: const Text(
-                      'Hesap oluşturmadan devam et',
-                      style: TextStyle(color: Colors.white70, fontSize: 13),
                     ),
                   ),
 
