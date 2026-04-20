@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,6 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:latlong2/latlong.dart';
 import '../services/agri_service.dart';
 import '../services/app_providers.dart';
+import '../services/crop_placement.dart';
 import '../data/verified_agri_database.dart';
 import '../data/turkish_crops_repository.dart';
 import '../widgets/floating_toast.dart';
@@ -944,12 +944,26 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
       return;
     }
 
+    // Mevcut ekili bölgeleri topla — yeni çizimde kalan alanı görmek için
+    final existingZones = <ExistingPlantZone>[];
+    for (final crop in _fieldCrops) {
+      final zPoly = _parseZonePolygon(crop['zone_polygon_json']?.toString());
+      if (zPoly.length >= 3) {
+        existingZones.add(ExistingPlantZone(
+          name: crop['name']?.toString() ?? '',
+          color: _cropColor(crop),
+          polygon: zPoly,
+        ));
+      }
+    }
+
     final zoneJson = await Navigator.of(context).push<String>(
       AnimatedRoute.slideUp(
         PlantZoneDrawingScreen(
           plantName: plant.nameTr,
           plantColor: plant.renderColor,
           fieldPolygon: polygon,
+          existingZones: existingZones,
         ),
       ),
     );
@@ -1235,58 +1249,6 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
     return LatLng(lat, lng);
   }
 
-  /// Polygon iç bölgesi için, kullanıcının çizdiği "İLK KENAR" referans alınarak (row-aligned) 
-  /// düzgün sıralar halinde (setlere bölünmüş) grid noktaları üretir.
-  List<LatLng> _gridInsidePolygon(List<LatLng> polygon, int targetCount) {
-    if (polygon.length < 3 || targetCount <= 0) return const [];
-    
-    // Anlamlı Çekim (Row Alignment): Set'in ilk kenarı (A -> B) sıra yönü olarak kabul edilir.
-    final origin = polygon[0];
-    final double dx = polygon[1].longitude - polygon[0].longitude;
-    final double dy = polygon[1].latitude - polygon[0].latitude;
-    final double angle = math.atan2(dy, dx);
-    
-    // Döndürme yardımcı fonksiyonu
-    LatLng rotate(LatLng p, double a, LatLng center) {
-      final x = p.longitude - center.longitude;
-      final y = p.latitude - center.latitude;
-      final rx = x * math.cos(a) - y * math.sin(a);
-      final ry = x * math.sin(a) + y * math.cos(a);
-      return LatLng(center.latitude + ry, center.longitude + rx);
-    }
-    
-    // Poligonu -angle ile döndürerek ilk kenarı düz (X) eksenine hizala
-    final rotatedPoly = polygon.map((p) => rotate(p, -angle, origin)).toList();
-
-    double minLat = rotatedPoly.first.latitude, maxLat = rotatedPoly.first.latitude;
-    double minLng = rotatedPoly.first.longitude, maxLng = rotatedPoly.first.longitude;
-    for (final p in rotatedPoly) {
-      if (p.latitude < minLat) minLat = p.latitude;
-      if (p.latitude > maxLat) maxLat = p.latitude;
-      if (p.longitude < minLng) minLng = p.longitude;
-      if (p.longitude > maxLng) maxLng = p.longitude;
-    }
-    
-    final steps = math.max(3, math.sqrt(targetCount).ceil() + 2);
-    final result = <LatLng>[];
-    
-    for (int i = 0; i <= steps; i++) {
-      for (int j = 0; j <= steps; j++) {
-        final lat = minLat + (maxLat - minLat) * (i / steps);
-        final lng = minLng + (maxLng - minLng) * (j / steps);
-        
-        // Döndürülmüş poligon içinde mi?
-        if (_pointInPolygon(lat, lng, rotatedPoly)) {
-          // Noktayı tekrar orjinal açısına geri döndür! (Sıraları çapraz tarlaya oturt)
-          final originalPoint = rotate(LatLng(lat, lng), angle, origin);
-          result.add(originalPoint);
-          if (result.length >= targetCount) return result;
-        }
-      }
-    }
-    return result;
-  }
-
   bool _pointInPolygon(double lat, double lng, List<LatLng> polygon) {
     bool inside = false;
     for (int i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
@@ -1396,7 +1358,13 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
 
         // Bölgeyi tamamen dolduran marker ağı oluştur — dokunulabilir
         final maturity = _computeMaturityPercent(crop);
-        final positions = _gridInsidePolygon(zonePoly, 80); // Yoğun grid
+        final cropName = crop['name']?.toString() ?? '';
+        // Bitkinin gerçek sıra × bitki aralığına göre (cm cinsinden) yerleşim
+        final positions = plantPlacementInPolygon(
+          polygon: zonePoly,
+          cropName: cropName,
+          maxCount: 120,
+        );
         if (positions.isEmpty) {
           double cLat = 0, cLng = 0;
           for (final p in zonePoly) { cLat += p.latitude; cLng += p.longitude; }
@@ -1428,13 +1396,17 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
       }
     }
 
-    // Zone olmayan bitkiler için eski grid markerlar
-    final positions = _gridInsidePolygon(polygon, 60);
-    // Z-Index Sorting
-    positions.sort((a, b) => b.latitude.compareTo(a.latitude));
-
+    // Zone olmayan bitkiler için — ana tarla polygonuna ilk bitkinin aralığına göre diz
     final markers = <Marker>[];
-    if (gridCrops.isNotEmpty && positions.isNotEmpty) {
+    if (gridCrops.isNotEmpty) {
+      final firstName = gridCrops.first['name']?.toString() ?? '';
+      final positions = plantPlacementInPolygon(
+        polygon: polygon,
+        cropName: firstName,
+        maxCount: 100,
+      );
+      positions.sort((a, b) => b.latitude.compareTo(a.latitude));
+
       for (int i = 0; i < positions.length; i++) {
         final crop = gridCrops[i % gridCrops.length];
         final maturity = _computeMaturityPercent(crop);

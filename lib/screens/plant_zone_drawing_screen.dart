@@ -1,11 +1,25 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:maps_toolkit/maps_toolkit.dart' as toolkit;
 
 import '../theme/app_theme.dart';
 import '../widgets/zone_drawing_toolbar.dart';
+
+/// Mevcut ekili bir bölgeyi haritada gösterirken kullanılır.
+class ExistingPlantZone {
+  final String name;
+  final Color color;
+  final List<LatLng> polygon;
+
+  const ExistingPlantZone({
+    required this.name,
+    required this.color,
+    required this.polygon,
+  });
+}
 
 /// Seçilen bitki için tarla içinde tam-uydu haritası üstünde
 /// tap-to-place ile poligon çizme ekranı.
@@ -15,12 +29,14 @@ class PlantZoneDrawingScreen extends StatefulWidget {
   final String plantName;
   final Color plantColor;
   final List<LatLng> fieldPolygon;
+  final List<ExistingPlantZone> existingZones;
 
   const PlantZoneDrawingScreen({
     super.key,
     required this.plantName,
     required this.plantColor,
     required this.fieldPolygon,
+    this.existingZones = const [],
   });
 
   @override
@@ -32,6 +48,34 @@ class _PlantZoneDrawingScreenState extends State<PlantZoneDrawingScreen>
   final MapController _mapController = MapController();
   final List<LatLng> _zonePoints = [];
   double _zoneAreaSqm = 0.0;
+
+  /// Tarla toplam alanı (m²)
+  double get _fieldAreaSqm {
+    if (widget.fieldPolygon.length < 3) return 0;
+    final pts = widget.fieldPolygon
+        .map((p) => toolkit.LatLng(p.latitude, p.longitude))
+        .toList();
+    return toolkit.SphericalUtil.computeArea(pts).toDouble();
+  }
+
+  /// Mevcut ekili bölgelerin toplam alanı (m²)
+  double get _usedAreaSqm {
+    double total = 0;
+    for (final zone in widget.existingZones) {
+      if (zone.polygon.length >= 3) {
+        final pts = zone.polygon
+            .map((p) => toolkit.LatLng(p.latitude, p.longitude))
+            .toList();
+        total += toolkit.SphericalUtil.computeArea(pts).toDouble();
+      }
+    }
+    return total;
+  }
+
+  /// Kalan boş alan (m²) = tarla toplam - ekili - aktif çizim
+  double get _remainingAreaSqm {
+    return (_fieldAreaSqm - _usedAreaSqm - _zoneAreaSqm).clamp(0, double.infinity);
+  }
 
   late final AnimationController _pulseCtrl;
 
@@ -200,6 +244,58 @@ class _PlantZoneDrawingScreenState extends State<PlantZoneDrawingScreen>
                     ),
                   ],
                 ),
+              // ── Mevcut ekili bölgeler (daha önce eklenen bitkiler) ──
+              if (widget.existingZones.isNotEmpty)
+                PolygonLayer(
+                  polygons: [
+                    for (final zone in widget.existingZones)
+                      if (zone.polygon.length >= 3)
+                        Polygon(
+                          points: zone.polygon,
+                          color: zone.color.withValues(alpha: 0.35),
+                          borderColor: zone.color,
+                          borderStrokeWidth: 2.5,
+                        ),
+                  ],
+                ),
+              // ── Mevcut bölge isim etiketleri ──
+              if (widget.existingZones.isNotEmpty)
+                MarkerLayer(
+                  markers: [
+                    for (final zone in widget.existingZones)
+                      if (zone.polygon.length >= 3)
+                        Marker(
+                          point: _polygonCenter(zone.polygon),
+                          width: 120,
+                          height: 32,
+                          child: IgnorePointer(
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.75),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: zone.color.withValues(alpha: 0.8),
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: Text(
+                                zone.name,
+                                textAlign: TextAlign.center,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.outfit(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                  ],
+                ),
               // Aktif çizim polygon'u
               if (_zonePoints.length >= 3)
                 PolygonLayer(
@@ -268,53 +364,99 @@ class _PlantZoneDrawingScreenState extends State<PlantZoneDrawingScreen>
             ],
           ),
 
-          // Üstte alan göstergesi (çizim varsa)
-          if (_zonePoints.length >= 3)
-            Positioned(
-              top: MediaQuery.of(context).padding.top + kToolbarHeight + 8,
-              left: 16,
-              right: 16,
-              child: Center(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.7),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: widget.plantColor.withValues(alpha: 0.6),
-                    ),
+          // Üstte alan göstergesi — her zaman göster (ekili alan bilgisi)
+          Positioned(
+            top: MediaQuery.of(context).padding.top + kToolbarHeight + 8,
+            left: 16,
+            right: 16,
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.8),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: widget.plantColor.withValues(alpha: 0.5),
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.square_foot_rounded,
-                          color: widget.plantColor, size: 16),
-                      const SizedBox(width: 6),
-                      Text(
-                        '$dekar dekar',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 13,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Aktif çizim alanı
+                    if (_zonePoints.length >= 3)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 6),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.square_foot_rounded,
+                                color: widget.plantColor, size: 16),
+                            const SizedBox(width: 6),
+                            Text(
+                              '$dekar dönüm',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 13,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Container(
+                                width: 1, height: 14, color: Colors.white24),
+                            const SizedBox(width: 10),
+                            Text(
+                              '${_zonePoints.length} köşe',
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(width: 10),
-                      Container(
-                          width: 1, height: 14, color: Colors.white24),
-                      const SizedBox(width: 10),
-                      Text(
-                        '${_zonePoints.length} köşe',
-                        style: const TextStyle(
-                          color: Colors.white70,
-                          fontSize: 12,
-                        ),
+                    // Alan özeti — ekili + kalan
+                    if (widget.existingZones.isNotEmpty || _zonePoints.length >= 3)
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Mevcut ekili
+                          if (widget.existingZones.isNotEmpty) ...[
+                            const Icon(Icons.check_circle_outline,
+                                color: Color(0xFF66BB6A), size: 13),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Ekili: ${(_usedAreaSqm / 1000).toStringAsFixed(2)} dönüm',
+                              style: const TextStyle(
+                                color: Color(0xFF66BB6A),
+                                fontWeight: FontWeight.w600,
+                                fontSize: 11,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Container(
+                                width: 1, height: 12, color: Colors.white24),
+                            const SizedBox(width: 10),
+                          ],
+                          // Kalan alan
+                          const Icon(Icons.crop_free_rounded,
+                              color: Color(0xFF42A5F5), size: 13),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Kalan: ${(_remainingAreaSqm / 1000).toStringAsFixed(2)} dönüm',
+                            style: const TextStyle(
+                              color: Color(0xFF42A5F5),
+                              fontWeight: FontWeight.w600,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
+                  ],
                 ),
               ),
             ),
+          ),
 
           // Alt çizim araç çubuğu
           Positioned(
@@ -356,5 +498,15 @@ class _PlantZoneDrawingScreenState extends State<PlantZoneDrawingScreen>
         ],
       ),
     );
+  }
+
+  /// Poligonun merkez noktasını hesapla (etiket konumu için)
+  LatLng _polygonCenter(List<LatLng> poly) {
+    double lat = 0, lng = 0;
+    for (final p in poly) {
+      lat += p.latitude;
+      lng += p.longitude;
+    }
+    return LatLng(lat / poly.length, lng / poly.length);
   }
 }

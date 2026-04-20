@@ -106,6 +106,28 @@ Widget buildCropMarkerWidget({
         ),
       );
 
+      // "Kazılmış toprak" dairesi — bitkinin toprağa ekildiği izlenim için
+      // radial gradient: merkez koyu toprak, kenar fade-out
+      final double soilW = spriteW * 0.85;
+      final double soilH = spriteH * 0.22;
+      final soilDisc = Container(
+        width: soilW,
+        height: soilH,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.all(Radius.elliptical(soilW, soilH)),
+          gradient: RadialGradient(
+            center: Alignment.center,
+            radius: 0.55,
+            colors: [
+              const Color(0xFF3E2A17).withValues(alpha: 0.55),
+              const Color(0xFF5B3A21).withValues(alpha: 0.35),
+              const Color(0xFF5B3A21).withValues(alpha: 0.0),
+            ],
+            stops: const [0.0, 0.55, 1.0],
+          ),
+        ),
+      );
+
       final marker = Transform(
         transform: Matrix4.identity()..rotateX(0.95), // Doğru 3D pop-up perspektifi
         alignment: Alignment.center, // Harita koordinatı olan merkeze kilitli dön!
@@ -116,10 +138,12 @@ Widget buildCropMarkerWidget({
             clipBehavior: Clip.none,
             alignment: Alignment.center, // Bütün objelerin tam ortası LatLng koordinatına oturur!
             children: [
-              // 1. Gölge: Tamamen koordinatın merkezinde yatar
+              // 1. Toprak dairesi — koordinatın merkezinde, ekim izlenimini verir
+              currentZoom < 16.5 ? const SizedBox.shrink() : soilDisc,
+              // 2. Gölge: toprak üstünde hafif kararma
               currentZoom < 16.5 ? const SizedBox.shrink() : groundShadow,
-              
-              // 2. Bitki: Ortası harita noktasındayken (yani yarısı yeraltındayken), 
+
+              // 3. Bitki: Ortası harita noktasındayken (yani yarısı yeraltındayken),
               // tam boyunun yarısı kadar (spriteH / 2) yukarı (eksi Y ekseni) kaydırarak
               // bitkinin tam KÖKÜNÜ koordinata/gölgeye oturtuyoruz!
               Transform.translate(
