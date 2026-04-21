@@ -1,11 +1,10 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import '../services/notification_service.dart';
 import '../services/frost_alarm_service.dart';
+import '../services/weather_soil_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/location_utils.dart';
 import '../widgets/animated_route.dart';
@@ -35,21 +34,6 @@ class _AgriDashboardState extends State<AgriDashboard>
 
   late AnimationController _animController;
   late Animation<double> _fadeAnim;
-
-  static String _dashboardWmoCodeToTr(int code) {
-    if (code == 0) return 'açık';
-    if (code == 1) return 'az bulutlu';
-    if (code == 2) return 'parçalı bulutlu';
-    if (code == 3) return 'kapalı';
-    if (code == 45 || code == 48) return 'sisli';
-    if (code >= 51 && code <= 57) return 'çisenti';
-    if (code >= 61 && code <= 67) return 'yağmurlu';
-    if (code >= 71 && code <= 77) return 'karlı';
-    if (code >= 80 && code <= 82) return 'sağanak';
-    if (code >= 85 && code <= 86) return 'kar sağanağı';
-    if (code >= 95) return 'gök gürültülü fırtına';
-    return '';
-  }
 
   @override
   void initState() {
@@ -139,43 +123,25 @@ class _AgriDashboardState extends State<AgriDashboard>
             '${pos.latitude.toStringAsFixed(4)}, ${pos.longitude.toStringAsFixed(4)}';
       }
 
-      final results = await Future.wait([
-        http.get(Uri.parse(
-          'https://api.open-meteo.com/v1/forecast?latitude=${pos.latitude}&longitude=${pos.longitude}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code&wind_speed_unit=ms&timezone=auto',
-        )),
-        http.get(Uri.parse(
-          'https://rest.isric.org/soilgrids/v2.0/properties/query?lon=${pos.longitude}&lat=${pos.latitude}&property=phh2o&depth=0-5cm&value=mean',
-        )),
-      ]);
+      final cond = await const WeatherSoilService().fetchDashboardConditions(
+        latitude: pos.latitude,
+        longitude: pos.longitude,
+      );
 
       if (mounted) {
         setState(() {
           _location = detailedAddress;
-          if (results[0].statusCode == 200) {
-            final cur = jsonDecode(results[0].body)['current'];
-            final t = (cur['temperature_2m'] as num?)?.toDouble();
-            _temp = t != null ? '${t.round()}' : '--';
-            _humidity = '${(cur['relative_humidity_2m'] as num?)?.round() ?? '--'}';
-            final w = (cur['wind_speed_10m'] as num?)?.toDouble();
-            _wind = w != null ? w.toStringAsFixed(1) : '--';
-            final desc = _dashboardWmoCodeToTr(
-                (cur['weather_code'] as num?)?.toInt() ?? 0);
-            _weatherDesc = desc.isNotEmpty
-                ? desc[0].toUpperCase() + desc.substring(1)
-                : '';
-            _weatherCondition = _mapWeatherCondition(desc);
-          }
-
-          if (results[1].statusCode == 200) {
-            final data = jsonDecode(results[1].body);
-            final val = data['properties']?['layers']?[0]?['depths']?[0]
-                ?['values']?['mean'];
-            _ph = val != null
-                ? (val / 10.0).toStringAsFixed(1)
-                : '6.8';
-          } else {
-            _ph = '6.8';
-          }
+          _temp = cond.temperatureC != null ? '${cond.temperatureC!.round()}' : '--';
+          _humidity = cond.humidity != null ? '${cond.humidity}' : '--';
+          _wind = cond.windSpeedMs != null
+              ? cond.windSpeedMs!.toStringAsFixed(1)
+              : '--';
+          final desc = cond.weatherDescriptionTr;
+          _weatherDesc = desc.isNotEmpty
+              ? desc[0].toUpperCase() + desc.substring(1)
+              : '';
+          _weatherCondition = _mapWeatherCondition(desc);
+          _ph = cond.phH2O.toStringAsFixed(1);
         });
         _animController.forward();
       }

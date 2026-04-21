@@ -1,25 +1,26 @@
 import 'package:flutter/material.dart';
-import 'package:hive_flutter/hive_flutter.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../services/app_providers.dart';
 
-class QuickEnvironmentHistoryTab extends StatelessWidget {
+class QuickEnvironmentHistoryTab extends ConsumerWidget {
   const QuickEnvironmentHistoryTab({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final box = Hive.box('agri_history');
-    return ValueListenableBuilder(
-      valueListenable: box.listenable(),
-      builder: (context, Box b, _) {
-        if (b.isEmpty) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final repo = ref.watch(historyRepositoryProvider);
+    return ListenableBuilder(
+      listenable: repo.quickEnvListenable(),
+      builder: (context, _) {
+        if (repo.quickEnvCount == 0) {
           return const Center(
               child: Text('Kaydedilmiş anlık çevre analizi yok.'));
         }
         return ListView.builder(
-          itemCount: b.length,
+          itemCount: repo.quickEnvCount,
           reverse: true,
           padding: const EdgeInsets.all(12),
           itemBuilder: (context, i) {
-            final item = b.getAt(i);
+            final item = repo.quickEnvAt(i);
             return Card(
               elevation: 2,
               margin: const EdgeInsets.only(bottom: 12),
@@ -49,7 +50,7 @@ class QuickEnvironmentHistoryTab extends StatelessWidget {
                 isThreeLine: true,
                 trailing: IconButton(
                   icon: const Icon(Icons.delete_outline, color: Colors.red),
-                  onPressed: () => b.deleteAt(i),
+                  onPressed: () => repo.deleteQuickEnvAt(i),
                 ),
               ),
             );

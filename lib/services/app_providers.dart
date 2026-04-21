@@ -4,13 +4,16 @@ import 'package:hive/hive.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import '../data/app_database.dart';
+import '../data/turkish_crops_repository.dart';
 import 'local_data_repository.dart';
 import 'repositories/calendar_repository.dart';
 import 'repositories/field_repository.dart';
+import 'repositories/history_repository.dart';
 import 'repositories/weather_repository.dart';
 import 'repositories/sync_repository.dart';
 import 'repositories/auth_repository.dart';
 import 'sync_service.dart';
+import 'weather_soil_service.dart';
 import 'api/sync_api_client.dart';
 
 final appDatabaseProvider = Provider<AppDatabase>((ref) {
@@ -84,5 +87,22 @@ final foregroundSyncProvider = FutureProvider<void>((ref) async {
   final syncService = ref.read(syncServiceProvider);
   final apiClient = ref.read(syncApiClientProvider);
   await syncService.runForegroundSync(apiClient: apiClient);
+});
+
+/// AI analiz + anlık çevre geçmişi için Hive facade repository.
+final historyRepositoryProvider = Provider<HistoryRepository>((ref) {
+  return HistoryRepository();
+});
+
+/// 292 Türk bitkisi SQLite asset singleton'unu Riverpod grafiğine bağlar.
+/// Yeni kod .instance yerine bu provider'ı okumalı (singleton backing kalır).
+final turkishCropsRepositoryProvider = Provider<TurkishCropsRepository>((ref) {
+  return TurkishCropsRepository.instance;
+});
+
+/// Hava + toprak pH çevre-verisi servisi (Open-Meteo + SoilGrids).
+/// Widget'lar doğrudan http.get kullanmamalı; bu servisi çağırmalı.
+final weatherSoilServiceProvider = Provider<WeatherSoilService>((ref) {
+  return const WeatherSoilService();
 });
 

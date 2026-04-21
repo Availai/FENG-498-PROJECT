@@ -1,26 +1,27 @@
 import 'package:flutter/material.dart';
-import 'package:hive_flutter/hive_flutter.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../services/app_providers.dart';
 import 'bottom_sheet_content.dart';
 
-class AiAnalysisHistoryTab extends StatelessWidget {
+class AiAnalysisHistoryTab extends ConsumerWidget {
   const AiAnalysisHistoryTab({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final box = Hive.box('recognized_plants');
-    return ValueListenableBuilder(
-      valueListenable: box.listenable(),
-      builder: (context, Box b, _) {
-        if (b.isEmpty) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final repo = ref.watch(historyRepositoryProvider);
+    return ListenableBuilder(
+      listenable: repo.aiAnalysisListenable(),
+      builder: (context, _) {
+        if (repo.aiAnalysisCount == 0) {
           return const Center(
               child: Text('Henüz bir AI görüntü analizi kaydedilmedi.'));
         }
         return ListView.builder(
-          itemCount: b.length,
+          itemCount: repo.aiAnalysisCount,
           reverse: true,
           padding: const EdgeInsets.all(12),
           itemBuilder: (context, i) {
-            final item = b.getAt(i);
+            final item = repo.aiAnalysisAt(i);
             return Card(
               elevation: 3,
               margin: const EdgeInsets.only(bottom: 12),
@@ -53,7 +54,7 @@ class AiAnalysisHistoryTab extends StatelessWidget {
                 ),
                 trailing: IconButton(
                   icon: const Icon(Icons.delete_outline, color: Colors.red),
-                  onPressed: () => b.deleteAt(i),
+                  onPressed: () => repo.deleteAiAnalysisAt(i),
                 ),
                 onTap: () => _showDetails(context, item),
               ),

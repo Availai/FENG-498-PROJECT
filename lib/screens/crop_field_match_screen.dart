@@ -1,11 +1,10 @@
-import 'dart:convert';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:http/http.dart' as http;
-import 'dart:math';
 import '../data/turkish_crops_repository.dart';
 import '../services/rule_engine.dart';
 import '../services/offline_encyclopedia.dart';
+import '../services/weather_soil_service.dart';
 import '../widgets/floating_toast.dart';
 
 /// Seçilen ürünün kayıtlı tarlalara uygunluğunu animasyonlu gösterir.
@@ -116,48 +115,18 @@ class _CropFieldMatchScreenState extends State<CropFieldMatchScreen>
     }
   }
 
-  /// Tarla çevre verilerini paralel çeker (hava + pH)
+  /// Tarla çevre verilerini servis üzerinden çeker (hava + pH + 7-gün yağış).
   Future<Map<String, double>> _fetchEnvData(double lat, double lng) async {
-    double temp = 20, ph = 6.5, rain = 0, humidity = 50;
-    await Future.wait([
-      () async {
-        try {
-          final r = await http.get(Uri.parse(
-            'https://api.open-meteo.com/v1/forecast?latitude=$lat&longitude=$lng&current=temperature_2m,relative_humidity_2m&timezone=auto',
-          )).timeout(const Duration(seconds: 8));
-          if (r.statusCode == 200) {
-            final cur = jsonDecode(r.body)['current'];
-            temp = (cur['temperature_2m'] as num?)?.toDouble() ?? temp;
-            humidity = (cur['relative_humidity_2m'] as num?)?.toDouble() ?? humidity;
-          }
-        } catch (_) {}
-      }(),
-      () async {
-        try {
-          final r = await http.get(Uri.parse(
-            'https://rest.isric.org/soilgrids/v2.0/properties/query?lon=$lng&lat=$lat&property=phh2o&depth=0-5cm&value=mean',
-          )).timeout(const Duration(seconds: 10));
-          if (r.statusCode == 200) {
-            final v = jsonDecode(r.body)['properties']?['layers']?[0]?['depths']?[0]?['values']?['mean'];
-            if (v != null) ph = (v as num).toDouble() / 10.0;
-          }
-        } catch (_) {}
-      }(),
-      () async {
-        try {
-          final r = await http.get(Uri.parse(
-            'https://api.open-meteo.com/v1/forecast?latitude=$lat&longitude=$lng&daily=precipitation_sum&timezone=auto',
-          )).timeout(const Duration(seconds: 8));
-          if (r.statusCode == 200) {
-            final rains = jsonDecode(r.body)['daily']['precipitation_sum'] as List;
-            for (int i = 0; i < min(7, rains.length); i++) {
-              rain += (rains[i] as num).toDouble();
-            }
-          }
-        } catch (_) {}
-      }(),
-    ]);
-    return {'temp': temp, 'ph': ph, 'rain': rain, 'humidity': humidity};
+    final env = await const WeatherSoilService().fetchFieldEnv(
+      latitude: lat,
+      longitude: lng,
+    );
+    return {
+      'temp': env.temperatureC,
+      'ph': env.phH2O,
+      'rain': env.weeklyRainMm,
+      'humidity': env.humidity,
+    };
   }
 
   /// Kural motoru ile tüm tarlaları toplu değerlendir (Gemini kaldırıldı)
