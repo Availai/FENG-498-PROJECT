@@ -8,7 +8,9 @@
       "Bash(grep -l \"ConsumerWidget\\\\|ConsumerStatefulWidget\\\\|ref\\\\\\\\.watch\\\\|ref\\\\\\\\.read\" \"C:/FENG 498/feng_498/lib/screens\"/*.dart)",
       "Bash(git -C \"C:/FENG 498/feng_498\" add lib/services/weather_soil_service.dart lib/services/repositories/history_repository.dart lib/services/app_providers.dart lib/screens/dashboard_screen.dart lib/screens/crop_field_match_screen.dart lib/widgets/ai_analysis_history_tab.dart lib/widgets/quick_environment_history_tab.dart)",
       "Bash(git -C 'C:/FENG 498/feng_498' commit -m ' *)",
-      "Bash(git -C \"C:/FENG 498/feng_498\" status)"
+      "Bash(git -C \"C:/FENG 498/feng_498\" status)",
+      "Bash(awk 'NR>=1936 && NR<=2288 {print NR\": \"$0}' \"C:/FENG 498/feng_498/lib/screens/field_detail_screen.dart\")",
+      "Bash(awk 'NR<1936 || NR>2287' \"C:/FENG 498/feng_498/lib/screens/field_detail_screen.dart\")"
     ]
   }
 }

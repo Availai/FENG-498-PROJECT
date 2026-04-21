@@ -14,6 +14,7 @@ import 'repositories/weather_repository.dart';
 import 'repositories/sync_repository.dart';
 import 'repositories/auth_repository.dart';
 import 'sync_service.dart';
+import 'task_directive_service.dart';
 import 'weather_soil_service.dart';
 import 'api/sync_api_client.dart';
 
@@ -112,5 +113,21 @@ final weatherSoilServiceProvider = Provider<WeatherSoilService>((ref) {
 /// kullanmalı — UI thread frame drop yaşamaz.
 final cropScoringServiceProvider = Provider<CropScoringService>((ref) {
   return CropScoringService(ref.watch(turkishCropsRepositoryProvider));
+});
+
+/// Tarla bazında son aktiviteleri (sulama/gübre/ilaç/hasat) Drift stream
+/// olarak sağlar. Görevler modalı bunu dinler → her log sonrası yönergeler
+/// anında tazelenir.
+final fieldActivityLogProvider = StreamProvider.family
+    .autoDispose<List<Map<String, dynamic>>, String>((ref, fieldId) {
+  return ref
+      .watch(localDataRepositoryProvider)
+      .watchActivityLog(fieldId: fieldId, limit: 200);
+});
+
+/// Kural tabanlı "bugün ne yapmalıyım?" yönerge motoru. Saf servis; widget
+/// katmanı sadece `generate()` çıktısını render eder.
+final taskDirectiveServiceProvider = Provider<TaskDirectiveService>((ref) {
+  return const TaskDirectiveService();
 });
 

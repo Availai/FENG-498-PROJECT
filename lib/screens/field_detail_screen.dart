@@ -8,6 +8,7 @@ import 'package:latlong2/latlong.dart';
 import '../services/agri_service.dart';
 import '../services/app_providers.dart';
 import '../services/crop_placement.dart';
+import '../services/task_directive_service.dart';
 import '../data/activity_types.dart';
 import '../data/verified_agri_database.dart';
 import '../data/turkish_crops_repository.dart';
@@ -1634,16 +1635,15 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
   // DETAY MODAL — Kapsamlı yetiştirme bilgileri
   // ═══════════════════════════════════════════════════
   void _showDetailModal() {
-    final a = _analysis;
+    final fieldId = widget.fieldData['id']?.toString() ?? '';
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (_) => _DetailModalContent(
-        analysis: a,
-        fieldData: widget.fieldData,
+      builder: (_) => _DirectivesModalContent(
+        fieldId: fieldId,
+        analysis: _analysis,
         fieldCrops: _fieldCrops,
-        irrigationPlans: _irrigationPlans,
       ),
     );
   }
@@ -1935,44 +1935,56 @@ class _PlantPickerSheetState extends State<_PlantPickerSheet> {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// DETAY MODAL — Kapsamlı yetiştirme bilgileri
+// GÖREVLER MODALI — "BUGÜN NE YAPMALIYIM?" yönergeleri
+// Kural motoru TaskDirectiveService'te; bu widget sadece render eder.
+// Aktivite stream'i (watchActivityLog) sayesinde her "Suladım/Gübreledim"
+// kaydı yönergeleri anında tazeler — canlı çiftçi kaynağı.
 // ═══════════════════════════════════════════════════════════════════════
-class _DetailModalContent extends StatelessWidget {
-  final Map<String, dynamic>? analysis;
-  final dynamic fieldData;
-  final List<Map<String, dynamic>> fieldCrops;
-  final List<Map<String, dynamic>> irrigationPlans;
-
-  const _DetailModalContent({
+class _DirectivesModalContent extends ConsumerWidget {
+  const _DirectivesModalContent({
+    required this.fieldId,
     required this.analysis,
-    required this.fieldData,
     required this.fieldCrops,
-    required this.irrigationPlans,
   });
 
+  final String fieldId;
+  final Map<String, dynamic>? analysis;
+  final List<Map<String, dynamic>> fieldCrops;
+
   @override
-  Widget build(BuildContext context) {
-    final a = analysis;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final activityAsync = ref.watch(fieldActivityLogProvider(fieldId));
+    final service = ref.watch(taskDirectiveServiceProvider);
+
     return Container(
-      height: MediaQuery.of(context).size.height * 0.85,
+      height: MediaQuery.of(context).size.height * 0.8,
       decoration: const BoxDecoration(
         color: Color(0xFF0D1811),
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: Column(
         children: [
-          // Handle bar
           const SizedBox(height: 8),
-          Container(width: 40, height: 4,
-              decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
+          Container(
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: Colors.white24,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
           const SizedBox(height: 12),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Row(children: [
-              const Icon(Icons.article_rounded, color: Color(0xFF00E676), size: 22),
+              const Icon(Icons.checklist_rtl_rounded,
+                  color: Color(0xFF00E676), size: 22),
               const SizedBox(width: 10),
-              Text('Tarla Detay Raporu',
-                  style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white)),
+              Text('Bugün Ne Yapmalıyım?',
+                  style: GoogleFonts.outfit(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white)),
               const Spacer(),
               IconButton(
                 onPressed: () => Navigator.pop(context),
@@ -1982,305 +1994,238 @@ class _DetailModalContent extends StatelessWidget {
           ),
           const Divider(color: Colors.white12, height: 20),
           Expanded(
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 40),
-              children: [
-                // 1. Haftalık Hava Yorumu
-                if (a?['ai_weekly_comment'] != null) ...[
-                  _sectionHeader('📊 Haftalık Değerlendirme'),
-                  const SizedBox(height: 8),
-                  _textCard(a!['ai_weekly_comment'].toString()),
-                  const SizedBox(height: 20),
-                ],
-
-                // 2. Ekili Bitkiler
-                if (fieldCrops.isNotEmpty) ...[
-                  _sectionHeader('🌱 Ekili Bitkiler'),
-                  const SizedBox(height: 8),
-                  ...fieldCrops.map((crop) => _buildCropInfoCard(crop)),
-                  const SizedBox(height: 20),
-                ],
-
-                // 3. 7 Günlük Hava Tahmini
-                if (a?['daily_forecast'] is List && (a!['daily_forecast'] as List).isNotEmpty) ...[
-                  _sectionHeader('🌤️ 7 Günlük Hava Tahmini'),
-                  const SizedBox(height: 8),
-                  _buildForecastTable(a['daily_forecast'] as List),
-                  const SizedBox(height: 20),
-                ],
-
-                // 4. Gübreleme Önerisi
-                if (a != null) ...[
-                  _sectionHeader('🧪 Gübreleme Önerisi'),
-                  const SizedBox(height: 8),
-                  _textCard(_getFertilizerAdvice((a['ph'] as num?)?.toDouble() ?? 6.5)),
-                  const SizedBox(height: 20),
-                ],
-
-                // 6. Çevre Özeti
-                if (a != null) ...[
-                  _sectionHeader('🌍 Çevre Özeti'),
-                  const SizedBox(height: 8),
-                  _buildEnvironmentSummary(a),
-                  const SizedBox(height: 20),
-                ],
-              ],
+            child: activityAsync.when(
+              loading: () => const Center(
+                child: CircularProgressIndicator(color: Color(0xFF00E676)),
+              ),
+              error: (e, _) => Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Text(
+                    'Yönergeler yüklenemedi: $e',
+                    style: const TextStyle(color: Colors.white70),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+              data: (activities) {
+                final directives = service.generate(
+                  fieldCrops: fieldCrops,
+                  activities: activities,
+                  dailyForecast: analysis?['daily_forecast'] as List?,
+                  currentTemp: (analysis?['temp'] as num?)?.toDouble(),
+                  soilMoisture:
+                      (analysis?['soil_moisture'] as num?)?.toDouble(),
+                );
+                return ListView.separated(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
+                  itemCount: directives.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 10),
+                  itemBuilder: (_, i) => _DirectiveCard(
+                    directive: directives[i],
+                    fieldId: fieldId,
+                  ),
+                );
+              },
             ),
           ),
         ],
       ),
     );
   }
+}
 
-  Widget _sectionHeader(String title) {
-    return Text(title, style: GoogleFonts.outfit(
-      fontSize: 15, fontWeight: FontWeight.w700, color: const Color(0xFF00E676)));
-  }
+class _DirectiveCard extends ConsumerStatefulWidget {
+  const _DirectiveCard({required this.directive, required this.fieldId});
 
-  Widget _textCard(String text) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-      ),
-      child: Text(text, style: const TextStyle(color: Colors.white70, fontSize: 13, height: 1.5)),
-    );
-  }
+  final FieldDirective directive;
+  final String fieldId;
 
-  // ── Ekili bitki kartı ────────────────────────────────────────
-  Widget _buildCropInfoCard(Map<String, dynamic> crop) {
-    final name = crop['name']?.toString() ?? 'Bilinmeyen';
-    final plantedStr = crop['planted_date']?.toString();
-    final harvestDays = (crop['harvest_days'] as num?)?.toInt() ?? 90;
-    final waterInterval = (crop['water_interval_days'] as num?)?.toInt() ?? 7;
+  @override
+  ConsumerState<_DirectiveCard> createState() => _DirectiveCardState();
+}
 
-    DateTime? plantedDate;
-    if (plantedStr != null) {
-      final parts = plantedStr.split('.');
-      if (parts.length == 3) {
-        plantedDate = DateTime.tryParse('${parts[2]}-${parts[1]}-${parts[0]}');
-      }
-      plantedDate ??= DateTime.tryParse(plantedStr);
+class _DirectiveCardState extends ConsumerState<_DirectiveCard> {
+  bool _logging = false;
+
+  Color get _accent {
+    switch (widget.directive.urgency) {
+      case 2:
+        return const Color(0xFFFF5252);
+      case 1:
+        return const Color(0xFFFFB74D);
+      default:
+        return const Color(0xFF00E676);
     }
+  }
 
-    final elapsed = plantedDate != null ? DateTime.now().difference(plantedDate).inDays : 0;
-    final maturity = ((elapsed / harvestDays) * 100).clamp(0.0, 100.0);
-    final harvestDate = plantedDate?.add(Duration(days: harvestDays));
-    final remaining = harvestDate != null ? harvestDate.difference(DateTime.now()).inDays : 0;
-
-    // Verified DB'den ideal koşulları bul
-    String idealConditions = '';
-    for (final p in VerifiedAgriDatabase.plants) {
-      if (p.nameTr.toLowerCase() == name.toLowerCase()) {
-        idealConditions = 'pH ${p.minPh}-${p.maxPh} • '
-            '${p.minTemp.toInt()}-${p.maxTemp.toInt()}°C • '
-            'Su: ${p.waterReqMmPerSeason.toInt()} mm/sezon • '
-            'Yoğunluk: ${p.plantDensityPerDekar}/dönüm';
-        break;
-      }
+  IconData get _icon {
+    switch (widget.directive.kind) {
+      case 'water_now':
+      case 'water_soon':
+        return Icons.water_drop_rounded;
+      case 'rain_wait':
+        return Icons.cloudy_snowing;
+      case 'fertilize':
+        return Icons.grass_rounded;
+      case 'spray':
+        return Icons.science_rounded;
+      case 'harvest':
+        return Icons.agriculture_rounded;
+      case 'frost':
+        return Icons.ac_unit_rounded;
+      case 'heat':
+        return Icons.wb_sunny_rounded;
+      case 'empty':
+        return Icons.add_circle_outline_rounded;
+      default:
+        return Icons.check_circle_outline_rounded;
     }
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.06),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFF00E676).withValues(alpha: 0.2)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(children: [
-              Text(name, style: const TextStyle(
-                  color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700)),
-              const Spacer(),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: maturity >= 90
-                      ? const Color(0xFF00E676).withValues(alpha: 0.2)
-                      : Colors.white.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  maturity >= 90 ? 'HASAT ZAMANI' : '%${maturity.toStringAsFixed(0)} olgun',
-                  style: TextStyle(
-                    color: maturity >= 90 ? const Color(0xFF00E676) : Colors.white70,
-                    fontSize: 11, fontWeight: FontWeight.w700),
-                ),
-              ),
-            ]),
-            const SizedBox(height: 8),
-            if (plantedDate != null)
-              _infoLine('📅 Ekim', DateFormat('dd.MM.yyyy').format(plantedDate)),
-            if (harvestDate != null) ...[
-              _infoLine('🗓️ Tahmini Hasat', DateFormat('dd.MM.yyyy').format(harvestDate)),
-              _infoLine('⏳ Kalan', remaining > 0 ? '$remaining gün' : 'Hasat zamanı!'),
-            ],
-            _infoLine('📆 Geçen', '$elapsed / $harvestDays gün'),
-            _infoLine('💧 Sulama Aralığı', 'Her $waterInterval günde bir'),
-            // Olgunluk barı
-            const SizedBox(height: 8),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: maturity / 100,
-                minHeight: 6,
-                backgroundColor: Colors.white.withValues(alpha: 0.1),
-                valueColor: AlwaysStoppedAnimation(
-                  maturity >= 90 ? const Color(0xFF00E676) : const Color(0xFF4CAF50)),
-              ),
-            ),
-            if (idealConditions.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Text('📋 İdeal Koşullar: $idealConditions',
-                  style: const TextStyle(color: Colors.white38, fontSize: 10)),
-            ],
-          ],
-        ),
-      ),
-    );
   }
 
-  Widget _infoLine(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 3),
-      child: Row(
-        children: [
-          Text(label, style: const TextStyle(color: Colors.white54, fontSize: 12)),
-          const Spacer(),
-          Text(value, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w500)),
-        ],
-      ),
-    );
-  }
-
-  // ── 7 Günlük Tahmin Tablosu ──────────────────────────────────
-  Widget _buildForecastTable(List forecast) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Column(
-        children: [
-          // Başlık satırı
-          const Row(children: [
-            Expanded(flex: 2, child: Text('Tarih', style: TextStyle(color: Colors.white54, fontSize: 10, fontWeight: FontWeight.w600))),
-            Expanded(child: Text('Max', style: TextStyle(color: Colors.white54, fontSize: 10, fontWeight: FontWeight.w600), textAlign: TextAlign.center)),
-            Expanded(child: Text('Min', style: TextStyle(color: Colors.white54, fontSize: 10, fontWeight: FontWeight.w600), textAlign: TextAlign.center)),
-            Expanded(child: Text('Yağış', style: TextStyle(color: Colors.white54, fontSize: 10, fontWeight: FontWeight.w600), textAlign: TextAlign.center)),
-          ]),
-          const Divider(color: Colors.white12, height: 12),
-          ...forecast.take(7).map((day) {
-            final date = day['date']?.toString() ?? '--';
-            final max = (day['max'] as num?)?.toStringAsFixed(0) ?? '--';
-            final min = (day['min'] as num?)?.toStringAsFixed(0) ?? '--';
-            final rain = (day['rain'] as num?)?.toStringAsFixed(1) ?? '0';
-            final hasRain = ((day['rain'] as num?)?.toDouble() ?? 0) > 1;
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 4),
-              child: Row(children: [
-                Expanded(flex: 2, child: Text(date, style: const TextStyle(color: Colors.white70, fontSize: 11))),
-                Expanded(child: Text('$max°', style: const TextStyle(color: Color(0xFFFFCC80), fontSize: 11, fontWeight: FontWeight.w600), textAlign: TextAlign.center)),
-                Expanded(child: Text('$min°', style: const TextStyle(color: Color(0xFF90CAF9), fontSize: 11, fontWeight: FontWeight.w600), textAlign: TextAlign.center)),
-                Expanded(child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    if (hasRain) const Icon(Icons.water_drop, color: Color(0xFF42A5F5), size: 10),
-                    Text(rain, style: TextStyle(color: hasRain ? const Color(0xFF42A5F5) : Colors.white54, fontSize: 11), textAlign: TextAlign.center),
-                  ],
-                )),
-              ]),
-            );
-          }),
-        ],
-      ),
-    );
-  }
-
-  // ── Gübreleme Önerisi ────────────────────────────────────────
-  String _getFertilizerAdvice(double ph) {
-    final sb = StringBuffer();
-
-    if (ph < 5.5) {
-      sb.writeln('⚠️ Toprak çok asidik (pH ${ph.toStringAsFixed(1)}):');
-      sb.writeln('• Dekara 200-300 kg tarım kireci uygulayın');
-      sb.writeln('• Kireçleme sonbahar/kış aylarında yapılmalı');
-      sb.writeln('• 6 ay sonra pH kontrolü yapın');
-    } else if (ph > 7.5) {
-      sb.writeln('⚠️ Toprak bazik (pH ${ph.toStringAsFixed(1)}):');
-      sb.writeln('• Dekara 20-30 kg elementel kükürt uygulayın');
-      sb.writeln('• Asidik gübreler tercih edin (Amonyum Sülfat)');
-      sb.writeln('• Demir ve çinko yaprak gübresi takviyesi yapın');
-    } else {
-      sb.writeln('✅ pH uygun aralıkta (${ph.toStringAsFixed(1)}):');
-      sb.writeln('• Dengeli NPK (15-15-15) gübresi kullanın');
-      sb.writeln('• İlkbahar: Dekara 20 kg taban gübresi');
-      sb.writeln('• Gelişim dönemi: Dekara 10 kg Amonyum Nitrat');
+  String get _urgencyLabel {
+    switch (widget.directive.urgency) {
+      case 2:
+        return 'BUGÜN';
+      case 1:
+        return 'YAKINDA';
+      default:
+        return 'BİLGİ';
     }
-
-    sb.writeln();
-    sb.writeln('ℹ️ Genel Öneriler:');
-    sb.writeln('• Gübrelemeyi sabah erken saatlerde yapın');
-    sb.writeln('• Sulama öncesi gübreleme daha etkilidir');
-    sb.writeln('• Organik gübre (çiftlik gübresi) toprak yapısını iyileştirir');
-
-    return sb.toString().trim();
   }
 
-  // ── Çevre Özeti ──────────────────────────────────────────────
-  Widget _buildEnvironmentSummary(Map<String, dynamic> a) {
-    final temp = (a['temp'] as num?)?.toDouble() ?? 0;
-    final humidity = (a['humidity'] as num?)?.toDouble() ?? 0;
-    final wind = (a['wind'] as num?)?.toDouble() ?? 0;
-    final ph = (a['ph'] as num?)?.toDouble() ?? 6.5;
-    final avgTemp = (a['avg_weekly_temp'] as num?)?.toDouble() ?? 0;
-    final rain = (a['total_weekly_rain'] as num?)?.toDouble() ?? 0;
-    final soilMoisture = (a['soil_moisture'] as num?)?.toDouble() ?? 0;
-    final soilTemp = (a['soil_temp_c'] as num?)?.toDouble() ?? 0;
-    final weatherDesc = a['weather_desc']?.toString() ?? '';
+  Future<void> _onAction() async {
+    final d = widget.directive;
+    final type = d.actionType;
+    if (type == null || _logging) return;
+    setState(() => _logging = true);
+    try {
+      await ref.read(localDataRepositoryProvider).logActivity(
+            fieldId: widget.fieldId,
+            type: type,
+            cropId: d.cropId,
+            quantity: d.suggestedQuantity,
+            quantityUnit: d.quantityUnit,
+          );
+      if (!mounted) return;
+      AppToast.show(
+        context,
+        message: '${ActivityType.actionLabel(type)} kaydedildi',
+        type: ToastType.success,
+      );
+      // Stream provider otomatik tazelenecek; yönergeler anında güncellenir.
+    } catch (e) {
+      if (!mounted) return;
+      AppToast.show(
+        context,
+        message: 'Kayıt başarısız: $e',
+        type: ToastType.error,
+      );
+    } finally {
+      if (mounted) setState(() => _logging = false);
+    }
+  }
 
+  @override
+  Widget build(BuildContext context) {
+    final d = widget.directive;
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _accent.withValues(alpha: 0.45), width: 1.2),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (weatherDesc.isNotEmpty)
-            _envLine('☁️ Hava', weatherDesc),
-          _envLine('🌡️ Anlık Sıcaklık', '${temp.toStringAsFixed(1)}°C'),
-          _envLine('📊 Haftalık Ort.', '${avgTemp.toStringAsFixed(1)}°C'),
-          _envLine('💧 Nem', '%${humidity.toStringAsFixed(0)}'),
-          _envLine('💨 Rüzgar', '${wind.toStringAsFixed(1)} m/s'),
-          _envLine('🌧️ Hft. Yağış', '${rain.toStringAsFixed(1)} mm'),
-          _envLine('🌿 Toprak pH', ph.toStringAsFixed(1)),
-          if (soilMoisture > 0)
-            _envLine('💧 Toprak Nem', '%${(soilMoisture * 100).toStringAsFixed(1)}'),
-          if (soilTemp > 0)
-            _envLine('🌡️ Toprak Sıc.', '${soilTemp.toStringAsFixed(1)}°C'),
-        ],
-      ),
-    );
-  }
-
-  Widget _envLine(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
-      child: Row(
-        children: [
-          Text(label, style: const TextStyle(color: Colors.white54, fontSize: 12)),
-          const Spacer(),
-          Text(value, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w500)),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: _accent.withValues(alpha: 0.18),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(_icon, color: _accent, size: 22),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: _accent.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        _urgencyLabel,
+                        style: TextStyle(
+                          color: _accent,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      d.headline,
+                      style: GoogleFonts.outfit(
+                        color: Colors.white,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w800,
+                        height: 1.2,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            d.reason,
+            style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 13,
+              height: 1.45,
+            ),
+          ),
+          if (d.actionType != null) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _logging ? null : _onAction,
+                icon: _logging
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white))
+                    : const Icon(Icons.check_rounded, size: 18),
+                label: Text(
+                  _logging
+                      ? 'Kaydediliyor...'
+                      : '${ActivityType.actionLabel(d.actionType!)} — Tamamlandı',
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _accent,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
