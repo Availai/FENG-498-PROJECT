@@ -21,6 +21,7 @@ import 'cost_ledger_screen.dart';
 import 'farm_journal_screen.dart';
 import 'plant_zone_drawing_screen.dart';
 import '../widgets/animated_route.dart';
+import '../theme/app_theme.dart';
 
 class FieldDetailScreen extends ConsumerStatefulWidget {
   final dynamic fieldData;
@@ -1938,7 +1939,7 @@ class _PlantPickerSheetState extends State<_PlantPickerSheet> {
 // ═══════════════════════════════════════════════════════════════════════
 // DETAY MODAL — Kapsamlı yetiştirme bilgileri
 // ═══════════════════════════════════════════════════════════════════════
-class _DetailModalContent extends StatelessWidget {
+class _DetailModalContent extends StatefulWidget {
   final Map<String, dynamic>? analysis;
   final dynamic fieldData;
   final List<Map<String, dynamic>> fieldCrops;
@@ -1952,195 +1953,507 @@ class _DetailModalContent extends StatelessWidget {
   });
 
   @override
+  State<_DetailModalContent> createState() => _DetailModalContentState();
+}
+
+class _DetailModalContentState extends State<_DetailModalContent> {
+  final Map<String, TurkishCrop?> _cropCache = {};
+  bool _ready = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCrops();
+  }
+
+  Future<void> _loadCrops() async {
+    final repo = TurkishCropsRepository.instance;
+    await repo.ensureReady();
+    for (final c in widget.fieldCrops) {
+      final name = c['name']?.toString() ?? '';
+      if (name.isEmpty) continue;
+      _cropCache[name] = repo.findByName(name);
+    }
+    if (mounted) setState(() => _ready = true);
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final a = analysis;
+    final a = widget.analysis;
+    final temp = (a?['temp'] as num?)?.toDouble();
+    final ph = (a?['ph'] as num?)?.toDouble() ?? 6.5;
+    final weeklyRain = (a?['total_weekly_rain'] as num?)?.toDouble() ?? 0;
+    final forecast = (a?['daily_forecast'] as List?) ?? const [];
+
+    final tasks = _generateTodayTasks(temp: temp, ph: ph, weeklyRain: weeklyRain, forecast: forecast);
+
     return Container(
-      height: MediaQuery.of(context).size.height * 0.85,
+      height: MediaQuery.of(context).size.height * 0.88,
       decoration: const BoxDecoration(
-        color: Color(0xFF0D1811),
+        color: AppColors.bg,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: Column(
         children: [
-          // Handle bar
           const SizedBox(height: 8),
-          Container(width: 40, height: 4,
-              decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
-          const SizedBox(height: 12),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
+          Container(
+            width: 44, height: 4,
+            decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(2)),
+          ),
+          const SizedBox(height: 14),
+          // Yeşil hero başlık
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.fromLTRB(16, 14, 10, 14),
+            decoration: BoxDecoration(
+              gradient: AppGradients.forestHero,
+              borderRadius: AppRadius.md,
+              boxShadow: AppShadows.md,
+            ),
             child: Row(children: [
-              const Icon(Icons.article_rounded, color: Color(0xFF00E676), size: 22),
-              const SizedBox(width: 10),
-              Text('Tarla Detay Raporu',
-                  style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white)),
-              const Spacer(),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.18),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.checklist_rtl_rounded, color: Colors.white, size: 22),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Tarla Görevleri',
+                        style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white)),
+                    Text(
+                      '${widget.fieldCrops.length} ekili bitki • ${tasks.length} aktif görev',
+                      style: GoogleFonts.inter(fontSize: 12, color: AppColors.textOnDarkMuted),
+                    ),
+                  ],
+                ),
+              ),
               IconButton(
                 onPressed: () => Navigator.pop(context),
-                icon: const Icon(Icons.close, color: Colors.white54),
+                icon: const Icon(Icons.close, color: Colors.white),
               ),
             ]),
           ),
-          const Divider(color: Colors.white12, height: 20),
+          const SizedBox(height: 14),
           Expanded(
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 40),
-              children: [
-                // 1. Haftalık Hava Yorumu
-                if (a?['ai_weekly_comment'] != null) ...[
-                  _sectionHeader('📊 Haftalık Değerlendirme'),
-                  const SizedBox(height: 8),
-                  _textCard(a!['ai_weekly_comment'].toString()),
-                  const SizedBox(height: 20),
-                ],
+            child: !_ready
+                ? const Center(child: CircularProgressIndicator(color: AppColors.emerald))
+                : ListView(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+                    children: [
+                      // 1) Bugünkü / Acil Görevler
+                      _sectionTitle(Icons.flash_on_rounded, 'Bugün Yapılacaklar',
+                          tasks.isEmpty ? 'Acil bir görev görünmüyor' : 'Öncelik sırasına göre listelenir'),
+                      const SizedBox(height: 10),
+                      if (tasks.isEmpty)
+                        _emptyCard('Ekili bitkiler güncel. Hava verilerine göre bugün acil işlem yok.')
+                      else
+                        ...tasks.map(_taskCard),
+                      const SizedBox(height: 22),
 
-                // 2. Ekili Bitkiler
-                if (fieldCrops.isNotEmpty) ...[
-                  _sectionHeader('🌱 Ekili Bitkiler'),
-                  const SizedBox(height: 8),
-                  ...fieldCrops.map((crop) => _buildCropInfoCard(crop)),
-                  const SizedBox(height: 20),
-                ],
+                      // 2) Bitki bazlı bakım kartları
+                      if (widget.fieldCrops.isNotEmpty) ...[
+                        _sectionTitle(Icons.eco_rounded, 'Bitki Bakım Planı',
+                            'Her bitki için evresine özel tavsiyeler'),
+                        const SizedBox(height: 10),
+                        ...widget.fieldCrops.map(_cropCareCard),
+                        const SizedBox(height: 22),
+                      ],
 
-                // 3. 7 Günlük Hava Tahmini
-                if (a?['daily_forecast'] is List && (a!['daily_forecast'] as List).isNotEmpty) ...[
-                  _sectionHeader('🌤️ 7 Günlük Hava Tahmini'),
-                  const SizedBox(height: 8),
-                  _buildForecastTable(a['daily_forecast'] as List),
-                  const SizedBox(height: 20),
-                ],
+                      // 3) Gübreleme — bitkiye özel
+                      _sectionTitle(Icons.science_rounded, 'Gübreleme Rehberi',
+                          'Toprak pH ve bitki türüne göre'),
+                      const SizedBox(height: 10),
+                      _fertilizerCard(ph),
+                      const SizedBox(height: 22),
 
-                // 4. Gübreleme Önerisi
-                if (a != null) ...[
-                  _sectionHeader('🧪 Gübreleme Önerisi'),
-                  const SizedBox(height: 8),
-                  _textCard(_getFertilizerAdvice((a['ph'] as num?)?.toDouble() ?? 6.5)),
-                  const SizedBox(height: 20),
-                ],
+                      // 4) Haftalık hava tahmini
+                      if (forecast.isNotEmpty) ...[
+                        _sectionTitle(Icons.wb_sunny_rounded, '7 Günlük Hava',
+                            'Sulama ve koruma planlaması'),
+                        const SizedBox(height: 10),
+                        _forecastCard(forecast),
+                        const SizedBox(height: 22),
+                      ],
 
-                // 6. Çevre Özeti
-                if (a != null) ...[
-                  _sectionHeader('🌍 Çevre Özeti'),
-                  const SizedBox(height: 8),
-                  _buildEnvironmentSummary(a),
-                  const SizedBox(height: 20),
-                ],
-              ],
-            ),
+                      // 5) Tarla özeti
+                      if (a != null) ...[
+                        _sectionTitle(Icons.landscape_rounded, 'Tarla Özeti',
+                            'Güncel çevre verileri'),
+                        const SizedBox(height: 10),
+                        _environmentCard(a),
+                      ],
+                    ],
+                  ),
           ),
         ],
       ),
     );
   }
 
-  Widget _sectionHeader(String title) {
-    return Text(title, style: GoogleFonts.outfit(
-      fontSize: 15, fontWeight: FontWeight.w700, color: const Color(0xFF00E676)));
-  }
+  // ── Görev üretici ─────────────────────────────────────────────
+  List<_TaskItem> _generateTodayTasks({
+    double? temp,
+    required double ph,
+    required double weeklyRain,
+    required List forecast,
+  }) {
+    final items = <_TaskItem>[];
+    final now = DateTime.now();
 
-  Widget _textCard(String text) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-      ),
-      child: Text(text, style: const TextStyle(color: Colors.white70, fontSize: 13, height: 1.5)),
-    );
-  }
-
-  // ── Ekili bitki kartı ────────────────────────────────────────
-  Widget _buildCropInfoCard(Map<String, dynamic> crop) {
-    final name = crop['name']?.toString() ?? 'Bilinmeyen';
-    final plantedStr = crop['planted_date']?.toString();
-    final harvestDays = (crop['harvest_days'] as num?)?.toInt() ?? 90;
-    final waterInterval = (crop['water_interval_days'] as num?)?.toInt() ?? 7;
-
-    DateTime? plantedDate;
-    if (plantedStr != null) {
-      final parts = plantedStr.split('.');
-      if (parts.length == 3) {
-        plantedDate = DateTime.tryParse('${parts[2]}-${parts[1]}-${parts[0]}');
-      }
-      plantedDate ??= DateTime.tryParse(plantedStr);
-    }
-
-    final elapsed = plantedDate != null ? DateTime.now().difference(plantedDate).inDays : 0;
-    final maturity = ((elapsed / harvestDays) * 100).clamp(0.0, 100.0);
-    final harvestDate = plantedDate?.add(Duration(days: harvestDays));
-    final remaining = harvestDate != null ? harvestDate.difference(DateTime.now()).inDays : 0;
-
-    // Verified DB'den ideal koşulları bul
-    String idealConditions = '';
-    for (final p in VerifiedAgriDatabase.plants) {
-      if (p.nameTr.toLowerCase() == name.toLowerCase()) {
-        idealConditions = 'pH ${p.minPh}-${p.maxPh} • '
-            '${p.minTemp.toInt()}-${p.maxTemp.toInt()}°C • '
-            'Su: ${p.waterReqMmPerSeason.toInt()} mm/sezon • '
-            'Yoğunluk: ${p.plantDensityPerDekar}/dönüm';
+    // Don uyarısı
+    for (final d in forecast.take(3)) {
+      final min = (d['min'] as num?)?.toDouble();
+      if (min != null && min <= 2) {
+        items.add(_TaskItem(
+          icon: Icons.ac_unit_rounded,
+          title: 'Don Riski — Koruma Alın',
+          detail: 'Önümüzdeki günlerde gece sıcaklığı ${min.toStringAsFixed(0)}°C. Hassas bitkileri örtün veya sisleme yapın.',
+          priority: _Priority.high,
+        ));
         break;
       }
     }
 
+    // Aşırı sıcak
+    if (temp != null && temp >= 35) {
+      items.add(_TaskItem(
+        icon: Icons.local_fire_department_rounded,
+        title: 'Aşırı Sıcak — Ek Sulama',
+        detail: 'Sıcaklık ${temp.toStringAsFixed(0)}°C. Sabah erken ve akşam geç saatte sulama yapın; gölgeleme düşünün.',
+        priority: _Priority.high,
+      ));
+    }
+
+    // Her ekili bitki için sulama ve hasat görevi
+    for (final crop in widget.fieldCrops) {
+      final name = crop['name']?.toString() ?? 'Bitki';
+      final plantedStr = crop['planted_date']?.toString();
+      final harvestDays = (crop['harvest_days'] as num?)?.toInt() ?? 90;
+      final waterInterval = (crop['water_interval_days'] as num?)?.toInt() ?? 7;
+      final tcrop = _cropCache[name];
+
+      final planted = _parseDate(plantedStr);
+      if (planted == null) continue;
+
+      final elapsed = now.difference(planted).inDays;
+      final remaining = harvestDays - elapsed;
+
+      // Sulama: son sulamayı bilmiyorsak "bugün sulama günü mü?" mantığı
+      final sinceMod = elapsed % waterInterval;
+      if (sinceMod == 0 && elapsed > 0) {
+        // Yağış yeterliyse atla
+        if (weeklyRain < 15) {
+          final waterMm = _recommendedWaterMm(tcrop);
+          items.add(_TaskItem(
+            icon: Icons.water_drop_rounded,
+            title: '$name — Sulama Günü',
+            detail: waterMm != null
+                ? 'Yaklaşık $waterMm mm (dekara ${(waterMm * 1).toStringAsFixed(0)} ton) su verin. Haftalık yağış ${weeklyRain.toStringAsFixed(0)} mm.'
+                : 'Her $waterInterval günde bir sulama. Toprak 5 cm altı kuru ise derin sulama yapın.',
+            priority: _Priority.high,
+          ));
+        } else {
+          items.add(_TaskItem(
+            icon: Icons.water_drop_outlined,
+            title: '$name — Sulamayı Erteleyebilirsiniz',
+            detail: 'Son 7 günde ${weeklyRain.toStringAsFixed(0)} mm yağış alındı. Toprak nemliyse bir gün bekleyin.',
+            priority: _Priority.low,
+          ));
+        }
+      }
+
+      // Hasat uyarısı
+      if (remaining <= 0) {
+        items.add(_TaskItem(
+          icon: Icons.agriculture_rounded,
+          title: '$name — Hasat Zamanı',
+          detail: 'Ekimden $elapsed gün geçti (hedef: $harvestDays gün). Sabah erken saatlerde hasat önerilir.',
+          priority: _Priority.high,
+        ));
+      } else if (remaining <= 14) {
+        items.add(_TaskItem(
+          icon: Icons.event_available_rounded,
+          title: '$name — Hasat Yaklaşıyor',
+          detail: 'Tahmini hasat $remaining gün sonra. Sulamayı azaltın ve pazarlama planlayın.',
+          priority: _Priority.medium,
+        ));
+      }
+
+      // Evre bazlı görev
+      final stage = _stageFor(elapsed, harvestDays);
+      final stageTask = _stageTask(name, stage, tcrop);
+      if (stageTask != null) items.add(stageTask);
+    }
+
+    // Önceliğe göre sırala
+    items.sort((a, b) => b.priority.index.compareTo(a.priority.index));
+    return items;
+  }
+
+  DateTime? _parseDate(String? s) {
+    if (s == null) return null;
+    final parts = s.split('.');
+    if (parts.length == 3) {
+      final d = DateTime.tryParse('${parts[2]}-${parts[1]}-${parts[0]}');
+      if (d != null) return d;
+    }
+    return DateTime.tryParse(s);
+  }
+
+  int? _recommendedWaterMm(TurkishCrop? c) {
+    if (c == null) return null;
+    switch (c.waterNeed) {
+      case 'high': return 35;
+      case 'medium': return 25;
+      case 'low': return 15;
+    }
+    return 25;
+  }
+
+  _Stage _stageFor(int elapsed, int harvestDays) {
+    final p = elapsed / harvestDays;
+    if (p < 0.15) return _Stage.fidan;
+    if (p < 0.45) return _Stage.gelisim;
+    if (p < 0.70) return _Stage.cicek;
+    if (p < 0.95) return _Stage.olgunlasma;
+    return _Stage.hasat;
+  }
+
+  _TaskItem? _stageTask(String name, _Stage stage, TurkishCrop? c) {
+    switch (stage) {
+      case _Stage.fidan:
+        return _TaskItem(
+          icon: Icons.spa_rounded,
+          title: '$name — Fide Bakımı',
+          detail: 'Kök gelişimi için toprağı nemli tutun, yabancı otları temizleyin. ${c?.sunNeed == "full" ? "Tam güneş alan bir yer seçildiğinden emin olun." : ""}',
+          priority: _Priority.low,
+        );
+      case _Stage.gelisim:
+        return _TaskItem(
+          icon: Icons.trending_up_rounded,
+          title: '$name — Vejetatif Gelişim',
+          detail: 'Azotlu (N) gübre destekleyin. ${c?.commonPests.isNotEmpty == true ? "Zararlı kontrolü: ${c!.commonPests.take(2).join(", ")}." : "Haftada bir zararlı kontrolü yapın."}',
+          priority: _Priority.medium,
+        );
+      case _Stage.cicek:
+        return _TaskItem(
+          icon: Icons.local_florist_rounded,
+          title: '$name — Çiçeklenme Dönemi',
+          detail: 'Fosfor (P) ve potasyum (K) takviyesi yapın. Stres vermeyin; sulamayı düzenli tutun. ${c?.commonDiseases.isNotEmpty == true ? "Hastalık riski: ${c!.commonDiseases.first}." : ""}',
+          priority: _Priority.medium,
+        );
+      case _Stage.olgunlasma:
+        return _TaskItem(
+          icon: Icons.eco_outlined,
+          title: '$name — Olgunlaşma',
+          detail: 'Potasyum (K) ağırlıklı gübre. Aşırı sulamadan kaçının — ürün çatlayabilir.',
+          priority: _Priority.medium,
+        );
+      case _Stage.hasat:
+        return null;
+    }
+  }
+
+  // ── Widget yardımcıları ───────────────────────────────────────
+  Widget _sectionTitle(IconData icon, String title, String subtitle) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: AppColors.mint,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, color: AppColors.emeraldDark, size: 18),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+              Text(subtitle, style: GoogleFonts.inter(fontSize: 11, color: AppColors.textTertiary)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _emptyCard(String text) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.mint,
+        borderRadius: AppRadius.md,
+        border: Border.all(color: AppColors.emeraldLight.withValues(alpha: 0.4)),
+      ),
+      child: Row(children: [
+        const Icon(Icons.check_circle_outline, color: AppColors.emeraldDark),
+        const SizedBox(width: 10),
+        Expanded(child: Text(text, style: GoogleFonts.inter(fontSize: 13, color: AppColors.emeraldDark, fontWeight: FontWeight.w500))),
+      ]),
+    );
+  }
+
+  Widget _taskCard(_TaskItem t) {
+    final (bg, fg) = switch (t.priority) {
+      _Priority.high => (const Color(0xFFFFF4E6), AppColors.warning),
+      _Priority.medium => (AppColors.mint, AppColors.emeraldDark),
+      _Priority.low => (AppColors.surface, AppColors.textSecondary),
+    };
+    final tag = switch (t.priority) {
+      _Priority.high => 'ACİL',
+      _Priority.medium => 'ÖNEMLİ',
+      _Priority.low => 'BİLGİ',
+    };
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.06),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFF00E676).withValues(alpha: 0.2)),
+          color: AppColors.bg,
+          borderRadius: AppRadius.md,
+          border: Border.all(color: AppColors.border),
+          boxShadow: AppShadows.sm,
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(12)),
+              child: Icon(t.icon, color: fg, size: 22),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(children: [
+                    Expanded(
+                      child: Text(t.title,
+                          style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(999)),
+                      child: Text(tag,
+                          style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w700, color: fg, letterSpacing: 0.5)),
+                    ),
+                  ]),
+                  const SizedBox(height: 6),
+                  Text(t.detail,
+                      style: GoogleFonts.inter(fontSize: 13, color: AppColors.textSecondary, height: 1.45)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _cropCareCard(Map<String, dynamic> crop) {
+    final name = crop['name']?.toString() ?? 'Bilinmeyen';
+    final tcrop = _cropCache[name];
+    final plantedStr = crop['planted_date']?.toString();
+    final harvestDays = (crop['harvest_days'] as num?)?.toInt() ?? tcrop?.daysToHarvest ?? 90;
+    final waterInterval = (crop['water_interval_days'] as num?)?.toInt() ?? 7;
+    final planted = _parseDate(plantedStr);
+    final elapsed = planted != null ? DateTime.now().difference(planted).inDays : 0;
+    final maturity = ((elapsed / harvestDays) * 100).clamp(0.0, 100.0);
+    final harvestDate = planted?.add(Duration(days: harvestDays));
+    final remaining = harvestDate != null ? harvestDate.difference(DateTime.now()).inDays : 0;
+    final stage = _stageFor(elapsed, harvestDays);
+    final stageLabel = switch (stage) {
+      _Stage.fidan => 'Fide',
+      _Stage.gelisim => 'Gelişim',
+      _Stage.cicek => 'Çiçeklenme',
+      _Stage.olgunlasma => 'Olgunlaşma',
+      _Stage.hasat => 'Hasat',
+    };
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: AppRadius.md,
+          border: Border.all(color: AppColors.border),
+          boxShadow: AppShadows.sm,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(children: [
-              Text(name, style: const TextStyle(
-                  color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700)),
-              const Spacer(),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: maturity >= 90
-                      ? const Color(0xFF00E676).withValues(alpha: 0.2)
-                      : Colors.white.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  maturity >= 90 ? 'HASAT ZAMANI' : '%${maturity.toStringAsFixed(0)} olgun',
-                  style: TextStyle(
-                    color: maturity >= 90 ? const Color(0xFF00E676) : Colors.white70,
-                    fontSize: 11, fontWeight: FontWeight.w700),
+                width: 40, height: 40,
+                decoration: const BoxDecoration(color: AppColors.emerald, shape: BoxShape.circle),
+                child: const Icon(Icons.eco, color: Colors.white, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(name, style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                    if (tcrop?.scientificName != null)
+                      Text(tcrop!.scientificName!,
+                          style: GoogleFonts.inter(fontSize: 11, color: AppColors.textTertiary, fontStyle: FontStyle.italic)),
+                  ],
                 ),
               ),
+              AppTag(stageLabel, color: AppColors.emeraldDark, bgColor: AppColors.mint),
             ]),
+            const SizedBox(height: 12),
+            AppProgressBar(value: maturity / 100, color: AppColors.emerald),
+            const SizedBox(height: 6),
+            Text('Olgunluk: %${maturity.toStringAsFixed(0)} • $elapsed / $harvestDays gün',
+                style: GoogleFonts.inter(fontSize: 11, color: AppColors.textSecondary)),
+            const SizedBox(height: 12),
+            // Bitki özelinde gerçek veriler
+            if (tcrop != null) _cropFacts(tcrop),
             const SizedBox(height: 8),
-            if (plantedDate != null)
-              _infoLine('📅 Ekim', DateFormat('dd.MM.yyyy').format(plantedDate)),
-            if (harvestDate != null) ...[
-              _infoLine('🗓️ Tahmini Hasat', DateFormat('dd.MM.yyyy').format(harvestDate)),
-              _infoLine('⏳ Kalan', remaining > 0 ? '$remaining gün' : 'Hasat zamanı!'),
-            ],
-            _infoLine('📆 Geçen', '$elapsed / $harvestDays gün'),
-            _infoLine('💧 Sulama Aralığı', 'Her $waterInterval günde bir'),
-            // Olgunluk barı
-            const SizedBox(height: 8),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: maturity / 100,
-                minHeight: 6,
-                backgroundColor: Colors.white.withValues(alpha: 0.1),
-                valueColor: AlwaysStoppedAnimation(
-                  maturity >= 90 ? const Color(0xFF00E676) : const Color(0xFF4CAF50)),
-              ),
-            ),
-            if (idealConditions.isNotEmpty) ...[
+            _infoRow(Icons.water_drop_outlined, 'Sulama',
+                tcrop?.waterNeed == null
+                    ? 'Her $waterInterval günde bir'
+                    : '${_waterNeedLabel(tcrop!.waterNeed!)} • her $waterInterval günde bir'),
+            if (harvestDate != null)
+              _infoRow(Icons.event_available_outlined, 'Tahmini Hasat',
+                  '${DateFormat('dd MMM yyyy').format(harvestDate)} • ${remaining > 0 ? "$remaining gün kaldı" : "hasat zamanı!"}'),
+            if (tcrop?.commonPests.isNotEmpty == true)
+              _infoRow(Icons.bug_report_outlined, 'Zararlılar', tcrop!.commonPests.take(3).join(', ')),
+            if (tcrop?.commonDiseases.isNotEmpty == true)
+              _infoRow(Icons.coronavirus_outlined, 'Hastalıklar', tcrop!.commonDiseases.take(3).join(', ')),
+            if (tcrop?.growingTips != null && tcrop!.growingTips!.isNotEmpty) ...[
               const SizedBox(height: 8),
-              Text('📋 İdeal Koşullar: $idealConditions',
-                  style: const TextStyle(color: Colors.white38, fontSize: 10)),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppColors.mint,
+                  borderRadius: AppRadius.sm,
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.lightbulb_outline, color: AppColors.emeraldDark, size: 16),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(tcrop.growingTips!,
+                          style: GoogleFonts.inter(fontSize: 12, color: AppColors.emeraldDark, height: 1.4)),
+                    ),
+                  ],
+                ),
+              ),
             ],
           ],
         ),
@@ -2148,56 +2461,173 @@ class _DetailModalContent extends StatelessWidget {
     );
   }
 
-  Widget _infoLine(String label, String value) {
+  Widget _cropFacts(TurkishCrop c) {
+    final chips = <Widget>[];
+    if (c.tempMinC != null && c.tempMaxC != null) {
+      chips.add(_factChip(Icons.thermostat, '${c.tempMinC!.toInt()}-${c.tempMaxC!.toInt()}°C'));
+    }
+    if (c.soilPhMin != null && c.soilPhMax != null) {
+      chips.add(_factChip(Icons.science_outlined, 'pH ${c.soilPhMin!.toStringAsFixed(1)}-${c.soilPhMax!.toStringAsFixed(1)}'));
+    }
+    if (c.sunNeed != null) {
+      chips.add(_factChip(Icons.wb_sunny_outlined, _sunLabel(c.sunNeed!)));
+    }
+    if (c.sowingMonths.isNotEmpty) {
+      chips.add(_factChip(Icons.calendar_month_outlined, 'Ekim: ${_monthsLabel(c.sowingMonths)}'));
+    }
+    if (chips.isEmpty) return const SizedBox.shrink();
+    return Wrap(spacing: 6, runSpacing: 6, children: chips);
+  }
+
+  Widget _factChip(IconData i, String t) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: AppColors.bg,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(i, size: 12, color: AppColors.emeraldDark),
+          const SizedBox(width: 4),
+          Text(t, style: GoogleFonts.inter(fontSize: 11, color: AppColors.textPrimary, fontWeight: FontWeight.w600)),
+        ]),
+      );
+
+  String _waterNeedLabel(String w) => switch (w) {
+        'high' => 'Yüksek su ihtiyacı',
+        'medium' => 'Orta su ihtiyacı',
+        'low' => 'Düşük su ihtiyacı',
+        _ => w,
+      };
+
+  String _sunLabel(String s) => switch (s) {
+        'full' => 'Tam güneş',
+        'partial' => 'Yarı gölge',
+        'shade' => 'Gölge',
+        _ => s,
+      };
+
+  String _monthsLabel(List<int> months) {
+    const names = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
+    return months.map((m) => (m >= 1 && m <= 12) ? names[m - 1] : '?').join(', ');
+  }
+
+  Widget _infoRow(IconData i, String label, String value) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 3),
-      child: Row(
+      padding: const EdgeInsets.only(top: 6),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Icon(i, size: 14, color: AppColors.textTertiary),
+        const SizedBox(width: 6),
+        Text('$label: ',
+            style: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
+        Expanded(
+          child: Text(value,
+              style: GoogleFonts.inter(fontSize: 12, color: AppColors.textPrimary)),
+        ),
+      ]),
+    );
+  }
+
+  Widget _fertilizerCard(double ph) {
+    // Bitki bazlı gübreleme — ekili bitki varsa fertilizerNotes'u göster
+    final cropsWithNotes = widget.fieldCrops
+        .map((c) => _cropCache[c['name']?.toString() ?? ''])
+        .whereType<TurkishCrop>()
+        .where((c) => c.fertilizerNotes != null && c.fertilizerNotes!.isNotEmpty)
+        .toList();
+
+    final generic = _genericFertilizerAdvice(ph);
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: AppRadius.md,
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(color: Colors.white54, fontSize: 12)),
-          const Spacer(),
-          Text(value, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w500)),
+          Row(children: [
+            const Icon(Icons.compost_outlined, color: AppColors.emeraldDark, size: 16),
+            const SizedBox(width: 6),
+            Text('Toprak Durumu (pH ${ph.toStringAsFixed(1)})',
+                style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.emeraldDark)),
+          ]),
+          const SizedBox(height: 8),
+          Text(generic, style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary, height: 1.5)),
+          for (final c in cropsWithNotes) ...[
+            const Divider(color: AppColors.divider, height: 22),
+            Row(children: [
+              const Icon(Icons.eco, color: AppColors.emerald, size: 14),
+              const SizedBox(width: 6),
+              Text(c.nameTr,
+                  style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.emeraldDark)),
+            ]),
+            const SizedBox(height: 4),
+            Text(c.fertilizerNotes!,
+                style: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondary, height: 1.45)),
+          ],
         ],
       ),
     );
   }
 
-  // ── 7 Günlük Tahmin Tablosu ──────────────────────────────────
-  Widget _buildForecastTable(List forecast) {
+  String _genericFertilizerAdvice(double ph) {
+    if (ph < 5.5) {
+      return 'Toprak asidik. Dekara 200-300 kg tarım kireci uygulayın; sonbahar/kış aylarında işlem daha verimlidir. 6 ay sonra pH kontrolü tekrarlayın.';
+    } else if (ph > 7.5) {
+      return 'Toprak bazik. Dekara 20-30 kg elementel kükürt verin; asidik gübreler (Amonyum Sülfat) tercih edin, demir-çinko yaprak gübresi takviyesi planlayın.';
+    }
+    return 'pH uygun aralıkta. Dengeli NPK (15-15-15) taban gübresi; vejetatif dönemde azot, çiçek-meyve döneminde potasyum ağırlığı artırın. Organik gübre toprak yapısını iyileştirir.';
+  }
+
+  Widget _forecastCard(List forecast) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(14),
+        color: AppColors.surface,
+        borderRadius: AppRadius.md,
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         children: [
-          // Başlık satırı
-          const Row(children: [
-            Expanded(flex: 2, child: Text('Tarih', style: TextStyle(color: Colors.white54, fontSize: 10, fontWeight: FontWeight.w600))),
-            Expanded(child: Text('Max', style: TextStyle(color: Colors.white54, fontSize: 10, fontWeight: FontWeight.w600), textAlign: TextAlign.center)),
-            Expanded(child: Text('Min', style: TextStyle(color: Colors.white54, fontSize: 10, fontWeight: FontWeight.w600), textAlign: TextAlign.center)),
-            Expanded(child: Text('Yağış', style: TextStyle(color: Colors.white54, fontSize: 10, fontWeight: FontWeight.w600), textAlign: TextAlign.center)),
+          Row(children: [
+            Expanded(flex: 2, child: Text('Tarih', style: AppText.label(context))),
+            Expanded(child: Text('En Yüksek', style: AppText.label(context), textAlign: TextAlign.center)),
+            Expanded(child: Text('En Düşük', style: AppText.label(context), textAlign: TextAlign.center)),
+            Expanded(child: Text('Yağış', style: AppText.label(context), textAlign: TextAlign.center)),
           ]),
-          const Divider(color: Colors.white12, height: 12),
+          const Divider(color: AppColors.divider, height: 14),
           ...forecast.take(7).map((day) {
             final date = day['date']?.toString() ?? '--';
             final max = (day['max'] as num?)?.toStringAsFixed(0) ?? '--';
             final min = (day['min'] as num?)?.toStringAsFixed(0) ?? '--';
             final rain = (day['rain'] as num?)?.toStringAsFixed(1) ?? '0';
             final hasRain = ((day['rain'] as num?)?.toDouble() ?? 0) > 1;
+            final minN = (day['min'] as num?)?.toDouble();
+            final frost = minN != null && minN <= 2;
             return Padding(
-              padding: const EdgeInsets.only(bottom: 4),
+              padding: const EdgeInsets.only(bottom: 6),
               child: Row(children: [
-                Expanded(flex: 2, child: Text(date, style: const TextStyle(color: Colors.white70, fontSize: 11))),
-                Expanded(child: Text('$max°', style: const TextStyle(color: Color(0xFFFFCC80), fontSize: 11, fontWeight: FontWeight.w600), textAlign: TextAlign.center)),
-                Expanded(child: Text('$min°', style: const TextStyle(color: Color(0xFF90CAF9), fontSize: 11, fontWeight: FontWeight.w600), textAlign: TextAlign.center)),
-                Expanded(child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    if (hasRain) const Icon(Icons.water_drop, color: Color(0xFF42A5F5), size: 10),
-                    Text(rain, style: TextStyle(color: hasRain ? const Color(0xFF42A5F5) : Colors.white54, fontSize: 11), textAlign: TextAlign.center),
-                  ],
-                )),
+                Expanded(flex: 2, child: Text(date, style: GoogleFonts.inter(fontSize: 12, color: AppColors.textPrimary))),
+                Expanded(child: Text('$max°', style: GoogleFonts.inter(fontSize: 12, color: AppColors.warning, fontWeight: FontWeight.w600), textAlign: TextAlign.center)),
+                Expanded(
+                  child: Text('$min°',
+                      style: GoogleFonts.inter(fontSize: 12, color: frost ? AppColors.frost : AppColors.textSecondary, fontWeight: FontWeight.w600),
+                      textAlign: TextAlign.center),
+                ),
+                Expanded(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      if (hasRain) const Icon(Icons.water_drop, color: AppColors.info, size: 11),
+                      const SizedBox(width: 2),
+                      Text(rain,
+                          style: GoogleFonts.inter(fontSize: 12, color: hasRain ? AppColors.info : AppColors.textTertiary, fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                ),
               ]),
             );
           }),
@@ -2206,38 +2636,7 @@ class _DetailModalContent extends StatelessWidget {
     );
   }
 
-  // ── Gübreleme Önerisi ────────────────────────────────────────
-  String _getFertilizerAdvice(double ph) {
-    final sb = StringBuffer();
-
-    if (ph < 5.5) {
-      sb.writeln('⚠️ Toprak çok asidik (pH ${ph.toStringAsFixed(1)}):');
-      sb.writeln('• Dekara 200-300 kg tarım kireci uygulayın');
-      sb.writeln('• Kireçleme sonbahar/kış aylarında yapılmalı');
-      sb.writeln('• 6 ay sonra pH kontrolü yapın');
-    } else if (ph > 7.5) {
-      sb.writeln('⚠️ Toprak bazik (pH ${ph.toStringAsFixed(1)}):');
-      sb.writeln('• Dekara 20-30 kg elementel kükürt uygulayın');
-      sb.writeln('• Asidik gübreler tercih edin (Amonyum Sülfat)');
-      sb.writeln('• Demir ve çinko yaprak gübresi takviyesi yapın');
-    } else {
-      sb.writeln('✅ pH uygun aralıkta (${ph.toStringAsFixed(1)}):');
-      sb.writeln('• Dengeli NPK (15-15-15) gübresi kullanın');
-      sb.writeln('• İlkbahar: Dekara 20 kg taban gübresi');
-      sb.writeln('• Gelişim dönemi: Dekara 10 kg Amonyum Nitrat');
-    }
-
-    sb.writeln();
-    sb.writeln('ℹ️ Genel Öneriler:');
-    sb.writeln('• Gübrelemeyi sabah erken saatlerde yapın');
-    sb.writeln('• Sulama öncesi gübreleme daha etkilidir');
-    sb.writeln('• Organik gübre (çiftlik gübresi) toprak yapısını iyileştirir');
-
-    return sb.toString().trim();
-  }
-
-  // ── Çevre Özeti ──────────────────────────────────────────────
-  Widget _buildEnvironmentSummary(Map<String, dynamic> a) {
+  Widget _environmentCard(Map<String, dynamic> a) {
     final temp = (a['temp'] as num?)?.toDouble() ?? 0;
     final humidity = (a['humidity'] as num?)?.toDouble() ?? 0;
     final wind = (a['wind'] as num?)?.toDouble() ?? 0;
@@ -2248,42 +2647,59 @@ class _DetailModalContent extends StatelessWidget {
     final soilTemp = (a['soil_temp_c'] as num?)?.toDouble() ?? 0;
     final weatherDesc = a['weather_desc']?.toString() ?? '';
 
+    final rows = <Widget>[
+      if (weatherDesc.isNotEmpty) _envLine(Icons.cloud_outlined, 'Hava', weatherDesc),
+      _envLine(Icons.thermostat_outlined, 'Anlık Sıcaklık', '${temp.toStringAsFixed(1)}°C'),
+      _envLine(Icons.show_chart_outlined, 'Haftalık Ortalama', '${avgTemp.toStringAsFixed(1)}°C'),
+      _envLine(Icons.water_outlined, 'Nem', '%${humidity.toStringAsFixed(0)}'),
+      _envLine(Icons.air_outlined, 'Rüzgar', '${wind.toStringAsFixed(1)} m/s'),
+      _envLine(Icons.umbrella_outlined, 'Haftalık Yağış', '${rain.toStringAsFixed(1)} mm'),
+      _envLine(Icons.science_outlined, 'Toprak pH', ph.toStringAsFixed(1)),
+      if (soilMoisture > 0)
+        _envLine(Icons.opacity_outlined, 'Toprak Nem', '%${(soilMoisture * 100).toStringAsFixed(0)}'),
+      if (soilTemp > 0)
+        _envLine(Icons.device_thermostat_outlined, 'Toprak Sıcaklığı', '${soilTemp.toStringAsFixed(1)}°C'),
+    ];
+
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(14),
+        color: AppColors.surface,
+        borderRadius: AppRadius.md,
+        border: Border.all(color: AppColors.border),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (weatherDesc.isNotEmpty)
-            _envLine('☁️ Hava', weatherDesc),
-          _envLine('🌡️ Anlık Sıcaklık', '${temp.toStringAsFixed(1)}°C'),
-          _envLine('📊 Haftalık Ort.', '${avgTemp.toStringAsFixed(1)}°C'),
-          _envLine('💧 Nem', '%${humidity.toStringAsFixed(0)}'),
-          _envLine('💨 Rüzgar', '${wind.toStringAsFixed(1)} m/s'),
-          _envLine('🌧️ Hft. Yağış', '${rain.toStringAsFixed(1)} mm'),
-          _envLine('🌿 Toprak pH', ph.toStringAsFixed(1)),
-          if (soilMoisture > 0)
-            _envLine('💧 Toprak Nem', '%${(soilMoisture * 100).toStringAsFixed(1)}'),
-          if (soilTemp > 0)
-            _envLine('🌡️ Toprak Sıc.', '${soilTemp.toStringAsFixed(1)}°C'),
-        ],
-      ),
+      child: Column(children: rows),
     );
   }
 
-  Widget _envLine(String label, String value) {
+  Widget _envLine(IconData i, String label, String value) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
-      child: Row(
-        children: [
-          Text(label, style: const TextStyle(color: Colors.white54, fontSize: 12)),
-          const Spacer(),
-          Text(value, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w500)),
-        ],
-      ),
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(children: [
+        Icon(i, color: AppColors.emeraldDark, size: 15),
+        const SizedBox(width: 8),
+        Text(label, style: GoogleFonts.inter(fontSize: 13, color: AppColors.textSecondary)),
+        const Spacer(),
+        Text(value,
+            style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary, fontWeight: FontWeight.w700)),
+      ]),
     );
   }
+}
+
+enum _Priority { low, medium, high }
+
+enum _Stage { fidan, gelisim, cicek, olgunlasma, hasat }
+
+class _TaskItem {
+  final IconData icon;
+  final String title;
+  final String detail;
+  final _Priority priority;
+  const _TaskItem({
+    required this.icon,
+    required this.title,
+    required this.detail,
+    required this.priority,
+  });
 }

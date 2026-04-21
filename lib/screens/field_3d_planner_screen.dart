@@ -99,54 +99,170 @@ class _Field3DPlannerScreenState extends ConsumerState<Field3DPlannerScreen> {
     String name = widget.existingField?['name']?.split(' ').first ?? '';
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        title: Text('Ekim Alanını Kaydet', style: AppText.h2(context)),
-        content: TextField(
-          onChanged: (v) => name = v,
-          autofocus: true,
-          decoration: InputDecoration(
-            hintText: 'Örn: Kuzey Tarlası',
-            helperText: '${dekar.toStringAsFixed(1)} Dekar alan eklenecek',
+      barrierColor: Colors.black.withValues(alpha: 0.45),
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppColors.bg,
+            borderRadius: AppRadius.lg,
+            boxShadow: AppShadows.lg,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Yeşil başlık
+              Container(
+                padding: const EdgeInsets.all(18),
+                decoration: const BoxDecoration(
+                  gradient: AppGradients.forestHero,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+                ),
+                child: Row(children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.18),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.save_alt_rounded, color: Colors.white),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Ekim Alanını Kaydet', style: AppText.h3Dark(context)),
+                        Text(
+                          '${dekar.toStringAsFixed(1)} dekarlık alan oluşturulacak',
+                          style: AppText.bodyDark(context).copyWith(fontSize: 13),
+                        ),
+                      ],
+                    ),
+                  ),
+                ]),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Tarla Adı',
+                        style: AppText.label(context).copyWith(color: AppColors.emeraldDark)),
+                    const SizedBox(height: 8),
+                    TextField(
+                      onChanged: (v) => name = v,
+                      autofocus: true,
+                      style: AppText.body(context),
+                      cursorColor: AppColors.emerald,
+                      decoration: InputDecoration(
+                        hintText: 'Örn: Kuzey Tarlası',
+                        prefixIcon: const Icon(Icons.landscape_outlined, color: AppColors.emeraldDark),
+                        filled: true,
+                        fillColor: AppColors.surface,
+                        border: OutlineInputBorder(
+                          borderRadius: AppRadius.sm,
+                          borderSide: const BorderSide(color: AppColors.border),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: AppRadius.sm,
+                          borderSide: const BorderSide(color: AppColors.border),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: AppRadius.sm,
+                          borderSide: const BorderSide(color: AppColors.emerald, width: 2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: AppColors.mint,
+                        borderRadius: AppRadius.sm,
+                      ),
+                      child: Row(children: [
+                        const Icon(Icons.info_outline, color: AppColors.emeraldDark, size: 16),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Bu ad, tarla listesinde ve raporlarda görünecektir.',
+                            style: AppText.xs(context).copyWith(color: AppColors.emeraldDark),
+                          ),
+                        ),
+                      ]),
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          side: const BorderSide(color: AppColors.border),
+                          shape: const RoundedRectangleBorder(borderRadius: AppRadius.sm),
+                          foregroundColor: AppColors.textSecondary,
+                        ),
+                        child: Text('İptal',
+                            style: AppText.bodyMd(context).copyWith(color: AppColors.textSecondary)),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      flex: 2,
+                      child: ElevatedButton.icon(
+                        onPressed: () async {
+                          if (name.trim().isEmpty) return;
+                          final data = {
+                            'id': widget.existingField?['id'],
+                            'name': '${name.trim()} (${dekar.toStringAsFixed(1)} da)',
+                            'date': DateFormat('dd.MM.yyyy').format(DateTime.now()),
+                            'latitude': centerLat,
+                            'longitude': centerLng,
+                            'area_dekar': dekar,
+                            'area_sqm': _calculatedAreaSqm,
+                            'polygon': _points.map((p) => {'lat': p.latitude, 'lng': p.longitude}).toList(),
+                            'planted_crops': widget.existingField?['planted_crops'] ?? const [],
+                          };
+
+                          await ref.read(localDataRepositoryProvider).upsertFieldFromLegacyMap(data);
+
+                          if (!ctx.mounted) return;
+                          Navigator.pop(ctx);
+                          if (!mounted) return;
+                          Navigator.pop(context);
+                          if (!mounted) return;
+                          AppToast.show(
+                            context,
+                            message: 'Ekim alanı başarıyla kaydedildi!',
+                            type: ToastType.success,
+                          );
+                        },
+                        icon: const Icon(Icons.check_rounded, color: Colors.white),
+                        label: Text('Kaydet',
+                            style: AppText.bodyMd(context).copyWith(color: Colors.white)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.emerald,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          elevation: 0,
+                          shape: const RoundedRectangleBorder(borderRadius: AppRadius.sm),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text('İptal', style: TextStyle(color: AppColors.textSecondary)),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              if (name.trim().isNotEmpty) {
-                final data = {
-                  'id': widget.existingField?['id'],
-                  'name': '${name.trim()} (${dekar.toStringAsFixed(1)} da)',
-                  'date': DateFormat('dd.MM.yyyy').format(DateTime.now()),
-                  'latitude': centerLat,
-                  'longitude': centerLng,
-                  'area_dekar': dekar,
-                  'area_sqm': _calculatedAreaSqm,
-                  'polygon': _points.map((p) => {'lat': p.latitude, 'lng': p.longitude}).toList(),
-                  'planted_crops': widget.existingField?['planted_crops'] ?? const [],
-                };
-
-                await ref.read(localDataRepositoryProvider).upsertFieldFromLegacyMap(data);
-
-                if (!ctx.mounted) return;
-                Navigator.pop(ctx);
-                if (!mounted) return;
-                Navigator.pop(context);
-                if (!mounted) return;
-                AppToast.show(
-                  context,
-                  message: 'Ekim alanı başarıyla kaydedildi!',
-                  type: ToastType.success,
-                );
-              }
-            },
-            child: const Text('Kaydet'),
-          ),
-        ],
       ),
     );
   }
