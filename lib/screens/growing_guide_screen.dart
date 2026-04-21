@@ -3,6 +3,7 @@ import '../services/agri_service.dart';
 import '../services/encyclopedia_extensions.dart';
 import '../utils/location_utils.dart';
 import '../widgets/floating_toast.dart';
+import '../widgets/help_panel.dart';
 import '../widgets/weekly_water_card.dart';
 
 
@@ -87,7 +88,17 @@ class _GrowingGuideScreenState extends State<GrowingGuideScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Akıllı Tarım Rehberi'), elevation: 0),
+      appBar: AppBar(
+        title: const Text('Akıllı Tarım Rehberi'),
+        elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.help_outline_rounded),
+            tooltip: 'Yardım',
+            onPressed: () => HelpPanel.show(context, HelpContent.guide),
+          ),
+        ],
+      ),
       body: Column(
         children: [
           // ── Arama Bölümü ──

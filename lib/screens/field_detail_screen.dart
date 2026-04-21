@@ -14,6 +14,7 @@ import '../data/turkish_crops_repository.dart';
 import '../widgets/activity_quick_log.dart';
 import '../widgets/floating_toast.dart';
 import '../widgets/glass_panel.dart';
+import '../widgets/help_panel.dart';
 import '../widgets/zone_drawing_toolbar.dart';
 import '../widgets/crop_zone_tooltip.dart';
 import '../widgets/crop_render_factory.dart';
@@ -316,6 +317,11 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
         ),
         centerTitle: false,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.help_outline_rounded, color: Colors.white70),
+            tooltip: 'Yardım',
+            onPressed: () => HelpPanel.show(context, HelpContent.fieldDetail),
+          ),
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [

@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
 
 import '../services/app_providers.dart';
+import '../widgets/help_panel.dart';
 
 /// Crop Cycle & Guide Calendar.
 /// Fulfills: "Crop Cycle and Guide Calendar (Crop Calendar)"
@@ -75,6 +76,11 @@ class _CropCalendarScreenState extends ConsumerState<CropCalendarScreen> {
       appBar: AppBar(
         title: const Text('Tarım Takvimi'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.help_outline_rounded),
+            tooltip: 'Yardım',
+            onPressed: () => HelpPanel.show(context, HelpContent.calendar),
+          ),
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
             onPressed: _buildEventsFromRepository,
