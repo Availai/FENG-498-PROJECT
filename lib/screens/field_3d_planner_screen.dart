@@ -24,7 +24,8 @@ class Field3DPlannerScreen extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<Field3DPlannerScreen> createState() => _Field3DPlannerScreenState();
+  ConsumerState<Field3DPlannerScreen> createState() =>
+      _Field3DPlannerScreenState();
 }
 
 class _Field3DPlannerScreenState extends ConsumerState<Field3DPlannerScreen> {
@@ -35,7 +36,8 @@ class _Field3DPlannerScreenState extends ConsumerState<Field3DPlannerScreen> {
   @override
   void initState() {
     super.initState();
-    if (widget.existingField != null && widget.existingField!['polygon'] != null) {
+    if (widget.existingField != null &&
+        widget.existingField!['polygon'] != null) {
       _points = (widget.existingField!['polygon'] as List)
           .map((e) => LatLng(e['lat'], e['lng']))
           .toList();
@@ -51,10 +53,10 @@ class _Field3DPlannerScreenState extends ConsumerState<Field3DPlannerScreen> {
   }
 
   void _calculateArea() {
-    final toolkitPts = _points
-        .map((p) => toolkit.LatLng(p.latitude, p.longitude))
-        .toList();
-    _calculatedAreaSqm = toolkit.SphericalUtil.computeArea(toolkitPts).toDouble();
+    final toolkitPts =
+        _points.map((p) => toolkit.LatLng(p.latitude, p.longitude)).toList();
+    _calculatedAreaSqm =
+        toolkit.SphericalUtil.computeArea(toolkitPts).toDouble();
     setState(() {});
   }
 
@@ -127,17 +129,20 @@ class _Field3DPlannerScreenState extends ConsumerState<Field3DPlannerScreen> {
                       color: Colors.white.withValues(alpha: 0.18),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(Icons.save_alt_rounded, color: Colors.white),
+                    child:
+                        const Icon(Icons.save_alt_rounded, color: Colors.white),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Ekim Alanını Kaydet', style: AppText.h3Dark(context)),
+                        Text('Ekim Alanını Kaydet',
+                            style: AppText.h3Dark(context)),
                         Text(
                           '${dekar.toStringAsFixed(1)} dekarlık alan oluşturulacak',
-                          style: AppText.bodyDark(context).copyWith(fontSize: 13),
+                          style:
+                              AppText.bodyDark(context).copyWith(fontSize: 13),
                         ),
                       ],
                     ),
@@ -150,7 +155,8 @@ class _Field3DPlannerScreenState extends ConsumerState<Field3DPlannerScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('Tarla Adı',
-                        style: AppText.label(context).copyWith(color: AppColors.emeraldDark)),
+                        style: AppText.label(context)
+                            .copyWith(color: AppColors.emeraldDark)),
                     const SizedBox(height: 8),
                     TextField(
                       onChanged: (v) => name = v,
@@ -159,7 +165,8 @@ class _Field3DPlannerScreenState extends ConsumerState<Field3DPlannerScreen> {
                       cursorColor: AppColors.emerald,
                       decoration: InputDecoration(
                         hintText: 'Örn: Kuzey Tarlası',
-                        prefixIcon: const Icon(Icons.landscape_outlined, color: AppColors.emeraldDark),
+                        prefixIcon: const Icon(Icons.landscape_outlined,
+                            color: AppColors.emeraldDark),
                         filled: true,
                         fillColor: AppColors.surface,
                         border: OutlineInputBorder(
@@ -172,7 +179,8 @@ class _Field3DPlannerScreenState extends ConsumerState<Field3DPlannerScreen> {
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: AppRadius.sm,
-                          borderSide: const BorderSide(color: AppColors.emerald, width: 2),
+                          borderSide: const BorderSide(
+                              color: AppColors.emerald, width: 2),
                         ),
                       ),
                     ),
@@ -184,12 +192,14 @@ class _Field3DPlannerScreenState extends ConsumerState<Field3DPlannerScreen> {
                         borderRadius: AppRadius.sm,
                       ),
                       child: Row(children: [
-                        const Icon(Icons.info_outline, color: AppColors.emeraldDark, size: 16),
+                        const Icon(Icons.info_outline,
+                            color: AppColors.emeraldDark, size: 16),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             'Bu ad, tarla listesinde ve raporlarda görünecektir.',
-                            style: AppText.xs(context).copyWith(color: AppColors.emeraldDark),
+                            style: AppText.xs(context)
+                                .copyWith(color: AppColors.emeraldDark),
                           ),
                         ),
                       ]),
@@ -207,11 +217,13 @@ class _Field3DPlannerScreenState extends ConsumerState<Field3DPlannerScreen> {
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           side: const BorderSide(color: AppColors.border),
-                          shape: const RoundedRectangleBorder(borderRadius: AppRadius.sm),
+                          shape: const RoundedRectangleBorder(
+                              borderRadius: AppRadius.sm),
                           foregroundColor: AppColors.textSecondary,
                         ),
                         child: Text('İptal',
-                            style: AppText.bodyMd(context).copyWith(color: AppColors.textSecondary)),
+                            style: AppText.bodyMd(context)
+                                .copyWith(color: AppColors.textSecondary)),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -222,17 +234,26 @@ class _Field3DPlannerScreenState extends ConsumerState<Field3DPlannerScreen> {
                           if (name.trim().isEmpty) return;
                           final data = {
                             'id': widget.existingField?['id'],
-                            'name': '${name.trim()} (${dekar.toStringAsFixed(1)} da)',
-                            'date': DateFormat('dd.MM.yyyy').format(DateTime.now()),
+                            'name':
+                                '${name.trim()} (${dekar.toStringAsFixed(1)} da)',
+                            'date':
+                                DateFormat('dd.MM.yyyy').format(DateTime.now()),
                             'latitude': centerLat,
                             'longitude': centerLng,
                             'area_dekar': dekar,
                             'area_sqm': _calculatedAreaSqm,
-                            'polygon': _points.map((p) => {'lat': p.latitude, 'lng': p.longitude}).toList(),
-                            'planted_crops': widget.existingField?['planted_crops'] ?? const [],
+                            'polygon': _points
+                                .map((p) =>
+                                    {'lat': p.latitude, 'lng': p.longitude})
+                                .toList(),
+                            'planted_crops':
+                                widget.existingField?['planted_crops'] ??
+                                    const [],
                           };
 
-                          await ref.read(localDataRepositoryProvider).upsertFieldFromLegacyMap(data);
+                          await ref
+                              .read(localDataRepositoryProvider)
+                              .upsertFieldFromLegacyMap(data);
 
                           if (!ctx.mounted) return;
                           Navigator.pop(ctx);
@@ -245,15 +266,18 @@ class _Field3DPlannerScreenState extends ConsumerState<Field3DPlannerScreen> {
                             type: ToastType.success,
                           );
                         },
-                        icon: const Icon(Icons.check_rounded, color: Colors.white),
+                        icon: const Icon(Icons.check_rounded,
+                            color: Colors.white),
                         label: Text('Kaydet',
-                            style: AppText.bodyMd(context).copyWith(color: Colors.white)),
+                            style: AppText.bodyMd(context)
+                                .copyWith(color: Colors.white)),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.emerald,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           elevation: 0,
-                          shape: const RoundedRectangleBorder(borderRadius: AppRadius.sm),
+                          shape: const RoundedRectangleBorder(
+                              borderRadius: AppRadius.sm),
                         ),
                       ),
                     ),
@@ -299,15 +323,20 @@ class _Field3DPlannerScreenState extends ConsumerState<Field3DPlannerScreen> {
     if (_points.length < 3) return [];
     // Calculate centroid
     double clat = 0, clng = 0;
-    for (var p in _points) { clat += p.latitude; clng += p.longitude; }
+    for (var p in _points) {
+      clat += p.latitude;
+      clng += p.longitude;
+    }
     clat /= _points.length;
     clng /= _points.length;
-    
+
     // Scale towards center by 5%
-    return _points.map((p) => LatLng(
-      p.latitude + (clat - p.latitude) * 0.05,
-      p.longitude + (clng - p.longitude) * 0.05,
-    )).toList();
+    return _points
+        .map((p) => LatLng(
+              p.latitude + (clat - p.latitude) * 0.05,
+              p.longitude + (clng - p.longitude) * 0.05,
+            ))
+        .toList();
   }
 
   @override
@@ -327,7 +356,8 @@ class _Field3DPlannerScreenState extends ConsumerState<Field3DPlannerScreen> {
         title: Text('3D Tarla Yerleşimi', style: AppText.h3Dark(context)),
         actions: [
           IconButton(icon: const Icon(Icons.undo), onPressed: _undoLastPoint),
-          IconButton(icon: const Icon(Icons.cleaning_services), onPressed: _clearMap),
+          IconButton(
+              icon: const Icon(Icons.cleaning_services), onPressed: _clearMap),
         ],
       ),
       body: Stack(
@@ -342,7 +372,8 @@ class _Field3DPlannerScreenState extends ConsumerState<Field3DPlannerScreen> {
             ),
             children: [
               TileLayer(
-                urlTemplate: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+                urlTemplate:
+                    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
                 userAgentPackageName: 'com.example.feng_498',
                 maxZoom: 21,
               ),
@@ -351,20 +382,29 @@ class _Field3DPlannerScreenState extends ConsumerState<Field3DPlannerScreen> {
               if (_points.isNotEmpty)
                 PolylineLayer<Object>(polylines: [
                   Polyline(
-                    points: _points.length >= 3 ? [..._points, _points.first] : [..._points],
+                    points: _points.length >= 3
+                        ? [..._points, _points.first]
+                        : [..._points],
                     color: Colors.white,
                     strokeWidth: 2.0,
                   ),
                 ]),
-              MarkerLayer(markers: _points.map((p) => Marker(
-                point: p,
-                width: 12,
-                height: 12,
-                child: Container(decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle, boxShadow: AppShadows.md)),
-              )).toList()),
+              MarkerLayer(
+                  markers: _points
+                      .map((p) => Marker(
+                            point: p,
+                            width: 12,
+                            height: 12,
+                            child: Container(
+                                decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    shape: BoxShape.circle,
+                                    boxShadow: AppShadows.md)),
+                          ))
+                      .toList()),
             ],
           ),
-          
+
           // BOTTOM GLASS PANELS (Stats & Save)
           Positioned(
             bottom: 30,
@@ -379,9 +419,12 @@ class _Field3DPlannerScreenState extends ConsumerState<Field3DPlannerScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
-                        _buildStatBox('Alan', dekar.toStringAsFixed(2), 'Dekar'),
-                        Container(width: 1, height: 40, color: AppColors.border),
-                        _buildStatBox('Köşe', _points.length.toString(), 'Nokta'),
+                        _buildStatBox(
+                            'Alan', dekar.toStringAsFixed(2), 'Dekar'),
+                        Container(
+                            width: 1, height: 40, color: AppColors.border),
+                        _buildStatBox(
+                            'Köşe', _points.length.toString(), 'Nokta'),
                       ],
                     ),
                   ),
@@ -393,7 +436,9 @@ class _Field3DPlannerScreenState extends ConsumerState<Field3DPlannerScreen> {
                     onPressed: _points.length >= 3 ? _saveField : null,
                     icon: const Icon(Icons.check_circle_outline),
                     label: Text(
-                      _points.length >= 3 ? 'EKİM PLANINI KAYDET' : 'KÖŞELERİ İŞARETLEYİN',
+                      _points.length >= 3
+                          ? 'EKİM PLANINI KAYDET'
+                          : 'KÖŞELERİ İŞARETLEYİN',
                       style: const TextStyle(letterSpacing: 1.2),
                     ),
                     style: ElevatedButton.styleFrom(
@@ -414,10 +459,20 @@ class _Field3DPlannerScreenState extends ConsumerState<Field3DPlannerScreen> {
   Widget _buildStatBox(String label, String value, String unit) {
     return Column(
       children: [
-        Text(label, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+        Text(label,
+            style:
+                const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
         const SizedBox(height: 4),
-        Text(value, style: TextStyle(color: AppColors.textPrimary, fontSize: 20, fontWeight: FontWeight.bold)),
-        Text(unit, style: const TextStyle(color: AppColors.emerald, fontSize: 11, fontWeight: FontWeight.w600)),
+        Text(value,
+            style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 20,
+                fontWeight: FontWeight.bold)),
+        Text(unit,
+            style: const TextStyle(
+                color: AppColors.emerald,
+                fontSize: 11,
+                fontWeight: FontWeight.w600)),
       ],
     );
   }
