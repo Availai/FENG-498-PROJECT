@@ -924,25 +924,24 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
 
   void _showPlantPicker() async {
     final env = _envForSuitability();
-    final repo = TurkishCropsRepository.instance;
-    await repo.ensureReady();
     final month = DateTime.now().month;
 
-    final scored = repo.search(query: '', limit: 500).map((tc) {
-      final result = tc.scoreFor(
-        temperature: env.temp,
-        soilPh: env.ph,
-        weeklyRain: env.annualRain / 52.0,
-        month: month,
-      );
-      return {
-        'plant': _turkishCropToAgriPlant(tc),
-        'tcrop': tc,
-        'score': result.score,
-        'reasons': result.reasons,
-      };
-    }).toList()
-      ..sort((a, b) => (b['score'] as double).compareTo(a['score'] as double));
+    // Ağır skorlama isolate'da; UI jank olmadan döner.
+    final ranked = await ref.read(cropScoringServiceProvider).rankForEnv(
+          temperature: env.temp,
+          soilPh: env.ph,
+          weeklyRain: env.annualRain / 52.0,
+          month: month,
+        );
+
+    final scored = ranked
+        .map((r) => {
+              'plant': _turkishCropToAgriPlant(r.crop),
+              'tcrop': r.crop,
+              'score': r.score,
+              'reasons': r.reasons,
+            })
+        .toList();
 
     if (!mounted) return;
     showModalBottomSheet(

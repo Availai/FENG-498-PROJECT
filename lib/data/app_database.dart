@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
+import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
@@ -141,13 +142,20 @@ class AppDatabase extends _$AppDatabase {
           await m.createAll();
         },
         onUpgrade: (m, from, to) async {
-          if (from < 2) {
-            await m.addColumn(fieldCrops, fieldCrops.zonePolygonJson);
-          }
-          if (from < 3) {
-            // v3: Fields tablosuna farmerUid TEXT nullable sütun ekle
-            await customStatement(
-                'ALTER TABLE fields ADD COLUMN farmer_uid TEXT;');
+          // Migration hatası app'i fatal çökertmesin — log + sessiz geçiş.
+          // Tek bir sütun eklenemezse, eksik veri ile devam etmek beyaz
+          // ekranda donmaktan iyi; sonraki sürümde yeniden denenebilir.
+          try {
+            if (from < 2) {
+              await m.addColumn(fieldCrops, fieldCrops.zonePolygonJson);
+            }
+            if (from < 3) {
+              // v3: Fields tablosuna farmerUid TEXT nullable sütun ekle
+              await customStatement(
+                  'ALTER TABLE fields ADD COLUMN farmer_uid TEXT;');
+            }
+          } catch (e, st) {
+            debugPrint('Drift migration $from→$to hata: $e\n$st');
           }
         },
       );

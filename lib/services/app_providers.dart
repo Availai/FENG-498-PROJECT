@@ -5,6 +5,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import '../data/app_database.dart';
 import '../data/turkish_crops_repository.dart';
+import 'crop_scoring_service.dart';
 import 'local_data_repository.dart';
 import 'repositories/calendar_repository.dart';
 import 'repositories/field_repository.dart';
@@ -104,5 +105,12 @@ final turkishCropsRepositoryProvider = Provider<TurkishCropsRepository>((ref) {
 /// Widget'lar doğrudan http.get kullanmamalı; bu servisi çağırmalı.
 final weatherSoilServiceProvider = Provider<WeatherSoilService>((ref) {
   return const WeatherSoilService();
+});
+
+/// 292 bitki skorlama döngüsünü background isolate'a taşır.
+/// Widget'lar `TurkishCrop.scoreFor`'u döngüde çağırmak yerine bu servisi
+/// kullanmalı — UI thread frame drop yaşamaz.
+final cropScoringServiceProvider = Provider<CropScoringService>((ref) {
+  return CropScoringService(ref.watch(turkishCropsRepositoryProvider));
 });
 

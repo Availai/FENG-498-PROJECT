@@ -31,32 +31,36 @@ class LocalDataRepository {
 
     if (!alreadyMigratedGlobally) {
       // İlk Drift migrasyonu — Hive user_crops'taki pre-existing veriyi
-      // mevcut kullanıcıya atfederek Drift'e aktar.
+      // mevcut kullanıcıya atfederek Drift'e aktar. Tüm upsert'leri tek bir
+      // Drift transaction'ına sararak N×fsync yerine tek commit yapıyoruz;
+      // 50+ tarlada fark edilir hızlanma.
       if (_legacyFieldsBox.isNotEmpty) {
-        for (int i = 0; i < _legacyFieldsBox.length; i++) {
-          final raw = _legacyFieldsBox.getAt(i);
-          if (raw is! Map) continue;
-          final legacy = Map<String, dynamic>.from(raw);
-          final fieldId = await upsertFieldFromLegacyMap(
-            legacy,
-            enqueueSync: false,
-            mirrorLegacy: false,
-          );
-
-          final planted = legacy['planted_crops'];
-          if (planted is List) {
-            final crops = planted
-                .whereType<Map>()
-                .map((item) => Map<String, dynamic>.from(item))
-                .toList();
-            await replaceFieldCrops(
-              fieldId: fieldId,
-              crops: crops,
+        await _db.transaction(() async {
+          for (int i = 0; i < _legacyFieldsBox.length; i++) {
+            final raw = _legacyFieldsBox.getAt(i);
+            if (raw is! Map) continue;
+            final legacy = Map<String, dynamic>.from(raw);
+            final fieldId = await upsertFieldFromLegacyMap(
+              legacy,
               enqueueSync: false,
               mirrorLegacy: false,
             );
+
+            final planted = legacy['planted_crops'];
+            if (planted is List) {
+              final crops = planted
+                  .whereType<Map>()
+                  .map((item) => Map<String, dynamic>.from(item))
+                  .toList();
+              await replaceFieldCrops(
+                fieldId: fieldId,
+                crops: crops,
+                enqueueSync: false,
+                mirrorLegacy: false,
+              );
+            }
           }
-        }
+        });
       }
       await _settingsBox.put(globalMigrationKey, true);
     }

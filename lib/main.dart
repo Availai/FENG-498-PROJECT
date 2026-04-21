@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -13,63 +15,111 @@ import 'services/offline_encyclopedia.dart';
 import 'services/app_providers.dart';
 import 'services/background_sync_service.dart';
 import 'theme/app_theme.dart';
+import 'widgets/floating_toast.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/intl.dart';
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await initializeDateFormatting('tr_TR', null);
-  await initializeDateFormatting('en_US', null);
+void main() {
+  // Tüm async hataları tek yerde yakala — startup'ta bir future patlasa bile
+  // app donmasın. debugPrint log'a düşsün; kritik olanlar _BootstrapErrorApp
+  // üzerinden kullanıcıya gösterilir.
+  runZonedGuarded<Future<void>>(() async {
+    WidgetsFlutterBinding.ensureInitialized();
+
+    try {
+      final database = await _bootstrap();
+
+      // ErrorWidget yerine sessiz placeholder — tek widget hatası app'i
+      // kırmızı ekrana düşürmesin.
+      ErrorWidget.builder = (details) {
+        debugPrint('Widget build hatası: ${details.exception}');
+        return const SizedBox.shrink();
+      };
+
+      runApp(
+        ProviderScope(
+          overrides: [
+            appDatabaseProvider.overrideWithValue(database),
+          ],
+          child: const SmartAgriApp(),
+        ),
+      );
+    } catch (e, st) {
+      debugPrint('Bootstrap fatal: $e\n$st');
+      runApp(_BootstrapErrorApp(error: e));
+    }
+  }, (error, stack) {
+    // Zone içinden sızan yakalanmamış hatalar sadece loglanır.
+    debugPrint('Zoned uncaught: $error\n$stack');
+  });
+}
+
+/// Kritik init'leri paralel yapar; non-kritikleri ilk frame sonrasına erteler.
+Future<AppDatabase> _bootstrap() async {
+  // 1) Lokal tarih formatlama — eş zamanlı başlatılabilir.
+  final localeSetup = Future.wait([
+    initializeDateFormatting('tr_TR', null),
+    initializeDateFormatting('en_US', null),
+  ]);
+
+  // 2) Paralel: Firebase + dotenv + Hive init + tarih — hiçbiri diğerine bağlı
+  //    değil. `.env` yoksa sessiz yut; app tema/placeholder key'lerle çalışır.
+  await Future.wait([
+    Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform),
+    dotenv.load(fileName: '.env').catchError((e) {
+      debugPrint('.env yüklenemedi: $e');
+    }),
+    Hive.initFlutter(),
+    localeSetup,
+  ]);
+
   Intl.defaultLocale = 'tr_TR';
 
-  // 1. Firebase
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  // 3) Tüm Hive box'ları paralel aç — tek tek sıralamak 200-400ms ekliyordu.
+  const boxNames = <String>[
+    'agri_history',
+    'user_crops',
+    'recognized_plants',
+    'plant_cache',
+    'fieldsBox',
+    'settingsBox',
+    'sim_results_cache',
+    'sensor_data',
+    'cost_ledger',
+    'crop_history',
+    'fuel_cache',
+  ];
+  await Future.wait(boxNames.map((name) => Hive.openBox(name)));
 
-  // 2. Env vars
-  await dotenv.load(fileName: ".env");
-
-  // 3. Hive local DB
-  await Hive.initFlutter();
-  await Hive.openBox('agri_history');
-  await Hive.openBox('user_crops');
-  await Hive.openBox('recognized_plants');
-  await Hive.openBox('plant_cache'); // ortak bitki bilgi veritabanı
-  await Hive.openBox('fieldsBox');
-  await Hive.openBox('settingsBox');
-  await Hive.openBox('sim_results_cache');
-  await Hive.openBox('sensor_data');
-  await Hive.openBox('cost_ledger');     // ÇKS masraf defteri
-  await Hive.openBox('crop_history');    // münavebe geçmişi (field_id → [ürün])
-  await Hive.openBox('fuel_cache');      // EPDK mazot/benzin fiyat cache
-
-
-  // 4. Push notification service
-  await NotificationService.initialize();
-
-  // 5. Offline encyclopedia — pre-seed plant_cache with static Turkish crop data
-  OfflineEncyclopedia.preSeed(); // fire-and-forget; doesn't block startup
-
+  // 4) Drift — LazyDatabase olduğu için bu constructor I/O tetiklemez; ilk
+  //    query'de açılır. Bootstrap kritik yoluna sokma.
   final database = AppDatabase();
 
-  // 6. Background periodic tasks (Android'de aktif, diğer platformlarda no-op)
-  await BackgroundSyncService.initialize();
+  // 5) Non-kritik servisler ilk frame'den sonra yüklensin — push notification
+  //    channel, WorkManager kaydı ve encyclopedia seed app'in interaktif
+  //    olmasını bekletmez.
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    Future(() async {
+      try {
+        await NotificationService.initialize();
+      } catch (e) {
+        debugPrint('NotificationService init hata: $e');
+      }
+      try {
+        await BackgroundSyncService.initialize();
+      } catch (e) {
+        debugPrint('BackgroundSyncService init hata: $e');
+      }
+      try {
+        OfflineEncyclopedia.preSeed();
+      } catch (e) {
+        debugPrint('OfflineEncyclopedia preSeed hata: $e');
+      }
+    });
+  });
 
-  // Widget build hatası olursa varsayılan kırmızı ErrorWidget yerine
-  // sessiz bir placeholder göster — kullanıcıyı korkutmaz, tek bir child'da
-  // kalır ve uygulamanın geri kalanını etkilemez.
-  ErrorWidget.builder = (FlutterErrorDetails details) {
-    return const SizedBox.shrink();
-  };
-
-  runApp(
-    ProviderScope(
-      overrides: [
-        appDatabaseProvider.overrideWithValue(database),
-      ],
-      child: const SmartAgriApp(),
-    ),
-  );
+  return database;
 }
 
 class SmartAgriApp extends StatelessWidget {
@@ -91,8 +141,6 @@ class SmartAgriApp extends StatelessWidget {
         Locale('en', 'US'),
       ],
       theme: buildAppTheme(),
-      // Uygulamayı tüm özellikleriyle (navigasyon menüsüyle) başlatmak için
-      // giriş kapısına geri dönüyoruz.
       home: const _AuthGate(),
     );
   }
@@ -109,6 +157,35 @@ class _AuthGate extends ConsumerStatefulWidget {
 class _AuthGateState extends ConsumerState<_AuthGate> {
   String? _lastBootstrappedUid;
 
+  /// Auth sonrası legacy Hive→Drift geçişini arka planda yürütür. UI
+  /// MainNavigation'ı hemen açar; migrasyon bitince `fieldMapsProvider`
+  /// invalidate edilir, dashboard kartları kendiliğinden tazelenir.
+  void _runPostAuthBootstrap(String uid) {
+    if (_lastBootstrappedUid == uid) return;
+    _lastBootstrappedUid = uid;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final repo = ref.read(localDataRepositoryProvider);
+      Future(() async {
+        try {
+          await repo.bootstrapFromLegacyHive();
+          if (!mounted) return;
+          // Drift watch akışını tazele — yeni migrate olan tarlalar görünsün.
+          ref.invalidate(fieldMapsProvider);
+        } catch (e) {
+          debugPrint('bootstrapFromLegacyHive hata: $e');
+          if (mounted) {
+            AppToast.show(
+              context,
+              message: 'Eski veriler aktarılamadı. Uygulama çalışmaya devam ediyor.',
+              type: ToastType.warning,
+            );
+          }
+        }
+      });
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final authStateAsync = ref.watch(authStateChangesProvider);
@@ -123,20 +200,62 @@ class _AuthGateState extends ConsumerState<_AuthGate> {
       error: (_, __) => const AuthScreen(),
       data: (user) {
         if (user != null) {
-          // Kullanıcı ilk kez giriş yaptığında Hive → Drift bootstrap'i tetikle.
-          if (_lastBootstrappedUid != user.uid) {
-            _lastBootstrappedUid = user.uid;
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              ref
-                  .read(localDataRepositoryProvider)
-                  .bootstrapFromLegacyHive()
-                  .ignore();
-            });
-          }
+          _runPostAuthBootstrap(user.uid);
           return const MainNavigationScreen();
         }
         return const AuthScreen();
       },
+    );
+  }
+}
+
+/// Bootstrap hatası (Firebase/Hive/Drift fatal) — kullanıcıya Türkçe mesaj +
+/// yeniden dene butonu. Süreci yeniden çalıştırmak için main()'i tekrar çağırır.
+class _BootstrapErrorApp extends StatelessWidget {
+  const _BootstrapErrorApp({required this.error});
+
+  final Object error;
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        backgroundColor: const Color(0xFF1B5E20),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.error_outline,
+                    color: Colors.white, size: 56),
+                const SizedBox(height: 16),
+                const Text(
+                  'Uygulama başlatılamadı',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Bir hata oluştu: $error',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.white70, fontSize: 13),
+                ),
+                const SizedBox(height: 24),
+                FilledButton.icon(
+                  onPressed: () => main(),
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Yeniden Dene'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
