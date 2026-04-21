@@ -1,21 +1,22 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:hive_flutter/hive_flutter.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/turkish_crops_repository.dart';
+import '../services/app_providers.dart';
 import '../services/rule_engine.dart';
 import '../services/offline_encyclopedia.dart';
 import '../services/weather_soil_service.dart';
 import '../widgets/floating_toast.dart';
 
 /// Seçilen ürünün kayıtlı tarlalara uygunluğunu animasyonlu gösterir.
-class CropFieldMatchScreen extends StatefulWidget {
+class CropFieldMatchScreen extends ConsumerStatefulWidget {
   const CropFieldMatchScreen({super.key});
 
   @override
-  State<CropFieldMatchScreen> createState() => _CropFieldMatchScreenState();
+  ConsumerState<CropFieldMatchScreen> createState() => _CropFieldMatchScreenState();
 }
 
-class _CropFieldMatchScreenState extends State<CropFieldMatchScreen>
+class _CropFieldMatchScreenState extends ConsumerState<CropFieldMatchScreen>
     with TickerProviderStateMixin {
   final _cropController = TextEditingController();
   bool _isLoading = false;
@@ -58,14 +59,8 @@ class _CropFieldMatchScreenState extends State<CropFieldMatchScreen>
   Future<void> _analyze(String cropName) async {
     if (cropName.trim().isEmpty) return;
 
-    final box = Hive.box('user_crops');
-    final fields = <Map<String, dynamic>>[];
-    for (int i = 0; i < box.length; i++) {
-      final f = box.getAt(i);
-      if (f != null && f['latitude'] != null) {
-        fields.add(Map<String, dynamic>.from(f));
-      }
-    }
+    final all = await ref.read(localDataRepositoryProvider).loadFieldMaps();
+    final fields = all.where((f) => f['latitude'] != null).toList();
 
     if (fields.isEmpty) {
       if (mounted) {

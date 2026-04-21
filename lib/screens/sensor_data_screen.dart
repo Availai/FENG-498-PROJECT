@@ -2,27 +2,27 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/intl.dart';
+import '../services/app_providers.dart';
 import '../widgets/floating_toast.dart';
 
-class SensorDataScreen extends StatefulWidget {
+class SensorDataScreen extends ConsumerStatefulWidget {
   const SensorDataScreen({super.key});
 
   @override
-  State<SensorDataScreen> createState() => _SensorDataScreenState();
+  ConsumerState<SensorDataScreen> createState() => _SensorDataScreenState();
 }
 
-class _SensorDataScreenState extends State<SensorDataScreen> {
+class _SensorDataScreenState extends ConsumerState<SensorDataScreen> {
   static const _sensorBoxName = 'sensor_data';
-  static const _fieldBoxName = 'user_crops';
 
   Timer? _timer;
   final _random = math.Random();
   String? _selectedFieldId;
 
   Box get _sensorBox => Hive.box(_sensorBoxName);
-  Box get _fieldBox => Hive.box(_fieldBoxName);
 
   bool get _isStreaming => _timer?.isActive == true;
 
@@ -30,14 +30,6 @@ class _SensorDataScreenState extends State<SensorDataScreen> {
   void dispose() {
     _timer?.cancel();
     super.dispose();
-  }
-
-  List<Map<String, dynamic>> _fields() {
-    return _fieldBox.values
-        .whereType<Map>()
-        .map((e) => Map<String, dynamic>.from(e))
-        .where((item) => item['id'] != null)
-        .toList();
   }
 
   List<Map<String, dynamic>> _sensorRows() {
@@ -95,7 +87,10 @@ class _SensorDataScreenState extends State<SensorDataScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final fields = _fields();
+    final fieldsAsync = ref.watch(fieldMapsProvider);
+    final fields = (fieldsAsync.asData?.value ?? const [])
+        .where((f) => f['id'] != null)
+        .toList();
     if (_selectedFieldId == null && fields.isNotEmpty) {
       _selectedFieldId = fields.first['id']?.toString();
     }

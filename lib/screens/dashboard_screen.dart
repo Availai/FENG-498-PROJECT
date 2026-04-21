@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/intl.dart';
+import '../services/app_providers.dart';
 import '../services/notification_service.dart';
 import '../services/frost_alarm_service.dart';
 import '../services/weather_soil_service.dart';
@@ -14,14 +16,14 @@ import 'farm_journal_screen.dart';
 import 'field_detail_screen.dart';
 import 'sensor_data_screen.dart';
 
-class AgriDashboard extends StatefulWidget {
+class AgriDashboard extends ConsumerStatefulWidget {
   const AgriDashboard({super.key});
 
   @override
-  State<AgriDashboard> createState() => _AgriDashboardState();
+  ConsumerState<AgriDashboard> createState() => _AgriDashboardState();
 }
 
-class _AgriDashboardState extends State<AgriDashboard>
+class _AgriDashboardState extends ConsumerState<AgriDashboard>
     with SingleTickerProviderStateMixin {
   String _temp = '--',
       _humidity = '--',
@@ -191,8 +193,9 @@ class _AgriDashboardState extends State<AgriDashboard>
     }();
   }
 
-  // Hive stats
-  int get _fieldCount => Hive.box('user_crops').length;
+  // Drift / Hive stats
+  int get _fieldCount =>
+      ref.watch(fieldMapsProvider).asData?.value.length ?? 0;
   int get _analysisCount => Hive.box('agri_history').length;
 
   @override
@@ -808,52 +811,42 @@ class _AgriDashboardState extends State<AgriDashboard>
   // ÇOKLU TARLA KARTLARI — Dashboard'da birden fazla tarlanın özeti tek bakışta
   // ───────────────────────────────────────────────────────────────────────────
   Widget _buildMyFieldsSection() {
-    return ValueListenableBuilder<Box>(
-      valueListenable: Hive.box('user_crops').listenable(),
-      builder: (context, box, _) {
-        final fields = <Map<String, dynamic>>[];
-        for (int i = 0; i < box.length; i++) {
-          final raw = box.getAt(i);
-          if (raw is Map) {
-            fields.add(Map<String, dynamic>.from(raw));
-          }
-        }
+    final fieldsAsync = ref.watch(fieldMapsProvider);
+    final fields = fieldsAsync.asData?.value ?? const <Map<String, dynamic>>[];
 
-        if (fields.isEmpty) {
-          return Container(
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: AppRadius.md,
-              border: Border.all(color: AppColors.border),
+    if (fields.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: AppRadius.md,
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.grass_rounded,
+                color: AppColors.emeraldLight, size: 26),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Henüz tarla eklemediniz.\nHaritadan ilk tarlanızı çizerek başlayın.',
+                style: AppText.body(context),
+              ),
             ),
-            child: Row(
-              children: [
-                Icon(Icons.grass_rounded,
-                    color: AppColors.emeraldLight, size: 26),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'Henüz tarla eklemediniz.\nHaritadan ilk tarlanızı çizerek başlayın.',
-                    style: AppText.body(context),
-                  ),
-                ),
-              ],
-            ),
-          );
-        }
+          ],
+        ),
+      );
+    }
 
-        // Yatay kaydırılabilir liste — çiftçi tek bakışta birkaç tarlayı görür.
-        return SizedBox(
-          height: 168,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: fields.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 12),
-            itemBuilder: (_, i) => _buildFieldCard(fields[i]),
-          ),
-        );
-      },
+    // Yatay kaydırılabilir liste — çiftçi tek bakışta birkaç tarlayı görür.
+    return SizedBox(
+      height: 168,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: fields.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 12),
+        itemBuilder: (_, i) => _buildFieldCard(fields[i]),
+      ),
     );
   }
 
