@@ -1,13 +1,19 @@
 import '../data/app_database.dart';
+import 'trusted_clock.dart';
 
 class SyncPushResult {
   const SyncPushResult({
     this.completedIds = const <int>{},
     this.failedById = const <int, String>{},
+    this.staleIds = const <int>{},
   });
 
   final Set<int> completedIds;
   final Map<int, String> failedById;
+
+  /// Stale update — sunucuda daha yeni kayıt var. Retry anlamsız,
+  /// kayıt abandoned yapılır; kullanıcıya pull öner.
+  final Set<int> staleIds;
 }
 
 class SyncRunReport {

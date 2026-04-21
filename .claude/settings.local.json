@@ -3,7 +3,12 @@
     "allow": [
       "Bash(flutter analyze:*)",
       "Bash(wc -l lib/*.dart lib/**/*.dart)",
-      "Bash(dart run:*)"
+      "Bash(dart run:*)",
+      "Bash(grep -r \"http\\\\\\\\.post\\\\|http\\\\\\\\.get\\\\|Dio\\\\|AppDatabase\\\\\\(\" \"C:/FENG 498/feng_498/lib/screens\" --include=\"*.dart\")",
+      "Bash(grep -l \"ConsumerWidget\\\\|ConsumerStatefulWidget\\\\|ref\\\\\\\\.watch\\\\|ref\\\\\\\\.read\" \"C:/FENG 498/feng_498/lib/screens\"/*.dart)",
+      "Bash(git -C \"C:/FENG 498/feng_498\" add lib/services/weather_soil_service.dart lib/services/repositories/history_repository.dart lib/services/app_providers.dart lib/screens/dashboard_screen.dart lib/screens/crop_field_match_screen.dart lib/widgets/ai_analysis_history_tab.dart lib/widgets/quick_environment_history_tab.dart)",
+      "Bash(git -C 'C:/FENG 498/feng_498' commit -m ' *)",
+      "Bash(git -C \"C:/FENG 498/feng_498\" status)"
     ]
   }
 }

@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 
 import '../../data/app_database.dart';
 import '../sync_models.dart';
+import '../trusted_clock.dart';
 
 typedef AuthTokenProvider = Future<String?> Function();
 
@@ -33,7 +34,7 @@ class SyncApiClient {
     final uri = Uri.parse('$_baseUrl/api/sync/push');
     final payload = {
       'items': jobs.map(_jobToWire).toList(),
-      'client_time': DateTime.now().toUtc().toIso8601String(),
+      'client_time': TrustedClock.now().toIso8601String(),
     };
 
     final response = await _httpClient.post(
@@ -64,10 +65,37 @@ class SyncApiClient {
       failedById[id] = entry.value?.toString() ?? 'Bilinmeyen push hatası';
     }
 
+    final staleIds = (decoded['stale_ids'] as List? ?? const [])
+        .whereType<num>()
+        .map((id) => id.toInt())
+        .toSet();
+
     return SyncPushResult(
       completedIds: completedIds,
       failedById: failedById,
+      staleIds: staleIds,
     );
+  }
+
+  /// Sunucu UTC zamanını getirir. Round-trip ölçümü için çağıran taraf
+  /// istek öncesi ve sonrası cihaz zamanını alıp [TrustedClock.applyServerTime]
+  /// ile delta'yı günceller.
+  Future<DateTime?> fetchServerTime() async {
+    final uri = Uri.parse('$_baseUrl/api/sync/time');
+    try {
+      final response = await _httpClient
+          .get(uri)
+          .timeout(const Duration(seconds: 5));
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        return null;
+      }
+      final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+      final raw = decoded['server_time']?.toString();
+      if (raw == null || raw.isEmpty) return null;
+      return DateTime.tryParse(raw)?.toUtc();
+    } catch (_) {
+      return null;
+    }
   }
 
   Map<String, dynamic> _jobToWire(SyncJob job) {

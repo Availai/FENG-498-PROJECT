@@ -106,17 +106,33 @@ async def sync_push(req: SyncPushRequest, authorization: Optional[str] = Header(
     completed_ids: List[int] = []
     failed_by_id: dict[str, str] = {}
 
+    stale_ids: List[int] = []
     for item in req.items:
         accepted = _upsert_sync_record(user_key, item)
         if accepted:
             completed_ids.append(item.id)
         else:
+            # Stale update — istemci sunucu verisini pull etmeli, retry anlamsiz.
             failed_by_id[str(item.id)] = "stale_update"
+            stale_ids.append(item.id)
 
     return {
         "success": True,
         "completed_ids": completed_ids,
         "failed_by_id": failed_by_id,
+        "stale_ids": stale_ids,
+        "server_time": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+@app.get("/api/sync/time", summary="Sunucu UTC zamani (trusted clock)")
+async def sync_time():
+    """
+    Cihaz saati manipulasyonuna karsi istemcinin server-delta hesabi icin
+    UTC zamani doner. Auth gerekmez — sadece zaman okunuyor.
+    """
+    return {
+        "success": True,
         "server_time": datetime.now(timezone.utc).isoformat(),
     }
 
