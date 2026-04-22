@@ -56,6 +56,12 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
 
   final MapController _mapController = MapController();
 
+  // Polygon tıklama algılayıcı — bölge poligonlarına direkt dokunmayı
+  // tespit eder; marker'ların büyük hitbox'ları sebebiyle yanlış bölge
+  // silme hatasını önler.
+  final LayerHitNotifier<Map<String, dynamic>> _zoneHitNotifier =
+      LayerHitNotifier<Map<String, dynamic>>(null);
+
   @override
   void initState() {
     super.initState();
@@ -1377,7 +1383,8 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
     }
 
     // ── Ekili bölge poligonları (zonePolygonJson olanlar) ──
-    final zonePolygons = <Polygon>[];
+    // Tıklanabilir bölge poligonları (her biri hitValue ile crop'a bağlı)
+    final zoneHitPolygons = <Polygon<Map<String, dynamic>>>[];
     final zoneMarkers = <Marker>[];
     // Zone olmayan bitkiler için eski grid markerlar
     final gridCrops = <Map<String, dynamic>>[];
@@ -1388,17 +1395,20 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
 
       if (zonePoly.length >= 3) {
         final color = _cropColor(crop);
-        zonePolygons.add(Polygon(
+        // hitValue ile polygonu direkt crop'a bağlıyoruz — tıklama
+        // marker'lara değil polygonun kendisine düşüyor.
+        zoneHitPolygons.add(Polygon<Map<String, dynamic>>(
           points: zonePoly,
           color: color.withValues(alpha: 0.15),
           borderColor: color,
           borderStrokeWidth: 4.0,
+          hitValue: crop,
         ));
 
-        // Bölgeyi tamamen dolduran marker ağı oluştur — dokunulabilir
+        // Bölgeyi tamamen dolduran marker ağı — SADECE GÖRSEL amaçlı;
+        // onTap verilmez ki polygon layer'in hit test'ini engellemesin.
         final maturity = _computeMaturityPercent(crop);
         final cropName = crop['name']?.toString() ?? '';
-        // Bitkinin gerçek sıra × bitki aralığına göre (cm cinsinden) yerleşim
         final positions = plantPlacementInPolygon(
           polygon: zonePoly,
           cropName: cropName,
@@ -1418,14 +1428,15 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
             point: pos,
             width: 240,
             height: 280,
-            child: AnimatedBuilder(
-              animation: _harvestPulseCtrl,
-              builder: (_, __) => buildCropMarkerWidget(
-                cropName: crop['name']?.toString() ?? '',
-                cropColor: color,
-                maturityPercent: maturity,
-                harvestPulse: _harvestPulseCtrl.value,
-                onTap: () => _onCropZoneTap(crop),
+            child: IgnorePointer(
+              child: AnimatedBuilder(
+                animation: _harvestPulseCtrl,
+                builder: (_, __) => buildCropMarkerWidget(
+                  cropName: crop['name']?.toString() ?? '',
+                  cropColor: color,
+                  maturityPercent: maturity,
+                  harvestPulse: _harvestPulseCtrl.value,
+                ),
               ),
             ),
           ));
@@ -1454,14 +1465,15 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
             point: positions[i],
             width: 240,
             height: 280,
-            child: AnimatedBuilder(
-              animation: _harvestPulseCtrl,
-              builder: (_, __) => buildCropMarkerWidget(
-                cropName: crop['name']?.toString() ?? '',
-                cropColor: _cropColor(crop),
-                maturityPercent: maturity,
-                harvestPulse: _harvestPulseCtrl.value,
-                onTap: () => _onCropZoneTap(crop),
+            child: IgnorePointer(
+              child: AnimatedBuilder(
+                animation: _harvestPulseCtrl,
+                builder: (_, __) => buildCropMarkerWidget(
+                  cropName: crop['name']?.toString() ?? '',
+                  cropColor: _cropColor(crop),
+                  maturityPercent: maturity,
+                  harvestPulse: _harvestPulseCtrl.value,
+                ),
               ),
             ),
           ),
@@ -1595,11 +1607,29 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
                 borderColor: borderColor,
                 borderStrokeWidth: 4.0,
               ),
-              // Ekili bölge poligonları
-              ...zonePolygons,
               // Çizilmekte olan polygon
               ...drawingPolygons,
             ],
+          ),
+        // Ekili bölge poligonları — tıklanabilir katman. Tıklanan polygon,
+        // hitNotifier üzerinden tam olarak o bölgenin crop'unu döndürür.
+        if (zoneHitPolygons.isNotEmpty && !_isZoneDrawingMode)
+          GestureDetector(
+            onTap: () {
+              final hit = _zoneHitNotifier.value;
+              if (hit == null) return;
+              final values = hit.hitValues;
+              if (values.isEmpty) return;
+              _onCropZoneTap(values.first);
+            },
+            child: PolygonLayer<Map<String, dynamic>>(
+              hitNotifier: _zoneHitNotifier,
+              polygons: zoneHitPolygons,
+            ),
+          )
+        else if (zoneHitPolygons.isNotEmpty)
+          PolygonLayer<Map<String, dynamic>>(
+            polygons: zoneHitPolygons,
           ),
         if (markers.isNotEmpty) MarkerLayer(markers: markers),
         if (zoneMarkers.isNotEmpty) MarkerLayer(markers: zoneMarkers),

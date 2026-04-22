@@ -329,10 +329,21 @@ class HelpContent {
       HelpItem(
         icon: Icons.account_balance_wallet_rounded,
         iconColor: Color(0xFF9C27B0),
-        title: 'Cüzdan',
+        title: 'Cüzdan — Masraf Takibi',
         description:
-            'Tarla için yapılan harcamaları ve gelirleri takip edin. '
-            'Gübre, sulama, hasat gibi kalemleri girebilirsiniz.',
+            'Bu tarlaya özel gelir ve masraf defteri. Tohum, gübre, yakıt, işçilik gibi '
+            'harcamaları girdikçe toplam masraf otomatik güncellenir. '
+            'Girdiğiniz her masraf, Tahmini Sezon Sonu Kârı hesabından anında düşülür — '
+            'yani kârınız gerçek harcamalarınıza göre anlık hesaplanır.',
+      ),
+      HelpItem(
+        icon: Icons.touch_app_rounded,
+        iconColor: Color(0xFFD32F2F),
+        title: 'Bölge Silme (Dokun-Sil)',
+        description:
+            'Haritada birden fazla ekim bölgeniz varsa, silmek istediğiniz bölgenin üzerine '
+            'doğrudan dokunun — sadece o bölge seçilir ve silme penceresi açılır. '
+            'Yanlışlıkla başka bölgeyi silmezsiniz.',
       ),
       HelpItem(
         icon: Icons.checklist_rtl_rounded,
@@ -349,6 +360,117 @@ class HelpContent {
         description:
             'Sol taraftaki (+) ve (−) düğmeleriyle haritayı yakınlaştırıp uzaklaştırabilirsiniz. '
             'Odak simgesine basarak haritanın tarla poligonuna otomatik sığmasını sağlayın.',
+      ),
+    ],
+  );
+
+  // 3D Tarla Planlayıcı — yeni alan çizme + kâr tahmini ekranı
+  static const HelpContent fieldPlanner = HelpContent(
+    screenTitle: '3D Tarla Yerleşimi',
+    screenSubtitle: 'Yeni tarla çizin, haritayı kontrol edin ve kâr tahmininizi anlık görün.',
+    headerIcon: Icons.view_in_ar_rounded,
+    headerColor: Color(0xFF1B5E20),
+    items: [
+      HelpItem(
+        icon: Icons.add_location_alt_rounded,
+        iconColor: Color(0xFF43A047),
+        title: 'Köşe Noktası Ekleme',
+        description:
+            'Haritaya dokunarak tarlanızın köşelerini sırayla işaretleyin. '
+            'En az 3 nokta gereklidir; daha fazla köşe girerek gerçek şekli daha iyi yakalayabilirsiniz.',
+      ),
+      HelpItem(
+        icon: Icons.undo_rounded,
+        iconColor: Color(0xFFE67E22),
+        title: 'Geri Al ve Temizle',
+        description:
+            'Sağ üstteki geri-al düğmesiyle yanlış koyduğunuz son noktayı silebilirsiniz. '
+            'Süpürge simgesi ise tüm çizimi sıfırlar.',
+      ),
+      HelpItem(
+        icon: Icons.zoom_in_rounded,
+        iconColor: Color(0xFF1976D2),
+        title: 'Yakınlaştır / Uzaklaştır',
+        description:
+            'Sağ kenardaki (+) ve (−) düğmeleriyle haritayı büyütüp küçültebilirsiniz. '
+            'Yaşlı gözler için pinch-zoom yerine tek parmakla çalışan güvenli bir yol.',
+      ),
+      HelpItem(
+        icon: Icons.center_focus_strong_rounded,
+        iconColor: Color(0xFF6B7280),
+        title: 'Çizime Odaklan',
+        description:
+            'Haritayı kaydırarak çiziminizi kaybettiyseniz, odak simgesine basarak '
+            'haritayı işaretlediğiniz noktalara otomatik sığdırabilirsiniz.',
+      ),
+      HelpItem(
+        icon: Icons.trending_up_rounded,
+        iconColor: Color(0xFF2E7D32),
+        title: 'Tahmini Sezon Sonu Kârı',
+        description:
+            'Tarla kaydedildikten sonra ekranda görünen kâr kartı, şu formülü kullanır: '
+            '(Tahmini Rekolte × Birim Fiyat) − Toplam Masraf = Net Kâr. '
+            'Yeşil renk kâr, kırmızı renk zarar anlamına gelir.',
+      ),
+      HelpItem(
+        icon: Icons.receipt_long_rounded,
+        iconColor: Color(0xFF9C27B0),
+        title: 'Masraflar Nereden Geliyor?',
+        description:
+            'Toplam masraf artık sabit 1000 ₺ değil — Cüzdan (masraf defteri) ekranından '
+            'bu tarla için girdiğiniz tüm harcamaların toplamıdır. '
+            'Yeni bir masraf eklediğinizde kâr kartı anında güncellenir.',
+      ),
+      HelpItem(
+        icon: Icons.science_rounded,
+        iconColor: Color(0xFFE67E22),
+        title: 'Rekolte Tahmini Nasıl Yapılır?',
+        description:
+            'Tahmini rekolte; bitki türü, dekar, haftalık su, sıcaklık stresi ve gübreleme durumu '
+            'baz alınarak kural tabanlı (makine öğrenmesi içermeyen) formülle hesaplanır. '
+            'Her eksiklik için belirli oranda kayıp uygulanır.',
+      ),
+    ],
+  );
+
+  // Bölge Çizme (tarlaya bitki ekleme) — ikinci harita ekranı
+  static const HelpContent plantZoneDrawing = HelpContent(
+    screenTitle: 'Bitki Bölgesi Çiz',
+    screenSubtitle: 'Seçtiğiniz bitki için tarla içinde ekim bölgesi çizin.',
+    headerIcon: Icons.eco_rounded,
+    headerColor: Color(0xFF2E7D32),
+    items: [
+      HelpItem(
+        icon: Icons.touch_app_rounded,
+        iconColor: Color(0xFF43A047),
+        title: 'Noktaları İşaretleme',
+        description:
+            'Haritada bitkiyi ekmek istediğiniz alanın köşelerini sırayla işaretleyin. '
+            'En az 3 köşe gereklidir; noktalar otomatik olarak birleştirilir.',
+      ),
+      HelpItem(
+        icon: Icons.zoom_in_rounded,
+        iconColor: Color(0xFF1976D2),
+        title: 'Yakınlaştırma Kontrolleri',
+        description:
+            'Sağ kenardaki (+) ve (−) düğmeleriyle haritayı yakınlaştırıp uzaklaştırabilirsiniz. '
+            'Küçük bölgeler için yakın zoom daha hassas çizim sağlar.',
+      ),
+      HelpItem(
+        icon: Icons.center_focus_strong_rounded,
+        iconColor: Color(0xFF6B7280),
+        title: 'Tarlaya Sığdır',
+        description:
+            'Odak simgesine basarak haritayı doğrudan tarla sınırlarınıza göre ortalayabilirsiniz. '
+            'Yolunuzu kaybettiğinizde hızlıca geri dönmek için kullanışlıdır.',
+      ),
+      HelpItem(
+        icon: Icons.check_circle_outline_rounded,
+        iconColor: Color(0xFF2E7D32),
+        title: 'Tamamla',
+        description:
+            'En az 3 nokta işaretledikten sonra "Tamamla" düğmesiyle bölgeyi kaydedin. '
+            'Seçilen bitki o renge boyanarak tarlaya eklenir.',
       ),
     ],
   );
