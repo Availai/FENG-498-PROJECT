@@ -1,8 +1,14 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/intl.dart';
+import 'package:drift/drift.dart' show OrderingTerm;
+import '../data/app_database.dart';
 import '../data/fertilizer_prices.dart';
 import '../services/api/epdk_prices_api.dart';
+import '../services/app_providers.dart';
+import '../services/pdf_export_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/floating_toast.dart';
 import '../widgets/shimmer_loader.dart';
@@ -13,17 +19,17 @@ import '../widgets/shimmer_loader.dart';
 ///  • Dönüm başına DAP, Üre, mazot ve "diğer" masraf girilebilir
 ///  • Her giriş tarla kimliği ile eşleştirilebilir
 ///  • Hive kutusu: 'cost_ledger'
-class CostLedgerScreen extends StatefulWidget {
+class CostLedgerScreen extends ConsumerStatefulWidget {
   final String? fieldId;
   final String? fieldName;
 
   const CostLedgerScreen({super.key, this.fieldId, this.fieldName});
 
   @override
-  State<CostLedgerScreen> createState() => _CostLedgerScreenState();
+  ConsumerState<CostLedgerScreen> createState() => _CostLedgerScreenState();
 }
 
-class _CostLedgerScreenState extends State<CostLedgerScreen> {
+class _CostLedgerScreenState extends ConsumerState<CostLedgerScreen> {
   Box get _box => Hive.box('cost_ledger');
 
   late Future<FuelPrices?> _fuelFuture;
@@ -67,6 +73,13 @@ class _CostLedgerScreenState extends State<CostLedgerScreen> {
         title: Text(widget.fieldName != null
             ? '${widget.fieldName} · Cüzdan'
             : 'ÇKS Cüzdan — Maliyet Defteri'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.file_download_rounded),
+            tooltip: 'Sezon Raporu (PDF)',
+            onPressed: () => _generateSeasonReport(),
+          ),
+        ],
       ),
       body: ValueListenableBuilder<Box>(
         valueListenable: _box.listenable(),
@@ -427,6 +440,133 @@ class _CostLedgerScreenState extends State<CostLedgerScreen> {
     if (result != null) {
       await _box.add(result);
     }
+  }
+
+  Future<void> _generateSeasonReport() async {
+    if (widget.fieldId == null) {
+      AppToast.show(context,
+          message: 'Tarla seçilmediği için rapor oluşturulamaz.',
+          type: ToastType.warning);
+      return;
+    }
+
+    // Firebase Auth'dan kullanıcı bilgisi
+    final firebaseUser = FirebaseAuth.instance.currentUser;
+    final farmerName = firebaseUser?.displayName?.isNotEmpty == true
+        ? firebaseUser!.displayName!
+        : (firebaseUser?.email ?? 'Bilinmeyen Çiftçi');
+    final farmerEmail = firebaseUser?.email;
+
+    // Drift'ten tarla bilgisi
+    final db = ref.read(appDatabaseProvider);
+    Field? field;
+    try {
+      field = await (db.select(db.fields)
+            ..where((f) => f.id.equals(widget.fieldId!)))
+          .getSingleOrNull();
+    } catch (_) {
+      field = null;
+    }
+
+    // Tarladaki ilk ürün (ekim tarihi için)
+    FieldCrop? firstCrop;
+    try {
+      firstCrop = await (db.select(db.fieldCrops)
+            ..where((c) => c.fieldId.equals(widget.fieldId!))
+            ..orderBy([(c) => OrderingTerm.asc(c.createdAt)])
+            ..limit(1))
+          .getSingleOrNull();
+    } catch (_) {
+      firstCrop = null;
+    }
+
+    final expenses = _fieldEntries();
+    final totalCost =
+        expenses.fold<double>(0, (s, e) => s + ((e['total_try'] as num?)?.toDouble() ?? 0));
+
+    // Tarla bilgilerini Drift'ten al, yoksa widget parametresi veya varsayılan
+    final dekar = field?.areaDekar ?? 0.0;
+    final cropName = field?.crop ?? firstCrop?.name ?? 'Belirtilmemiş';
+    final lat = field?.latitude ?? 0.0;
+    final lng = field?.longitude ?? 0.0;
+
+    // Ekim tarihi: ilk FieldCrop'un plantedDate'i veya tarlanın createdAt'i
+    DateTime plantingDate;
+    if (firstCrop?.plantedDate != null) {
+      plantingDate = DateTime.tryParse(firstCrop!.plantedDate!) ??
+          (field?.createdAt ?? DateTime.now());
+    } else {
+      plantingDate = field?.createdAt ?? DateTime.now();
+    }
+
+    // Koordinatlardan şehir tahmini (yaklaşık TR il merkezleri)
+    final city = _cityFromCoords(lat, lng);
+
+    // Takvim aktiviteleri (CalendarEvents tablosundan)
+    final List<Map<String, dynamic>> activities = [];
+    try {
+      final events = await (db.select(db.calendarEvents)
+            ..where((e) => e.fieldId.equals(widget.fieldId!))
+            ..orderBy([(e) => OrderingTerm.asc(e.eventDate)]))
+          .get();
+      for (final ev in events) {
+        activities.add({
+          'date': ev.eventDate.toIso8601String(),
+          'activity_type': ev.eventType,
+          'notes': ev.title,
+        });
+      }
+    } catch (_) {}
+
+    // Basit verim tahmini: dekar * ortalama 300 kg/da
+    final estimatedYieldKg = dekar * 300;
+    final estimatedProfitTl = (estimatedYieldKg * 8.5) - totalCost;
+
+    final reportData = SeasonReportData(
+      fieldName: widget.fieldName ?? field?.name ?? 'Bilinmeyen Tarla',
+      dekar: dekar,
+      cropName: cropName,
+      city: city,
+      latitude: lat,
+      longitude: lng,
+      plantingDate: plantingDate,
+      harvestDate: null,
+      activities: activities,
+      expenses: expenses,
+      estimatedYieldKg: estimatedYieldKg,
+      estimatedProfitTl: estimatedProfitTl,
+      totalCostTl: totalCost,
+      farmerName: farmerName,
+      farmerPhone: null,
+      farmerEmail: farmerEmail,
+    );
+
+    final filePath = await PdfExportService.exportSeasonReport(reportData);
+    if (filePath != null && mounted) {
+      AppToast.show(context,
+          message: 'PDF rapor oluşturuldu ve açıldı!',
+          type: ToastType.success);
+    } else if (mounted) {
+      AppToast.show(context,
+          message: 'PDF oluşturulurken hata oluştu.',
+          type: ToastType.error);
+    }
+  }
+
+  /// Koordinatlara göre yaklaşık Türkiye şehri döndürür
+  String _cityFromCoords(double lat, double lng) {
+    if (lat == 0 && lng == 0) return 'Bilinmiyor';
+    // Basit bounding box kontrolleri (başlıca iller)
+    if (lat >= 40.8 && lat <= 41.2 && lng >= 28.5 && lng <= 29.5) return 'İstanbul';
+    if (lat >= 39.7 && lat <= 40.2 && lng >= 32.5 && lng <= 33.2) return 'Ankara';
+    if (lat >= 38.2 && lat <= 38.6 && lng >= 27.0 && lng <= 27.6) return 'İzmir';
+    if (lat >= 36.8 && lat <= 37.2 && lng >= 35.0 && lng <= 36.0) return 'Adana';
+    if (lat >= 39.9 && lat <= 40.4 && lng >= 36.0 && lng <= 36.8) return 'Amasya';
+    if (lat >= 39.5 && lat <= 40.0 && lng >= 35.8 && lng <= 36.5) return 'Tokat';
+    if (lat >= 40.2 && lat <= 40.7 && lng >= 36.3 && lng <= 37.0) return 'Samsun';
+    if (lat >= 37.5 && lat <= 38.1 && lng >= 30.5 && lng <= 31.2) return 'Isparta';
+    if (lat >= 37.7 && lat <= 38.2 && lng >= 32.4 && lng <= 33.0) return 'Konya';
+    return 'Türkiye';
   }
 }
 

@@ -47,45 +47,66 @@ class EpdkPricesApi {
     try {
       final r = await http
           .get(Uri.parse(_endpoint))
-          .timeout(const Duration(seconds: 8)); // 10s → 8s — daha hızlı fallback
+          .timeout(const Duration(seconds: 8));
       if (r.statusCode != 200) return _readCache();
 
-      final j = jsonDecode(r.body);
-      final list = (j is Map ? j['data'] : null) ?? j;
+      final j = jsonDecode(r.body) as Map?;
+      if (j == null) return _readCache();
+
+      // API formatı: {"data": {"62,73": {...fiyatlar...}, ...}}
+      final dataMap = (j['data'] as Map?)?.cast<String, dynamic>();
+      if (dataMap == null || dataMap.isEmpty) return _readCache();
+
       double? diesel, gasoline;
 
-      if (list is List) {
-        for (final item in list) {
-          if (item is! Map) continue;
-          final name = (item['urun'] ?? item['urunTuru'] ?? '')
-              .toString()
-              .toLowerCase();
-          final priceStr =
-              (item['fiyat'] ?? item['price'] ?? '').toString().replaceAll(',', '.');
-          final price = double.tryParse(priceStr);
-          if (price == null) continue;
-          if (name.contains('motorin') || name.contains('mazot') ||
-              name.contains('diesel')) {
-            diesel ??= price;
-          } else if (name.contains('benzin') || name.contains('gasoline')) {
-            gasoline ??= price;
+      // Her bölge için parse et (hepsi aynı fiyat olmalı)
+      for (final regionData in dataMap.values) {
+        if (regionData is! Map) continue;
+        final region = regionData.cast<String, dynamic>();
+
+        // Benzin: "Kursunsuz_95..."
+        final benzinKey = region.keys
+            .cast<String>()
+            .firstWhere((k) => k.contains('Kursunsuz_95'), orElse: () => '');
+        if (benzinKey.isNotEmpty) {
+          final benzinStr = region[benzinKey]?.toString().replaceAll(',', '.');
+          if (benzinStr != null) {
+            gasoline ??= double.tryParse(benzinStr);
           }
         }
+
+        // Mazot: "Motorin(Eurodiesel)" (Excellium değil)
+        final mazotKey = region.keys
+            .cast<String>()
+            .firstWhere((k) =>
+                k.contains('Motorin(Eurodiesel)') &&
+                !k.contains('Excellium'), orElse: () => '');
+        if (mazotKey.isNotEmpty) {
+          final mazotStr = region[mazotKey]?.toString().replaceAll(',', '.');
+          if (mazotStr != null) {
+            diesel ??= double.tryParse(mazotStr);
+          }
+        }
+
+        // Bulduysak döngüyü kır
+        if (diesel != null && gasoline != null) break;
       }
 
-      // Eğer fiyat parslenemezse → cache yaz ama null dönme
-      if (diesel == null && gasoline == null) return _readCache();
+      // Başarılı parse ise cache'e yaz
+      if (diesel != null && gasoline != null) {
+        final fresh = FuelPrices(
+          dieselTry: diesel,
+          gasolineTry: gasoline,
+          fetchedAt: DateTime.now(),
+          city: _city,
+        );
+        await _cache.put('latest', fresh.toMap());
+        return fresh;
+      }
 
-      final fresh = FuelPrices(
-        dieselTry: diesel ?? 0,
-        gasolineTry: gasoline ?? 0,
-        fetchedAt: DateTime.now(),
-        city: _city,
-      );
-      await _cache.put('latest', fresh.toMap());
-      return fresh;
+      // Parse başarısız → cache'i deneyelim
+      return _readCache();
     } catch (_) {
-      // Timeout veya diğer hata → cache'i deneyelim
       return _readCache();
     }
   }
@@ -97,10 +118,10 @@ class EpdkPricesApi {
   }
 
   /// Fallback — internetsiz durumda makul fiyatlar döndür
-  /// (son hafta pazar günü ortalama değerleri)
+  /// (Nisan 2026 ortalama değerleri)
   static FuelPrices fallbackPrices() => FuelPrices(
-        dieselTry: 28.5,  // Yaygın ortalama değer
-        gasolineTry: 31.2,
+        dieselTry: 32.5,  // Güncel ortalama mazot
+        gasolineTry: 35.8, // Güncel ortalama benzin
         fetchedAt: DateTime.now(),
         city: _city,
         fromCache: false,
