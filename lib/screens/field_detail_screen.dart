@@ -1412,7 +1412,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
         final positions = plantPlacementInPolygon(
           polygon: zonePoly,
           cropName: cropName,
-          maxCount: 120,
+          maxCount: 50,
         );
         if (positions.isEmpty) {
           double cLat = 0, cLng = 0;
@@ -1453,7 +1453,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
       final positions = plantPlacementInPolygon(
         polygon: polygon,
         cropName: firstName,
-        maxCount: 100,
+        maxCount: 40,
       );
       positions.sort((a, b) => b.latitude.compareTo(a.latitude));
 

@@ -1,6 +1,39 @@
+import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
+
+/// seed_plants.json'daki 292 bitkiden her biri için Wikipedia'dan indirilen
+/// fotoğrafları (Türkçe isim → dosya adı) taşır. `assets/data/crop_images.json`
+/// içinde üretilir (backend/data_pipeline/fetch_crop_images.js).
+class CropImageMap {
+  static Map<String, String> _map = {};
+  static Map<String, String> _mapLower = {};
+  static bool _loaded = false;
+
+  static Future<void> load() async {
+    if (_loaded) return;
+    try {
+      final raw = await rootBundle.loadString('assets/data/crop_images.json');
+      final decoded = jsonDecode(raw);
+      if (decoded is Map) {
+        _map = decoded.map((k, v) => MapEntry(k.toString(), v.toString()));
+        _mapLower = {
+          for (final e in _map.entries) e.key.toLowerCase(): e.value,
+        };
+      }
+    } catch (_) {
+      // Map yoksa sessiz kal — fallback string-match devrede
+    }
+    _loaded = true;
+  }
+
+  static String? lookup(String cropName) {
+    final hit = _map[cropName] ?? _mapLower[cropName.toLowerCase()];
+    return hit == null ? null : 'assets/crops/$hit';
+  }
+}
 
 enum GrowthPhase { seedling, growing, mature, harvest }
 
@@ -25,24 +58,41 @@ double _getScaleMultiplier(GrowthPhase phase) {
 }
 
 String _getAssetPath(String cropName) {
+  // 1. Önce indirilen 292-bitki eşlemesinde ara (Türkçe isim tam eşleşme)
+  final mapped = CropImageMap.lookup(cropName);
+  if (mapped != null) return mapped;
+
+  // 2. Fallback: substring eşleştirme — Türkçe dosya adlarıyla
   final name = cropName.toLowerCase();
-  if (name.contains('buğday') || name.contains('arpa') || name.contains('yulaf')) return 'assets/crops/wheat.png';
-  if (name.contains('mısır')) return 'assets/crops/corn.png';
-  if (name.contains('ayçiçek') || name.contains('ayçiçeği')) return 'assets/crops/sunflower.png';
-  if (name.contains('pamuk')) return 'assets/crops/cotton.png';
-  if (name.contains('çeltik') || name.contains('pirinç')) return 'assets/crops/rice.png';
-  if (name.contains('domates')) return 'assets/crops/tomato.png';
-  if (name.contains('biber')) return 'assets/crops/pepper.png';
-  if (name.contains('patlıcan')) return 'assets/crops/eggplant.png';
-  if (name.contains('üzüm')) return 'assets/crops/grape.png';
-  if (name.contains('elma')) return 'assets/crops/apple_tree.png';
-  if (name.contains('karpuz') || name.contains('kavun')) return 'assets/crops/watermelon.png';
-  if (name.contains('marul') || name.contains('lahana') || name.contains('kolza')) return 'assets/crops/cabbage.png';
-  if (name.contains('havuç')) return 'assets/crops/carrot.png';
-  if (name.contains('soğan')) return 'assets/crops/onion.png';
-  if (name.contains('zeytin')) return 'assets/crops/olive_tree.png';
-  if (name.contains('nohut') || name.contains('mercimek') || name.contains('patates')) return 'assets/crops/potato.png';
-  return 'assets/crops/wheat.png';
+  if (name.contains('buğday') || name.contains('tritikale') || name.contains('çavdar')) return 'assets/crops/bugday.jpg';
+  if (name.contains('arpa')) return 'assets/crops/arpa.jpg';
+  if (name.contains('yulaf')) return 'assets/crops/bugday.jpg';
+  if (name.contains('mısır')) return 'assets/crops/misir.jpg';
+  if (name.contains('ayçiçek')) return 'assets/crops/aycicegi.jpg';
+  if (name.contains('pamuk')) return 'assets/crops/pamuk.jpg';
+  if (name.contains('çeltik') || name.contains('pirinç')) return 'assets/crops/celtik.jpg';
+  if (name.contains('domates')) return 'assets/crops/domates.jpg';
+  if (name.contains('biber')) return 'assets/crops/biber.jpg';
+  if (name.contains('patlıcan')) return 'assets/crops/patlican.jpg';
+  if (name.contains('üzüm')) return 'assets/crops/uzum.jpg';
+  if (name.contains('elma')) return 'assets/crops/elma.jpg';
+  if (name.contains('armut')) return 'assets/crops/armut.jpg';
+  if (name.contains('karpuz')) return 'assets/crops/karpuz.jpg';
+  if (name.contains('kavun')) return 'assets/crops/karpuz.jpg';
+  if (name.contains('marul')) return 'assets/crops/marul.jpg';
+  if (name.contains('lahana')) return 'assets/crops/lahana.jpg';
+  if (name.contains('havuç')) return 'assets/crops/havuc.jpg';
+  if (name.contains('soğan')) return 'assets/crops/sogan.jpg';
+  if (name.contains('zeytin')) return 'assets/crops/zeytin.jpg';
+  if (name.contains('patates')) return 'assets/crops/patates.jpg';
+  if (name.contains('nohut')) return 'assets/crops/nohut.jpg';
+  if (name.contains('mercimek')) return 'assets/crops/mercimek.png';
+  if (name.contains('fasulye')) return 'assets/crops/kuru_fasulye.jpg';
+  if (name.contains('kolza') || name.contains('kanola')) return 'assets/crops/kanola.jpg';
+  if (name.contains('ayçiçek')) return 'assets/crops/aycicegi.jpg';
+  if (name.contains('susam')) return 'assets/crops/susam.jpg';
+  if (name.contains('soya')) return 'assets/crops/soya.jpg';
+  return 'assets/crops/bugday.jpg';
 }
 
 /// Tarla poligonu üzerine yerleşen bitki markerı.
@@ -74,8 +124,8 @@ Widget buildCropMarkerWidget({
       final phaseScale = _getScaleMultiplier(phase);
       final assetPath = _getAssetPath(cropName);
 
-      const double baseWidth = 42;  // Görselde çok devasa durduğu için yarıya indirdim
-      const double baseHeight = 48;
+      const double baseWidth = 34;  // Daha ferah bir yerleşim için küçültüldü
+      const double baseHeight = 40;
 
       final double spriteW = baseWidth * phaseScale * zoomScale;
       final double spriteH = baseHeight * phaseScale * zoomScale;

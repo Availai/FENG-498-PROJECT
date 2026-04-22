@@ -30,8 +30,12 @@ List<LatLng> plantPlacementInPolygon({
   final scale = rawDensity > maxCount
       ? math.sqrt(rawDensity / maxCount) // aralıkları orantılı genişlet
       : 1.0;
-  final effRowM = spacing.rowM * scale;
-  final effPlantM = spacing.plantM * scale;
+  // Minimum görsel aralık: sprite'lar (36-48 px) birbirine binmesin diye taban değer
+  // Haritada 1 bitki ~2.5 m² zemin kaplamalı (çapraz ~1.6 m)
+  const double minRowM = 2.0;
+  const double minPlantM = 1.4;
+  final effRowM = math.max(spacing.rowM * scale, minRowM);
+  final effPlantM = math.max(spacing.plantM * scale, minPlantM);
 
   // ── 2. Sıra yönü = ilk kenarın yönü
   final origin = polygon[0];

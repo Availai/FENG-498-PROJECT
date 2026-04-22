@@ -13,6 +13,7 @@ import 'services/offline_encyclopedia.dart';
 import 'services/app_providers.dart';
 import 'services/background_sync_service.dart';
 import 'theme/app_theme.dart';
+import 'widgets/crop_render_factory.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/intl.dart';
@@ -49,6 +50,9 @@ void main() async {
 
   // 5. Offline encyclopedia — pre-seed plant_cache with static Turkish crop data
   OfflineEncyclopedia.preSeed(); // fire-and-forget; doesn't block startup
+
+  // 5b. Crop image map — 292 bitki için Wikipedia fotoğraf eşlemesini yükle
+  await CropImageMap.load();
 
   final database = AppDatabase();
 
