@@ -11,10 +11,15 @@ import '../data/crop_spacing.dart';
 /// - [maxCount]: render başına üst sınır (render performansı için); gerçek
 ///   yoğunluk bu sayıdan fazlaysa aralıklar orantılı büyütülür (noktalar aynı
 ///   grid'de kalır, sadece seyrelir).
+/// - [minVisualSpacingM]: Harita üzerindeki marker'lar 240px genişliğinde
+///   olduğu için görsel örtüşmeyi engellemek üzere uygulanan en küçük metre
+///   aralığı. Gerçek agronomik aralık bundan küçükse, marker'lar "temsili
+///   küme" olarak seyreltilir (bir marker = bir öbek bitki).
 List<LatLng> plantPlacementInPolygon({
   required List<LatLng> polygon,
   required String cropName,
-  int maxCount = 120,
+  int maxCount = 45,
+  double minVisualSpacingM = 2.8,
 }) {
   if (polygon.length < 3 || maxCount <= 0) return const [];
 
@@ -30,8 +35,20 @@ List<LatLng> plantPlacementInPolygon({
   final scale = rawDensity > maxCount
       ? math.sqrt(rawDensity / maxCount) // aralıkları orantılı genişlet
       : 1.0;
-  final effRowM = spacing.rowM * scale;
-  final effPlantM = spacing.plantM * scale;
+  // Önce agronomik ölçek uygulanır, sonra görsel minimum aralık dayatılır.
+  // Bu sayede marker'lar harita üzerinde hiçbir zaman üst üste binmez;
+  // agronomik oran (row:plant) korunur, sadece mutlak büyüklük artar.
+  final agroRowM = spacing.rowM * scale;
+  final agroPlantM = spacing.plantM * scale;
+  final visualBoost = math.max(
+    1.0,
+    math.max(
+      minVisualSpacingM / agroRowM,
+      minVisualSpacingM / agroPlantM,
+    ),
+  );
+  final effRowM = agroRowM * visualBoost;
+  final effPlantM = agroPlantM * visualBoost;
 
   // ── 2. Sıra yönü = ilk kenarın yönü
   final origin = polygon[0];

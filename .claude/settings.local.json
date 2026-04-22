@@ -10,7 +10,10 @@
       "Bash(git -C 'C:/FENG 498/feng_498' commit -m ' *)",
       "Bash(git -C \"C:/FENG 498/feng_498\" status)",
       "Bash(awk 'NR>=1936 && NR<=2288 {print NR\": \"$0}' \"C:/FENG 498/feng_498/lib/screens/field_detail_screen.dart\")",
-      "Bash(awk 'NR<1936 || NR>2287' \"C:/FENG 498/feng_498/lib/screens/field_detail_screen.dart\")"
+      "Bash(awk 'NR<1936 || NR>2287' \"C:/FENG 498/feng_498/lib/screens/field_detail_screen.dart\")",
+      "Bash(adb *)",
+      "Bash(grep -E \"\\\\.\\(dart\\)$\")",
+      "Bash(where python *)"
     ]
   }
 }

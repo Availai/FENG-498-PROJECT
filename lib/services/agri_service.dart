@@ -1,12 +1,56 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'crop_rules.dart';
 import 'rule_engine.dart';
 import 'offline_encyclopedia.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'plant_cache_service.dart';
+import '../utils/image_compressor.dart';
+
+class _PlantNetResult {
+  final bool ok;
+  final Map<String, dynamic>? data;
+  final String errorLabel;
+
+  const _PlantNetResult._(this.ok, this.data, this.errorLabel);
+
+  factory _PlantNetResult.ok(Map<String, dynamic> data) =>
+      _PlantNetResult._(true, data, '');
+
+  factory _PlantNetResult.fail(String label) =>
+      _PlantNetResult._(false, null, label);
+}
+
+class _DiseaseResult {
+  /// `true` => Gemini görüntüyü başarıyla değerlendirdi (hasta veya sağlıklı).
+  /// `false` => API çağrısı veya parse başarısız; sonuç güvenilir değil.
+  final bool analyzed;
+  final bool present;
+  final String name;
+  final int confidence;
+  final String severity;
+  final String symptoms;
+  final String treatment;
+  final String failureReason;
+
+  const _DiseaseResult({
+    required this.analyzed,
+    required this.present,
+    this.name = '',
+    this.confidence = 0,
+    this.severity = '',
+    this.symptoms = '',
+    this.treatment = '',
+    this.failureReason = '',
+  });
+
+  factory _DiseaseResult.unknown(String reason) =>
+      _DiseaseResult(analyzed: false, present: false, failureReason: reason);
+}
 
 class AgriService {
   static String get _plantNetKey => dotenv.env['PLANTNET_API_KEY'] ?? '';
@@ -14,6 +58,7 @@ class AgriService {
   static String get _imaggaSecret => dotenv.env['IMAGGA_API_SECRET'] ?? '';
   static String get _perenualKey => dotenv.env['PERENUAL_API_KEY'] ?? '';
   static String get _agroKey => dotenv.env['AGROMONITORING_API_KEY'] ?? '';
+  static String get _geminiKey => dotenv.env['GEMINI_API_KEY'] ?? '';
 
   // ═══════════════════════════════════════════════════
   // ANA ANALİZ FONKSİYONU
@@ -198,83 +243,94 @@ class AgriService {
           }
         };
       } else if (isPlant) {
-        // ═══ SENARYO A: BİTKİ — %100 DETERMİNİSTİK (Perenual API) ═══
+        // ═══ SENARYO A: BİTKİ ═══
+        //
+        // Mimari: PlantNet (tür tespiti) + Gemini (görsel hastalık tespiti)
+        // AYNI ANDA başlatılır. Gemini, PlantNet'in başarısına bağlı DEĞİLDİR.
+        // Hasta bitki PlantNet'i yanıltsa bile hastalık tespiti çalışır.
 
-        // 3A-1: PlantNet ile bitkiyi teşhis et
-        var plantNetReq = http.MultipartRequest(
-          'POST',
-          Uri.parse(
-            'https://my-api.plantnet.org/v2/identify/all?api-key=$_plantNetKey',
-          ),
-        );
-        plantNetReq.files.add(
-          await http.MultipartFile.fromPath('images', imageFile.path),
-        );
-        plantNetReq.fields['organs'] = 'auto'; // KESINLIKLE ZORUNLU
+        // 3A-0: PlantNet WebP kabul etmiyor — JPEG'e çevir.
+        final jpegFile = await ImageCompressor.compressToJpeg(imageFile);
 
-        final plantNetRes = await plantNetReq.send();
-        final rawResponse = await plantNetRes.stream.bytesToString();
-        final plantData = jsonDecode(rawResponse);
+        // 3A-1: PlantNet + Gemini hastalık tespiti PARALEL başlat.
+        //   Gemini ilk turda sadece görsel analiz yapar (tür adı olmadan).
+        //   PlantNet başarılı olursa tür adıyla ikinci tur gerekmiyor çünkü
+        //   görsel belirtiler zaten tespit edildi.
+        final firstRound = await Future.wait([
+          _callPlantNet(jpegFile),
+          _callGeminiDiseaseCheck(jpegFile, '', ''),
+        ]);
+        final plantNetResult = firstRound[0] as _PlantNetResult;
+        _DiseaseResult disease = firstRound[1] as _DiseaseResult;
 
-        if (plantNetRes.statusCode == 200 &&
-            plantData['results'] != null &&
-            plantData['results'].isNotEmpty) {
-          var bestMatch = plantData['results'][0];
-          String scientificName =
+        // 3A-2: PlantNet başarılı mı?
+        final bool plantIdentified = plantNetResult.ok &&
+            plantNetResult.data?['results'] != null &&
+            (plantNetResult.data!['results'] as List).isNotEmpty;
+
+        if (plantIdentified) {
+          final plantData = plantNetResult.data!;
+          final bestMatch = plantData['results'][0];
+          final String scientificName =
               bestMatch['species']['scientificNameWithoutAuthor'];
-          String familyName =
+          final String familyName =
               bestMatch['species']['family']['scientificNameWithoutAuthor'];
-          String commonTitle =
+          final String commonTitle =
               bestMatch['species']['commonNames']?.isNotEmpty == true
                   ? bestMatch['species']['commonNames'][0]
                   : scientificName;
-          double confidence = ((bestMatch['score'] ?? 0) * 100).toDouble();
+          final double confidence =
+              ((bestMatch['score'] ?? 0) * 100).toDouble();
 
-          // 3A-2: Perenual API / cache'den bitki detaylarını çek
+          // 3A-3: Perenual API'si çekilirken, Gemini başarısız olduysa
+          //        tür adıyla ikinci tur dene (paralel).
           final bool detailsFromCache =
               await PlantCacheService.get(scientificName) != null;
-          Map<String, dynamic> perenualDetails =
-              await _fetchPerenualDetails(scientificName, commonTitle);
+          final secondRound = await Future.wait([
+            _fetchPerenualDetails(scientificName, commonTitle),
+            disease.analyzed
+                ? Future.value(disease) // ilk tur OK — tekrar çağırma
+                : _callGeminiDiseaseCheck(
+                    jpegFile, scientificName, commonTitle),
+          ]);
+          final perenualDetails =
+              secondRound[0] as Map<String, dynamic>;
+          disease = secondRound[1] as _DiseaseResult;
 
-          // 3A-3: Çevresel verilere göre deterministik başarı şansı hesapla
-          String basariSansi = _calculateSuccessRate(
-            avgWeeklyTemp,
-            numericPh,
-            totalWeeklyRain,
-            numericHumidity,
-            perenualDetails,
+          // 3A-4: Deterministik tarımsal hesaplamalar
+          final String basariSansi = _calculateSuccessRate(
+            avgWeeklyTemp, numericPh, totalWeeklyRain,
+            numericHumidity, perenualDetails,
           );
-
-          // 3A-4: Konum yorumu hesapla (deterministik)
-          String konumYorumu = _generateLocationComment(
-            avgWeeklyTemp,
-            numericPh,
-            totalWeeklyRain,
-            numericHumidity,
-            soilMoisture,
-            soilTempC,
-            perenualDetails,
+          final String konumYorumu = _generateLocationComment(
+            avgWeeklyTemp, numericPh, totalWeeklyRain,
+            numericHumidity, soilMoisture, soilTempC, perenualDetails,
           );
-
-          // 3A-5: Sulama takvimi hesapla (deterministik)
-          String sulamaTakvimi = _generateWateringSchedule(
-            totalWeeklyRain,
-            numericHumidity,
-            perenualDetails,
+          final String sulamaTakvimi = _generateWateringSchedule(
+            totalWeeklyRain, numericHumidity, perenualDetails,
           );
-
-          // 3A-6: Gübre önerisi hesapla (deterministik)
-          String gubreOnerisi =
+          final String gubreOnerisi =
               _generateFertilizerAdvice(numericPh, perenualDetails);
 
           return {
             "type": "plant",
             "data": {
-              "title": commonTitle,
+              "title": (disease.analyzed && disease.present)
+                  ? "$commonTitle — ${disease.name}"
+                  : commonTitle,
               "scientific_name": scientificName,
               "description":
-                  "Botanik Teşhis (%${confidence.toStringAsFixed(0)} güvenilirlik) — ${detailsFromCache ? 'Önbellekten' : 'API Tabanlı'} Analiz",
+                  "Botanik Teşhis (%${confidence.toStringAsFixed(0)} güvenilirlik)"
+                  " — ${detailsFromCache ? 'Önbellekten' : 'API Tabanlı'} Analiz",
               "from_cache": detailsFromCache,
+              "disease_analyzed": disease.analyzed,
+              "disease_present": disease.present,
+              "disease_name": disease.name,
+              "disease_confidence": disease.confidence,
+              "severity": disease.severity,
+              "symptoms": disease.symptoms,
+              "treatment": disease.treatment,
+              "disease_failure_reason": disease.failureReason,
               "plant_details": {
                 "family": familyName,
                 "halk_dilindeki_adi":
@@ -284,7 +340,8 @@ class AgriService {
                 "nasil_yetistirilir": perenualDetails['care_description'] ??
                     _buildGrowGuide(perenualDetails),
                 "bakim_puf_noktasi": _buildCareGuide(perenualDetails),
-                "hastalik_riskleri": perenualDetails['pest_susceptibility'] ??
+                "hastalik_riskleri":
+                    perenualDetails['pest_susceptibility'] ??
                     perenualDetails['pest_info'] ??
                     'Zararlı bilgisi bulunamadı.',
                 "sulama_takvimi": sulamaTakvimi,
@@ -295,11 +352,36 @@ class AgriService {
             },
           };
         } else {
+          // PlantNet başarısız — bölgesel rapor + mevcut Gemini sonucunu ekle.
+          final report = RuleEngine.generateEnvironmentalReport(
+            temp: numericTemp,
+            humidity: numericHumidity,
+            weeklyRain: totalWeeklyRain,
+            ph: numericPh,
+            soilMoisture: soilMoisture,
+            soilTempC: soilTempC,
+            month: DateTime.now().month,
+          );
+          final String reasonSuffix = plantNetResult.ok
+              ? 'Kesin tür tespiti yapılamadı'
+              : 'Tür tespit servisine ulaşılamadı (${plantNetResult.errorLabel})';
           return {
-            "type": "error",
+            "type": "plant",
             "data": {
-              "message":
-                  "Bitki teşhis edilemedi. Lütfen daha net bir fotoğraf yükleyin veya internet bağlantınızı kontrol edin."
+              "title": (disease.analyzed && disease.present)
+                  ? "Hasta Bitki — ${disease.name}"
+                  : "Bölgesel Bitki Raporu",
+              "description":
+                  "$reasonSuffix. Etiketler: ${tagNames.take(3).join(', ')}. $report",
+              "from_cache": false,
+              "disease_analyzed": disease.analyzed,
+              "disease_present": disease.present,
+              "disease_name": disease.name,
+              "disease_confidence": disease.confidence,
+              "severity": disease.severity,
+              "symptoms": disease.symptoms,
+              "treatment": disease.treatment,
+              "disease_failure_reason": disease.failureReason,
             }
           };
         }
@@ -325,15 +407,359 @@ class AgriService {
           "crops": recommendations,
         },
       };
+    } on SocketException catch (e) {
+      return {
+        'type': 'error',
+        'data': {
+          'message':
+              'İnternet bağlantısı kesildi veya sunucuya ulaşılamadı. Lütfen Wi-Fi/mobil veriyi kontrol edip tekrar deneyin. (${e.osError?.message ?? e.message})',
+        },
+      };
+    } on TimeoutException {
+      return {
+        'type': 'error',
+        'data': {
+          'message':
+              'Sunucu yanıt vermedi (zaman aşımı). Bağlantınız yavaş olabilir, lütfen tekrar deneyin.',
+        },
+      };
     } catch (e) {
       return {
         'type': 'error',
         'data': {
-          'message': 'Bağlantı Hatası: Lütfen internetinizi kontrol edin. ($e)',
+          'message': 'Analiz başarısız oldu: $e',
         },
       };
     }
   }
+
+  // ═══════════════════════════════════════════════════
+  // PLANTNET API — timeout + 1 retry + hata sınıflandırma
+  // ═══════════════════════════════════════════════════
+  static Future<_PlantNetResult> _callPlantNet(File jpegFile) async {
+    final uri = Uri.parse(
+      'https://my-api.plantnet.org/v2/identify/all?api-key=$_plantNetKey',
+    );
+
+    Future<_PlantNetResult> attempt() async {
+      final req = http.MultipartRequest('POST', uri);
+      req.files.add(
+        await http.MultipartFile.fromPath('images', jpegFile.path),
+      );
+      req.fields['organs'] = 'auto';
+
+      final streamed =
+          await req.send().timeout(const Duration(seconds: 25));
+      final raw = await streamed.stream.bytesToString();
+
+      if (streamed.statusCode == 200) {
+        try {
+          return _PlantNetResult.ok(
+              jsonDecode(raw) as Map<String, dynamic>);
+        } catch (_) {
+          return _PlantNetResult.fail('geçersiz yanıt');
+        }
+      }
+      if (streamed.statusCode == 429) {
+        return _PlantNetResult.fail('günlük kota dolu');
+      }
+      if (streamed.statusCode == 401 || streamed.statusCode == 403) {
+        return _PlantNetResult.fail('API anahtarı reddedildi');
+      }
+      return _PlantNetResult.fail('HTTP ${streamed.statusCode}');
+    }
+
+    for (var i = 0; i < 2; i++) {
+      try {
+        return await attempt();
+      } on SocketException catch (e) {
+        debugPrint('[PlantNet] SocketException (deneme ${i + 1}): $e');
+        if (i == 1) return _PlantNetResult.fail('bağlantı sıfırlandı');
+        await Future.delayed(const Duration(seconds: 2));
+      } on TimeoutException {
+        debugPrint('[PlantNet] Timeout (deneme ${i + 1})');
+        if (i == 1) return _PlantNetResult.fail('zaman aşımı');
+        await Future.delayed(const Duration(seconds: 2));
+      } on HttpException catch (e) {
+        debugPrint('[PlantNet] HttpException: $e');
+        return _PlantNetResult.fail('HTTP hatası');
+      } catch (e) {
+        debugPrint('[PlantNet] Beklenmedik hata: $e');
+        return _PlantNetResult.fail('bilinmeyen hata');
+      }
+    }
+    return _PlantNetResult.fail('bağlantı kurulamadı');
+  }
+
+  // ═══════════════════════════════════════════════════
+  // GEMİNİ VİZYON — Görüntüden Hastalık Tespiti (v2.5-flash)
+  // ═══════════════════════════════════════════════════
+  //
+  // Not: gemini-1.5-flash Eylül 2025'te retired edildi. 2.5-flash multimodal
+  // + structured output destekliyor. Fallback olarak 2.0-flash de denenir.
+  // gemini-2.5-flash April 2026 preview — bazı keylerde çalışmıyor.
+  // gemini-2.0-flash kesinlikle stable. gemini-2.0-flash-001 versioned pin.
+  static const List<String> _geminiModels = [
+    'gemini-2.0-flash',
+    'gemini-2.0-flash-001',
+  ];
+
+  static Future<_DiseaseResult> _callGeminiDiseaseCheck(
+    File jpegFile,
+    String scientificName,
+    String commonName,
+  ) async {
+    if (_geminiKey.isEmpty) {
+      debugPrint('[GeminiDisease] GEMINI_API_KEY yok — atlanıyor.');
+      return _DiseaseResult.unknown('API anahtarı tanımlı değil');
+    }
+
+    // Gemini için hafif sıkıştırma — hız + kararlılık. Zaten JPEG ise sadece
+    // boyutu küçültür; WebP'den geldiyse JPEG'e çevirir.
+    File analysisFile;
+    try {
+      analysisFile = await ImageCompressor.compressToJpeg(
+        jpegFile,
+        maxDimension: 960,
+        quality: 80,
+      );
+    } catch (e) {
+      debugPrint('[GeminiDisease] Ön sıkıştırma hatası: $e');
+      analysisFile = jpegFile;
+    }
+
+    final Uint8List bytes = await analysisFile.readAsBytes();
+    final String b64 = base64Encode(bytes);
+    debugPrint(
+        '[GeminiDisease] Payload: ${(bytes.length / 1024).toStringAsFixed(0)} KB JPEG');
+
+    final String speciesContext =
+        (scientificName.isNotEmpty || commonName.isNotEmpty)
+            ? 'Tür: ${commonName.isNotEmpty ? commonName : scientificName}'
+                '${scientificName.isNotEmpty ? " ($scientificName)" : ""}.'
+            : 'Tür henüz tespit edilmedi — görsel belirtilere göre değerlendir.';
+
+    final String prompt = '''
+Sen uzman bir bitki hastalıkları ve zararlıları tanı uzmanısın. $speciesContext
+
+Bu bitkinin fotoğrafını DETAYLI incele:
+• Yaprak lekeleri: kara leke, kahverengi/halkalı leke, antrakhoz
+• Külleme (beyaz pudra), mildiyö (gri/beyaz tüylü yüzey)
+• Pas hastalığı (turuncu/kahve toz benzeri spor)
+• Sararma: kloroz (damar arası), mozaik deseni, nekroz
+• Yanıklık: ateş yanıklığı, bakteriyel yanıklık (siyah/kahve kenar)
+• Böcek hasarı: delik, galeri, beyazsinekler, kırmızıörümcek, yaprakbiti
+• Besin eksikliği: N (alt yaprak sararlığı), Fe (damar arası kloroz)
+• Su emmiş görünüm, kıvrılma, cücelik, solgunluk
+
+KARAR KURALLARI:
+1. Görünür bir belirti VARSA → disease_present=true, hastalığı Türkçe adıyla yaz.
+2. Şüpheli durumlarda da belirt — belirtileri görmezden gelme.
+3. Gerçekten HİÇBİR belirti yoksa → disease_present=false.
+4. disease_confidence: 80+=açık belirti, 50-79=orta, 30-49=şüpheli.
+5. Tüm metin Türkçe. Boş alan gerekirse "".
+6. Yoktan hastalık uydurma. Ama gördüğünü çekinmeden söyle.
+''';
+
+    final Map<String, dynamic> requestBody = {
+      'contents': [
+        {
+          'role': 'user',
+          'parts': [
+            {
+              'inline_data': {
+                'mime_type': 'image/jpeg',
+                'data': b64,
+              }
+            },
+            {'text': prompt},
+          ]
+        }
+      ],
+      'generationConfig': {
+        'temperature': 0.35,
+        'responseMimeType': 'application/json',
+        'responseSchema': {
+          'type': 'OBJECT',
+          'properties': {
+            'disease_present': {'type': 'BOOLEAN'},
+            'disease_name': {'type': 'STRING'},
+            'disease_confidence': {'type': 'INTEGER'},
+            'severity': {
+              'type': 'STRING',
+              'enum': ['', 'hafif', 'orta', 'şiddetli'],
+            },
+            'symptoms': {'type': 'STRING'},
+            'treatment': {'type': 'STRING'},
+          },
+          'required': [
+            'disease_present',
+            'disease_name',
+            'disease_confidence',
+            'severity',
+            'symptoms',
+            'treatment',
+          ],
+        },
+      },
+      'safetySettings': [
+        {
+          'category': 'HARM_CATEGORY_DANGEROUS_CONTENT',
+          'threshold': 'BLOCK_ONLY_HIGH',
+        },
+      ],
+    };
+
+    final String bodyJson = jsonEncode(requestBody);
+
+    for (final model in _geminiModels) {
+      final uri = Uri.parse(
+        'https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent?key=$_geminiKey',
+      );
+
+      for (int attempt = 1; attempt <= 2; attempt++) {
+        try {
+          final res = await http
+              .post(uri,
+                  headers: {'Content-Type': 'application/json'},
+                  body: bodyJson)
+              .timeout(const Duration(seconds: 35));
+
+          if (res.statusCode == 200) {
+            final parsed = _parseGeminiResponse(res.body);
+            if (parsed != null) {
+              debugPrint(
+                  '[GeminiDisease] ✓ $model (deneme $attempt): present=${parsed.present} name="${parsed.name}"');
+              return parsed;
+            }
+            debugPrint(
+                '[GeminiDisease] $model 200 döndü ama yanıt geçersiz: ${_truncate(res.body, 500)}');
+            // Yanıt parse edilemedi — aynı modelle bir kez daha deneme
+            if (attempt < 2) {
+              await Future.delayed(const Duration(seconds: 1));
+              continue;
+            }
+            break; // sonraki modele geç
+          }
+
+          // 404: model yok/retired. Doğrudan sonraki modele düş.
+          if (res.statusCode == 404) {
+            debugPrint('[GeminiDisease] $model 404 — sonraki modele geçiliyor');
+            break;
+          }
+          // 401/403: key sorunu — model değiştirmenin faydası yok.
+          if (res.statusCode == 401 || res.statusCode == 403) {
+            debugPrint(
+                '[GeminiDisease] $model ${res.statusCode}: ${_truncate(res.body, 300)}');
+            return _DiseaseResult.unknown('API anahtarı reddedildi');
+          }
+          // 5xx veya 429: retry
+          if (res.statusCode >= 500 || res.statusCode == 429) {
+            debugPrint(
+                '[GeminiDisease] $model ${res.statusCode} (deneme $attempt)');
+            if (attempt < 2) {
+              await Future.delayed(const Duration(seconds: 2));
+              continue;
+            }
+            break;
+          }
+
+          debugPrint(
+              '[GeminiDisease] $model HTTP ${res.statusCode}: ${_truncate(res.body, 300)}');
+          break;
+        } on TimeoutException {
+          debugPrint('[GeminiDisease] $model timeout (deneme $attempt)');
+          if (attempt < 2) continue;
+        } on SocketException catch (e) {
+          debugPrint('[GeminiDisease] $model socket: $e (deneme $attempt)');
+          if (attempt < 2) {
+            await Future.delayed(const Duration(seconds: 2));
+            continue;
+          }
+        } catch (e, st) {
+          debugPrint('[GeminiDisease] $model beklenmedik: $e\n$st');
+          break;
+        }
+      }
+    }
+
+    return _DiseaseResult.unknown('servis yanıt vermedi');
+  }
+
+  /// Gemini yanıtını güvenli parse eder — safety block, finishReason,
+  /// eksik alan, bozuk JSON hepsini yakalar.
+  static _DiseaseResult? _parseGeminiResponse(String rawBody) {
+    try {
+      final outer = jsonDecode(rawBody) as Map<String, dynamic>;
+
+      // Prompt-level blok (tüm istek reddedildi)
+      final blockReason = outer['promptFeedback']?['blockReason'];
+      if (blockReason != null) {
+        debugPrint('[GeminiDisease] Prompt bloklandı: $blockReason');
+        return null;
+      }
+
+      final candidates = outer['candidates'] as List?;
+      if (candidates == null || candidates.isEmpty) {
+        debugPrint('[GeminiDisease] Candidates boş');
+        return null;
+      }
+
+      final cand = candidates.first as Map<String, dynamic>;
+      final finishReason = cand['finishReason'];
+      // STOP + MAX_TOKENS kabul edilebilir; SAFETY/RECITATION/OTHER reddet.
+      if (finishReason != null &&
+          finishReason != 'STOP' &&
+          finishReason != 'MAX_TOKENS') {
+        debugPrint('[GeminiDisease] finishReason: $finishReason — reddedildi');
+        return null;
+      }
+
+      final parts = cand['content']?['parts'] as List?;
+      if (parts == null || parts.isEmpty) {
+        debugPrint('[GeminiDisease] parts boş');
+        return null;
+      }
+
+      final text = parts.first['text'] as String?;
+      if (text == null || text.trim().isEmpty) {
+        debugPrint('[GeminiDisease] text boş');
+        return null;
+      }
+
+      // Gemini bazen code fence içinde döndürüyor — temizle
+      String cleaned = text.trim();
+      if (cleaned.startsWith('```')) {
+        cleaned = cleaned.replaceAll(RegExp(r'^```(?:json)?\s*'), '');
+        cleaned = cleaned.replaceAll(RegExp(r'\s*```\s*$'), '');
+      }
+
+      final parsedJson = jsonDecode(cleaned);
+      if (parsedJson is! Map<String, dynamic>) {
+        debugPrint('[GeminiDisease] JSON obje değil: $parsedJson');
+        return null;
+      }
+
+      final bool present = parsedJson['disease_present'] == true;
+      final int rawConf =
+          (parsedJson['disease_confidence'] as num?)?.toInt() ?? 0;
+      return _DiseaseResult(
+        analyzed: true,
+        present: present,
+        name: (parsedJson['disease_name'] ?? '').toString().trim(),
+        confidence: rawConf.clamp(0, 100),
+        severity: (parsedJson['severity'] ?? '').toString().trim(),
+        symptoms: (parsedJson['symptoms'] ?? '').toString().trim(),
+        treatment: (parsedJson['treatment'] ?? '').toString().trim(),
+      );
+    } catch (e) {
+      debugPrint('[GeminiDisease] Parse hatası: $e');
+      return null;
+    }
+  }
+
+  static String _truncate(String s, int n) =>
+      s.length <= n ? s : '${s.substring(0, n)}…';
 
   // ═══════════════════════════════════════════════════
   // PERENUAL API — Bitki Detaylarını Çek

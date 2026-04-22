@@ -231,6 +231,11 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
                       const SizedBox(height: 12),
                       _buildWeatherGrid(),
                       const SizedBox(height: 24),
+                      _buildSectionHeader(
+                          'Bugün Yapılacaklar', Icons.checklist_rtl_rounded),
+                      const SizedBox(height: 12),
+                      _buildTasksSummarySection(),
+                      const SizedBox(height: 24),
                       _buildSectionHeader('Tarlalarım', Icons.grass_rounded),
                       const SizedBox(height: 12),
                       _buildMyFieldsSection(),
@@ -985,6 +990,205 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // GÜNLÜK YÖNERGE ÖZETİ — tüm tarlaların acil işlerini tek bakışta gösterir
+  // ───────────────────────────────────────────────────────────────────────────
+  Widget _buildTasksSummarySection() {
+    final fieldsAsync = ref.watch(fieldMapsProvider);
+    final fields = fieldsAsync.asData?.value ?? const <Map<String, dynamic>>[];
+    if (fields.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: AppRadius.md,
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.check_circle_outline_rounded,
+                color: AppColors.emerald, size: 22),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Tarla eklendiğinde günlük yönergeler burada listelenecek.',
+                style: AppText.body(context),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    return Column(
+      children: [
+        for (final f in fields)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: _FieldDirectivesStrip(field: f),
+          ),
+      ],
+    );
+  }
+}
+
+/// Tek tarla için 1-3 acil/yaklaşan yönergeyi özetler. Bastıkça tarla
+/// detayına gider — oradaki Görevler butonu tüm yönergeleri + CTA'ları açar.
+class _FieldDirectivesStrip extends ConsumerWidget {
+  const _FieldDirectivesStrip({required this.field});
+
+  final Map<String, dynamic> field;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final fieldId = field['id']?.toString() ?? '';
+    final name = field['name']?.toString() ?? 'Tarla';
+    if (fieldId.isEmpty) return const SizedBox.shrink();
+
+    final dirAsync = ref.watch(fieldDirectivesSummaryProvider(fieldId));
+    return dirAsync.when(
+      loading: () => _shell(context, name, [
+        _miniRow(AppColors.textTertiary, Icons.hourglass_top_rounded,
+            'Hesaplanıyor...', null),
+      ]),
+      error: (_, __) => _shell(context, name, [
+        _miniRow(AppColors.error, Icons.error_outline_rounded,
+            'Yönerge hesaplanamadı', null),
+      ]),
+      data: (directives) {
+        // urgency >= 1 olanlardan en fazla 3 tanesini göster
+        final top = directives
+            .where((d) => d.urgency >= 1)
+            .take(3)
+            .toList();
+
+        if (top.isEmpty) {
+          return _shell(context, name, [
+            _miniRow(AppColors.emerald, Icons.check_circle_outline_rounded,
+                'Bugün yapılacak bir şey yok', null),
+          ]);
+        }
+        return _shell(
+          context,
+          name,
+          top.map((d) {
+            final color = d.urgency == 2
+                ? const Color(0xFFFF5252)
+                : const Color(0xFFFFB74D);
+            final icon = _iconFor(d.kind);
+            return _miniRow(color, icon, d.headline, d.urgency == 2 ? 'BUGÜN' : null);
+          }).toList(),
+        );
+      },
+    );
+  }
+
+  static IconData _iconFor(String kind) {
+    switch (kind) {
+      case 'water_now':
+      case 'water_soon':
+        return Icons.water_drop_rounded;
+      case 'fertilize':
+        return Icons.grass_rounded;
+      case 'spray':
+        return Icons.science_rounded;
+      case 'harvest':
+        return Icons.agriculture_rounded;
+      case 'frost':
+        return Icons.ac_unit_rounded;
+      case 'heat':
+        return Icons.wb_sunny_rounded;
+      default:
+        return Icons.flag_rounded;
+    }
+  }
+
+  Widget _shell(BuildContext context, String fieldName, List<Widget> rows) {
+    return TapScale(
+      scale: 0.97,
+      onTap: () {
+        Navigator.of(context).push(
+          AnimatedRoute.scaleFade(FieldDetailScreen(fieldData: field)),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: AppRadius.md,
+          border: Border.all(color: AppColors.border),
+          boxShadow: AppShadows.sm,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.grass_rounded,
+                    size: 16, color: AppColors.emeraldDark),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    fieldName,
+                    style: AppText.h3(context),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                Icon(Icons.chevron_right_rounded,
+                    color: AppColors.textTertiary, size: 20),
+              ],
+            ),
+            const SizedBox(height: 8),
+            ...rows,
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _miniRow(Color color, IconData icon, String text, String? badge) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: color),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          if (badge != null) ...[
+            const SizedBox(width: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                badge,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                  color: color,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }

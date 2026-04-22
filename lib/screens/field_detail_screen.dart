@@ -385,19 +385,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
                 opacity: _uiFadeAnim,
                 child: SlideTransition(
                   position: _uiSlideAnim,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if ((widget.fieldData['id']?.toString() ?? '').isNotEmpty)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 10),
-                          child: ActivityQuickLog(
-                            fieldId: widget.fieldData['id'].toString(),
-                          ),
-                        ),
-                      _buildHUDBottomBar(),
-                    ],
-                  ),
+                  child: _buildHUDBottomBar(),
                 ),
               ),
             ),
@@ -801,25 +789,76 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
   }
 
   Widget _buildHUDBottomBar() {
+    // Matte forest-green bar; her buton kendi tematik rengiyle öne çıkar.
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFF0D1811).withValues(alpha: 0.9),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFF00E676).withValues(alpha: 0.5), width: 1),
-        boxShadow: [
-          BoxShadow(color: const Color(0xFF00E676).withValues(alpha: 0.2), blurRadius: 20, spreadRadius: -5),
+        color: const Color(0xFF14241B), // matte forest
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.06), width: 1),
+        boxShadow: const [
+          BoxShadow(color: Color(0x66000000), blurRadius: 18, offset: Offset(0, 6)),
         ],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          _buildNavBtn(Icons.radar_rounded, 'Tarlayı Tara', _showPlantPicker, primary: true),
-          _buildNavBtn(Icons.stacked_line_chart_rounded, 'Trendler', _showCropRecommendations),
-          _buildNavBtn(Icons.event_note_rounded, 'Günlük', _openFarmJournal),
-          _buildNavBtn(Icons.account_balance_wallet_rounded, 'Cüzdan', _openCostLedger),
-          _buildNavBtn(Icons.checklist_rtl_rounded, 'Görevler', _showDetailModal),
+          _buildNavBtn(Icons.radar_rounded, 'Tarlayı Tara', _showPlantPicker,
+              color: const Color(0xFF2ECC71), primary: true),
+          _buildNavBtn(Icons.check_circle_outline_rounded, 'Aktivite',
+              _showActivityQuickLog, color: const Color(0xFFF2B84B)),
+          _buildNavBtn(Icons.event_note_rounded, 'Günlük', _openFarmJournal,
+              color: const Color(0xFF4DB6AC)),
+          _buildNavBtn(Icons.account_balance_wallet_rounded, 'Cüzdan',
+              _openCostLedger, color: const Color(0xFFB388FF)),
+          _buildNavBtn(Icons.checklist_rtl_rounded, 'Görevler', _showDetailModal,
+              color: const Color(0xFF64B5F6)),
         ],
+      ),
+    );
+  }
+
+  void _showActivityQuickLog() {
+    final fieldId = widget.fieldData['id']?.toString();
+    if (fieldId == null || fieldId.isEmpty) {
+      AppToast.show(context,
+          message: 'Tarla henüz kaydedilmedi.', type: ToastType.warning);
+      return;
+    }
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(
+          left: 16,
+          right: 16,
+          top: 12,
+          bottom: MediaQuery.of(ctx).padding.bottom + 16,
+        ),
+        child: Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFF14241B),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+          ),
+          padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.white24,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 12),
+              ActivityQuickLog(fieldId: fieldId),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -847,63 +886,50 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
     );
   }
 
-  Widget _buildNavBtn(IconData icon, String text, VoidCallback onTap, {bool primary = false}) {
+  Widget _buildNavBtn(IconData icon, String text, VoidCallback onTap,
+      {required Color color, bool primary = false}) {
+    // Primary: doygun renk dolgulu; diğerleri: matte tonlu daire + renkli ikon.
+    final Color bg =
+        primary ? color : color.withValues(alpha: 0.14);
+    final Color border =
+        primary ? color : color.withValues(alpha: 0.38);
+    final Color iconColor = primary ? const Color(0xFF0D1811) : color;
     return GestureDetector(
       onTap: onTap,
+      behavior: HitTestBehavior.opaque,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: primary ? const Color(0xFF00E676) : Colors.transparent,
+              color: bg,
               shape: BoxShape.circle,
-              border: primary ? null : Border.all(color: Colors.white24, width: 1),
+              border: Border.all(color: border, width: 1),
+              boxShadow: primary
+                  ? [
+                      BoxShadow(
+                        color: color.withValues(alpha: 0.35),
+                        blurRadius: 14,
+                        spreadRadius: -2,
+                      ),
+                    ]
+                  : null,
             ),
-            child: Icon(icon, color: primary ? Colors.black : Colors.white, size: 22),
+            child: Icon(icon, color: iconColor, size: 22),
           ),
           const SizedBox(height: 6),
-          Text(text, style: GoogleFonts.outfit(
-            color: primary ? const Color(0xFF00E676) : Colors.white70,
-            fontSize: 10,
-            fontWeight: primary ? FontWeight.w700 : FontWeight.w500,
-          )),
+          Text(
+            text,
+            style: GoogleFonts.outfit(
+              color: primary ? color : Colors.white.withValues(alpha: 0.78),
+              fontSize: 10,
+              fontWeight: primary ? FontWeight.w700 : FontWeight.w500,
+              letterSpacing: 0.2,
+            ),
+          ),
         ],
       ),
-    );
-  }
-
-  void _showCropRecommendations() {
-    double currentT = 20.0;
-    double currentPh = 6.5;
-    double totalRain = 400.0;
-
-    if (_analysis != null) {
-      currentT = (_analysis!['avg_weekly_temp'] as num?)?.toDouble() ??
-          (_analysis!['temp'] as num?)?.toDouble() ??
-          20.0;
-      currentPh = (_analysis!['ph'] as num?)?.toDouble() ?? 6.5;
-      totalRain =
-          ((_analysis!['total_weekly_rain'] as num?)?.toDouble() ?? 12.0) * 52;
-    }
-
-    // Use Verified Database perfectly 
-    List<Map<String, dynamic>> scoredPlants = [];
-    for (var plant in VerifiedAgriDatabase.plants) {
-       int score = plant.evaluateSuitability(currentPh, currentT, totalRain);
-       scoredPlants.add({
-         'plant': plant,
-         'score': score
-       });
-    }
-
-    scoredPlants.sort((a,b) => (b['score'] as int).compareTo(a['score'] as int));
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (_) => _VerifiedRecommendationSheet(recommendations: scoredPlants),
     );
   }
 
@@ -1395,7 +1421,8 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
         final positions = plantPlacementInPolygon(
           polygon: zonePoly,
           cropName: cropName,
-          maxCount: 120,
+          maxCount: 35,
+          minVisualSpacingM: 3.0,
         );
         if (positions.isEmpty) {
           double cLat = 0, cLng = 0;
@@ -1435,7 +1462,8 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
       final positions = plantPlacementInPolygon(
         polygon: polygon,
         cropName: firstName,
-        maxCount: 100,
+        maxCount: 30,
+        minVisualSpacingM: 3.5,
       );
       positions.sort((a, b) => b.latitude.compareTo(a.latitude));
 
@@ -1644,60 +1672,6 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
         fieldId: fieldId,
         analysis: _analysis,
         fieldCrops: _fieldCrops,
-      ),
-    );
-  }
-}
-
-class _VerifiedRecommendationSheet extends StatelessWidget {
-  final List<Map<String, dynamic>> recommendations;
-  const _VerifiedRecommendationSheet({required this.recommendations});
-
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: MediaQuery.of(context).size.height * 0.75,
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
-      child: Column(
-        children: [
-          Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2))),
-          const SizedBox(height: 16),
-          Row(children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(color: const Color(0xFFE8F5E9), borderRadius: BorderRadius.circular(10)),
-              child: const Icon(Icons.verified_user_rounded, color: Color(0xFF2E7D32), size: 20),
-            ),
-            const SizedBox(width: 12),
-            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('Doğrulanmış Algoritma Önerileri', style: GoogleFonts.outfit(fontSize: 17, fontWeight: FontWeight.w700, color: const Color(0xFF1B5E20))),
-              Text('%100 Çevresel Uyum Garantisi', style: GoogleFonts.inter(fontSize: 12, color: Colors.grey.shade500)),
-            ]),
-          ]),
-          const SizedBox(height: 16),
-          const Divider(),
-          Expanded(
-            child: ListView.builder(
-              itemCount: recommendations.length,
-              itemBuilder: (context, i) {
-                AgriPlant p = recommendations[i]['plant'];
-                int score = recommendations[i]['score'];
-                Color sColor = score >= 80 ? Colors.green : score >= 50 ? Colors.orange : Colors.red;
-                return ListTile(
-                  leading: CircleAvatar(backgroundColor: p.renderColor, child: const Icon(Icons.eco, color: Colors.white, size: 16)),
-                  title: Text(p.nameTr, style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text('Süre: ${p.daysToHarvest} gün | Cinsi: ${p.category}'),
-                  trailing: Text('%$score', style: TextStyle(color: sColor, fontWeight: FontWeight.bold, fontSize: 16)),
-                );
-              },
-            ),
-          )
-        ],
       ),
     );
   }

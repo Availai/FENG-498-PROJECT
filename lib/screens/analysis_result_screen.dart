@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import '../theme/app_theme.dart';
 
 class AnalysisResultScreen extends StatelessWidget {
   final File image;
@@ -106,6 +107,11 @@ class AnalysisResultScreen extends StatelessWidget {
                     ),
                   ],
 
+                  if (type == 'plant') ...[
+                    _buildDiseaseBanner(data),
+                    const SizedBox(height: 12),
+                  ],
+
                   if (type == 'plant' && data['plant_details'] != null) ...[
                     const Text(
                       '🔍 Bitki Özellikleri',
@@ -152,6 +158,214 @@ class AnalysisResultScreen extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildDiseaseBanner(Map<String, dynamic> data) {
+    // `disease_analyzed` map'te yoksa → hastalık verisi hiç yok → unknown state.
+    final bool analyzed = data.containsKey('disease_analyzed')
+        ? data['disease_analyzed'] == true
+        : false;
+    final bool diseasePresent = data['disease_present'] == true;
+    final String diseaseName = (data['disease_name'] ?? '').toString();
+    final int confidence = (data['disease_confidence'] as num?)?.toInt() ?? 0;
+    final String severity = (data['severity'] ?? '').toString();
+    final String symptoms = (data['symptoms'] ?? '').toString();
+    final String treatment = (data['treatment'] ?? '').toString();
+    final String failureReason =
+        (data['disease_failure_reason'] ?? '').toString();
+
+    // STATE 1: Analiz yapılamadı (Gemini hata verdi)
+    if (!analyzed) {
+      return Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.04),
+          borderRadius: AppRadius.md,
+          border: Border.all(color: Colors.white24),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.info_outline, color: Colors.white54, size: 22),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Hastalık Analizi Yapılamadı',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    failureReason.isNotEmpty
+                        ? 'Sebep: $failureReason. Yeniden deneyin.'
+                        : 'Görüntü analizi servisine ulaşılamadı. Yeniden deneyin.',
+                    style: const TextStyle(color: Colors.white54, fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // STATE 2: Analiz yapıldı, bitki sağlıklı
+    if (!diseasePresent) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: AppColors.emerald.withValues(alpha: 0.12),
+          borderRadius: AppRadius.md,
+          border: Border.all(color: AppColors.emerald.withValues(alpha: 0.4)),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.check_circle_outline, color: AppColors.emerald, size: 22),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Bitki Sağlıklı',
+                    style: TextStyle(
+                      color: AppColors.emerald,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                    ),
+                  ),
+                  Text(
+                    'Görüntü analizinde hastalık veya zararlı belirtisi tespit edilmedi.',
+                    style: TextStyle(
+                      color: AppColors.emerald.withValues(alpha: 0.8),
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final Color severityColor = severity == 'şiddetli'
+        ? AppColors.error
+        : severity == 'orta'
+            ? Colors.orange
+            : Colors.amber;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: severityColor.withValues(alpha: 0.08),
+        borderRadius: AppRadius.md,
+        border: Border.all(color: severityColor.withValues(alpha: 0.5)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Başlık şeridi
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: severityColor.withValues(alpha: 0.18),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.warning_amber_rounded, color: severityColor, size: 22),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'HASTALIK TESPİT EDİLDİ: $diseaseName',
+                    style: TextStyle(
+                      color: severityColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                    ),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: severityColor.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    '%$confidence',
+                    style: TextStyle(
+                      color: severityColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (severity.isNotEmpty)
+                  Row(
+                    children: [
+                      const Text('Şiddet: ',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: severityColor.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          severity.toUpperCase(),
+                          style: TextStyle(
+                            color: severityColor,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                if (symptoms.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    'Belirtiler: $symptoms',
+                    style: const TextStyle(fontSize: 13, height: 1.4),
+                  ),
+                ],
+                if (treatment.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.medical_services_outlined,
+                          color: severityColor, size: 18),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          treatment,
+                          style: const TextStyle(fontSize: 13, height: 1.4),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

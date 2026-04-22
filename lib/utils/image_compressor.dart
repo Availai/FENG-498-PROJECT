@@ -72,4 +72,47 @@ class ImageCompressor {
       return imageFile;
     }
   }
+
+  /// Verilen [imageFile]'ı JPEG formatına dönüştürür.
+  ///
+  /// PlantNet gibi WebP kabul etmeyen API'ler için kullanılır.
+  /// `.jpg` / `.jpeg` uzantılıysa doğrudan döner. Hata durumunda orijinal dosya
+  /// döner — caller fallback'i kendisi yönetir.
+  static Future<File> compressToJpeg(
+    File imageFile, {
+    int maxDimension = 1280,
+    int quality = 85,
+  }) async {
+    try {
+      final ext = p.extension(imageFile.path).toLowerCase();
+      if (ext == '.jpg' || ext == '.jpeg') {
+        final size = await imageFile.length();
+        if (size < 2 * 1024 * 1024) return imageFile;
+      }
+
+      final tempDir = await getTemporaryDirectory();
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final outPath = p.join(tempDir.path, 'plantnet_$timestamp.jpg');
+
+      final result = await FlutterImageCompress.compressAndGetFile(
+        imageFile.absolute.path,
+        outPath,
+        format: CompressFormat.jpeg,
+        quality: quality,
+        minWidth: maxDimension,
+        minHeight: maxDimension,
+      );
+
+      if (result == null) {
+        debugPrint(
+            '[ImageCompressor] JPEG encode başarısız — orijinal kullanılıyor.');
+        return imageFile;
+      }
+      return File(result.path);
+    } catch (e) {
+      debugPrint(
+          '[ImageCompressor] JPEG sıkıştırma hatası: $e — orijinal kullanılıyor.');
+      return imageFile;
+    }
+  }
 }

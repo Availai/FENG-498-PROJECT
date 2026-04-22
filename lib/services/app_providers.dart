@@ -131,3 +131,18 @@ final taskDirectiveServiceProvider = Provider<TaskDirectiveService>((ref) {
   return const TaskDirectiveService();
 });
 
+/// Dashboard'da tarla başına hızlı yönerge özeti — hava tahmini yüklenmez
+/// (o online iştir, detail ekranında çalışır). Burada ekim + aktivite log'u
+/// yeter: sulama aralığı doldu mu, hasat zamanı geldi mi, gübre gecikti mi.
+/// Aktivite stream'i tazelendikçe FutureProvider otomatik yeniden koşar —
+/// "Suladım" dedikten sonra dashboard da anında güncellenir.
+final fieldDirectivesSummaryProvider = FutureProvider.family
+    .autoDispose<List<FieldDirective>, String>((ref, fieldId) async {
+  final repo = ref.watch(localDataRepositoryProvider);
+  final activities = await ref.watch(fieldActivityLogProvider(fieldId).future);
+  final crops = await repo.loadFieldCrops(fieldId);
+  return ref
+      .watch(taskDirectiveServiceProvider)
+      .generate(fieldCrops: crops, activities: activities);
+});
+
