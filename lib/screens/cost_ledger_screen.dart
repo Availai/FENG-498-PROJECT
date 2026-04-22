@@ -179,16 +179,8 @@ class _CostLedgerScreenState extends State<CostLedgerScreen> {
               if (snap.connectionState == ConnectionState.waiting) {
                 return _priceShimmerRow();
               }
-              final fp = snap.data;
-              if (fp == null) {
-                return _priceRow(
-                  icon: Icons.local_gas_station_rounded,
-                  label: 'Mazot (Motorin)',
-                  value: 'Veri alınamadı',
-                  sub: 'İnternet bağlantısını kontrol edin',
-                  color: Colors.orange,
-                );
-              }
+              // Fallback: null ise varsayılan makul değerleri kullan
+              final fp = snap.data ?? EpdkPricesApi.fallbackPrices();
               final dieselStr = fp.dieselTry > 0
                   ? '${fp.dieselTry.toStringAsFixed(2)} ₺/lt'
                   : '--';

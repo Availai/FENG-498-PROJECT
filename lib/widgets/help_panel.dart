@@ -433,6 +433,66 @@ class HelpContent {
     ],
   );
 
+  // Pazar Yeri & Topluluk ekranı
+  static const HelpContent marketplace = HelpContent(
+    screenTitle: 'Pazar & Topluluk',
+    screenSubtitle: 'Ürünlerinizi satın, hastalık bildirin, sorularınızı paylaşın.',
+    headerIcon: Icons.storefront_rounded,
+    headerColor: Color(0xFF2E7D32),
+    items: [
+      HelpItem(
+        icon: Icons.storefront_rounded,
+        iconColor: Color(0xFF43A047),
+        title: 'Pazar Yeri',
+        description:
+            'Hasatınıza yaklaştığınızda ürünlerinizi buradan listeleyebilirsiniz. '
+            '"İlan Ver" düğmesine basarak ürün adı, miktar, fiyat ve iletişim bilgilerinizi girin. '
+            'İlanınız anında yayınlanır.',
+      ),
+      HelpItem(
+        icon: Icons.phone_rounded,
+        iconColor: Color(0xFF1976D2),
+        title: 'Alıcıyla İletişim',
+        description:
+            'Bir ürün ilanında "İletişim" düğmesine bastığınızda satıcının telefon numarası '
+            'kopyalanır. Pano\'dan yapıştırarak arama yapabilirsiniz.',
+      ),
+      HelpItem(
+        icon: Icons.filter_list_rounded,
+        iconColor: Color(0xFFE67E22),
+        title: 'Kategori & Arama',
+        description:
+            'Üstteki kategori seçeneklerine tıklayarak tahıl, sebze, meyve vb. '
+            'filtreleyebilirsiniz. Arama kutusuna ürün adı veya şehir yazarak da süzebilirsiniz.',
+      ),
+      HelpItem(
+        icon: Icons.bug_report_rounded,
+        iconColor: Color(0xFFD32F2F),
+        title: 'Hastalık Bildirimi',
+        description:
+            'Yapay Zeka Kamerası ile tespit ettiğiniz bir hastalığı doğrudan buraya '
+            'aktarabilirsiniz — kamera ekranındaki "Toplulukla Paylaş" düğmesine basın. '
+            'Başlık ve açıklama otomatik doldurulur.',
+      ),
+      HelpItem(
+        icon: Icons.help_outline_rounded,
+        iconColor: Color(0xFF1976D2),
+        title: 'Soru & Tavsiye',
+        description:
+            '"Paylaş" düğmesiyle soru gönderin. Diğer çiftçiler ve uzmanlar yorum yapabilir. '
+            'Yorumları görmek için karta tıklayın ve "Devamını gör" seçeneğini kullanın.',
+      ),
+      HelpItem(
+        icon: Icons.people_alt_rounded,
+        iconColor: Color(0xFF7B1FA2),
+        title: 'Topluluk Gönderileri',
+        description:
+            'Gönderi türünü seçin: Hastalık Bildirimi, Soru veya Bilgi Paylaşımı. '
+            'Anonim paylaşım da mümkündür — adınızı boş bırakın.',
+      ),
+    ],
+  );
+
   // Bölge Çizme (tarlaya bitki ekleme) — ikinci harita ekranı
   static const HelpContent plantZoneDrawing = HelpContent(
     screenTitle: 'Bitki Bölgesi Çiz',

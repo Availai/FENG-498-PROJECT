@@ -13,6 +13,7 @@ import 'camera_screen.dart';
 import 'plant_database_screen.dart';
 import 'crop_calendar_screen.dart';
 import 'map_hub_screen.dart';
+import 'marketplace_screen.dart';
 
 class MainNavigationScreen extends ConsumerStatefulWidget {
   const MainNavigationScreen({super.key});
@@ -36,21 +37,22 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
   }
 
   // Page order — camera (index 2) is exposed as FAB
-  static const List<Widget> _pages = [
-    AgriDashboard(),       // 0 – Özet
-    MyCropsScreen(),       // 1 – Tarlalarım
-    CameraScreen(),        // 2 – AI Analiz (FAB)
-    CropCalendarScreen(),  // 3 – Takvim
-    GrowingGuideScreen(),  // 4 – Rehber
-    PlantDatabaseScreen(), // 5 – Arşiv
+  static final List<Widget> _pages = [
+    const AgriDashboard(),       // 0 – Özet
+    const MyCropsScreen(),       // 1 – Tarlalarım
+    const CameraScreen(),        // 2 – AI Analiz (FAB)
+    const CropCalendarScreen(),  // 3 – Takvim
+    const GrowingGuideScreen(),  // 4 – Rehber
+    const PlantDatabaseScreen(), // 5 – Arşiv
+    const MarketplaceScreen(),   // 6 – Pazar & Topluluk
   ];
 
-  // Bottom nav slots: 0=Özet, 1=Tarlalarım, [FAB gap], 2=Takvim, 3=Rehber
-  // Arşiv accessible via long-press or profile menu
-  static const List<int> _navToPage = [0, 1, 3, 4];
+  // Bottom nav slots: 0=Özet, 1=Tarlalar, 2=Pazar, [FAB gap], 3=Takvim, 4=Rehber
+  // Arşiv accessible via profile menu
+  static const List<int> _navToPage = [0, 1, 6, 3, 4];
 
   int get _navIndex {
-    if (_currentIndex == 2) return -1;
+    if (_currentIndex == 2) return -1; // FAB (camera)
     final idx = _navToPage.indexOf(_currentIndex);
     return idx; // -1 if page 5 (Arşiv) is active
   }
@@ -230,7 +232,7 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
           height: 56,
           child: Row(
             children: [
-              // Left: Özet + Tarlalarım
+              // Left: Özet + Tarlalar + Pazar
               Expanded(
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -249,6 +251,13 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
                       isActive: _navIndex == 1,
                       onTap: () => _onNavTap(1),
                     ),
+                    _NavButton(
+                      icon: Icons.storefront_outlined,
+                      activeIcon: Icons.storefront_rounded,
+                      label: 'Pazar',
+                      isActive: _navIndex == 2,
+                      onTap: () => _onNavTap(2),
+                    ),
                   ],
                 ),
               ),
@@ -263,15 +272,15 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
                       icon: Icons.calendar_month_outlined,
                       activeIcon: Icons.calendar_month,
                       label: 'Takvim',
-                      isActive: _navIndex == 2,
-                      onTap: () => _onNavTap(2),
+                      isActive: _navIndex == 3,
+                      onTap: () => _onNavTap(3),
                     ),
                     _NavButton(
                       icon: Icons.menu_book_outlined,
                       activeIcon: Icons.menu_book,
                       label: 'Rehber',
-                      isActive: _navIndex == 3,
-                      onTap: () => _onNavTap(3),
+                      isActive: _navIndex == 4,
+                      onTap: () => _onNavTap(4),
                     ),
                     _NavButton(
                       icon: Icons.person_outline_rounded,
