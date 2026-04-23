@@ -8,8 +8,11 @@ import 'package:latlong2/latlong.dart';
 import '../services/agri_service.dart';
 import '../services/app_providers.dart';
 import '../services/crop_placement.dart';
+import '../services/crop_protocol_service.dart';
+import '../services/notification_service.dart';
 import '../services/task_directive_service.dart';
 import '../data/activity_types.dart';
+import '../data/crop_protocols.dart';
 import '../data/verified_agri_database.dart';
 import '../data/turkish_crops_repository.dart';
 import '../widgets/activity_quick_log.dart';
@@ -284,6 +287,27 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
   @override
   Widget build(BuildContext context) {
     final d = widget.fieldData;
+    final fieldId = d['id']?.toString();
+
+    // ── Aktivite log'u değiştiğinde 3 vitrin bitki için adım ilerlemesi ──
+    // kontrol et; yeni adım açıldıysa lokal bildirim at. Saf yan etki —
+    // listener async, build hızını etkilemez.
+    if (fieldId != null && fieldId.isNotEmpty) {
+      ref.listen<AsyncValue<List<Map<String, dynamic>>>>(
+        fieldActivityLogProvider(fieldId),
+        (prev, next) {
+          final activities = next.valueOrNull;
+          if (activities == null) return;
+          for (final crop in _fieldCrops) {
+            CropProtocolService.checkAndNotifyStepAdvanced(
+              fieldId: fieldId,
+              crop: crop,
+              activities: activities,
+            );
+          }
+        },
+      );
+    }
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -996,6 +1020,34 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
       return;
     }
 
+    // 3 vitrin bitki için çiftçi setup sayfası göster.
+    final protocol = CropProtocols.resolveByName(plant.nameTr);
+    if (protocol != null && mounted) {
+      final fieldId = widget.fieldData['id']?.toString() ?? '';
+      final existingConfig = CropProtocolService.loadConfig(
+        fieldId: fieldId,
+        cropName: plant.nameTr,
+      );
+      final config = await showModalBottomSheet<CropConfig>(
+        context: context,
+        backgroundColor: Colors.transparent,
+        isScrollControlled: true,
+        builder: (_) => _CropSetupSheet(
+          protocol: protocol,
+          initialConfig: existingConfig,
+        ),
+      );
+      if (!mounted) return;
+      if (config != null) {
+        await CropProtocolService.saveConfig(
+          fieldId: fieldId,
+          cropName: plant.nameTr,
+          config: config,
+        );
+      }
+      // Kullanıcı setup sayfasını kapattıysa (config null) yine devam et.
+    }
+
     // Mevcut ekili bölgeleri topla — yeni çizimde kalan alanı görmek için
     final existingZones = <ExistingPlantZone>[];
     for (final crop in _fieldCrops) {
@@ -1009,6 +1061,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
       }
     }
 
+    if (!mounted) return;
     final zoneJson = await Navigator.of(context).push<String>(
       AnimatedRoute.slideUp(
         PlantZoneDrawingScreen(
@@ -1047,6 +1100,36 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
     );
 
     await _loadFieldCrops();
+    if (!mounted) return;
+
+    // ── 3 vitrin bitki için yetiştirme yol haritası bildirimi ──
+    final protocol = CropProtocols.resolveByName(plant.nameTr);
+    if (protocol != null) {
+      await NotificationService.show(
+        id: protocol.cropKey.hashCode & 0x7fffffff,
+        title: '${protocol.emoji} ${protocol.displayName} eklendi',
+        body:
+            '${protocol.displayName} yetiştirmek için detaylı yönergeye Görevler\'den ulaşabilirsiniz.',
+      );
+      // İlk adım bildirimini de ata — son yüklenen aktivite/ekin verisiyle.
+      final latestCrops = await repo.loadFieldCrops(fieldId);
+      final activities = await ref
+          .read(localDataRepositoryProvider)
+          .watchActivityLog(fieldId: fieldId, limit: 200)
+          .first;
+      final addedCrop = latestCrops.firstWhere(
+        (c) => c['name']?.toString() == plant.nameTr,
+        orElse: () => <String, dynamic>{},
+      );
+      if (addedCrop.isNotEmpty) {
+        await CropProtocolService.checkAndNotifyStepAdvanced(
+          fieldId: fieldId,
+          crop: addedCrop,
+          activities: activities,
+        );
+      }
+    }
+
     if (!mounted) return;
     AppToast.show(
       context,
@@ -1991,14 +2074,34 @@ class _DirectivesModalContent extends ConsumerWidget {
                   soilMoisture:
                       (analysis?['soil_moisture'] as num?)?.toDouble(),
                 );
+                // 3 vitrin bitkiden ekili olanlar için yol haritası kartları.
+                final roadmaps = <Widget>[];
+                for (final crop in fieldCrops) {
+                  final progress = CropProtocolService.computeProgress(
+                    crop: crop,
+                    activities: activities,
+                    fieldId: fieldId,
+                  );
+                  if (progress != null) {
+                    roadmaps.add(_CropRoadmapCard(
+                      progress: progress,
+                      fieldId: fieldId,
+                    ));
+                  }
+                }
+
+                final totalCount = roadmaps.length + directives.length;
                 return ListView.separated(
                   padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
-                  itemCount: directives.length,
+                  itemCount: totalCount,
                   separatorBuilder: (_, __) => const SizedBox(height: 10),
-                  itemBuilder: (_, i) => _DirectiveCard(
-                    directive: directives[i],
-                    fieldId: fieldId,
-                  ),
+                  itemBuilder: (_, i) {
+                    if (i < roadmaps.length) return roadmaps[i];
+                    return _DirectiveCard(
+                      directive: directives[i - roadmaps.length],
+                      fieldId: fieldId,
+                    );
+                  },
                 );
               },
             ),
@@ -2204,4 +2307,990 @@ class _DirectiveCardState extends ConsumerState<_DirectiveCard> {
       ),
     );
   }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// YETİŞTİRME YOL HARİTASI KARTI
+// 3 vitrin bitki için tüm adımları progress bar + checklist olarak gösterir.
+// Aktivite log'u her güncellendiğinde provider tazelenir → bu widget yeniden
+// build olur → tamamlanan adımlar otomatik ✓ alır.
+// ═══════════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════
+// YETİŞTİRME YOL HARİTASI KARTI — config-aware zengin UI
+// ═══════════════════════════════════════════════════════════════════════
+class _CropRoadmapCard extends StatefulWidget {
+  const _CropRoadmapCard({required this.progress, required this.fieldId});
+
+  final CropProtocolProgress progress;
+  final String fieldId;
+
+  @override
+  State<_CropRoadmapCard> createState() => _CropRoadmapCardState();
+}
+
+class _CropRoadmapCardState extends State<_CropRoadmapCard> {
+  bool _expanded = true;
+  int? _expandedStep; // adım detayı açık mı (order değeri)
+
+  static const _accent = Color(0xFF00E676);
+  static const _warn = Color(0xFFFF5252);
+  static const _tip = Color(0xFF00E676);
+  static const _mistake = Color(0xFFFFB74D);
+  static const _info = Color(0xFF40C4FF);
+
+  String _formatArea(double area) =>
+      area == area.roundToDouble() ? '${area.round()}' : area.toStringAsFixed(1);
+
+  // Miktarı alana göre ölçekle ve okunabilir göster
+  String _scaleToArea(String spec, double area) {
+    if (area == 1) return spec;
+    // "X kg/da" → "X*area kg"
+    return spec.replaceAllMapped(
+      RegExp(r'(\d+(?:\.\d+)?)\s*(?:kg|mL|L|g|adet)\/da'),
+      (m) {
+        final val = double.tryParse(m.group(1) ?? '');
+        if (val == null) return m.group(0)!;
+        final scaled = val * area;
+        final unit = m.group(0)!.replaceAll(m.group(1)!, '').replaceAll('/da', '').trim();
+        final display = scaled == scaled.roundToDouble()
+            ? '${scaled.round()}'
+            : scaled.toStringAsFixed(1);
+        return '$display $unit (${_formatArea(area)} da için)';
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final p = widget.progress;
+    final cfg = p.config;
+
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            _accent.withValues(alpha: 0.15),
+            Colors.white.withValues(alpha: 0.03),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: _accent.withValues(alpha: 0.4), width: 1.2),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Başlık + progress ──
+          InkWell(
+            borderRadius:
+                const BorderRadius.vertical(top: Radius.circular(18)),
+            onTap: () => setState(() => _expanded = !_expanded),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(14, 14, 12, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(children: [
+                    Text(p.protocol.emoji,
+                        style: const TextStyle(fontSize: 28)),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${p.protocol.displayName} — Yetiştirme Rehberi',
+                            style: GoogleFonts.outfit(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white),
+                          ),
+                          const SizedBox(height: 2),
+                          if (cfg != null)
+                            Wrap(
+                              spacing: 6,
+                              children: [
+                                _cfgChip(cfg.soilType.emoji, cfg.soilType.label),
+                                _cfgChip(
+                                    const Icon(Icons.water_drop_rounded,
+                                            size: 11, color: _info)
+                                        .toString(),
+                                    cfg.irrigationMethod.label,
+                                    isIcon: true,
+                                    icon: cfg.irrigationMethod.icon),
+                                _cfgChip('📐',
+                                    '${_formatArea(cfg.areaDekar)} da'),
+                              ],
+                            )
+                          else
+                            const Text(
+                              'Kurulum yapılmadı — tarla detayı giriniz',
+                              style: TextStyle(
+                                  color: Colors.white54, fontSize: 11),
+                            ),
+                        ],
+                      ),
+                    ),
+                    Icon(
+                      _expanded
+                          ? Icons.keyboard_arrow_up_rounded
+                          : Icons.keyboard_arrow_down_rounded,
+                      color: Colors.white54,
+                    ),
+                  ]),
+                  const SizedBox(height: 10),
+                  // Progress bar + sayaç
+                  Row(children: [
+                    Expanded(
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: p.ratio,
+                          minHeight: 7,
+                          backgroundColor: Colors.white12,
+                          valueColor:
+                              const AlwaysStoppedAnimation(_accent),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      p.isFinished
+                          ? '✓ Tamamlandı'
+                          : '${p.completedCount}/${p.totalCount}',
+                      style: GoogleFonts.outfit(
+                        color: _accent,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ]),
+                ],
+              ),
+            ),
+          ),
+
+          if (_expanded) ...[
+            const Divider(color: Colors.white12, height: 1),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
+              child: Column(
+                children: p.protocol.steps.map((step) {
+                  final isDone = p.completedOrders.contains(step.order);
+                  final isActive = p.activeStep?.order == step.order;
+                  final isOpen =
+                      isActive || _expandedStep == step.order;
+                  return _RoadmapStepTile(
+                    step: step,
+                    isCompleted: isDone,
+                    isActive: isActive,
+                    isOpen: isOpen,
+                    config: cfg,
+                    area: cfg?.areaDekar ?? 1,
+                    accent: _accent,
+                    warnColor: _warn,
+                    tipColor: _tip,
+                    mistakeColor: _mistake,
+                    infoColor: _info,
+                    scaleToArea: _scaleToArea,
+                    onTap: () {
+                      if (isActive) return;
+                      setState(() {
+                        _expandedStep =
+                            _expandedStep == step.order ? null : step.order;
+                      });
+                    },
+                  );
+                }).toList(),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _cfgChip(String emoji, String label,
+      {bool isIcon = false, IconData? icon}) =>
+      Container(
+        padding:
+            const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.07),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          if (isIcon && icon != null)
+            Icon(icon, size: 10, color: _info)
+          else
+            Text(emoji, style: const TextStyle(fontSize: 10)),
+          const SizedBox(width: 4),
+          Text(label,
+              style: const TextStyle(
+                  color: Colors.white70, fontSize: 10)),
+        ]),
+      );
+}
+
+class _RoadmapStepTile extends StatelessWidget {
+  const _RoadmapStepTile({
+    required this.step,
+    required this.isCompleted,
+    required this.isActive,
+    required this.isOpen,
+    required this.config,
+    required this.area,
+    required this.accent,
+    required this.warnColor,
+    required this.tipColor,
+    required this.mistakeColor,
+    required this.infoColor,
+    required this.scaleToArea,
+    required this.onTap,
+  });
+
+  final ProtocolStep step;
+  final bool isCompleted;
+  final bool isActive;
+  final bool isOpen;
+  final CropConfig? config;
+  final double area;
+  final Color accent;
+  final Color warnColor;
+  final Color tipColor;
+  final Color mistakeColor;
+  final Color infoColor;
+  final String Function(String, double) scaleToArea;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final icon = isCompleted
+        ? Icons.check_circle_rounded
+        : (isActive
+            ? Icons.play_circle_fill_rounded
+            : Icons.radio_button_unchecked_rounded);
+    final iconColor = isCompleted
+        ? accent
+        : (isActive ? const Color(0xFFFFB74D) : Colors.white24);
+    final titleColor =
+        isCompleted ? Colors.white54 : (isActive ? Colors.white : Colors.white70);
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 4),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── Adım başlık satırı ──
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 7),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(icon, color: iconColor, size: 22),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Row(children: [
+                      // Gün badge
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: isActive
+                              ? const Color(0xFFFFB74D).withValues(alpha: 0.2)
+                              : Colors.white.withValues(alpha: 0.07),
+                          borderRadius: BorderRadius.circular(5),
+                        ),
+                        child: Text(
+                          'G${step.dayOffset}',
+                          style: TextStyle(
+                            color: isActive
+                                ? const Color(0xFFFFB74D)
+                                : Colors.white54,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(step.stageEmoji,
+                          style: const TextStyle(fontSize: 15)),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          step.title,
+                          style: TextStyle(
+                            color: titleColor,
+                            fontSize: 13,
+                            fontWeight: isActive || isOpen
+                                ? FontWeight.w700
+                                : FontWeight.w500,
+                            decoration: isCompleted
+                                ? TextDecoration.lineThrough
+                                : null,
+                            decorationColor: Colors.white30,
+                          ),
+                        ),
+                      ),
+                    ]),
+                  ),
+                  if (!isCompleted && !isActive)
+                    Icon(
+                      isOpen
+                          ? Icons.expand_less_rounded
+                          : Icons.expand_more_rounded,
+                      size: 16,
+                      color: Colors.white30,
+                    ),
+                ],
+              ),
+            ),
+
+            // ── Detay paneli (aktif + tıklanmış) ──
+            if (isOpen && !isCompleted) ...[
+              Container(
+                margin: const EdgeInsets.only(left: 32, bottom: 8),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.04),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isActive
+                        ? const Color(0xFFFFB74D).withValues(alpha: 0.3)
+                        : Colors.white12,
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Ana açıklama
+                    Text(step.description,
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 12,
+                          height: 1.5,
+                        )),
+
+                    // Toprak tipi notu
+                    if (config != null &&
+                        step.soilNote(config!.soilType) != null) ...[
+                      const SizedBox(height: 10),
+                      _infoBox(
+                        icon: Icons.landscape_rounded,
+                        color: const Color(0xFF8D6E63),
+                        label:
+                            '${config!.soilType.emoji} ${config!.soilType.label} Toprağı',
+                        body: step.soilNote(config!.soilType)!,
+                      ),
+                    ],
+
+                    // Sulama yöntemi notu
+                    if (config != null &&
+                        step.irrigationNote(config!.irrigationMethod) != null) ...[
+                      const SizedBox(height: 8),
+                      _infoBox(
+                        icon: config!.irrigationMethod.icon,
+                        color: infoColor,
+                        label: config!.irrigationMethod.label,
+                        body: step.irrigationNote(config!.irrigationMethod)!,
+                      ),
+                    ],
+
+                    // Gübre spesifikasyonu
+                    if (step.fertilizerSpec != null) ...[
+                      const SizedBox(height: 8),
+                      _infoBox(
+                        icon: Icons.grass_rounded,
+                        color: const Color(0xFF81C784),
+                        label: 'Gübre',
+                        body: config != null && area > 0
+                            ? scaleToArea(step.fertilizerSpec!, area)
+                            : step.fertilizerSpec!,
+                      ),
+                    ],
+
+                    // İlaç spesifikasyonu
+                    if (step.pesticideSpec != null) ...[
+                      const SizedBox(height: 8),
+                      _infoBox(
+                        icon: Icons.science_rounded,
+                        color: const Color(0xFFCE93D8),
+                        label: 'İlaçlama',
+                        body: step.pesticideSpec!,
+                      ),
+                    ],
+
+                    // Su miktarı
+                    if (step.waterSpec != null) ...[
+                      const SizedBox(height: 8),
+                      _infoBox(
+                        icon: Icons.water_drop_rounded,
+                        color: infoColor,
+                        label: 'Su Miktarı',
+                        body: step.waterSpec!,
+                      ),
+                    ],
+
+                    // Maliyet
+                    if (step.estimatedCostPerDekar != null &&
+                        step.estimatedCostPerDekar! > 0) ...[
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 7),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFD54F).withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                              color: const Color(0xFFFFD54F)
+                                  .withValues(alpha: 0.3)),
+                        ),
+                        child: Row(children: [
+                          const Text('₺',
+                              style: TextStyle(
+                                color: Color(0xFFFFD54F),
+                                fontWeight: FontWeight.w800,
+                                fontSize: 14,
+                              )),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              config != null && area > 0
+                                  ? 'Bu adım tahmini maliyet: '
+                                    '~₺${(step.estimatedCostPerDekar! * area).round()} '
+                                    '(${_formatArea(area)} da × ₺${step.estimatedCostPerDekar!.round()}/da)'
+                                  : '~₺${step.estimatedCostPerDekar!.round()}/da',
+                              style: const TextStyle(
+                                color: Color(0xFFFFD54F),
+                                fontSize: 11,
+                              ),
+                            ),
+                          ),
+                        ]),
+                      ),
+                    ],
+
+                    // Kritik uyarı
+                    if (step.criticalWarning != null) ...[
+                      const SizedBox(height: 8),
+                      _alertBox(
+                        icon: Icons.warning_rounded,
+                        color: warnColor,
+                        label: 'KRİTİK UYARI',
+                        body: step.criticalWarning!,
+                      ),
+                    ],
+
+                    // Çiftçi ipucu
+                    if (step.farmerTip != null) ...[
+                      const SizedBox(height: 8),
+                      _alertBox(
+                        icon: Icons.lightbulb_rounded,
+                        color: tipColor,
+                        label: 'Çiftçi İpucu',
+                        body: step.farmerTip!,
+                      ),
+                    ],
+
+                    // Sık yapılan hata
+                    if (step.commonMistake != null) ...[
+                      const SizedBox(height: 8),
+                      _alertBox(
+                        icon: Icons.cancel_rounded,
+                        color: mistakeColor,
+                        label: 'Sık Yapılan Hata',
+                        body: step.commonMistake!,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+
+            if (!isCompleted && isOpen)
+              Divider(
+                  color: Colors.white.withValues(alpha: 0.06), height: 1),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _formatArea(double area) =>
+      area == area.roundToDouble() ? '${area.round()}' : area.toStringAsFixed(1);
+
+  Widget _infoBox({
+    required IconData icon,
+    required Color color,
+    required String label,
+    required String body,
+  }) =>
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: color.withValues(alpha: 0.25)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(children: [
+              Icon(icon, size: 13, color: color),
+              const SizedBox(width: 5),
+              Text(label,
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  )),
+            ]),
+            const SizedBox(height: 5),
+            Text(body,
+                style: TextStyle(
+                    color: color.withValues(alpha: 0.85),
+                    fontSize: 11,
+                    height: 1.5)),
+          ],
+        ),
+      );
+
+  Widget _alertBox({
+    required IconData icon,
+    required Color color,
+    required String label,
+    required String body,
+  }) =>
+      Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: color.withValues(alpha: 0.35), width: 1.2),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, size: 16, color: color),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label,
+                      style: TextStyle(
+                        color: color,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.3,
+                      )),
+                  const SizedBox(height: 3),
+                  Text(body,
+                      style: TextStyle(
+                        color: color.withValues(alpha: 0.9),
+                        fontSize: 11,
+                        height: 1.5,
+                      )),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// ÇİFTÇİ KURULUM SAYFASI — bitki seçimi ile bölge çizimi arasında açılır.
+// Toprak türü, sulama yöntemi, alan ve sıra/bitki aralığını alır;
+// CropConfig nesnesi döndürür.
+// ═══════════════════════════════════════════════════════════════════════
+class _CropSetupSheet extends StatefulWidget {
+  const _CropSetupSheet({required this.protocol, this.initialConfig});
+
+  final CropProtocol protocol;
+  final CropConfig? initialConfig;
+
+  @override
+  State<_CropSetupSheet> createState() => _CropSetupSheetState();
+}
+
+class _CropSetupSheetState extends State<_CropSetupSheet> {
+  late SoilType _soil;
+  late IrrigationMethod _irrigation;
+  late final TextEditingController _areaCtrl;
+  late final TextEditingController _rowCtrl;
+  late final TextEditingController _plantCtrl;
+
+  static const _bg = Color(0xFF0D1811);
+  static const _accent = Color(0xFF00E676);
+  static const _card = Color(0xFF152018);
+
+  @override
+  void initState() {
+    super.initState();
+    final cfg = widget.initialConfig;
+    _soil = cfg?.soilType ?? SoilType.loamy;
+    _irrigation = cfg?.irrigationMethod ?? IrrigationMethod.furrow;
+    _areaCtrl = TextEditingController(
+        text: (cfg?.areaDekar ?? 10).toStringAsFixed(0));
+    _rowCtrl = TextEditingController(
+        text: (cfg?.rowSpacingCm ?? widget.protocol.defaultRowSpacingCm)
+            .toStringAsFixed(0));
+    _plantCtrl = TextEditingController(
+        text: (cfg?.plantSpacingCm ?? widget.protocol.defaultPlantSpacingCm)
+            .toStringAsFixed(0));
+  }
+
+  @override
+  void dispose() {
+    _areaCtrl.dispose();
+    _rowCtrl.dispose();
+    _plantCtrl.dispose();
+    super.dispose();
+  }
+
+  void _confirm() {
+    final area = double.tryParse(_areaCtrl.text.trim()) ?? 10.0;
+    final row = double.tryParse(_rowCtrl.text.trim()) ??
+        widget.protocol.defaultRowSpacingCm;
+    final plant = double.tryParse(_plantCtrl.text.trim()) ??
+        widget.protocol.defaultPlantSpacingCm;
+    Navigator.pop(
+      context,
+      CropConfig(
+        soilType: _soil,
+        irrigationMethod: _irrigation,
+        areaDekar: area.clamp(0.1, 10000),
+        rowSpacingCm: row.clamp(20, 200),
+        plantSpacingCm: plant.clamp(5, 200),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: _bg,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+        left: 20,
+        right: 20,
+        top: 16,
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── Tutamaç ──
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.white24,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // ── Başlık ──
+            Row(children: [
+              Text(widget.protocol.emoji,
+                  style: const TextStyle(fontSize: 30)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${widget.protocol.displayName} Tarlası Kurulumu',
+                      style: GoogleFonts.outfit(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                      ),
+                    ),
+                    Text(
+                      'Bilgilerini gir — rehber sana özel hesaplansın',
+                      style: const TextStyle(
+                        color: Colors.white54,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ]),
+            const SizedBox(height: 20),
+
+            // ── Toprak Türü ──
+            _sectionLabel('🌍 Toprak Türü'),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: SoilType.values.map((s) {
+                final selected = _soil == s;
+                return GestureDetector(
+                  onTap: () => setState(() => _soil = s),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: selected
+                          ? _accent.withValues(alpha: 0.18)
+                          : _card,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: selected ? _accent : Colors.white12,
+                        width: selected ? 1.5 : 1,
+                      ),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(s.emoji,
+                            style: const TextStyle(fontSize: 22)),
+                        const SizedBox(height: 4),
+                        Text(s.label,
+                            style: TextStyle(
+                              color: selected ? _accent : Colors.white70,
+                              fontSize: 12,
+                              fontWeight: selected
+                                  ? FontWeight.w700
+                                  : FontWeight.normal,
+                            )),
+                      ],
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+            // Seçilen toprak tipi açıklaması
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                _soil.description,
+                style: const TextStyle(
+                    color: Colors.white54, fontSize: 11, height: 1.4),
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // ── Sulama Yöntemi ──
+            _sectionLabel('💧 Sulama Yöntemi'),
+            const SizedBox(height: 8),
+            ...IrrigationMethod.values.map((m) {
+              final selected = _irrigation == m;
+              return GestureDetector(
+                onTap: () => setState(() => _irrigation = m),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: selected ? _accent.withValues(alpha: 0.15) : _card,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: selected ? _accent : Colors.white12,
+                      width: selected ? 1.5 : 1,
+                    ),
+                  ),
+                  child: Row(children: [
+                    Icon(m.icon,
+                        color: selected ? _accent : Colors.white38, size: 22),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(m.label,
+                              style: TextStyle(
+                                color:
+                                    selected ? _accent : Colors.white,
+                                fontSize: 14,
+                                fontWeight: selected
+                                    ? FontWeight.w700
+                                    : FontWeight.w500,
+                              )),
+                          Text(m.description,
+                              style: const TextStyle(
+                                  color: Colors.white54, fontSize: 11)),
+                        ],
+                      ),
+                    ),
+                    if (selected)
+                      const Icon(Icons.check_circle_rounded,
+                          color: _accent, size: 20),
+                  ]),
+                ),
+              );
+            }),
+            const SizedBox(height: 20),
+
+            // ── Tarla Alanı ──
+            _sectionLabel('📐 Tarla Alanı'),
+            const SizedBox(height: 8),
+            _inputField(
+              controller: _areaCtrl,
+              label: 'Dekar',
+              hint: 'ör. 10',
+              suffix: 'da',
+            ),
+            const SizedBox(height: 16),
+
+            // ── Ekim Aralıkları ──
+            _sectionLabel('📏 Ekim Aralıkları'),
+            const SizedBox(height: 8),
+            Row(children: [
+              Expanded(
+                child: _inputField(
+                  controller: _rowCtrl,
+                  label: 'Sıra arası',
+                  hint: widget.protocol.defaultRowSpacingCm.toStringAsFixed(0),
+                  suffix: 'cm',
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _inputField(
+                  controller: _plantCtrl,
+                  label: 'Bitki arası',
+                  hint: widget.protocol.defaultPlantSpacingCm.toStringAsFixed(0),
+                  suffix: 'cm',
+                ),
+              ),
+            ]),
+
+            // ── Ekme mevsimi ve bölge ipucu ──
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: _accent.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(10),
+                border:
+                    Border.all(color: _accent.withValues(alpha: 0.2)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(children: [
+                    const Icon(Icons.calendar_today_rounded,
+                        color: _accent, size: 14),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Ekim Zamanı (Türkiye)',
+                      style: GoogleFonts.outfit(
+                          color: _accent,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700),
+                    ),
+                  ]),
+                  const SizedBox(height: 4),
+                  Text(widget.protocol.sowingSeasonTR,
+                      style: const TextStyle(
+                          color: Colors.white70, fontSize: 11, height: 1.3)),
+                  const SizedBox(height: 6),
+                  Row(children: [
+                    const Icon(Icons.location_on_rounded,
+                        color: _accent, size: 14),
+                    const SizedBox(width: 6),
+                    Text(
+                      'İdeal Bölgeler',
+                      style: GoogleFonts.outfit(
+                          color: _accent,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700),
+                    ),
+                  ]),
+                  const SizedBox(height: 4),
+                  Text(widget.protocol.idealRegionsTR,
+                      style: const TextStyle(
+                          color: Colors.white70, fontSize: 11, height: 1.3)),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // ── Onayla butonu ──
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: ElevatedButton.icon(
+                onPressed: _confirm,
+                icon: const Icon(Icons.check_rounded, size: 20),
+                label: Text(
+                  'Kurulumu Tamamla ve Devam Et',
+                  style: GoogleFonts.outfit(
+                      fontSize: 15, fontWeight: FontWeight.w700),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _accent,
+                  foregroundColor: Colors.black,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _sectionLabel(String text) => Text(
+        text,
+        style: GoogleFonts.outfit(
+          color: Colors.white,
+          fontSize: 14,
+          fontWeight: FontWeight.w700,
+        ),
+      );
+
+  Widget _inputField({
+    required TextEditingController controller,
+    required String label,
+    required String hint,
+    required String suffix,
+  }) =>
+      TextField(
+        controller: controller,
+        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        style: const TextStyle(color: Colors.white, fontSize: 15),
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: const TextStyle(color: Colors.white54, fontSize: 13),
+          hintText: hint,
+          hintStyle: const TextStyle(color: Colors.white24),
+          suffixText: suffix,
+          suffixStyle: const TextStyle(color: Colors.white54),
+          filled: true,
+          fillColor: const Color(0xFF152018),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: Colors.white12),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: Colors.white12),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: _accent, width: 1.5),
+          ),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        ),
+      );
 }

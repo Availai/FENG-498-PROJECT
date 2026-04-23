@@ -1,4 +1,5 @@
 import '../data/activity_types.dart';
+import '../data/crop_protocols.dart';
 
 /// Çiftçiye verilecek tek bir somut yönerge. UI sadece render eder; karar
 /// mantığı tamamen burada oluşturulur ("flutter vitrindir" felsefesi).
@@ -114,6 +115,27 @@ class TaskDirectiveService {
       final lastWater = _lastActivity(activitiesForCrop, ActivityType.watering);
       final lastFert = _lastActivity(activitiesForCrop, ActivityType.fertilizing);
       final lastSpray = _lastActivity(activitiesForCrop, ActivityType.spraying);
+
+      // ── Protokol adımı (3 vitrin bitki için) ────────────────
+      // Aktif adımı en üst sıraya yerleştir; hasat protokol içindeyse
+      // ayrıca aşağıdaki harvest bloğu çalışmasın (continue ederiz).
+      final protoStepDirective = _protocolStepDirective(
+        crop: crop,
+        cropId: cropId,
+        cropName: cropName,
+        plantedDate: plantedDate,
+        activitiesForCrop: activitiesForCrop,
+        now: t,
+      );
+      if (protoStepDirective != null) {
+        out.add(protoStepDirective);
+        // Hasat adımı protokol tarafından yönetiliyorsa ek "hasat zamanı"
+        // direktifi gerekmez. Ama sulama/gübreleme önerileri yine devam
+        // etsin — onlar hava/aralık tabanlı, protokole değil koşula bağlı.
+        if (protoStepDirective.actionType == ActivityType.harvest) {
+          continue;
+        }
+      }
 
       // Hasat kontrolü
       if (plantedDate != null) {
@@ -231,6 +253,64 @@ class TaskDirectiveService {
   }
 
   // ───────────────────────────── yardımcılar ─────────────────
+
+  /// 3 vitrin bitki için aktif yetiştirme adımını direktif olarak üretir.
+  /// Eşleşen protokol yoksa veya tüm adımlar tamamsa null döner.
+  static FieldDirective? _protocolStepDirective({
+    required Map<String, dynamic> crop,
+    required String? cropId,
+    required String cropName,
+    required DateTime? plantedDate,
+    required List<Map<String, dynamic>> activitiesForCrop,
+    required DateTime now,
+  }) {
+    final protocol = CropProtocols.resolveByName(crop['name']?.toString());
+    if (protocol == null || plantedDate == null) return null;
+
+    final daysSince = now.difference(plantedDate).inDays;
+    ProtocolStep? active;
+    int completed = 0;
+    for (final step in protocol.steps) {
+      if (daysSince < step.dayOffset) break;
+      bool isDone;
+      if (step.expectedActivity == null) {
+        // Sonraki adımın günü geldiyse otomatik tamam.
+        int? nextOffset;
+        for (final s in protocol.steps) {
+          if (s.order > step.order) {
+            nextOffset = s.dayOffset;
+            break;
+          }
+        }
+        isDone = nextOffset != null && daysSince >= nextOffset;
+      } else {
+        isDone = activitiesForCrop.any((a) =>
+            a['type']?.toString() == step.expectedActivity);
+      }
+      if (isDone) {
+        completed++;
+      } else {
+        active = step;
+        break;
+      }
+    }
+
+    if (active == null) return null;
+
+    final remainingDays = active.dayOffset - daysSince;
+    final urgency = remainingDays <= 0 ? 2 : (remainingDays <= 3 ? 1 : 0);
+
+    return FieldDirective(
+      urgency: urgency,
+      headline:
+          '${protocol.emoji} $cropName: Adım ${active.order}/${protocol.steps.length} — ${active.title}',
+      reason: '${active.description}\n\nİlerleme: $completed/${protocol.steps.length} adım tamam.',
+      kind: 'protocol_step',
+      actionType: active.expectedActivity,
+      cropId: cropId,
+      cropName: cropName,
+    );
+  }
 
   static int _estimateWateringMinutes(int interval) {
     if (interval <= 2) return 10;
