@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/turkish_crops_repository.dart';
+import '../data/supported_crops.dart';
 import '../services/app_providers.dart';
 import '../services/rule_engine.dart';
 import '../services/offline_encyclopedia.dart';
@@ -25,10 +26,7 @@ class _CropFieldMatchScreenState extends ConsumerState<CropFieldMatchScreen>
   // Her kart için staggered animasyon
   late AnimationController _staggerController;
 
-  List<String> _quickCrops = const [
-    'Domates', 'Mısır', 'Salatalık', 'Patlıcan',
-    'Buğday', 'Biber', 'Patates', 'Soğan',
-  ];
+  List<String> _quickCrops = SupportedCrops.visibleNames;
 
   @override
   void initState() {
@@ -45,7 +43,12 @@ class _CropFieldMatchScreenState extends ConsumerState<CropFieldMatchScreen>
     final popular = TurkishCropsRepository.instance.popular(limit: 10);
     if (!mounted || popular.isEmpty) return;
     setState(() {
-      _quickCrops = popular.map((c) => c.nameTr).toList();
+      _quickCrops = popular
+          .where((c) => SupportedCrops.isSupported(c.nameTr))
+          .map((c) => SupportedCrops.canonicalName(c.nameTr) ?? c.nameTr)
+          .toSet()
+          .toList();
+      if (_quickCrops.isEmpty) _quickCrops = SupportedCrops.visibleNames;
     });
   }
 
@@ -58,6 +61,15 @@ class _CropFieldMatchScreenState extends ConsumerState<CropFieldMatchScreen>
 
   Future<void> _analyze(String cropName) async {
     if (cropName.trim().isEmpty) return;
+    final canonical = SupportedCrops.canonicalName(cropName);
+    if (canonical == null) {
+      AppToast.show(
+        context,
+        message: 'Bu prototipte yalnız Ayçiçeği, Mısır ve Domates destekleniyor.',
+        type: ToastType.warning,
+      );
+      return;
+    }
 
     final all = await ref.read(localDataRepositoryProvider).loadFieldMaps();
     final fields = all.where((f) => f['latitude'] != null).toList();
@@ -89,7 +101,7 @@ class _CropFieldMatchScreenState extends ConsumerState<CropFieldMatchScreen>
       );
 
       // Tek bir Gemini çağrısıyla tüm tarlaları değerlendir
-      final results = await _batchEvaluate(cropName, fields, fieldEnvList);
+      final results = await _batchEvaluate(canonical, fields, fieldEnvList);
 
       if (mounted) {
         setState(() {

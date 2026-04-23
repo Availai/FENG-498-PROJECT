@@ -477,6 +477,7 @@ class LocalDataRepository {
     String? note,
     double? quantity,
     String? quantityUnit,
+    Map<String, dynamic>? metadata,
     DateTime? at,
   }) async {
     final field = await (_db.select(_db.fields)
@@ -485,7 +486,7 @@ class LocalDataRepository {
         .getSingleOrNull();
     final fieldName = field?.name ?? 'Tarla';
     final title = _composeActivityTitle(fieldName, type);
-    final meta = <String, dynamic>{};
+    final meta = <String, dynamic>{...?metadata};
     if (note != null && note.trim().isNotEmpty) meta['note'] = note.trim();
     if (quantity != null) meta['quantity'] = quantity;
     if (quantityUnit != null) meta['quantity_unit'] = quantityUnit;

@@ -7,6 +7,8 @@
 /// internet gerektirmez.
 library;
 
+import '../data/turkiye_crop_guides.dart';
+
 /// Bir bitkinin tek bir büyüme aşaması.
 class GrowthStage {
   final String label;
@@ -60,6 +62,23 @@ class EncyclopediaExtensions {
       GrowthStage(label: 'Olgunlaşma & Hasat', durationDays: '30–45 gün',
           description: 'Daneler sertleşir, bitki sararır.',
           careTip: 'Nem %14\'ün altına düştüğünde hasat.'),
+    ],
+    'yağlı tohum': [
+      GrowthStage(label: 'Çimlenme', durationDays: '7–14 gün',
+          description: 'Tohum tavlı toprakta kök ve sürgün oluşturur.',
+          careTip: 'Kabuk bağlamasını ve boş sıra oluşumunu kontrol edin.'),
+      GrowthStage(label: 'Rozet ve Hızlı Gelişim', durationDays: '20–45 gün',
+          description: 'Kök derine iner, yaprak alanı hızla büyür.',
+          careTip: 'Yabancı ot kontrolü ve üst azot bu dönemde yapılır.'),
+      GrowthStage(label: 'Tabla Oluşumu', durationDays: '45–65 gün',
+          description: 'Tabla taslağı belirginleşir, su ihtiyacı artar.',
+          careTip: 'Kuraklık varsa ilk kritik sulama bu döneme denk getirilir.'),
+      GrowthStage(label: 'Çiçeklenme', durationDays: '15–25 gün',
+          description: 'Tabla çiçekleri açar ve döllenme başlar.',
+          careTip: 'Yeşilkurt, çayır tırtılı ve mildiyö belirtilerini izleyin.'),
+      GrowthStage(label: 'Dane Dolumu & Hasat', durationDays: '30–45 gün',
+          description: 'Daneler sertleşir, tabla arkası sararır.',
+          careTip: 'Geç hasat kuş zararı ve dane dökümünü artırır.'),
     ],
     'sebze': [
       GrowthStage(label: 'Tohum Ekimi', durationDays: '0–5 gün',
@@ -117,6 +136,10 @@ class EncyclopediaExtensions {
   /// Bitki adından tipini çıkarır (basit kural tabanlı).
   static String inferType(String cropName) {
     final n = cropName.toLowerCase();
+    if (n.contains('ayçiçek') || n.contains('aycicek') ||
+        n.contains('günebakan')) {
+      return 'yağlı tohum';
+    }
     if (n.contains('buğday') || n.contains('arpa') || n.contains('mısır') ||
         n.contains('çavdar') || n.contains('yulaf') || n.contains('çeltik') ||
         n.contains('sorgum')) {
@@ -136,8 +159,23 @@ class EncyclopediaExtensions {
 
   /// Belirli bir bitki için adım adım büyüme aşamalarını döner.
   static List<GrowthStage> stagesFor(String cropName) {
+    final specific = _specificStagesFor(cropName);
+    if (specific != null) return specific;
     final type = inferType(cropName);
     return _stagesByType[type] ?? _stagesByType['sebze']!;
+  }
+
+  static List<GrowthStage>? _specificStagesFor(String cropName) {
+    final guide = TurkiyeCropGuides.lookup(cropName);
+    if (guide == null) return null;
+    return guide.stages
+        .map((stage) => GrowthStage(
+              label: stage.title,
+              durationDays: stage.timing,
+              description: stage.action,
+              careTip: stage.risk,
+            ))
+        .toList(growable: false);
   }
 
   // ─────────────────────────────────────────────────────────────────────
@@ -210,6 +248,32 @@ class EncyclopediaExtensions {
     },
   };
 
+  static Map<String, Map<String, String>> regionalCalendarFor(String cropName) {
+    final guide = TurkiyeCropGuides.lookup(cropName);
+    if (guide != null) {
+      return {
+        for (final region in guide.regionalCalendar)
+          region.region: {
+            'iklim': region.notes,
+            guide.cropName.toLowerCase(): region.plantingWindow,
+            'hasat': region.harvestWindow,
+          },
+      };
+    }
+
+    final normalizedCrop = cropName.toLowerCase().trim();
+    return {
+      for (final region in regionalCalendar.entries)
+        if (region.value.keys.any((key) => key.contains(normalizedCrop)))
+          region.key: Map<String, String>.fromEntries(
+            region.value.entries.where(
+              (entry) =>
+                  entry.key == 'iklim' || entry.key.contains(normalizedCrop),
+            ),
+          ),
+    };
+  }
+
   // ─────────────────────────────────────────────────────────────────────
   // 3. HASTALIK & ZARARLI TANIMA REHBERİ
   // Görsel olmayan sürümde belirti tarifi + organik/kimyasal müdahale.
@@ -248,6 +312,20 @@ class EncyclopediaExtensions {
           organicTreatment: 'Sık ekimden kaçın, dengeli azot.',
           chemicalTreatment: 'Tebukonazol fungisit.'),
     ],
+    'yağlı tohum': [
+      PestEntry(name: 'Canavar otu',
+          symptoms: 'Bitki dibinde parazit sürgünler; ayçiçeğinde bodurluk ve tabla küçülmesi.',
+          organicTreatment: 'Uzun münavebe, temiz tohum, dayanıklı çeşit.',
+          chemicalTreatment: 'Yalnız ruhsatlı çeşit/ürün etiketine göre uzman önerisiyle.'),
+      PestEntry(name: 'Ayçiçeği mildiyösü',
+          symptoms: 'Bodur bitki, sararma, yaprak altında beyazımsı küf.',
+          organicTreatment: 'Dayanıklı çeşit, sertifikalı tohum, hastalıklı artıkları uzaklaştırma.',
+          chemicalTreatment: 'Etiketli ürün ve il/ilçe müdürlüğü önerisi esas alınmalı.'),
+      PestEntry(name: 'Yeşilkurt / Çayır tırtılı',
+          symptoms: 'Yaprak, tomurcuk ve tablaya kemirme zararı.',
+          organicTreatment: 'Yabancı ot temizliği, tarla sayımı, doğal düşmanları koruma.',
+          chemicalTreatment: 'Eşik aşılırsa etiket dozu ve uzman önerisiyle.'),
+    ],
     'meyve': [
       PestEntry(name: 'Elma İç Kurdu',
           symptoms: 'Meyvede delik, içte kahverengi tünel.',
@@ -279,8 +357,24 @@ class EncyclopediaExtensions {
   };
 
   static List<PestEntry> pestsFor(String cropName) {
+    final specific = _specificPestsFor(cropName);
+    if (specific != null) return specific;
     final type = inferType(cropName);
     return _pestsByType[type] ?? _pestsByType['sebze']!;
+  }
+
+  static List<PestEntry>? _specificPestsFor(String cropName) {
+    final guide = TurkiyeCropGuides.lookup(cropName);
+    if (guide == null) return null;
+    return guide.pests
+        .map((pest) => PestEntry(
+              name: pest.name,
+              symptoms: pest.symptoms,
+              organicTreatment: pest.integratedControl,
+              chemicalTreatment:
+                  '${pest.escalation} Etiket dozu ve il/ilçe müdürlüğü önerisi dışına çıkmayın.',
+            ))
+        .toList(growable: false);
   }
 
   // ─────────────────────────────────────────────────────────────────────

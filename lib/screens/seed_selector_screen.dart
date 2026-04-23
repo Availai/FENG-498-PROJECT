@@ -4,6 +4,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/seed_models.dart';
+import '../data/supported_crops.dart';
 import '../services/anatolian_seed_db.dart';
 import '../services/agri_sim_service.dart';
 import '../theme/app_theme.dart';
@@ -24,7 +25,7 @@ class _SeedSelectorScreenState extends State<SeedSelectorScreen>
   SimulationResult? _sim;
   late TabController _tabs;
 
-  static const _crops = ['buğday', 'mısır', 'ayçiçeği', 'arpa', 'çeltik', 'pamuk', 'kolza', 'nohut'];
+  static const _crops = SupportedCrops.visibleNames;
 
   @override
   void initState() {

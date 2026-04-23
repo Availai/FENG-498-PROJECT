@@ -10,6 +10,7 @@ import 'offline_encyclopedia.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'plant_cache_service.dart';
 import '../utils/image_compressor.dart';
+import '../data/turkiye_crop_guides.dart';
 
 class _PlantNetResult {
   final bool ok;
@@ -1523,6 +1524,36 @@ KARAR KURALLARI:
   // ═══════════════════════════════════════════════════
   // REHBER SİSTEMİ (Yeni Eklenen Özellik)
   // ═══════════════════════════════════════════════════
+  static Map<String, dynamic> _withTurkiyeCropGuide(
+    Map<String, dynamic> response,
+    TurkiyeCropGuide? guide,
+  ) {
+    if (guide == null) return response;
+
+    final enriched = Map<String, dynamic>.from(response);
+    final cropData = Map<String, dynamic>.from(
+      (enriched['cropData'] as Map?) ?? const {},
+    )..addAll(guide.cropDataOverrides);
+    final plantingData = Map<String, dynamic>.from(
+      (enriched['plantingData'] as Map?) ?? const {},
+    )..addAll(guide.plantingDataOverrides);
+
+    enriched
+      ..['cropData'] = cropData
+      ..['plantingData'] = plantingData
+      ..['turkiyeGuide'] = guide.toJson()
+      ..['sourceRefs'] = guide.sourceRefs
+      ..['technicalMetrics'] = guide.technicalMetrics
+      ..['growthStages'] = guide.stages.map((stage) => stage.toJson()).toList()
+      ..['pestGuides'] = guide.pests.map((pest) => pest.toJson()).toList()
+      ..['regionalCalendar'] =
+          guide.regionalCalendar.map((region) => region.toJson()).toList()
+      ..['rotationNotes'] = guide.rotationNotes
+      ..['harvestQualityNotes'] = guide.harvestQualityNotes;
+
+    return enriched;
+  }
+
   // ═══════════════════════════════════════════════════
   // REHBER SİSTEMİ (Gemini Çıkarıldı - Tamamen API Tabanlı)
   // ═══════════════════════════════════════════════════
@@ -1540,6 +1571,7 @@ KARAR KURALLARI:
   }) async {
     try {
       String normalizedQuery = query.toLowerCase().trim();
+      final turkiyeGuide = TurkiyeCropGuides.lookup(query);
 
       // --- 1. ÇEVRESEL VERİLERİ HAZIRLA ---
       double temp = 20.0;
@@ -1611,12 +1643,20 @@ KARAR KURALLARI:
           : "🏡 **Hobi Bahçesi:** Drenajı iyi olan topraklar kullanın, doğrudan güneş alan bir konuma yerleştirin ve kök çürümesini önlemek için aşırı sulamadan kaçının.";
 
       // --- 2. FIRESTORE'DA ARAMA YAP (ANA VERİTABANI) ---
-      final docRef =
-          FirebaseFirestore.instance.collection('crops').doc(normalizedQuery);
-      final docSnap = await docRef.get();
+      Map<String, dynamic>? firestoreData;
+      try {
+        final docRef =
+            FirebaseFirestore.instance.collection('crops').doc(normalizedQuery);
+        final docSnap = await docRef.get().timeout(const Duration(seconds: 5));
+        if (docSnap.exists) {
+          firestoreData = docSnap.data();
+        }
+      } catch (_) {
+        firestoreData = null;
+      }
 
-      if (docSnap.exists) {
-        final data = docSnap.data()!;
+      if (firestoreData != null) {
+        final data = firestoreData;
 
         // Firestore verisini cropData formatına dönüştür
         final cropData = {
@@ -1647,7 +1687,7 @@ KARAR KURALLARI:
           'planting_tip': data["planting_tip"] ?? "",
         };
 
-        return {
+        return _withTurkiyeCropGuide({
           'success': true,
           'cropData': cropData,
           'weeklyForecast': weeklyForecast,
@@ -1676,7 +1716,7 @@ KARAR KURALLARI:
           },
           'locationInfo':
               '🌡️ $temp°C | 🌿 pH: ${ph.toStringAsFixed(1)} | 💧 Nem: %${hum.toStringAsFixed(0)}',
-        };
+        }, turkiyeGuide);
       }
 
       // --- 3. FIRESTORE'DA YOKSA OfflineEncyclopedia + statik varsayılanlar ---
@@ -1721,7 +1761,7 @@ KARAR KURALLARI:
         'region_note': 'Bölge koşulları genel olarak bu bitki için uygundur.',
       };
 
-      return {
+      return _withTurkiyeCropGuide({
         'success': true,
         'cropData': data,
         'plantingData': {
@@ -1750,7 +1790,7 @@ KARAR KURALLARI:
         },
         'locationInfo':
             '🌡️ $temp°C | 🌿 pH: ${ph.toStringAsFixed(1)} | 💧 Nem: %${hum.toStringAsFixed(0)}',
-      };
+      }, turkiyeGuide);
     } catch (e) {
       return {
         'success': false,

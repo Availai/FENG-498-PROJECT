@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/agri_service.dart';
 import '../services/encyclopedia_extensions.dart';
+import '../data/supported_crops.dart';
 import '../utils/location_utils.dart';
 import '../widgets/floating_toast.dart';
 import '../widgets/weekly_water_card.dart';
@@ -31,6 +32,15 @@ class _GrowingGuideScreenState extends State<GrowingGuideScreen> {
       );
       return;
     }
+    final canonical = SupportedCrops.canonicalName(query);
+    if (canonical == null) {
+      AppToast.show(
+        context,
+        message: 'Bu prototipte yalnız Ayçiçeği, Mısır ve Domates destekleniyor.',
+        type: ToastType.warning,
+      );
+      return;
+    }
     setState(() {
       _isLoading = true;
       _result = null;
@@ -40,7 +50,7 @@ class _GrowingGuideScreenState extends State<GrowingGuideScreen> {
     try {
       final pos = await getCurrentPosition();
       final result = await AgriService.getPlantGuide(
-        query,
+        canonical,
         pos.latitude,
         pos.longitude,
         scale: _scale,
@@ -49,7 +59,7 @@ class _GrowingGuideScreenState extends State<GrowingGuideScreen> {
       if (mounted) {
         setState(() {
           _result = result;
-          _currentCrop = query;
+          _currentCrop = canonical;
         });
       }
     } catch (e) {
@@ -186,6 +196,8 @@ class _GrowingGuideScreenState extends State<GrowingGuideScreen> {
     final pd = (_result!['plantingData'] as Map<String, dynamic>?) ?? {};
     final forecast = (_result!['weeklyForecast'] as List?) ?? [];
     final waterPlan = (_result!['weeklyWaterPlan'] as List?) ?? [];
+    final hasTurkiyeGuide =
+        ((_result!['turkiyeGuide'] as Map?)?.isNotEmpty ?? false);
 
     final temp = (env['temp'] as num?)?.toDouble() ?? 20;
     final ph = (env['ph'] as num?)?.toDouble() ?? 6.8;
@@ -436,6 +448,11 @@ class _GrowingGuideScreenState extends State<GrowingGuideScreen> {
           ),
           const SizedBox(height: 14),
 
+          if (hasTurkiyeGuide) ...[
+            _buildTurkiyeTechnicalGuideCard(),
+            const SizedBox(height: 14),
+          ],
+
           // ── 6. Birlikte Ekim & Zararlılar ──
           Card(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -588,12 +605,347 @@ class _GrowingGuideScreenState extends State<GrowingGuideScreen> {
     );
   }
 
+  List<Map<String, dynamic>> _mapList(Object? raw) {
+    if (raw is! List) return const [];
+    return raw
+        .whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
+        .toList(growable: false);
+  }
+
+  Widget _buildTurkiyeTechnicalGuideCard() {
+    final guide = Map<String, dynamic>.from(
+      (_result!['turkiyeGuide'] as Map?) ?? <String, dynamic>{},
+    );
+    if (guide.isEmpty) return const SizedBox.shrink();
+
+    final metrics = Map<String, dynamic>.from(
+      (_result!['technicalMetrics'] as Map?) ?? <String, dynamic>{},
+    );
+    final stages = _mapList(_result!['growthStages']);
+    final pests = _mapList(_result!['pestGuides']);
+    final regions = _mapList(_result!['regionalCalendar']);
+    final nutrition = _mapList(guide['nutritionPlan']);
+    final sources = ((_result!['sourceRefs'] as List?) ?? const [])
+        .map((source) => source.toString())
+        .where((source) => source.trim().isNotEmpty)
+        .toList(growable: false);
+    final cropName = guide['cropName']?.toString() ?? _currentCrop;
+    final summary = guide['summary']?.toString() ?? '';
+    final rotation = _result!['rotationNotes']?.toString() ?? '';
+    final harvest = _result!['harvestQualityNotes']?.toString() ?? '';
+
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.verified, color: Colors.green.shade700),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    '$cropName — Türkiye Teknik Rehberi',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(summary, style: const TextStyle(fontSize: 13, height: 1.35)),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: metrics.entries
+                  .take(6)
+                  .map(
+                    (entry) => _guideMetricTile(
+                      entry.key,
+                      entry.value.toString(),
+                      Colors.green,
+                    ),
+                  )
+                  .toList(),
+            ),
+            const SizedBox(height: 6),
+            ExpansionTile(
+              tilePadding: const EdgeInsets.symmetric(horizontal: 4),
+              leading: const Icon(Icons.straighten, color: Colors.green),
+              title: const Text(
+                'Teknik Ölçüler',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+              ),
+              children: metrics.entries
+                  .map(
+                    (entry) => ListTile(
+                      dense: true,
+                      title: Text(
+                        entry.key,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      subtitle: Text(
+                        entry.value.toString(),
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    ),
+                  )
+                  .toList(),
+            ),
+            ExpansionTile(
+              tilePadding: const EdgeInsets.symmetric(horizontal: 4),
+              leading: const Icon(Icons.timeline, color: Colors.teal),
+              title: const Text(
+                'Dönem Dönem Yapılacaklar',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+              ),
+              children: stages.map((stage) {
+                return ListTile(
+                  dense: true,
+                  title: Text(
+                    '${stage['title']} — ${stage['timing']}',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        stage['action']?.toString() ?? '',
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Risk: ${stage['risk'] ?? ''}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.red.shade800,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+            ExpansionTile(
+              tilePadding: const EdgeInsets.symmetric(horizontal: 4),
+              leading: const Icon(Icons.science, color: Colors.orange),
+              title: const Text(
+                'Gübreleme Planı',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+              ),
+              children: nutrition.map((item) {
+                return ListTile(
+                  dense: true,
+                  title: Text(
+                    '${item['phase']} — ${item['timing']}',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  subtitle: Text(
+                    item['recommendation']?.toString() ?? '',
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                );
+              }).toList(),
+            ),
+            ExpansionTile(
+              tilePadding: const EdgeInsets.symmetric(horizontal: 4),
+              leading: const Icon(Icons.bug_report, color: Colors.red),
+              title: const Text(
+                'Hastalık ve Zararlı Takibi',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+              ),
+              children: pests.map((pest) {
+                return Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade50,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${pest['name']} (${pest['type']})',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                            color: Colors.red.shade900,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Belirti: ${pest['symptoms']}',
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Kontrol: ${pest['monitoring']}',
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Önlem: ${pest['integratedControl']}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.green.shade900,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Kimyasal karar: ${pest['escalation']}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.orange.shade900,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+            ExpansionTile(
+              tilePadding: const EdgeInsets.symmetric(horizontal: 4),
+              leading: const Icon(Icons.map, color: Colors.blue),
+              title: const Text(
+                'Bölgesel Takvim',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+              ),
+              children: regions.map((region) {
+                return ListTile(
+                  dense: true,
+                  title: Text(
+                    region['region']?.toString() ?? '',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  subtitle: Text(
+                    'Ekim: ${region['plantingWindow']}\n'
+                    'Hasat: ${region['harvestWindow']}\n'
+                    '${region['notes']}',
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                );
+              }).toList(),
+            ),
+            ExpansionTile(
+              tilePadding: const EdgeInsets.symmetric(horizontal: 4),
+              leading: const Icon(Icons.fact_check, color: Colors.brown),
+              title: const Text(
+                'Hasat, Münavebe ve Kaynak',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+              ),
+              children: [
+                if (harvest.isNotEmpty)
+                  ListTile(
+                    dense: true,
+                    title: const Text(
+                      'Hasat Kalitesi',
+                      style:
+                          TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                    ),
+                    subtitle:
+                        Text(harvest, style: const TextStyle(fontSize: 12)),
+                  ),
+                if (rotation.isNotEmpty)
+                  ListTile(
+                    dense: true,
+                    title: const Text(
+                      'Münavebe',
+                      style:
+                          TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                    ),
+                    subtitle:
+                        Text(rotation, style: const TextStyle(fontSize: 12)),
+                  ),
+                if (sources.isNotEmpty)
+                  ListTile(
+                    dense: true,
+                    title: const Text(
+                      'Kaynak Dayanağı',
+                      style:
+                          TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                    ),
+                    subtitle: Text(
+                      sources.map((source) => '• $source').join('\n'),
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _guideMetricTile(String label, String value, Color color) {
+    return Container(
+      width: (MediaQuery.of(context).size.width - 72) / 2,
+      padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 10),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.07),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withValues(alpha: 0.18)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 10,
+              color: Colors.grey.shade700,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 12,
+              color: color,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   // ─────────────────────────────────────────────────────────────────────
   // Modül 4 — Ansiklopedi Derinleştirme
   // ─────────────────────────────────────────────────────────────────────
   Widget _buildEncyclopediaDeepCard() {
     final stages = EncyclopediaExtensions.stagesFor(_currentCrop);
     final pests = EncyclopediaExtensions.pestsFor(_currentCrop);
+    final regionalCalendar =
+        EncyclopediaExtensions.regionalCalendarFor(_currentCrop);
 
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -656,7 +1008,17 @@ class _GrowingGuideScreenState extends State<GrowingGuideScreen> {
               leading: const Icon(Icons.map_outlined, color: Colors.blue, size: 20),
               title: const Text('Bölgesel Ekim Takvimi',
                   style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-              children: EncyclopediaExtensions.regionalCalendar.entries.map((region) {
+              children: regionalCalendar.isEmpty
+                  ? [
+                      const ListTile(
+                        dense: true,
+                        title: Text(
+                          'Bu bitki için bölgesel takvim kaydı bulunamadı.',
+                          style: TextStyle(fontSize: 12),
+                        ),
+                      ),
+                    ]
+                  : regionalCalendar.entries.map((region) {
                 final iklim = region.value['iklim'] ?? '';
                 final crops = Map<String, String>.from(region.value)..remove('iklim');
                 return Padding(

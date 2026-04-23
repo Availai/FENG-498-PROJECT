@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../data/turkish_crops_repository.dart';
+import '../data/supported_crops.dart';
 import '../theme/app_theme.dart';
 import '../widgets/tap_scale.dart';
 
@@ -54,12 +55,35 @@ class _TurkishCropsSearchScreenState extends State<TurkishCropsSearchScreen> {
   Future<void> _bootstrap() async {
     await _repo.ensureReady();
     if (!mounted) return;
+    final supported = _supportedCrops(query: '', category: 'Tümü');
     setState(() {
-      _categories = _repo.listCategories();
-      _total = _repo.totalCount();
-      _results = _repo.search(query: '', limit: 80);
+      _categories = [
+        'Tümü',
+        ...supported.map((crop) => crop.category).toSet(),
+      ];
+      _total = supported.length;
+      _results = supported;
       _loading = false;
     });
+  }
+
+  List<TurkishCrop> _supportedCrops({
+    required String query,
+    required String category,
+  }) {
+    final q = SupportedCrops.normalize(query);
+    final out = <TurkishCrop>[];
+    for (final name in SupportedCrops.visibleNames) {
+      final crop = _repo.findByName(name);
+      if (crop == null) continue;
+      final cropKey = SupportedCrops.normalize(
+        '${crop.nameTr} ${crop.aliases.join(' ')} ${crop.scientificName ?? ''}',
+      );
+      if (q.isNotEmpty && !cropKey.contains(q)) continue;
+      if (category != 'Tümü' && crop.category != category) continue;
+      out.add(crop);
+    }
+    return out;
   }
 
   void _onQueryChanged(String v) {
@@ -68,7 +92,7 @@ class _TurkishCropsSearchScreenState extends State<TurkishCropsSearchScreen> {
       if (!mounted) return;
       setState(() {
         _query = v;
-        _results = _repo.search(query: v, category: _category, limit: 80);
+        _results = _supportedCrops(query: v, category: _category);
       });
     });
   }
@@ -76,7 +100,7 @@ class _TurkishCropsSearchScreenState extends State<TurkishCropsSearchScreen> {
   void _selectCategory(String cat) {
     setState(() {
       _category = cat;
-      _results = _repo.search(query: _query, category: cat, limit: 80);
+      _results = _supportedCrops(query: _query, category: cat);
     });
   }
 

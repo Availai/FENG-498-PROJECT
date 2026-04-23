@@ -15,6 +15,7 @@ import 'repositories/sync_repository.dart';
 import 'repositories/auth_repository.dart';
 import 'sync_service.dart';
 import 'task_directive_service.dart';
+import 'field_state_service.dart';
 import 'weather_soil_service.dart';
 import 'api/sync_api_client.dart';
 
@@ -129,6 +130,10 @@ final fieldActivityLogProvider = StreamProvider.family
 /// katmanı sadece `generate()` çıktısını render eder.
 final taskDirectiveServiceProvider = Provider<TaskDirectiveService>((ref) {
   return const TaskDirectiveService();
+});
+
+final fieldStateServiceProvider = Provider<FieldStateService>((ref) {
+  return const FieldStateService();
 });
 
 /// Dashboard'da tarla başına hızlı yönerge özeti — hava tahmini yüklenmez

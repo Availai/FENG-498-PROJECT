@@ -13,6 +13,7 @@ import '../services/notification_service.dart';
 import '../services/task_directive_service.dart';
 import '../data/activity_types.dart';
 import '../data/crop_protocols.dart';
+import '../data/supported_crops.dart';
 import '../data/verified_agri_database.dart';
 import '../data/turkish_crops_repository.dart';
 import '../widgets/activity_quick_log.dart';
@@ -879,7 +880,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
                 ),
               ),
               const SizedBox(height: 12),
-              ActivityQuickLog(fieldId: fieldId),
+              ActivityQuickLog(fieldId: fieldId, fieldCrops: _fieldCrops),
             ],
           ),
         ),
@@ -986,6 +987,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
         );
 
     final scored = ranked
+        .where((r) => SupportedCrops.isSupported(r.crop.nameTr))
         .map((r) => {
               'plant': _turkishCropToAgriPlant(r.crop),
               'tcrop': r.crop,
