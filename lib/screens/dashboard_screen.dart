@@ -368,21 +368,38 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
     return Row(
       children: [
         Container(
-          padding: const EdgeInsets.all(6),
+          width: 3,
+          height: 24,
           decoration: BoxDecoration(
-            color: Colors.green.shade50,
-            borderRadius: BorderRadius.circular(8),
+            gradient: const LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [AppColors.emeraldLight, AppColors.emeraldDark],
+            ),
+            borderRadius: BorderRadius.circular(2),
           ),
-          child: Icon(icon, size: 18, color: Colors.green.shade700),
+        ),
+        const SizedBox(width: 10),
+        Container(
+          padding: const EdgeInsets.all(7),
+          decoration: BoxDecoration(
+            gradient: AppGradients.emeraldCard,
+            borderRadius: BorderRadius.circular(10),
+            boxShadow: AppShadows.emeraldGlow,
+          ),
+          child: Icon(icon, size: 17, color: Colors.white),
         ),
         const SizedBox(width: 10),
         Text(
           title,
-          style: TextStyle(
+          style: const TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w700,
-            color: Colors.grey.shade800,
+            color: Colors.white,
             letterSpacing: 0.3,
+            shadows: [
+              Shadow(color: Color(0x66000000), blurRadius: 4, offset: Offset(0, 1)),
+            ],
           ),
         ),
       ],

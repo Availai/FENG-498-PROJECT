@@ -498,6 +498,149 @@ class LocalDataRepository {
       eventDate: at ?? DateTime.now(),
       metadata: meta.isEmpty ? null : meta,
     );
+
+    // Sulama log'u → bekleyen sulama planını "tamamlandı" olarak işaretle.
+    // Yöntem: 3 gün içindeki bir sonraki should_irrigate=true planı bul,
+    // shouldIrrigate=false yap ve sebebi güncelle. Plan tarihi olduğu gibi
+    // kalır (geçmiş kayıt). Bu sayede _DirectiveCard "sulama gerekiyor"
+    // direktifini düşürür ve sezon özeti hesabı doğru çalışır.
+    if (type == 'watering') {
+      await _consumeNextIrrigationPlan(fieldId: fieldId, cropId: cropId);
+    }
+  }
+
+  Future<void> _consumeNextIrrigationPlan({
+    required String fieldId,
+    String? cropId,
+  }) async {
+    final now = DateTime.now().toUtc();
+    final windowEnd = now.add(const Duration(days: 3));
+    final query = _db.select(_db.irrigationPlans)
+      ..where((tbl) =>
+          tbl.fieldId.equals(fieldId) &
+          tbl.deletedAt.isNull() &
+          tbl.shouldIrrigate.equals(true) &
+          tbl.scheduledDate.isSmallerOrEqualValue(windowEnd))
+      ..orderBy([(tbl) => OrderingTerm.asc(tbl.scheduledDate)])
+      ..limit(1);
+    final next = await query.getSingleOrNull();
+    if (next == null) return;
+
+    // Eğer cropId verildiyse sadece o ekinin planını tüket
+    if (cropId != null && next.cropId != null && next.cropId != cropId) {
+      return;
+    }
+
+    await (_db.update(_db.irrigationPlans)
+          ..where((tbl) => tbl.id.equals(next.id)))
+        .write(IrrigationPlansCompanion(
+      shouldIrrigate: const Value(false),
+      reason: Value('Çiftçi suladı (loglandı ${_formatDate(now.toLocal())}).'),
+      updatedAt: Value(now),
+    ));
+
+    await _enqueueSyncJob(
+      entityType: 'irrigation_plans',
+      entityId: next.id,
+      operation: 'upsert',
+      payload: {
+        'id': next.id,
+        'should_irrigate': false,
+        'reason': 'Çiftçi suladı',
+        'consumed_at': now.toIso8601String(),
+      },
+      updatedAt: now,
+    );
+  }
+
+  /// Tarlaya ait sezon (ekim sonrası) aktivite özeti.
+  ///
+  /// Dönen alanlar:
+  /// - watering_count, watering_total_liters, watering_last_at
+  /// - fertilizing_count, fertilizing_total_kg, fertilizing_last_name, fertilizing_last_at
+  /// - spraying_count, spraying_last_name, spraying_last_active, spraying_last_at
+  /// - harvest_count, harvest_total_kg, harvest_last_at
+  Future<Map<String, dynamic>> loadSeasonSummary({
+    required String fieldId,
+    DateTime? since,
+  }) async {
+    final query = _db.select(_db.calendarEvents)
+      ..where((tbl) => tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull());
+    if (since != null) {
+      query.where((tbl) => tbl.eventDate.isBiggerOrEqualValue(since.toUtc()));
+    }
+    final rows = await query.get();
+
+    int wCount = 0, fCount = 0, sCount = 0, hCount = 0;
+    double wLitersTotal = 0, fKgTotal = 0, hKgTotal = 0;
+    DateTime? wLast, fLast, sLast, hLast;
+    String? fLastName, sLastName, sLastActive;
+    int? lastRecommendedWeeklyMm;
+
+    for (final ev in rows) {
+      Map<String, dynamic> meta = const {};
+      final raw = ev.metadataJson;
+      if (raw != null && raw.isNotEmpty) {
+        try {
+          final decoded = jsonDecode(raw);
+          if (decoded is Map) meta = Map<String, dynamic>.from(decoded);
+        } catch (_) {}
+      }
+      final date = ev.eventDate.toLocal();
+      switch (ev.eventType) {
+        case 'watering':
+          wCount++;
+          final liters = (meta['water_liters'] as num?)?.toDouble();
+          if (liters != null) wLitersTotal += liters;
+          if (wLast == null || date.isAfter(wLast)) {
+            wLast = date;
+            final rec = (meta['recommended_weekly_mm'] as num?)?.toInt();
+            if (rec != null) lastRecommendedWeeklyMm = rec;
+          }
+          break;
+        case 'fertilizing':
+          fCount++;
+          final kg = (meta['fertilizer_kg'] as num?)?.toDouble();
+          if (kg != null) fKgTotal += kg;
+          if (fLast == null || date.isAfter(fLast)) {
+            fLast = date;
+            fLastName = meta['fertilizer_name'] as String?;
+          }
+          break;
+        case 'spraying':
+          sCount++;
+          if (sLast == null || date.isAfter(sLast)) {
+            sLast = date;
+            sLastName = meta['pesticide_name'] as String?;
+            sLastActive = meta['active_ingredient'] as String?;
+          }
+          break;
+        case 'harvest':
+          hCount++;
+          final kg = (meta['harvest_kg'] as num?)?.toDouble();
+          if (kg != null) hKgTotal += kg;
+          if (hLast == null || date.isAfter(hLast)) hLast = date;
+          break;
+      }
+    }
+
+    return {
+      'watering_count': wCount,
+      'watering_total_liters': wLitersTotal,
+      'watering_last_at': wLast,
+      'watering_last_recommended_weekly_mm': lastRecommendedWeeklyMm,
+      'fertilizing_count': fCount,
+      'fertilizing_total_kg': fKgTotal,
+      'fertilizing_last_name': fLastName,
+      'fertilizing_last_at': fLast,
+      'spraying_count': sCount,
+      'spraying_last_name': sLastName,
+      'spraying_last_active': sLastActive,
+      'spraying_last_at': sLast,
+      'harvest_count': hCount,
+      'harvest_total_kg': hKgTotal,
+      'harvest_last_at': hLast,
+    };
   }
 
   String _composeActivityTitle(String fieldName, String type) {

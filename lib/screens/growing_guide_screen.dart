@@ -117,7 +117,7 @@ class _GrowingGuideScreenState extends State<GrowingGuideScreen> {
                 TextField(
                   controller: _searchCtrl,
                   decoration: InputDecoration(
-                    hintText: 'Örn: Domates, Salatalık, Buğday...',
+                    hintText: 'Ayçiçeği, Mısır veya Domates...',
                     filled: true,
                     fillColor: Colors.white,
                     prefixIcon: const Icon(Icons.search, color: Colors.green),

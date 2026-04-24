@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/activity_types.dart';
+import '../data/crop_playbooks.dart';
 import '../data/supported_crops.dart';
 import '../services/app_providers.dart';
 import '../services/haptic_service.dart';
@@ -19,12 +20,18 @@ class ActivityQuickLog extends ConsumerStatefulWidget {
     required this.fieldId,
     this.cropId,
     this.fieldCrops = const [],
+    this.fieldAreaDekar = 1.0,
     this.onLogged,
   });
 
   final String fieldId;
   final String? cropId;
   final List<Map<String, dynamic>> fieldCrops;
+
+  /// Tarla alanı (dekar) — sulama litre dönüşümü ve gübre/ilaç toplam doz
+  /// hesaplamak için kullanılır. Yoksa 1.0 alınır.
+  final double fieldAreaDekar;
+
   final VoidCallback? onLogged;
 
   @override
@@ -93,6 +100,7 @@ class _ActivityQuickLogState extends ConsumerState<ActivityQuickLog> {
             .where((crop) => SupportedCrops.isSupported(crop['name']?.toString()))
             .toList(growable: false),
         initialCropId: widget.cropId,
+        fieldAreaDekar: widget.fieldAreaDekar,
       ),
     );
     if (detail == null) return;
@@ -183,11 +191,13 @@ class _QuickLogSheet extends StatefulWidget {
     required this.type,
     required this.crops,
     this.initialCropId,
+    this.fieldAreaDekar = 1.0,
   });
 
   final String type;
   final List<Map<String, dynamic>> crops;
   final String? initialCropId;
+  final double fieldAreaDekar;
 
   @override
   State<_QuickLogSheet> createState() => _QuickLogSheetState();
@@ -202,6 +212,15 @@ class _QuickLogSheetState extends State<_QuickLogSheet> {
   final _targetCtrl = TextEditingController();
   String? _selectedCropId;
   String _method = 'Damla sulama';
+
+  // Playbook'tan seçilen ürün (null → serbest metin modu).
+  FertilizerProduct? _pickedFertilizer;
+  PesticideProduct? _pickedPesticide;
+  PesticideCategory? _pesticideCategoryFilter;
+
+  /// Seçili bitkinin playbook'u (Ayçiçeği/Mısır/Domates) — yoksa null.
+  CropPlaybook? get _playbook =>
+      CropPlaybooks.resolveByName(_selectedCropName);
 
   List<Map<String, dynamic>> get _selectableCrops => widget.crops
       .where((crop) => (crop['id']?.toString().isNotEmpty ?? false))
@@ -309,7 +328,13 @@ class _QuickLogSheetState extends State<_QuickLogSheet> {
                     child: Text(name),
                   );
                 }).toList(),
-                onChanged: (value) => setState(() => _selectedCropId = value),
+                onChanged: (value) => setState(() {
+                  _selectedCropId = value;
+                  // Bitki değişti → playbook seçimleri sıfırla.
+                  _pickedFertilizer = null;
+                  _pickedPesticide = null;
+                  _pesticideCategoryFilter = null;
+                }),
                 decoration: InputDecoration(
                   hintText: 'Ürün seç',
                   filled: true,
@@ -435,6 +460,21 @@ class _QuickLogSheetState extends State<_QuickLogSheet> {
       metadata['irrigation_method'] = _method;
       if (qty != null) metadata['duration_minutes'] = qty;
       if (extraQty != null) metadata['water_liters'] = extraQty;
+      // Playbook'tan haftalık önerilen mm — gerçek/öneri karşılaştırması için.
+      final crop = _selectedCropMap();
+      final pb = _playbook;
+      if (pb != null && crop != null) {
+        final planted = _parsePlantedDate(crop['planted_date']?.toString());
+        if (planted != null) {
+          final days = DateTime.now().difference(planted).inDays;
+          final band = pb.bandForDay(days);
+          if (band != null) {
+            metadata['recommended_weekly_mm'] = band.weeklyMm;
+            metadata['stage_label'] = band.stage;
+            metadata['days_since_planting'] = days;
+          }
+        }
+      }
     } else if (widget.type == ActivityType.fertilizing) {
       if (_materialCtrl.text.trim().isNotEmpty) {
         metadata['fertilizer_name'] = _materialCtrl.text.trim();
@@ -442,6 +482,14 @@ class _QuickLogSheetState extends State<_QuickLogSheet> {
       if (qty != null) metadata['fertilizer_kg'] = qty;
       if (_targetCtrl.text.trim().isNotEmpty) {
         metadata['growth_stage'] = _targetCtrl.text.trim();
+      }
+      // Playbook seçimi varsa strüktüre alanlar:
+      final f = _pickedFertilizer;
+      if (f != null) {
+        metadata['fertilizer_formula'] = f.formula;
+        metadata['fertilizer_dose_per_da'] = f.defaultDosePerDa;
+        metadata['fertilizer_unit'] = f.unit;
+        metadata['source'] = 'playbook';
       }
     } else if (widget.type == ActivityType.spraying) {
       metadata['pesticide_name'] = _materialCtrl.text.trim();
@@ -452,6 +500,14 @@ class _QuickLogSheetState extends State<_QuickLogSheet> {
         metadata['target_pest'] = _targetCtrl.text.trim();
       }
       if (qty != null) metadata['mixture_liters'] = qty;
+      final p = _pickedPesticide;
+      if (p != null) {
+        metadata['pesticide_category'] = p.category.name;
+        metadata['pesticide_dose_per_da'] = p.defaultDosePerDa;
+        metadata['pesticide_dose_unit'] = p.unit;
+        metadata['preharvest_interval_days'] = p.preharvestIntervalDays;
+        metadata['source'] = 'playbook';
+      }
     } else if (widget.type == ActivityType.harvest) {
       if (qty != null) metadata['harvest_kg'] = qty;
       if (_targetCtrl.text.trim().isNotEmpty) {
@@ -509,6 +565,10 @@ class _QuickLogSheetState extends State<_QuickLogSheet> {
     switch (type) {
       case ActivityType.watering:
         return [
+          if (_wateringRecommendation() != null) ...[
+            _wateringRecommendation()!,
+            const SizedBox(height: 12),
+          ],
           _methodDropdown(
             label: 'Sulama yöntemi',
             values: const ['Damla sulama', 'Karık sulama', 'Yağmurlama', 'Elle sulama'],
@@ -525,6 +585,10 @@ class _QuickLogSheetState extends State<_QuickLogSheet> {
         ];
       case ActivityType.fertilizing:
         return [
+          if (_playbook != null) ...[
+            _fertilizerPicker(_playbook!),
+            const SizedBox(height: 14),
+          ],
           _textField(
             controller: _materialCtrl,
             label: 'Gübre adı',
@@ -545,6 +609,10 @@ class _QuickLogSheetState extends State<_QuickLogSheet> {
         ];
       case ActivityType.spraying:
         return [
+          if (_playbook != null) ...[
+            _pesticidePicker(_playbook!),
+            const SizedBox(height: 14),
+          ],
           _textField(
             controller: _materialCtrl,
             label: 'İlaç adı',
@@ -581,6 +649,326 @@ class _QuickLogSheetState extends State<_QuickLogSheet> {
       default:
         return const [];
     }
+  }
+
+  // ───────────────────────────────────────────────────────────────────────
+  // Playbook destekli pickerlar
+  // ───────────────────────────────────────────────────────────────────────
+
+  Widget _fertilizerPicker(CropPlaybook pb) {
+    return _PickerCard(
+      title: '${pb.displayName} için gübre kataloğu',
+      subtitle: 'Dokun → tüm alanlar otomatik dolar (üzerine yazabilirsin)',
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: pb.fertilizers.map((f) {
+          final selected = _pickedFertilizer == f;
+          return TapScale(
+            onTap: () => _applyFertilizer(f),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: selected
+                    ? AppColors.emerald.withValues(alpha: 0.18)
+                    : AppColors.surface,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: selected
+                      ? AppColors.emerald
+                      : AppColors.border,
+                  width: selected ? 1.5 : 1,
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    f.name,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${f.formula} · ${_formatNum(f.defaultDosePerDa)} ${f.unit}/da',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _pesticidePicker(CropPlaybook pb) {
+    final filtered = _pesticideCategoryFilter == null
+        ? pb.pesticides
+        : pb.pesticides
+            .where((p) => p.category == _pesticideCategoryFilter)
+            .toList();
+    return _PickerCard(
+      title: '${pb.displayName} için ilaç kataloğu',
+      subtitle: 'Önce kategori, sonra ürün seç. Tüm alanlar otomatik dolar.',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              _categoryChip(null, 'Tümü'),
+              ...PesticideCategory.values.map(
+                (c) => _categoryChip(c, c.label),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          if (filtered.isEmpty)
+            Text(
+              'Bu kategoride kayıtlı ürün yok.',
+              style: TextStyle(
+                fontSize: 12,
+                color: AppColors.textTertiary,
+                fontStyle: FontStyle.italic,
+              ),
+            )
+          else
+            Column(
+              children: filtered.map((p) {
+                final selected = _pickedPesticide == p;
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: TapScale(
+                    onTap: () => _applyPesticide(p),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: selected
+                            ? AppColors.warning.withValues(alpha: 0.14)
+                            : AppColors.surface,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: selected
+                              ? AppColors.warning
+                              : AppColors.border,
+                          width: selected ? 1.5 : 1,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  p.name,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  p.activeIngredient,
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Hedef: ${p.targets.take(3).join(", ")}',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: AppColors.textTertiary,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: AppColors.warning.withValues(alpha: 0.18),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              '${_formatNum(p.defaultDosePerDa)} ${p.unit}/da',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.warning,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _categoryChip(PesticideCategory? cat, String label) {
+    final selected = _pesticideCategoryFilter == cat;
+    return TapScale(
+      onTap: () =>
+          setState(() => _pesticideCategoryFilter = selected ? null : cat),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: selected
+              ? AppColors.emerald.withValues(alpha: 0.16)
+              : AppColors.surface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: selected ? AppColors.emerald : AppColors.border,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: selected ? AppColors.emeraldDark : AppColors.textSecondary,
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Sulama dialogunda haftalık önerilen mm ve dekara karşılık L hesabı.
+  /// Bitki seçili + planted_date varsa playbook'tan band çekilir; yoksa null.
+  Widget? _wateringRecommendation() {
+    final pb = _playbook;
+    if (pb == null) return null;
+    final crop = _selectedCropMap();
+    if (crop == null) return null;
+    final planted = _parsePlantedDate(crop['planted_date']?.toString());
+    if (planted == null) return null;
+    final daysSince = DateTime.now().difference(planted).inDays;
+    if (daysSince < 0) return null;
+    final band = pb.bandForDay(daysSince);
+    if (band == null) return null;
+
+    // 1 mm = 1 L/m². 1 dekar = 1000 m². Toplam L = mm × 1000 × dekar.
+    final totalLiters = band.weeklyMm * 1000 * widget.fieldAreaDekar;
+    final litersPerDay = totalLiters / 7;
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.frostBg,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.frost.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.water_drop_rounded,
+              color: AppColors.frost, size: 22),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${pb.displayName} · ${band.stage} ($daysSince. gün)',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.frost,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Bu evrede haftada ${band.weeklyMm} mm önerilir. '
+                  'Tarlan ${_formatNum(widget.fieldAreaDekar)} dekar → '
+                  '~${_formatLargeLiter(totalLiters)} L/hafta '
+                  '(≈ ${_formatLargeLiter(litersPerDay)} L/gün)',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textPrimary,
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _applyFertilizer(FertilizerProduct f) {
+    setState(() {
+      _pickedFertilizer = f;
+      _materialCtrl.text = '${f.name} (${f.formula})';
+      // Toplam doz = doz/da × alan (kullanıcı override edebilir).
+      final totalDose = f.defaultDosePerDa * widget.fieldAreaDekar;
+      _qtyCtrl.text = _formatNum(totalDose);
+      _targetCtrl.text = f.stage;
+    });
+  }
+
+  void _applyPesticide(PesticideProduct p) {
+    setState(() {
+      _pickedPesticide = p;
+      _materialCtrl.text = p.name;
+      _activeCtrl.text = p.activeIngredient;
+      _targetCtrl.text = p.targets.first;
+      // Karışım hacmi = sulandırma su × alan (200 L/da varsayılan).
+      final mixtureL = p.dilutionWaterLPerDa * widget.fieldAreaDekar;
+      _qtyCtrl.text = _formatNum(mixtureL);
+    });
+  }
+
+  Map<String, dynamic>? _selectedCropMap() {
+    for (final c in widget.crops) {
+      if (c['id']?.toString() == _selectedCropId) return c;
+    }
+    return null;
+  }
+
+  static DateTime? _parsePlantedDate(String? raw) {
+    if (raw == null || raw.isEmpty) return null;
+    final parts = raw.split('.');
+    if (parts.length == 3) {
+      final iso =
+          '${parts[2]}-${parts[1].padLeft(2, '0')}-${parts[0].padLeft(2, '0')}';
+      final dt = DateTime.tryParse(iso);
+      if (dt != null) return dt;
+    }
+    return DateTime.tryParse(raw);
+  }
+
+  static String _formatNum(double v) {
+    if (v == v.toInt()) return v.toInt().toString();
+    return v.toStringAsFixed(1);
+  }
+
+  static String _formatLargeLiter(double v) {
+    if (v >= 1000) return '${(v / 1000).toStringAsFixed(1)} m³';
+    return v.toStringAsFixed(0);
   }
 
   Widget _methodDropdown({
@@ -655,6 +1043,66 @@ class _QuickLogSheetState extends State<_QuickLogSheet> {
           ),
         ),
       ],
+    );
+  }
+}
+
+// ─── Ortak picker kartı çerçevesi ─────────────────────────────────────────
+
+class _PickerCard extends StatelessWidget {
+  const _PickerCard({
+    required this.title,
+    required this.subtitle,
+    required this.child,
+  });
+
+  final String title;
+  final String subtitle;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.mint,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.emerald.withValues(alpha: 0.25)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.auto_awesome_rounded,
+                  size: 16, color: AppColors.emeraldDark),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.emeraldDark,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 2),
+          Text(
+            subtitle,
+            style: const TextStyle(
+              fontSize: 11,
+              color: AppColors.textSecondary,
+              height: 1.3,
+            ),
+          ),
+          const SizedBox(height: 10),
+          child,
+        ],
+      ),
     );
   }
 }

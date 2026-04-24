@@ -42,7 +42,10 @@ class _SeedSelectorScreenState extends State<SeedSelectorScreen>
 
   void _loadVarieties() {
     setState(() {
-      _varieties = AnatolianSeedDB.getAll(cropTr: _selectedCrop, region: _region);
+      final raw = AnatolianSeedDB.getAll(cropTr: _selectedCrop, region: _region);
+      // Prototip: Ayçiçeği / Mısır / Domates dışındaki çeşitler gizli.
+      _varieties =
+          raw.where((v) => SupportedCrops.isSupported(v.cropTr)).toList();
       _selected = null;
       _sim = null;
     });

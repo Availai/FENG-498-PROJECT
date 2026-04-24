@@ -19,6 +19,7 @@ import '../data/turkish_crops_repository.dart';
 import '../widgets/activity_quick_log.dart';
 import '../widgets/floating_toast.dart';
 import '../widgets/glass_panel.dart';
+import '../widgets/season_summary_card.dart';
 import '../widgets/zone_drawing_toolbar.dart';
 import '../widgets/crop_zone_tooltip.dart';
 import '../widgets/crop_render_factory.dart';
@@ -880,7 +881,12 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
                 ),
               ),
               const SizedBox(height: 12),
-              ActivityQuickLog(fieldId: fieldId, fieldCrops: _fieldCrops),
+              ActivityQuickLog(
+                fieldId: fieldId,
+                fieldCrops: _fieldCrops,
+                fieldAreaDekar:
+                    (widget.fieldData['area_dekar'] as num?)?.toDouble() ?? 1.0,
+              ),
             ],
           ),
         ),
@@ -1757,6 +1763,8 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
         fieldId: fieldId,
         analysis: _analysis,
         fieldCrops: _fieldCrops,
+        fieldAreaDekar:
+            (widget.fieldData['area_dekar'] as num?)?.toDouble() ?? 1.0,
       ),
     );
   }
@@ -2004,11 +2012,25 @@ class _DirectivesModalContent extends ConsumerWidget {
     required this.fieldId,
     required this.analysis,
     required this.fieldCrops,
+    required this.fieldAreaDekar,
   });
 
   final String fieldId;
   final Map<String, dynamic>? analysis;
   final List<Map<String, dynamic>> fieldCrops;
+  final double fieldAreaDekar;
+
+  static DateTime? _parsePlantedDate(String? raw) {
+    if (raw == null || raw.isEmpty) return null;
+    final parts = raw.split('.');
+    if (parts.length == 3) {
+      final iso =
+          '${parts[2]}-${parts[1].padLeft(2, '0')}-${parts[0].padLeft(2, '0')}';
+      final dt = DateTime.tryParse(iso);
+      if (dt != null) return dt;
+    }
+    return DateTime.tryParse(raw);
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -2076,6 +2098,30 @@ class _DirectivesModalContent extends ConsumerWidget {
                   soilMoisture:
                       (analysis?['soil_moisture'] as num?)?.toDouble(),
                 );
+                // Sezon özet kartları (her ekili 3-vitrin bitki için).
+                final summaryCards = <Widget>[];
+                for (final crop in fieldCrops) {
+                  if (!SupportedCrops.isSupported(crop['name']?.toString())) {
+                    continue;
+                  }
+                  final planted =
+                      _parsePlantedDate(crop['planted_date']?.toString());
+                  if (planted == null) continue;
+                  final cropId = crop['id']?.toString();
+                  final summary = computeSeasonSummary(
+                    activities: activities,
+                    cropId: cropId,
+                    since: planted,
+                  );
+                  summaryCards.add(SeasonSummaryCard(
+                    cropName: crop['name']?.toString() ?? 'Bitki',
+                    plantedDate: planted,
+                    areaDekar: fieldAreaDekar,
+                    summary: summary,
+                    harvestDays: (crop['harvest_days'] as num?)?.toInt(),
+                  ));
+                }
+
                 // 3 vitrin bitkiden ekili olanlar için yol haritası kartları.
                 final roadmaps = <Widget>[];
                 for (final crop in fieldCrops) {
@@ -2092,15 +2138,18 @@ class _DirectivesModalContent extends ConsumerWidget {
                   }
                 }
 
-                final totalCount = roadmaps.length + directives.length;
+                final totalCount =
+                    summaryCards.length + roadmaps.length + directives.length;
                 return ListView.separated(
                   padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
                   itemCount: totalCount,
                   separatorBuilder: (_, __) => const SizedBox(height: 10),
                   itemBuilder: (_, i) {
-                    if (i < roadmaps.length) return roadmaps[i];
+                    if (i < summaryCards.length) return summaryCards[i];
+                    final j = i - summaryCards.length;
+                    if (j < roadmaps.length) return roadmaps[j];
                     return _DirectiveCard(
-                      directive: directives[i - roadmaps.length],
+                      directive: directives[j - roadmaps.length],
                       fieldId: fieldId,
                     );
                   },
