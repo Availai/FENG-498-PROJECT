@@ -18,12 +18,22 @@ import '../data/crop_spacing.dart';
 List<LatLng> plantPlacementInPolygon({
   required List<LatLng> polygon,
   required String cropName,
+  double? rowSpacingCm,
+  double? plantSpacingCm,
   int maxCount = 45,
   double minVisualSpacingM = 2.8,
 }) {
   if (polygon.length < 3 || maxCount <= 0) return const [];
 
-  final spacing = spacingFor(cropName);
+  final defaultSpacing = spacingFor(cropName);
+  final spacing = CropSpacing(
+    (rowSpacingCm != null && rowSpacingCm > 0)
+        ? rowSpacingCm
+        : defaultSpacing.rowCm,
+    (plantSpacingCm != null && plantSpacingCm > 0)
+        ? plantSpacingCm
+        : defaultSpacing.plantCm,
+  );
 
   // ── 1. Poligon alanı ve naif yoğunluktan ölçek çarpanı
   final toolkitPts = polygon

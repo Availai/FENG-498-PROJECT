@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -30,6 +31,7 @@ class PlantZoneDrawingScreen extends StatefulWidget {
   final Color plantColor;
   final List<LatLng> fieldPolygon;
   final List<ExistingPlantZone> existingZones;
+  final double? initialTargetDekar;
 
   const PlantZoneDrawingScreen({
     super.key,
@@ -37,6 +39,7 @@ class PlantZoneDrawingScreen extends StatefulWidget {
     required this.plantColor,
     required this.fieldPolygon,
     this.existingZones = const [],
+    this.initialTargetDekar,
   });
 
   @override
@@ -47,6 +50,7 @@ class _PlantZoneDrawingScreenState extends State<PlantZoneDrawingScreen>
     with SingleTickerProviderStateMixin {
   final MapController _mapController = MapController();
   final List<LatLng> _zonePoints = [];
+  late final TextEditingController _targetDekarCtrl;
   double _zoneAreaSqm = 0.0;
 
   /// Tarla toplam alanı (m²)
@@ -82,6 +86,11 @@ class _PlantZoneDrawingScreenState extends State<PlantZoneDrawingScreen>
   @override
   void initState() {
     super.initState();
+    _targetDekarCtrl = TextEditingController(
+      text: widget.initialTargetDekar == null
+          ? ''
+          : widget.initialTargetDekar!.toStringAsFixed(2),
+    );
     _pulseCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1400),
@@ -91,6 +100,7 @@ class _PlantZoneDrawingScreenState extends State<PlantZoneDrawingScreen>
   @override
   void dispose() {
     _pulseCtrl.dispose();
+    _targetDekarCtrl.dispose();
     super.dispose();
   }
 
@@ -154,6 +164,46 @@ class _PlantZoneDrawingScreenState extends State<PlantZoneDrawingScreen>
   }
 
   void _cancel() => Navigator.of(context).pop();
+
+  void _suggestByDekar() {
+    final targetDekar =
+        double.tryParse(_targetDekarCtrl.text.trim().replaceAll(',', '.'));
+    if (targetDekar == null || targetDekar <= 0 || widget.fieldPolygon.length < 3) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Geçerli bir dekar değeri girin.')),
+      );
+      return;
+    }
+
+    final targetSqm = targetDekar * 1000.0;
+    final availableSqm = (_fieldAreaSqm - _usedAreaSqm).clamp(0.0, double.infinity);
+    if (targetSqm > availableSqm + 1) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Kalan alan ${(_remainingAreaSqm / 1000).toStringAsFixed(2)} dekar. Daha küçük bir değer girin.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    if (_fieldAreaSqm <= 0) return;
+    final scale = math.sqrt((targetSqm / _fieldAreaSqm).clamp(0.02, 1.0));
+    final center = _fieldCenter;
+    final suggested = widget.fieldPolygon.map((p) {
+      final lat = center.latitude + (p.latitude - center.latitude) * scale;
+      final lng = center.longitude + (p.longitude - center.longitude) * scale;
+      return LatLng(lat, lng);
+    }).toList();
+
+    setState(() {
+      _zonePoints
+        ..clear()
+        ..addAll(suggested);
+      _recalcArea();
+    });
+  }
 
   void _complete() {
     if (_zonePoints.length < 3) return;
@@ -383,6 +433,68 @@ class _PlantZoneDrawingScreenState extends State<PlantZoneDrawingScreen>
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(
+                          width: 92,
+                          child: TextField(
+                            key: const Key('zone_target_dekar_field'),
+                            controller: _targetDekarCtrl,
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
+                            decoration: InputDecoration(
+                              isDense: true,
+                              hintText: 'Dekar',
+                              hintStyle: const TextStyle(color: Colors.white54),
+                              suffixText: 'da',
+                              suffixStyle: const TextStyle(color: Colors.white70),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 8,
+                              ),
+                              filled: true,
+                              fillColor: Colors.white.withValues(alpha: 0.08),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: BorderSide(
+                                  color: Colors.white.withValues(alpha: 0.18),
+                                ),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: BorderSide(
+                                  color: Colors.white.withValues(alpha: 0.18),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        FilledButton.icon(
+                          key: const Key('zone_auto_suggest_button'),
+                          onPressed: _suggestByDekar,
+                          icon: const Icon(Icons.auto_fix_high_rounded, size: 15),
+                          label: const Text('Öner'),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: widget.plantColor,
+                            foregroundColor: Colors.black,
+                            visualDensity: VisualDensity.compact,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 8,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
                     // Aktif çizim alanı
                     if (_zonePoints.length >= 3)
                       Padding(

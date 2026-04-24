@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../data/crop_playbooks.dart';
 import '../theme/app_theme.dart';
+import 'live_crop_growth.dart';
 
 /// Aktivite log listesinden sezon özeti map'i türetir.
 /// `LocalDataRepository.loadSeasonSummary` ile aynı shape'i üretir; ama burada
@@ -99,6 +100,7 @@ class SeasonSummaryCard extends StatelessWidget {
     required this.areaDekar,
     required this.summary,
     this.harvestDays,
+    this.cropId,
   });
 
   final String cropName;
@@ -109,6 +111,10 @@ class SeasonSummaryCard extends StatelessWidget {
   /// Bitkinin toplam yetişme süresi (CropProtocol.totalDays). Hasata kalan
   /// gün sayısı için kullanılır. Null ise gizlenir.
   final int? harvestDays;
+
+  /// Varsa canlı büyüme sprite'ını (LiveCropGrowth) header'a yerleştirir.
+  /// Null olduğunda sprite alanı gizlenir — kartın yapısı bozulmaz.
+  final String? cropId;
 
   @override
   Widget build(BuildContext context) {
@@ -151,7 +157,7 @@ class SeasonSummaryCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _header(stage, daysSince, daysToHarvest),
+          _topStrip(stage, daysSince, daysToHarvest),
           const SizedBox(height: 12),
           // 2x2 grid
           Row(
@@ -219,6 +225,28 @@ class SeasonSummaryCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  /// Canlı büyüme sprite'ı + mevcut header'ı yatayda birleştiren strip.
+  /// [cropId] null ise sprite kolonu atlanır, görünüm eskiyle birebir kalır.
+  Widget _topStrip(String stage, int daysSince, int? daysToHarvest) {
+    final header = _header(stage, daysSince, daysToHarvest);
+    if (cropId == null) return header;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        SizedBox(
+          width: 56,
+          height: 72,
+          child: LiveCropGrowth(
+            cropId: cropId!,
+            cropName: cropName,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(child: header),
+      ],
     );
   }
 

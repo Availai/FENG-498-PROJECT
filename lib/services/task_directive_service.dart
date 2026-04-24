@@ -1,5 +1,48 @@
+import 'dart:math' as math;
+
 import '../data/activity_types.dart';
+import '../data/crop_playbooks.dart';
 import '../data/crop_protocols.dart';
+import '../data/turkiye_crop_guides.dart';
+import 'field_state_service.dart';
+
+/// `GrowthEngine` tarafından üretilen bir ekinin stres/verim özeti. Saf POD —
+/// Drift tipine bağlanmamak için bu dosyada tanımlı. Çağıran katman
+/// `CropGrowthState` → `GrowthSnapshot` dönüşümünü yapar.
+class GrowthSnapshot {
+  /// Aktif fenoloji anahtarı: 'cimlenme' | 'vejetatif' | 'ciceklenme' |
+  /// 'meyve_dolumu' | 'olgunlasma'.
+  final String stageKey;
+  /// 0..1 — aktif evre içi ilerleme.
+  final double stageProgress;
+  /// Ekimden bu yana biriken GDD.
+  final double accumulatedGdd;
+  /// Sulama açığı (mm). 0 = ideal.
+  final double waterDeficitMm;
+  /// Azot stres indeksi 0..1.
+  final double nStressIdx;
+  /// Hastalık baskısı 0..1.
+  final double diseasePressure;
+  /// Verim çarpanı (0.5..1.15). 1'in altı = verim kaybı.
+  final double yieldMultiplier;
+
+  const GrowthSnapshot({
+    required this.stageKey,
+    required this.stageProgress,
+    required this.accumulatedGdd,
+    required this.waterDeficitMm,
+    required this.nStressIdx,
+    required this.diseasePressure,
+    required this.yieldMultiplier,
+  });
+
+  /// Verim kaybı yüzde olarak (0..50). Çiftçi dostu sayı.
+  int get yieldLossPct => ((1.0 - yieldMultiplier) * 100).round().clamp(0, 50);
+
+  /// Herhangi bir stres baskın mı? (reason metnine eklenecek mi?)
+  bool get hasStress =>
+      waterDeficitMm > 2.0 || nStressIdx > 0.15 || diseasePressure > 0.1;
+}
 
 /// Çiftçiye verilecek tek bir somut yönerge. UI sadece render eder; karar
 /// mantığı tamamen burada oluşturulur ("flutter vitrindir" felsefesi).
@@ -23,6 +66,11 @@ class FieldDirective {
   /// Miktar ipucu (örn. 15 dk, 3 kg) — actionType ile birlikte log'a gider.
   final double? suggestedQuantity;
   final String? quantityUnit;
+  final double? recommendedQuantity;
+  final List<String> steps;
+  final List<String> sourceRefs;
+  final double? areaDekar;
+  final int? plantCount;
 
   /// Hangi ekin için (fieldCrops[i]['id']). Null ise tarla geneli.
   final String? cropId;
@@ -39,6 +87,11 @@ class FieldDirective {
     this.actionType,
     this.suggestedQuantity,
     this.quantityUnit,
+    this.recommendedQuantity,
+    this.steps = const [],
+    this.sourceRefs = const [],
+    this.areaDekar,
+    this.plantCount,
     this.cropId,
     this.cropName,
   });
@@ -52,12 +105,17 @@ class TaskDirectiveService {
 
   /// [activities] — `watchActivityLog` stream'inden gelen liste (eventType +
   /// date alanları okunur). [dailyForecast] — `analysis['daily_forecast']`.
+  /// [growthStates] — `GrowthEngine` tarafından yazılmış büyüme durumu (crop
+  /// id → state). Varsa direktif `reason` metni verim çarpanı + stres düzeyi
+  /// ile zenginleştirilir; yoksa klasik aralık/hava tabanlı mantık çalışır.
   List<FieldDirective> generate({
     required List<Map<String, dynamic>> fieldCrops,
     required List<Map<String, dynamic>> activities,
     List<dynamic>? dailyForecast,
     double? currentTemp,
     double? soilMoisture,
+    Map<String, GrowthSnapshot>? growthStates,
+    Map<String, CropFieldState>? fieldStates,
     DateTime? now,
   }) {
     final t = now ?? DateTime.now();
@@ -115,6 +173,9 @@ class TaskDirectiveService {
       final lastWater = _lastActivity(activitiesForCrop, ActivityType.watering);
       final lastFert = _lastActivity(activitiesForCrop, ActivityType.fertilizing);
       final lastSpray = _lastActivity(activitiesForCrop, ActivityType.spraying);
+      final growth = cropId == null ? null : growthStates?[cropId];
+      final fieldState = cropId == null ? null : fieldStates?[cropId];
+      final sourceRefs = _sourceRefsFor(cropName);
 
       // ── Protokol adımı (3 vitrin bitki için) ────────────────
       // Aktif adımı en üst sıraya yerleştir; hasat protokol içindeyse
@@ -126,6 +187,8 @@ class TaskDirectiveService {
         plantedDate: plantedDate,
         activitiesForCrop: activitiesForCrop,
         now: t,
+        fieldState: fieldState,
+        sourceRefs: sourceRefs,
       );
       if (protoStepDirective != null) {
         out.add(protoStepDirective);
@@ -147,6 +210,10 @@ class TaskDirectiveService {
             reason: 'Ekimden $elapsed gün geçti (hedef $harvestDays gün). Verim düşmeden topla.',
             kind: 'harvest',
             actionType: ActivityType.harvest,
+            steps: _harvestSteps(fieldState),
+            sourceRefs: sourceRefs,
+            areaDekar: fieldState?.areaDekar,
+            plantCount: fieldState?.estimatedPlantCount,
             cropId: cropId,
             cropName: cropName,
           ));
@@ -172,17 +239,30 @@ class TaskDirectiveService {
           ));
         }
       } else if (daysSinceWater >= waterInterval) {
-        final minutes = _estimateWateringMinutes(waterInterval);
+        // Su açığı birikmişse süreye +%20 fazla öner — açığı kapat.
+        final waterPlan = _waterRecommendation(
+          fieldState: fieldState,
+          waterIntervalDays: waterInterval,
+          growth: growth,
+        );
+        final minutes = waterPlan.quantity.round();
+        final baseReason = lastWater == null
+            ? 'Henüz sulama kaydı yok. $waterInterval gün aralıkla sulama öneriliyor.'
+            : 'Son sulama $daysSinceWater gün önce. Aralık $waterInterval gün doldu.';
+        final stressNote = _growthStressNote(growth, focus: 'water');
         out.add(FieldDirective(
           urgency: 2,
           headline: '$cropName: BUGÜN $minutes DK SULA',
-          reason: lastWater == null
-              ? 'Henüz sulama kaydı yok. $waterInterval gün aralıkla sulama öneriliyor.'
-              : 'Son sulama $daysSinceWater gün önce. Aralık $waterInterval gün doldu.',
+          reason: stressNote == null ? baseReason : '$baseReason $stressNote',
           kind: 'water_now',
           actionType: ActivityType.watering,
           suggestedQuantity: minutes.toDouble(),
+          recommendedQuantity: minutes.toDouble(),
           quantityUnit: 'dk',
+          steps: waterPlan.steps,
+          sourceRefs: sourceRefs,
+          areaDekar: fieldState?.areaDekar,
+          plantCount: fieldState?.estimatedPlantCount,
           cropId: cropId,
           cropName: cropName,
         ));
@@ -192,6 +272,10 @@ class TaskDirectiveService {
           headline: '$cropName: YARIN SULA',
           reason: 'Son sulama $daysSinceWater gün önce. Yarın sabah erken saatlere planla.',
           kind: 'water_soon',
+          steps: _fieldScaleSteps(fieldState),
+          sourceRefs: sourceRefs,
+          areaDekar: fieldState?.areaDekar,
+          plantCount: fieldState?.estimatedPlantCount,
           cropId: cropId,
           cropName: cropName,
         ));
@@ -209,6 +293,10 @@ class TaskDirectiveService {
             reason: 'Son 24 saatte ${rainLast24h.toStringAsFixed(0)} mm yağdı. Fungisit uygulaması öneriliyor.',
             kind: 'spray',
             actionType: ActivityType.spraying,
+            steps: _spraySteps(cropName, fieldState),
+            sourceRefs: sourceRefs,
+            areaDekar: fieldState?.areaDekar,
+            plantCount: fieldState?.estimatedPlantCount,
             cropId: cropId,
             cropName: cropName,
           ));
@@ -222,14 +310,33 @@ class TaskDirectiveService {
             ? elapsed
             : t.difference(lastFert).inDays;
         if (elapsed > 20 && daysSinceFert >= 30 && elapsed < harvestDays - 10) {
+          final baseReason = lastFert == null
+              ? 'Ekimden $elapsed gün geçti, henüz gübre kaydı yok.'
+              : 'Son gübreleme $daysSinceFert gün önce. Büyüme fazında tekrar gerekir.';
+          final stressNote = _growthStressNote(growth, focus: 'nitrogen');
+          // N stresi yüksekse aciliyeti 2'ye çek — "bu hafta" değil "bugün".
+          final urgency = (growth != null && growth.nStressIdx > 0.3) ? 2 : 1;
+          final headline = urgency == 2
+              ? '$cropName: BUGÜN GÜBRELE'
+              : '$cropName: BU HAFTA GÜBRELE';
+          final fertPlan = _fertilizerRecommendation(
+            cropName: cropName,
+            fieldState: fieldState,
+            daysSincePlanting: elapsed,
+          );
           out.add(FieldDirective(
-            urgency: 1,
-            headline: '$cropName: BU HAFTA GÜBRELE',
-            reason: lastFert == null
-                ? 'Ekimden $elapsed gün geçti, henüz gübre kaydı yok.'
-                : 'Son gübreleme $daysSinceFert gün önce. Büyüme fazında tekrar gerekir.',
+            urgency: urgency,
+            headline: headline,
+            reason: stressNote == null ? baseReason : '$baseReason $stressNote',
             kind: 'fertilize',
             actionType: ActivityType.fertilizing,
+            suggestedQuantity: fertPlan?.quantity,
+            recommendedQuantity: fertPlan?.quantity,
+            quantityUnit: fertPlan?.unit,
+            steps: fertPlan?.steps ?? _fieldScaleSteps(fieldState),
+            sourceRefs: sourceRefs,
+            areaDekar: fieldState?.areaDekar,
+            plantCount: fieldState?.estimatedPlantCount,
             cropId: cropId,
             cropName: cropName,
           ));
@@ -263,6 +370,8 @@ class TaskDirectiveService {
     required DateTime? plantedDate,
     required List<Map<String, dynamic>> activitiesForCrop,
     required DateTime now,
+    CropFieldState? fieldState,
+    List<String> sourceRefs = const [],
   }) {
     final protocol = CropProtocols.resolveByName(crop['name']?.toString());
     if (protocol == null || plantedDate == null) return null;
@@ -307,9 +416,34 @@ class TaskDirectiveService {
       reason: '${active.description}\n\nİlerleme: $completed/${protocol.steps.length} adım tamam.',
       kind: 'protocol_step',
       actionType: active.expectedActivity,
+      steps: _protocolSteps(active, fieldState),
+      sourceRefs: sourceRefs,
+      areaDekar: fieldState?.areaDekar,
+      plantCount: fieldState?.estimatedPlantCount,
       cropId: cropId,
       cropName: cropName,
     );
+  }
+
+  /// Büyüme durumuna göre direktif reason'una eklenecek stres/verim notu.
+  /// [focus]: hangi stresin vurgulanacağı — 'water' veya 'nitrogen'. Null
+  /// dönerse reason değiştirilmez (stres yok / snapshot yok).
+  static String? _growthStressNote(GrowthSnapshot? g, {required String focus}) {
+    if (g == null || !g.hasStress) return null;
+    final loss = g.yieldLossPct;
+    if (focus == 'water' && g.waterDeficitMm > 2.0) {
+      final mm = g.waterDeficitMm.toStringAsFixed(0);
+      return loss > 5
+          ? 'Biriken su açığı $mm mm — verim tahmini %$loss düştü.'
+          : 'Biriken su açığı $mm mm.';
+    }
+    if (focus == 'nitrogen' && g.nStressIdx > 0.15) {
+      final pct = (g.nStressIdx * 100).round();
+      return loss > 5
+          ? 'Azot stresi %$pct — verim tahmini %$loss düştü, gecikme verim kaybını artırır.'
+          : 'Azot stresi %$pct seviyesinde, gecikme verim kaybını artırır.';
+    }
+    return null;
   }
 
   static int _estimateWateringMinutes(int interval) {
@@ -317,6 +451,135 @@ class TaskDirectiveService {
     if (interval <= 4) return 20;
     if (interval <= 6) return 30;
     return 45;
+  }
+
+  static _QuantityPlan _waterRecommendation({
+    required CropFieldState? fieldState,
+    required int waterIntervalDays,
+    required GrowthSnapshot? growth,
+  }) {
+    final baseMinutes = _estimateWateringMinutes(waterIntervalDays).toDouble();
+    if (fieldState == null ||
+        fieldState.areaSqm <= 0 ||
+        fieldState.estimatedPlantCount <= 0) {
+      final adjusted = growth != null && growth.waterDeficitMm > 5
+          ? baseMinutes * 1.2
+          : baseMinutes;
+      return _QuantityPlan(
+        quantity: adjusted.roundToDouble(),
+        unit: 'dk',
+        steps: const ['Sulamayı sabah erken veya güneş battıktan sonra yap.'],
+      );
+    }
+
+    final targetMm = fieldState.weeklyWaterTargetMm <= 0
+        ? 25.0
+        : fieldState.weeklyWaterTargetMm;
+    final remainingMm = math.max(
+      targetMm - fieldState.weeklyWaterMm,
+      targetMm * (waterIntervalDays / 7.0).clamp(0.35, 1.0),
+    );
+    final stressMm = math.max(0.0, growth?.waterDeficitMm ?? 0.0);
+    final totalMm = remainingMm + stressMm * 0.35;
+    final liters = totalMm * fieldState.areaSqm;
+    const dripperLiterPerHour = 1.6;
+    final minutes =
+        (liters / (fieldState.estimatedPlantCount * dripperLiterPerHour) * 60)
+            .clamp(5.0, 480.0);
+
+    return _QuantityPlan(
+      quantity: minutes.roundToDouble(),
+      unit: 'dk',
+      steps: [
+        '${fieldState.areaDekar.toStringAsFixed(2)} da alanda ${fieldState.estimatedPlantCount} bitki hesaba katıldı.',
+        'Hedef su: ${totalMm.toStringAsFixed(1)} mm, yaklaşık ${liters.round()} L.',
+        'Damla sulama varsayımı ile ${minutes.round()} dk uygula; karıkta toprak tava gelince kes.',
+      ],
+    );
+  }
+
+  static _QuantityPlan? _fertilizerRecommendation({
+    required String cropName,
+    required CropFieldState? fieldState,
+    required int daysSincePlanting,
+  }) {
+    final pb = CropPlaybooks.resolveByName(cropName);
+    if (pb == null || pb.fertilizers.isEmpty || fieldState == null) {
+      return null;
+    }
+
+    FertilizerProduct product = pb.fertilizers.first;
+    for (final f in pb.fertilizers) {
+      final stage = f.stage.toLowerCase();
+      if (daysSincePlanting >= 50 &&
+          (stage.contains('55') ||
+              stage.contains('60') ||
+              stage.contains('meyve'))) {
+        product = f;
+      } else if (daysSincePlanting < 50 &&
+          (stage.contains('21') ||
+              stage.contains('25') ||
+              stage.contains('ilk'))) {
+        product = f;
+        break;
+      }
+    }
+
+    final total = product.defaultDosePerDa * fieldState.areaDekar;
+    return _QuantityPlan(
+      quantity: total,
+      unit: product.unit,
+      steps: [
+        '${product.name}: ${product.defaultDosePerDa.toStringAsFixed(1)} ${product.unit}/da.',
+        '${fieldState.areaDekar.toStringAsFixed(2)} da için toplam ${total.toStringAsFixed(1)} ${product.unit}.',
+        product.tip ??
+            'Gübreyi kök boğazına değdirmeden uygula ve ardından hafif sulama yap.',
+      ],
+    );
+  }
+
+  static List<String> _spraySteps(String cropName, CropFieldState? fieldState) {
+    final pb = CropPlaybooks.resolveByName(cropName);
+    final pesticide = pb?.pesticides.isNotEmpty == true ? pb!.pesticides.first : null;
+    return [
+      ..._fieldScaleSteps(fieldState),
+      if (pesticide != null)
+        '${pesticide.name}: ${pesticide.defaultDosePerDa.toStringAsFixed(0)} ${pesticide.unit}/da; etiket ve il/ilçe teknik önerisiyle uygula.',
+      'Rüzgarlı saatte ilaçlama yapma; yaprak altı ve hastalık belirtisini önce kontrol et.',
+    ];
+  }
+
+  static List<String> _harvestSteps(CropFieldState? fieldState) {
+    return [
+      ..._fieldScaleSteps(fieldState),
+      'Sabah serinliğinde hasat et ve ıslak ürünü kasaya alma.',
+      if (fieldState != null && fieldState.harvestedKg > 0)
+        'Önceki kayıt: ${fieldState.harvestSummary}.',
+    ];
+  }
+
+  static List<String> _protocolSteps(ProtocolStep step, CropFieldState? fieldState) {
+    return [
+      ..._fieldScaleSteps(fieldState),
+      if (step.fertilizerSpec != null) step.fertilizerSpec!,
+      if (step.waterSpec != null) step.waterSpec!,
+      if (step.pesticideSpec != null) step.pesticideSpec!,
+      if (step.criticalWarning != null) step.criticalWarning!,
+      if (step.farmerTip != null) step.farmerTip!,
+    ];
+  }
+
+  static List<String> _fieldScaleSteps(CropFieldState? fieldState) {
+    if (fieldState == null) return const [];
+    return [
+      '${fieldState.areaDekar.toStringAsFixed(2)} da ekim alanı.',
+      '${fieldState.estimatedPlantCount} tahmini bitki; su ve gübre hesabı bu alana göre yapıldı.',
+    ];
+  }
+
+  static List<String> _sourceRefsFor(String cropName) {
+    final guide = TurkiyeCropGuides.lookup(cropName);
+    return guide?.sourceRefs ?? const [];
   }
 
   static DateTime? _parsePlantedDate(String? raw) {
@@ -395,4 +658,16 @@ class _ForecastDay {
   final double min;
   final double rain;
   const _ForecastDay({required this.max, required this.min, required this.rain});
+}
+
+class _QuantityPlan {
+  final double quantity;
+  final String unit;
+  final List<String> steps;
+
+  const _QuantityPlan({
+    required this.quantity,
+    required this.unit,
+    required this.steps,
+  });
 }

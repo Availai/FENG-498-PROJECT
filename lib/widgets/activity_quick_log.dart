@@ -115,6 +115,10 @@ class _ActivityQuickLogState extends ConsumerState<ActivityQuickLog> {
         quantityUnit: ActivityType.quantityUnit(type),
         metadata: detail.metadata,
       );
+      final loggedCropId = detail.cropId ?? widget.cropId;
+      if (loggedCropId != null && loggedCropId.isNotEmpty) {
+        await ref.read(growthEngineProvider).recompute(cropId: loggedCropId);
+      }
       if (!mounted) return;
       HapticService.instance.success();
       AppToast.show(

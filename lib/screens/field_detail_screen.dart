@@ -9,9 +9,11 @@ import '../services/agri_service.dart';
 import '../services/app_providers.dart';
 import '../services/crop_placement.dart';
 import '../services/crop_protocol_service.dart';
+import '../services/growth_engine.dart';
 import '../services/notification_service.dart';
 import '../services/task_directive_service.dart';
 import '../data/activity_types.dart';
+import '../data/app_database.dart';
 import '../data/crop_protocols.dart';
 import '../data/supported_crops.dart';
 import '../data/verified_agri_database.dart';
@@ -94,6 +96,12 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
         await ref.read(localDataRepositoryProvider).loadFieldCrops(fieldId);
     if (!mounted) return;
     setState(() => _fieldCrops = crops);
+    for (final crop in crops) {
+      final cropId = crop['id']?.toString();
+      if (cropId != null && cropId.isNotEmpty) {
+        await ref.read(growthEngineProvider).recompute(cropId: cropId);
+      }
+    }
   }
 
   Future<void> _loadIrrigationPlans() async {
@@ -172,8 +180,9 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
         .map((item) => Map<String, dynamic>.from(item))
         .toList();
 
-    final topCrop =
-        recommendedCrops.isNotEmpty ? recommendedCrops.first : <String, dynamic>{};
+    final topCrop = recommendedCrops.isNotEmpty
+        ? recommendedCrops.first
+        : <String, dynamic>{};
     final rawCropName = topCrop['name']?.toString().trim();
     final cropName = (rawCropName == null || rawCropName.isEmpty)
         ? (widget.fieldData['crop']?.toString() ?? 'Belirtilmedi')
@@ -196,7 +205,8 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
         'temp': (analysis['temp'] as num?)?.toDouble() ?? 0.0,
         'humidity': (analysis['humidity'] as num?)?.toDouble() ?? 0.0,
         'wind': (analysis['wind'] as num?)?.toDouble() ?? 0.0,
-        'avg_weekly_temp': (analysis['avg_weekly_temp'] as num?)?.toDouble() ?? 0.0,
+        'avg_weekly_temp':
+            (analysis['avg_weekly_temp'] as num?)?.toDouble() ?? 0.0,
         'total_weekly_rain':
             (analysis['total_weekly_rain'] as num?)?.toDouble() ?? 0.0,
       },
@@ -230,7 +240,6 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
       }
     }
   }
-
 
   // ignore: unused_element
   Future<void> _showSyncQueueDialog() async {
@@ -266,9 +275,10 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
           FilledButton(
             onPressed: () async {
               final moved = await syncRepository.retryFailedJobs();
-              final report = await ref.read(syncServiceProvider).runPushCycleWithApi(
-                    apiClient: ref.read(syncApiClientProvider),
-                  );
+              final report =
+                  await ref.read(syncServiceProvider).runPushCycleWithApi(
+                        apiClient: ref.read(syncApiClientProvider),
+                      );
               if (!ctx.mounted) return;
               Navigator.pop(ctx);
               if (!mounted) return;
@@ -320,7 +330,8 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
         toolbarHeight: 60,
         leadingWidth: 48,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color(0xFF00E676), size: 24),
+          icon:
+              const Icon(Icons.arrow_back, color: Color(0xFF00E676), size: 24),
           onPressed: () => Navigator.of(context).maybePop(),
         ),
         title: Row(
@@ -328,16 +339,22 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
           children: [
             Container(
               padding: const EdgeInsets.all(4),
-              decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFF00E676)),
-              child: const Icon(Icons.eco_rounded, color: Colors.black, size: 16),
+              decoration: const BoxDecoration(
+                  shape: BoxShape.circle, color: Color(0xFF00E676)),
+              child:
+                  const Icon(Icons.eco_rounded, color: Colors.black, size: 16),
             ),
             const SizedBox(width: 8),
-            Text('Agri-Farm ', 
-              style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)
-            ),
-            Text('AR', 
-              style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, color: const Color(0xFF00E676))
-            ),
+            Text('Agri-Farm ',
+                style: GoogleFonts.outfit(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white)),
+            Text('AR',
+                style: GoogleFonts.outfit(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFF00E676))),
           ],
         ),
         centerTitle: false,
@@ -345,9 +362,19 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('AKTİF', style: TextStyle(color: Colors.white70, fontSize: 10, letterSpacing: 1.2)),
+              const Text('AKTİF',
+                  style: TextStyle(
+                      color: Colors.white70, fontSize: 10, letterSpacing: 1.2)),
               const SizedBox(width: 6),
-              Container(width: 8, height: 8, decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFF00E676), boxShadow: [BoxShadow(color: Color(0xFF00E676), blurRadius: 4)])),
+              Container(
+                  width: 8,
+                  height: 8,
+                  decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Color(0xFF00E676),
+                      boxShadow: [
+                        BoxShadow(color: Color(0xFF00E676), blurRadius: 4)
+                      ])),
               const SizedBox(width: 16),
             ],
           )
@@ -369,14 +396,14 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
                 children: [
                   _zoomBtn(Icons.add, () {
                     final z = _mapController.camera.zoom;
-                    _mapController.move(
-                        _mapController.camera.center, (z + 1).clamp(14.0, 21.0));
+                    _mapController.move(_mapController.camera.center,
+                        (z + 1).clamp(14.0, 21.0));
                   }),
                   const SizedBox(height: 8),
                   _zoomBtn(Icons.remove, () {
                     final z = _mapController.camera.zoom;
-                    _mapController.move(
-                        _mapController.camera.center, (z - 1).clamp(14.0, 21.0));
+                    _mapController.move(_mapController.camera.center,
+                        (z - 1).clamp(14.0, 21.0));
                   }),
                   const SizedBox(height: 8),
                   _zoomBtn(Icons.center_focus_strong, () => _fitToField(d)),
@@ -424,7 +451,8 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
               bottom: MediaQuery.of(context).padding.bottom + 20,
               child: ZoneDrawingToolbar(
                 plantName: _pendingPlant?.nameTr ?? 'Bitki',
-                plantColor: _pendingPlant?.renderColor ?? const Color(0xFF00E676),
+                plantColor:
+                    _pendingPlant?.renderColor ?? const Color(0xFF00E676),
                 pointCount: _zoneDrawingPoints.length,
                 onUndo: _undoLastZonePoint,
                 onComplete: _completeZoneDrawing,
@@ -440,11 +468,17 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
               top: MediaQuery.of(context).size.height * 0.25,
               child: Center(
                 child: CropZoneTooltip(
-                  cropName: _selectedCropForTooltip!['name']?.toString() ?? 'Bitki',
+                  cropName:
+                      _selectedCropForTooltip!['name']?.toString() ?? 'Bitki',
                   cropColor: _cropColor(_selectedCropForTooltip!),
-                  plantedDate: _selectedCropForTooltip!['planted_date']?.toString(),
-                  harvestDays: (_selectedCropForTooltip!['harvest_days'] as num?)?.toInt() ?? 90,
-                  maturityPercent: _computeMaturityPercent(_selectedCropForTooltip!),
+                  plantedDate:
+                      _selectedCropForTooltip!['planted_date']?.toString(),
+                  harvestDays:
+                      (_selectedCropForTooltip!['harvest_days'] as num?)
+                              ?.toInt() ??
+                          90,
+                  maturityPercent:
+                      _computeMaturityPercent(_selectedCropForTooltip!),
                   onDelete: () => _deleteCropZone(_selectedCropForTooltip!),
                   onClose: _closeTooltip,
                 ),
@@ -452,11 +486,13 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
             ),
 
           if (_isLoading)
-            const Center(child: CircularProgressIndicator(color: Color(0xFF00E676))),
+            const Center(
+                child: CircularProgressIndicator(color: Color(0xFF00E676))),
           if (_error != null)
             Center(
                 child: GlassPanel(
-                    child: Text(_error!, style: const TextStyle(color: Colors.white)))),
+                    child: Text(_error!,
+                        style: const TextStyle(color: Colors.white)))),
         ],
       ),
     );
@@ -467,15 +503,24 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
   // ═══════════════════════════════════════════════════
   // ignore: unused_element
   Widget _buildLiveStatsPanel(Map<String, dynamic>? a) {
-    final soilTemp = a != null ? '${(a['soil_temp_c'] as num?)?.toStringAsFixed(0) ?? '--'}°C' : '--°C';
-    final rain = a != null ? '${(a['total_weekly_rain'] as num?)?.toStringAsFixed(1) ?? '--'} mm' : '-- mm';
-    
+    final soilTemp = a != null
+        ? '${(a['soil_temp_c'] as num?)?.toStringAsFixed(0) ?? '--'}°C'
+        : '--°C';
+    final rain = a != null
+        ? '${(a['total_weekly_rain'] as num?)?.toStringAsFixed(1) ?? '--'} mm'
+        : '-- mm';
+
     final tempVal = (a?['temp'] as num?)?.toDouble() ?? 20.0;
     final humidVal = (a?['humidity'] as num?)?.toDouble() ?? 50.0;
     String pestLevel = 'Düşük';
     Color pestColor = const Color(0xFF00E676);
-    if (humidVal > 70 && tempVal > 25) { pestLevel = 'Yüksek'; pestColor = const Color(0xFFEF5350); }
-    else if (humidVal > 60) { pestLevel = 'Orta'; pestColor = const Color(0xFFFFA726); }
+    if (humidVal > 70 && tempVal > 25) {
+      pestLevel = 'Yüksek';
+      pestColor = const Color(0xFFEF5350);
+    } else if (humidVal > 60) {
+      pestLevel = 'Orta';
+      pestColor = const Color(0xFFFFA726);
+    }
 
     // Bitki sağlığı skoru
     String healthScore = '--';
@@ -501,8 +546,13 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
       decoration: BoxDecoration(
         color: const Color(0xFF0D1811).withValues(alpha: 0.8),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF00E676).withValues(alpha: 0.7), width: 1.5),
-        boxShadow: [BoxShadow(color: const Color(0xFF00E676).withValues(alpha: 0.15), blurRadius: 10)],
+        border: Border.all(
+            color: const Color(0xFF00E676).withValues(alpha: 0.7), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+              color: const Color(0xFF00E676).withValues(alpha: 0.15),
+              blurRadius: 10)
+        ],
       ),
       padding: const EdgeInsets.all(12),
       child: Column(
@@ -512,21 +562,30 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Canlı Veriler', style: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white)),
+              Text('Canlı Veriler',
+                  style: GoogleFonts.outfit(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white)),
               const Icon(Icons.more_horiz, color: Colors.white54, size: 16),
             ],
           ),
           const SizedBox(height: 12),
-          _arStatCard(Icons.monitor_heart_rounded, 'Tarla Sağlığı', healthScore, const Color(0xFF00E676)),
-          _arStatCard(Icons.thermostat_rounded, 'Toprak Sıcaklık', soilTemp, const Color(0xFFFFB74D)),
-          _arStatCard(Icons.water_drop_rounded, 'Yağış', rain, const Color(0xFF4FC3F7)),
-          _arStatCard(Icons.bug_report_rounded, 'Zararlı Seviye', pestLevel, pestColor),
+          _arStatCard(Icons.monitor_heart_rounded, 'Tarla Sağlığı', healthScore,
+              const Color(0xFF00E676)),
+          _arStatCard(Icons.thermostat_rounded, 'Toprak Sıcaklık', soilTemp,
+              const Color(0xFFFFB74D)),
+          _arStatCard(
+              Icons.water_drop_rounded, 'Yağış', rain, const Color(0xFF4FC3F7)),
+          _arStatCard(
+              Icons.bug_report_rounded, 'Zararlı Seviye', pestLevel, pestColor),
         ],
       ),
     );
   }
 
-  Widget _arStatCard(IconData icon, String label, String value, Color accentColor) {
+  Widget _arStatCard(
+      IconData icon, String label, String value, Color accentColor) {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -543,8 +602,17 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label, style: const TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.w500)),
-                Text(value, style: TextStyle(color: accentColor, fontSize: 14, fontWeight: FontWeight.w800, letterSpacing: 0.5)),
+                Text(label,
+                    style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w500)),
+                Text(value,
+                    style: TextStyle(
+                        color: accentColor,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.5)),
               ],
             ),
           ),
@@ -574,7 +642,8 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
       if (date != null && date.isAfter(now)) {
         irrigationStatus = plan['should_irrigate'] == true ? 'AKTİF' : 'KAPALI';
         irrigationColor = plan['should_irrigate'] == true
-            ? const Color(0xFF00E676) : const Color(0xFFEF5350);
+            ? const Color(0xFF00E676)
+            : const Color(0xFFEF5350);
         nextIrrDate = DateFormat('dd/MM').format(date.toLocal());
         break;
       }
@@ -585,21 +654,35 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
       decoration: BoxDecoration(
         color: const Color(0xFF0D1811).withValues(alpha: 0.8),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF00E676).withValues(alpha: 0.5), width: 1.5),
-        boxShadow: [BoxShadow(color: const Color(0xFF00E676).withValues(alpha: 0.1), blurRadius: 8)],
+        border: Border.all(
+            color: const Color(0xFF00E676).withValues(alpha: 0.5), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+              color: const Color(0xFF00E676).withValues(alpha: 0.1),
+              blurRadius: 8)
+        ],
       ),
       padding: const EdgeInsets.all(12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text('$fieldName Detayları', style: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white)),
+          Text('$fieldName Detayları',
+              style: GoogleFonts.outfit(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white)),
           const SizedBox(height: 12),
           Row(
             children: [
               Text(_cropEmoji(cropName), style: const TextStyle(fontSize: 14)),
               const SizedBox(width: 8),
-              Expanded(child: Text(cropName, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600))),
+              Expanded(
+                  child: Text(cropName,
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600))),
             ],
           ),
           const SizedBox(height: 10),
@@ -617,15 +700,37 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(color: Colors.white54, fontSize: 11)),
-          Text(value, style: TextStyle(
-            color: valueColor ?? Colors.white, fontSize: 12, fontWeight: FontWeight.w700)),
+          Text(label,
+              style: const TextStyle(color: Colors.white54, fontSize: 11)),
+          Text(value,
+              style: TextStyle(
+                  color: valueColor ?? Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700)),
         ],
       ),
     );
   }
 
-  double _computeMaturityPercent(Map<String, dynamic> crop) {
+  double _computeMaturityPercent(
+    Map<String, dynamic> crop, {
+    CropGrowthState? growthState,
+  }) {
+    if (growthState != null) {
+      final canonical = SupportedCrops.canonicalName(crop['name']?.toString());
+      if (canonical != null) {
+        final key = SupportedCrops.normalize(canonical);
+        if (GrowthEngine.isSupported(key)) {
+          return (GrowthEngine.overallProgressFor(
+                    key,
+                    growthState.accumulatedGdd,
+                  ) *
+                  100)
+              .clamp(0, 100)
+              .toDouble();
+        }
+      }
+    }
     final plantedDateStr = crop['planted_date']?.toString();
     if (plantedDateStr == null) return 0;
     DateTime? plantedDate;
@@ -670,30 +775,55 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
     final soilMoisture = (a['soil_moisture'] as num?)?.toDouble() ?? 0.0;
 
     if (temp <= 5) {
-      alerts.add({'icon': Icons.ac_unit_rounded, 'title': 'DON TEHLİKESİ',
-        'sub': '${temp.toStringAsFixed(0)}°C — koruma gerekli', 'color': const Color(0xFF42A5F5)});
+      alerts.add({
+        'icon': Icons.ac_unit_rounded,
+        'title': 'DON TEHLİKESİ',
+        'sub': '${temp.toStringAsFixed(0)}°C — koruma gerekli',
+        'color': const Color(0xFF42A5F5)
+      });
     }
     if (temp >= 35) {
-      alerts.add({'icon': Icons.whatshot_rounded, 'title': 'AŞIRI SICAK',
-        'sub': '${temp.toStringAsFixed(0)}°C — gölgeleme önerilir', 'color': const Color(0xFFEF5350)});
+      alerts.add({
+        'icon': Icons.whatshot_rounded,
+        'title': 'AŞIRI SICAK',
+        'sub': '${temp.toStringAsFixed(0)}°C — gölgeleme önerilir',
+        'color': const Color(0xFFEF5350)
+      });
     }
     if (soilMoisture > 0 && soilMoisture < 0.15) {
-      alerts.add({'icon': Icons.water_drop_outlined, 'title': 'DÜŞÜK SU',
-        'sub': '%${(soilMoisture * 100).toStringAsFixed(0)} toprak nemi', 'color': const Color(0xFFFF9800)});
+      alerts.add({
+        'icon': Icons.water_drop_outlined,
+        'title': 'DÜŞÜK SU',
+        'sub': '%${(soilMoisture * 100).toStringAsFixed(0)} toprak nemi',
+        'color': const Color(0xFFFF9800)
+      });
     }
     if (totalRain > 30) {
-      alerts.add({'icon': Icons.thunderstorm_rounded, 'title': 'YÜKSEK YAĞIŞ',
-        'sub': '${totalRain.toStringAsFixed(1)} mm — drenaj kontrol', 'color': const Color(0xFF42A5F5)});
+      alerts.add({
+        'icon': Icons.thunderstorm_rounded,
+        'title': 'YÜKSEK YAĞIŞ',
+        'sub': '${totalRain.toStringAsFixed(1)} mm — drenaj kontrol',
+        'color': const Color(0xFF42A5F5)
+      });
     }
     if (humidity > 80 && temp > 25) {
-      alerts.add({'icon': Icons.bug_report_rounded, 'title': 'ZARARLI RİSKİ',
-        'sub': 'Nem %${humidity.toStringAsFixed(0)} + ${temp.toStringAsFixed(0)}°C', 'color': const Color(0xFFFFA726)});
+      alerts.add({
+        'icon': Icons.bug_report_rounded,
+        'title': 'ZARARLI RİSKİ',
+        'sub':
+            'Nem %${humidity.toStringAsFixed(0)} + ${temp.toStringAsFixed(0)}°C',
+        'color': const Color(0xFFFFA726)
+      });
     }
     for (final crop in _fieldCrops) {
       final m = _computeMaturityPercent(crop);
       if (m >= 90) {
-        alerts.add({'icon': Icons.agriculture_rounded, 'title': 'HASAT ZAMANI',
-          'sub': '${crop['name']} — %${m.toStringAsFixed(0)} olgunluk', 'color': const Color(0xFF66BB6A)});
+        alerts.add({
+          'icon': Icons.agriculture_rounded,
+          'title': 'HASAT ZAMANI',
+          'sub': '${crop['name']} — %${m.toStringAsFixed(0)} olgunluk',
+          'color': const Color(0xFF66BB6A)
+        });
       }
     }
     return alerts;
@@ -714,9 +844,13 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
             decoration: BoxDecoration(
               color: Colors.black.withValues(alpha: 0.85),
               borderRadius: BorderRadius.circular(4), // Keskin AR tarzı köşe
-              border: Border.all(color: color, width: 2), // Kalın parlak çerçeve
+              border:
+                  Border.all(color: color, width: 2), // Kalın parlak çerçeve
               boxShadow: [
-                BoxShadow(color: color.withValues(alpha: 0.4), blurRadius: 15, spreadRadius: 2)
+                BoxShadow(
+                    color: color.withValues(alpha: 0.4),
+                    blurRadius: 15,
+                    spreadRadius: 2)
               ],
             ),
             child: Row(
@@ -728,10 +862,15 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(alert['title'] as String, style: GoogleFonts.outfit(
-                      color: color, fontSize: 13, fontWeight: FontWeight.w900, letterSpacing: 1.2)),
-                    Text(alert['sub'] as String, style: const TextStyle(
-                      color: Colors.white, fontSize: 10)),
+                    Text(alert['title'] as String,
+                        style: GoogleFonts.outfit(
+                            color: color,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 1.2)),
+                    Text(alert['sub'] as String,
+                        style:
+                            const TextStyle(color: Colors.white, fontSize: 10)),
                   ],
                 ),
               ],
@@ -763,7 +902,8 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
           children: [
             Row(
               children: [
-                const Icon(Icons.verified_rounded, color: Color(0xFF00E676), size: 16),
+                const Icon(Icons.verified_rounded,
+                    color: Color(0xFF00E676), size: 16),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
@@ -777,7 +917,8 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
                 ),
                 IconButton(
                   tooltip: 'Raporu yenile',
-                  onPressed: _isRefreshingSuitability ? null : _refreshSuitability,
+                  onPressed:
+                      _isRefreshingSuitability ? null : _refreshSuitability,
                   icon: _isRefreshingSuitability
                       ? const SizedBox(
                           width: 14,
@@ -787,14 +928,18 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
                             color: Color(0xFF00E676),
                           ),
                         )
-                      : const Icon(Icons.refresh, color: Color(0xFF00E676), size: 16),
+                      : const Icon(Icons.refresh,
+                          color: Color(0xFF00E676), size: 16),
                 ),
               ],
             ),
             const SizedBox(height: 8),
             Text(
               'Önerilen Ürün: $topCrop',
-              style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 4),
             Text(
@@ -821,9 +966,11 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
       decoration: BoxDecoration(
         color: const Color(0xFF14241B), // matte forest
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.06), width: 1),
+        border:
+            Border.all(color: Colors.white.withValues(alpha: 0.06), width: 1),
         boxShadow: const [
-          BoxShadow(color: Color(0x66000000), blurRadius: 18, offset: Offset(0, 6)),
+          BoxShadow(
+              color: Color(0x66000000), blurRadius: 18, offset: Offset(0, 6)),
         ],
       ),
       child: Row(
@@ -832,12 +979,15 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
           _buildNavBtn(Icons.radar_rounded, 'Tarlayı Tara', _showPlantPicker,
               color: const Color(0xFF2ECC71), primary: true),
           _buildNavBtn(Icons.check_circle_outline_rounded, 'Aktivite',
-              _showActivityQuickLog, color: const Color(0xFFF2B84B)),
+              _showActivityQuickLog,
+              color: const Color(0xFFF2B84B)),
           _buildNavBtn(Icons.event_note_rounded, 'Günlük', _openFarmJournal,
               color: const Color(0xFF4DB6AC)),
-          _buildNavBtn(Icons.account_balance_wallet_rounded, 'Cüzdan',
-              _openCostLedger, color: const Color(0xFFB388FF)),
-          _buildNavBtn(Icons.checklist_rtl_rounded, 'Görevler', _showDetailModal,
+          _buildNavBtn(
+              Icons.account_balance_wallet_rounded, 'Cüzdan', _openCostLedger,
+              color: const Color(0xFFB388FF)),
+          _buildNavBtn(
+              Icons.checklist_rtl_rounded, 'Görevler', _showDetailModal,
               color: const Color(0xFF64B5F6)),
         ],
       ),
@@ -920,10 +1070,8 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
   Widget _buildNavBtn(IconData icon, String text, VoidCallback onTap,
       {required Color color, bool primary = false}) {
     // Primary: doygun renk dolgulu; diğerleri: matte tonlu daire + renkli ikon.
-    final Color bg =
-        primary ? color : color.withValues(alpha: 0.14);
-    final Color border =
-        primary ? color : color.withValues(alpha: 0.38);
+    final Color bg = primary ? color : color.withValues(alpha: 0.14);
+    final Color border = primary ? color : color.withValues(alpha: 0.38);
     final Color iconColor = primary ? const Color(0xFF0D1811) : color;
     return GestureDetector(
       onTap: onTap,
@@ -975,7 +1123,8 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
           (_analysis!['temp'] as num?)?.toDouble() ??
           20.0;
       ph = (_analysis!['ph'] as num?)?.toDouble() ?? 6.5;
-      rain = ((_analysis!['total_weekly_rain'] as num?)?.toDouble() ?? 12.0) * 52;
+      rain =
+          ((_analysis!['total_weekly_rain'] as num?)?.toDouble() ?? 12.0) * 52;
     }
     return (ph: ph, temp: t, annualRain: rain);
   }
@@ -1030,12 +1179,14 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
 
     // 3 vitrin bitki için çiftçi setup sayfası göster.
     final protocol = CropProtocols.resolveByName(plant.nameTr);
+    CropConfig? selectedConfig;
     if (protocol != null && mounted) {
       final fieldId = widget.fieldData['id']?.toString() ?? '';
       final existingConfig = CropProtocolService.loadConfig(
         fieldId: fieldId,
         cropName: plant.nameTr,
       );
+      selectedConfig = existingConfig;
       final config = await showModalBottomSheet<CropConfig>(
         context: context,
         backgroundColor: Colors.transparent,
@@ -1047,6 +1198,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
       );
       if (!mounted) return;
       if (config != null) {
+        selectedConfig = config;
         await CropProtocolService.saveConfig(
           fieldId: fieldId,
           cropName: plant.nameTr,
@@ -1077,20 +1229,30 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
           plantColor: plant.renderColor,
           fieldPolygon: polygon,
           existingZones: existingZones,
+          initialTargetDekar: selectedConfig?.areaDekar,
         ),
       ),
     );
 
     if (zoneJson == null || !mounted) return;
-    await _addCropWithZone(plant, zoneJson);
+    await _addCropWithZone(plant, zoneJson, config: selectedConfig);
   }
 
-  Future<void> _addCropWithZone(AgriPlant plant, String zonePolygonJson) async {
+  Future<void> _addCropWithZone(
+    AgriPlant plant,
+    String zonePolygonJson, {
+    CropConfig? config,
+  }) async {
     final fieldId = widget.fieldData['id']?.toString();
     if (fieldId == null || fieldId.isEmpty) return;
 
     final repo = ref.read(localDataRepositoryProvider);
-    await repo.addSingleCropToField(
+    final protocol = CropProtocols.resolveByName(plant.nameTr);
+    final rowSpacingCm =
+        config?.rowSpacingCm ?? protocol?.defaultRowSpacingCm ?? 50.0;
+    final plantSpacingCm =
+        config?.plantSpacingCm ?? protocol?.defaultPlantSpacingCm ?? 40.0;
+    final cropId = await repo.addSingleCropToField(
       fieldId: fieldId,
       name: plant.nameTr,
       colorValue: plant.renderColor.toARGB32(),
@@ -1098,26 +1260,37 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
           '${DateTime.now().day.toString().padLeft(2, '0')}.${DateTime.now().month.toString().padLeft(2, '0')}.${DateTime.now().year}',
       harvestDays: plant.daysToHarvest,
       waterIntervalDays: 7,
+      rowSpacingCm: rowSpacingCm,
+      plantSpacingCm: plantSpacingCm,
       zonePolygonJson: zonePolygonJson,
     );
 
     await repo.logActivity(
       fieldId: fieldId,
       type: ActivityType.planting,
+      cropId: cropId,
       note: '${plant.nameTr} tarlaya eklendi',
+      metadata: {
+        'setup_version': 1,
+        if (config != null) 'area_dekar': config.areaDekar,
+        'row_spacing_cm': rowSpacingCm,
+        'plant_spacing_cm': plantSpacingCm,
+      },
     );
+    await ref.read(growthEngineProvider).recompute(cropId: cropId);
 
     await _loadFieldCrops();
     if (!mounted) return;
 
     // ── 3 vitrin bitki için yetiştirme yol haritası bildirimi ──
-    final protocol = CropProtocols.resolveByName(plant.nameTr);
-    if (protocol != null) {
+    final resolvedProtocol = CropProtocols.resolveByName(plant.nameTr);
+    if (resolvedProtocol != null) {
       await NotificationService.show(
-        id: protocol.cropKey.hashCode & 0x7fffffff,
-        title: '${protocol.emoji} ${protocol.displayName} eklendi',
+        id: resolvedProtocol.cropKey.hashCode & 0x7fffffff,
+        title:
+            '${resolvedProtocol.emoji} ${resolvedProtocol.displayName} eklendi',
         body:
-            '${protocol.displayName} yetiştirmek için detaylı yönergeye Görevler\'den ulaşabilirsiniz.',
+            '${resolvedProtocol.displayName} yetiştirmek için detaylı yönergeye Görevler\'den ulaşabilirsiniz.',
       );
       // İlk adım bildirimini de ata — son yüklenen aktivite/ekin verisiyle.
       final latestCrops = await repo.loadFieldCrops(fieldId);
@@ -1153,7 +1326,12 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
       _ => 500.0,
     };
     final renderType = switch (tc.category) {
-      'Tahıl' || 'Yağlı Tohum' || 'Yem Bitkisi' || 'Bahçe Otu' || 'Tıbbi Bitki' => PlantRenderType.stalk,
+      'Tahıl' ||
+      'Yağlı Tohum' ||
+      'Yem Bitkisi' ||
+      'Bahçe Otu' ||
+      'Tıbbi Bitki' =>
+        PlantRenderType.stalk,
       'Sebze' || 'Baklagil' => PlantRenderType.bush,
       'Meyve' || 'Sert Kabuklu' || 'Süs Bitkisi' => PlantRenderType.broadleaf,
       _ => PlantRenderType.broadleaf,
@@ -1187,18 +1365,30 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
 
   Color _colorForCategory(String category) {
     switch (category) {
-      case 'Tahıl': return const Color(0xFFF59E0B);
-      case 'Baklagil': return const Color(0xFF84CC16);
-      case 'Yağlı Tohum': return const Color(0xFFFCD34D);
-      case 'Endüstri Bitkisi': return const Color(0xFFE5E7EB);
-      case 'Yem Bitkisi': return const Color(0xFF65A30D);
-      case 'Sebze': return const Color(0xFFEF4444);
-      case 'Meyve': return const Color(0xFFEC4899);
-      case 'Sert Kabuklu': return const Color(0xFF92400E);
-      case 'Bahçe Otu': return const Color(0xFF16A34A);
-      case 'Tıbbi Bitki': return const Color(0xFF8B5CF6);
-      case 'Süs Bitkisi': return const Color(0xFFF472B6);
-      default: return const Color(0xFF43A047);
+      case 'Tahıl':
+        return const Color(0xFFF59E0B);
+      case 'Baklagil':
+        return const Color(0xFF84CC16);
+      case 'Yağlı Tohum':
+        return const Color(0xFFFCD34D);
+      case 'Endüstri Bitkisi':
+        return const Color(0xFFE5E7EB);
+      case 'Yem Bitkisi':
+        return const Color(0xFF65A30D);
+      case 'Sebze':
+        return const Color(0xFFEF4444);
+      case 'Meyve':
+        return const Color(0xFFEC4899);
+      case 'Sert Kabuklu':
+        return const Color(0xFF92400E);
+      case 'Bahçe Otu':
+        return const Color(0xFF16A34A);
+      case 'Tıbbi Bitki':
+        return const Color(0xFF8B5CF6);
+      case 'Süs Bitkisi':
+        return const Color(0xFFF472B6);
+      default:
+        return const Color(0xFF43A047);
     }
   }
 
@@ -1259,7 +1449,8 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
     );
 
     final repo = ref.read(localDataRepositoryProvider);
-    await repo.addSingleCropToField(
+    final protocol = CropProtocols.resolveByName(plant.nameTr);
+    final cropId = await repo.addSingleCropToField(
       fieldId: fieldId,
       name: plant.nameTr,
       colorValue: plant.renderColor.toARGB32(),
@@ -1267,8 +1458,22 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
           '${DateTime.now().day.toString().padLeft(2, '0')}.${DateTime.now().month.toString().padLeft(2, '0')}.${DateTime.now().year}',
       harvestDays: plant.daysToHarvest,
       waterIntervalDays: 7,
+      rowSpacingCm: protocol?.defaultRowSpacingCm ?? 50.0,
+      plantSpacingCm: protocol?.defaultPlantSpacingCm ?? 40.0,
       zonePolygonJson: zoneJson,
     );
+    await repo.logActivity(
+      fieldId: fieldId,
+      type: ActivityType.planting,
+      cropId: cropId,
+      note: '${plant.nameTr} seçilen bölgeye eklendi',
+      metadata: {
+        'setup_version': 1,
+        'row_spacing_cm': protocol?.defaultRowSpacingCm ?? 50.0,
+        'plant_spacing_cm': protocol?.defaultPlantSpacingCm ?? 40.0,
+      },
+    );
+    await ref.read(growthEngineProvider).recompute(cropId: cropId);
 
     setState(() {
       _isZoneDrawingMode = false;
@@ -1347,7 +1552,8 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
     }
 
     final repo = ref.read(localDataRepositoryProvider);
-    await repo.addSingleCropToField(
+    final protocol = CropProtocols.resolveByName(plant.nameTr);
+    final cropId = await repo.addSingleCropToField(
       fieldId: fieldId,
       name: plant.nameTr,
       colorValue: plant.renderColor.toARGB32(),
@@ -1355,7 +1561,10 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
           '${DateTime.now().day.toString().padLeft(2, '0')}.${DateTime.now().month.toString().padLeft(2, '0')}.${DateTime.now().year}',
       harvestDays: plant.daysToHarvest,
       waterIntervalDays: 7,
+      rowSpacingCm: protocol?.defaultRowSpacingCm ?? 50.0,
+      plantSpacingCm: protocol?.defaultPlantSpacingCm ?? 40.0,
     );
+    await ref.read(growthEngineProvider).recompute(cropId: cropId);
 
     await _loadFieldCrops();
     if (!mounted) return;
@@ -1404,7 +1613,9 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
       final yi = polygon[i].latitude, xi = polygon[i].longitude;
       final yj = polygon[j].latitude, xj = polygon[j].longitude;
       final intersect = ((yi > lat) != (yj > lat)) &&
-          (lng < (xj - xi) * (lat - yi) / ((yj - yi) == 0 ? 1e-12 : (yj - yi)) + xi);
+          (lng <
+              (xj - xi) * (lat - yi) / ((yj - yi) == 0 ? 1e-12 : (yj - yi)) +
+                  xi);
       if (intersect) inside = !inside;
     }
     return inside;
@@ -1477,6 +1688,14 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
     final polygon = _polygonPoints(d);
     final center = _fieldCenter(d, polygon);
     final crops = _plantedCrops(d);
+    final fieldId = d['id']?.toString();
+    final growthRows = fieldId == null || fieldId.isEmpty
+        ? const <CropGrowthState>[]
+        : ref.watch(fieldGrowthStatesProvider(fieldId)).valueOrNull ??
+            const <CropGrowthState>[];
+    final growthByCrop = {
+      for (final state in growthRows) state.cropId: state,
+    };
 
     const borderColor = Color(0xFF00E676);
 
@@ -1506,18 +1725,26 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
         ));
 
         // Bölgeyi tamamen dolduran marker ağı oluştur — dokunulabilir
-        final maturity = _computeMaturityPercent(crop);
+        final maturity = _computeMaturityPercent(
+          crop,
+          growthState: growthByCrop[crop['id']?.toString()],
+        );
         final cropName = crop['name']?.toString() ?? '';
         // Bitkinin gerçek sıra × bitki aralığına göre (cm cinsinden) yerleşim
         final positions = plantPlacementInPolygon(
           polygon: zonePoly,
           cropName: cropName,
+          rowSpacingCm: (crop['row_spacing_cm'] as num?)?.toDouble(),
+          plantSpacingCm: (crop['plant_spacing_cm'] as num?)?.toDouble(),
           maxCount: 35,
           minVisualSpacingM: 3.0,
         );
         if (positions.isEmpty) {
           double cLat = 0, cLng = 0;
-          for (final p in zonePoly) { cLat += p.latitude; cLng += p.longitude; }
+          for (final p in zonePoly) {
+            cLat += p.latitude;
+            cLng += p.longitude;
+          }
           positions.add(LatLng(cLat / zonePoly.length, cLng / zonePoly.length));
         }
 
@@ -1553,6 +1780,9 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
       final positions = plantPlacementInPolygon(
         polygon: polygon,
         cropName: firstName,
+        rowSpacingCm: (gridCrops.first['row_spacing_cm'] as num?)?.toDouble(),
+        plantSpacingCm:
+            (gridCrops.first['plant_spacing_cm'] as num?)?.toDouble(),
         maxCount: 30,
         minVisualSpacingM: 3.5,
       );
@@ -1560,7 +1790,10 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
 
       for (int i = 0; i < positions.length; i++) {
         final crop = gridCrops[i % gridCrops.length];
-        final maturity = _computeMaturityPercent(crop);
+        final maturity = _computeMaturityPercent(
+          crop,
+          growthState: growthByCrop[crop['id']?.toString()],
+        );
         markers.add(
           Marker(
             point: positions[i],
@@ -1640,7 +1873,9 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
                 fontWeight: FontWeight.w900,
                 fontSize: 24,
                 shadows: [
-                  Shadow(color: const Color(0xFF00E676).withValues(alpha: 0.8), blurRadius: 12),
+                  Shadow(
+                      color: const Color(0xFF00E676).withValues(alpha: 0.8),
+                      blurRadius: 12),
                   const Shadow(color: Colors.black, blurRadius: 4),
                 ],
               ),
@@ -1654,7 +1889,8 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
       transform: Matrix4.identity()
         ..scaleByDouble(1.5, 1.5, 1.0, 1.0)
         ..setEntry(3, 2, 0.001)
-        ..rotateX(-0.85), // Tarlayı geriye doğru 45 derece yatırır (doğru izometrik bakış)
+        ..rotateX(
+            -0.85), // Tarlayı geriye doğru 45 derece yatırır (doğru izometrik bakış)
       alignment: FractionalOffset.center,
       child: FlutterMap(
         mapController: _mapController,
@@ -1669,56 +1905,56 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
                   padding: const EdgeInsets.all(80),
                 )
               : null,
-        cameraConstraint: bounds != null
-            ? CameraConstraint.containCenter(bounds: bounds)
-            : const CameraConstraint.unconstrained(),
-        interactionOptions: InteractionOptions(
-          flags: _isZoneDrawingMode
-              ? InteractiveFlag.pinchZoom | InteractiveFlag.drag
-              : InteractiveFlag.pinchZoom |
-                  InteractiveFlag.drag |
-                  InteractiveFlag.doubleTapZoom,
-        ),
-        onTap: _isZoneDrawingMode
-            ? (tapPos, point) => _onMapTapForZone(point)
-            : null,
-      ),
-      children: [
-        TileLayer(
-          urlTemplate:
-              'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-          userAgentPackageName: 'com.example.feng_498',
-          maxZoom: 21,
-        ),
-        if (polygon.length >= 3)
-          PolygonLayer(
-            polygons: [
-              // Dış halo (kalın yumuşak çizgi)
-              Polygon(
-                points: polygon,
-                color: Colors.transparent,
-                borderColor: borderColor.withValues(alpha: 0.5),
-                borderStrokeWidth: 12.0,
-              ),
-              // Ana sınır + dolgu
-              Polygon(
-                points: polygon,
-                color: Colors.black.withValues(alpha: 0.2),
-                borderColor: borderColor,
-                borderStrokeWidth: 4.0,
-              ),
-              // Ekili bölge poligonları
-              ...zonePolygons,
-              // Çizilmekte olan polygon
-              ...drawingPolygons,
-            ],
+          cameraConstraint: bounds != null
+              ? CameraConstraint.containCenter(bounds: bounds)
+              : const CameraConstraint.unconstrained(),
+          interactionOptions: InteractionOptions(
+            flags: _isZoneDrawingMode
+                ? InteractiveFlag.pinchZoom | InteractiveFlag.drag
+                : InteractiveFlag.pinchZoom |
+                    InteractiveFlag.drag |
+                    InteractiveFlag.doubleTapZoom,
           ),
-        if (markers.isNotEmpty) MarkerLayer(markers: markers),
-        if (zoneMarkers.isNotEmpty) MarkerLayer(markers: zoneMarkers),
-        if (drawingMarkers.isNotEmpty) MarkerLayer(markers: drawingMarkers),
-        if (cornerMarkers.isNotEmpty) MarkerLayer(markers: cornerMarkers),
-      ],
-    ),
+          onTap: _isZoneDrawingMode
+              ? (tapPos, point) => _onMapTapForZone(point)
+              : null,
+        ),
+        children: [
+          TileLayer(
+            urlTemplate:
+                'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+            userAgentPackageName: 'com.example.feng_498',
+            maxZoom: 21,
+          ),
+          if (polygon.length >= 3)
+            PolygonLayer(
+              polygons: [
+                // Dış halo (kalın yumuşak çizgi)
+                Polygon(
+                  points: polygon,
+                  color: Colors.transparent,
+                  borderColor: borderColor.withValues(alpha: 0.5),
+                  borderStrokeWidth: 12.0,
+                ),
+                // Ana sınır + dolgu
+                Polygon(
+                  points: polygon,
+                  color: Colors.black.withValues(alpha: 0.2),
+                  borderColor: borderColor,
+                  borderStrokeWidth: 4.0,
+                ),
+                // Ekili bölge poligonları
+                ...zonePolygons,
+                // Çizilmekte olan polygon
+                ...drawingPolygons,
+              ],
+            ),
+          if (markers.isNotEmpty) MarkerLayer(markers: markers),
+          if (zoneMarkers.isNotEmpty) MarkerLayer(markers: zoneMarkers),
+          if (drawingMarkers.isNotEmpty) MarkerLayer(markers: drawingMarkers),
+          if (cornerMarkers.isNotEmpty) MarkerLayer(markers: cornerMarkers),
+        ],
+      ),
     );
   }
 
@@ -1755,12 +1991,21 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
   // ═══════════════════════════════════════════════════
   void _showDetailModal() {
     final fieldId = widget.fieldData['id']?.toString() ?? '';
+    for (final crop in _fieldCrops) {
+      final cropId = crop['id']?.toString();
+      if (cropId != null && cropId.isNotEmpty) {
+        ref.read(growthEngineProvider).recompute(cropId: cropId);
+      }
+    }
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (_) => _DirectivesModalContent(
         fieldId: fieldId,
+        fieldData: Map<String, dynamic>.from(
+          widget.fieldData as Map<dynamic, dynamic>,
+        ),
         analysis: _analysis,
         fieldCrops: _fieldCrops,
         fieldAreaDekar:
@@ -1845,8 +2090,7 @@ class _PlantPickerSheetState extends State<_PlantPickerSheet> {
                             fontSize: 17,
                             fontWeight: FontWeight.w700,
                             color: const Color(0xFF1B5E20))),
-                    Text(
-                        'Hava + toprak verisine göre uygunluk skoru',
+                    Text('Hava + toprak verisine göre uygunluk skoru',
                         style: GoogleFonts.inter(
                             fontSize: 12, color: Colors.grey.shade600)),
                   ]),
@@ -1859,8 +2103,8 @@ class _PlantPickerSheetState extends State<_PlantPickerSheet> {
             textInputAction: TextInputAction.search,
             decoration: InputDecoration(
               hintText: 'Bitki ara (ör. buğday, domates)',
-              prefixIcon: const Icon(Icons.search_rounded,
-                  color: Color(0xFF2E7D32)),
+              prefixIcon:
+                  const Icon(Icons.search_rounded, color: Color(0xFF2E7D32)),
               suffixIcon: _query.isEmpty
                   ? null
                   : IconButton(
@@ -1899,101 +2143,108 @@ class _PlantPickerSheetState extends State<_PlantPickerSheet> {
                     itemCount: filtered.length,
                     itemBuilder: (context, i) {
                       final AgriPlant p = filtered[i]['plant'] as AgriPlant;
-                      final int score = (filtered[i]['score'] as double).round();
+                      final int score =
+                          (filtered[i]['score'] as double).round();
                       final List<String> reasons =
                           (filtered[i]['reasons'] as List).cast<String>();
-                final Color sColor = score >= 75
-                    ? const Color(0xFF2E7D32)
-                    : score >= 50
-                        ? Colors.orange.shade700
-                        : Colors.red.shade700;
-                final String label = score >= 75
-                    ? 'UYGUN'
-                    : score >= 50
-                        ? 'KOŞULLU'
-                        : 'UYGUN DEĞİL';
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Material(
-                    color: Colors.grey.shade50,
-                    borderRadius: BorderRadius.circular(12),
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(12),
-                      onTap: () => widget.onPick(p),
-                      child: Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            CircleAvatar(
-                              backgroundColor: p.renderColor,
-                              radius: 20,
-                              child: const Icon(Icons.eco,
-                                  color: Colors.white, size: 18),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
+                      final Color sColor = score >= 75
+                          ? const Color(0xFF2E7D32)
+                          : score >= 50
+                              ? Colors.orange.shade700
+                              : Colors.red.shade700;
+                      final String label = score >= 75
+                          ? 'UYGUN'
+                          : score >= 50
+                              ? 'KOŞULLU'
+                              : 'UYGUN DEĞİL';
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Material(
+                          color: Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(12),
+                            onTap: () => widget.onPick(p),
+                            child: Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(p.nameTr,
-                                      style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 15)),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                      'Hasat: ${p.daysToHarvest} gün • pH ${p.minPh}-${p.maxPh} • ${p.minTemp.toInt()}-${p.maxTemp.toInt()}°C',
-                                      style: TextStyle(
-                                          fontSize: 11,
-                                          color: Colors.grey.shade700)),
-                                  if (reasons.isNotEmpty) ...[
-                                    const SizedBox(height: 4),
-                                    ...reasons.map((r) => Padding(
-                                          padding: const EdgeInsets.only(top: 2),
-                                          child: Row(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              const Icon(Icons.warning_amber_rounded,
-                                                  size: 12, color: Colors.orange),
-                                              const SizedBox(width: 4),
-                                              Expanded(
-                                                child: Text(r,
-                                                    style: const TextStyle(
-                                                        fontSize: 11,
-                                                        color: Colors.black87)),
-                                              ),
-                                            ],
-                                          ),
-                                        )),
-                                  ],
+                                  CircleAvatar(
+                                    backgroundColor: p.renderColor,
+                                    radius: 20,
+                                    child: const Icon(Icons.eco,
+                                        color: Colors.white, size: 18),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(p.nameTr,
+                                            style: const TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 15)),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                            'Hasat: ${p.daysToHarvest} gün • pH ${p.minPh}-${p.maxPh} • ${p.minTemp.toInt()}-${p.maxTemp.toInt()}°C',
+                                            style: TextStyle(
+                                                fontSize: 11,
+                                                color: Colors.grey.shade700)),
+                                        if (reasons.isNotEmpty) ...[
+                                          const SizedBox(height: 4),
+                                          ...reasons.map((r) => Padding(
+                                                padding: const EdgeInsets.only(
+                                                    top: 2),
+                                                child: Row(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    const Icon(
+                                                        Icons
+                                                            .warning_amber_rounded,
+                                                        size: 12,
+                                                        color: Colors.orange),
+                                                    const SizedBox(width: 4),
+                                                    Expanded(
+                                                      child: Text(r,
+                                                          style: const TextStyle(
+                                                              fontSize: 11,
+                                                              color: Colors
+                                                                  .black87)),
+                                                    ),
+                                                  ],
+                                                ),
+                                              )),
+                                        ],
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      Text('%$score',
+                                          style: TextStyle(
+                                              color: sColor,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 18)),
+                                      Text(label,
+                                          style: TextStyle(
+                                              color: sColor,
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 10)),
+                                    ],
+                                  ),
                                 ],
                               ),
                             ),
-                            const SizedBox(width: 8),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Text('%$score',
-                                    style: TextStyle(
-                                        color: sColor,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 18)),
-                                Text(label,
-                                    style: TextStyle(
-                                        color: sColor,
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 10)),
-                              ],
-                            ),
-                          ],
+                          ),
                         ),
-                      ),
-                    ),
+                      );
+                    },
                   ),
-                );
-              },
-            ),
           ),
         ],
       ),
@@ -2010,12 +2261,14 @@ class _PlantPickerSheetState extends State<_PlantPickerSheet> {
 class _DirectivesModalContent extends ConsumerWidget {
   const _DirectivesModalContent({
     required this.fieldId,
+    required this.fieldData,
     required this.analysis,
     required this.fieldCrops,
     required this.fieldAreaDekar,
   });
 
   final String fieldId;
+  final Map<String, dynamic> fieldData;
   final Map<String, dynamic>? analysis;
   final List<Map<String, dynamic>> fieldCrops;
   final double fieldAreaDekar;
@@ -2035,6 +2288,7 @@ class _DirectivesModalContent extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final activityAsync = ref.watch(fieldActivityLogProvider(fieldId));
+    final growthAsync = ref.watch(fieldGrowthStatesProvider(fieldId));
     final service = ref.watch(taskDirectiveServiceProvider);
 
     return Container(
@@ -2090,6 +2344,27 @@ class _DirectivesModalContent extends ConsumerWidget {
                 ),
               ),
               data: (activities) {
+                final fieldStates = ref.read(fieldStateServiceProvider).compute(
+                      field: fieldData,
+                      fieldCrops: fieldCrops,
+                      activities: activities,
+                    );
+                final fieldStateMap = {
+                  for (final state in fieldStates) state.cropId: state,
+                };
+                final growthMap = {
+                  for (final state
+                      in growthAsync.valueOrNull ?? const <CropGrowthState>[])
+                    state.cropId: GrowthSnapshot(
+                      stageKey: state.currentStageKey,
+                      stageProgress: state.stageProgress,
+                      accumulatedGdd: state.accumulatedGdd,
+                      waterDeficitMm: state.waterDeficitMm,
+                      nStressIdx: state.nStressIdx,
+                      diseasePressure: state.diseasePressure,
+                      yieldMultiplier: state.yieldMultiplier,
+                    ),
+                };
                 final directives = service.generate(
                   fieldCrops: fieldCrops,
                   activities: activities,
@@ -2097,6 +2372,8 @@ class _DirectivesModalContent extends ConsumerWidget {
                   currentTemp: (analysis?['temp'] as num?)?.toDouble(),
                   soilMoisture:
                       (analysis?['soil_moisture'] as num?)?.toDouble(),
+                  growthStates: growthMap,
+                  fieldStates: fieldStateMap,
                 );
                 // Sezon özet kartları (her ekili 3-vitrin bitki için).
                 final summaryCards = <Widget>[];
@@ -2119,6 +2396,7 @@ class _DirectivesModalContent extends ConsumerWidget {
                     areaDekar: fieldAreaDekar,
                     summary: summary,
                     harvestDays: (crop['harvest_days'] as num?)?.toInt(),
+                    cropId: cropId,
                   ));
                 }
 
@@ -2229,12 +2507,22 @@ class _DirectiveCardState extends ConsumerState<_DirectiveCard> {
     setState(() => _logging = true);
     try {
       await ref.read(localDataRepositoryProvider).logActivity(
-            fieldId: widget.fieldId,
-            type: type,
-            cropId: d.cropId,
-            quantity: d.suggestedQuantity,
-            quantityUnit: d.quantityUnit,
-          );
+        fieldId: widget.fieldId,
+        type: type,
+        cropId: d.cropId,
+        quantity: d.suggestedQuantity,
+        quantityUnit: d.quantityUnit,
+        recommendedQuantity: d.recommendedQuantity ?? d.suggestedQuantity,
+        metadata: {
+          if (d.areaDekar != null) 'area_dekar': d.areaDekar,
+          if (d.plantCount != null) 'plant_count': d.plantCount,
+          if (d.steps.isNotEmpty) 'directive_steps': d.steps,
+          if (d.sourceRefs.isNotEmpty) 'source_refs': d.sourceRefs,
+        },
+      );
+      if (d.cropId != null && d.cropId!.isNotEmpty) {
+        await ref.read(growthEngineProvider).recompute(cropId: d.cropId!);
+      }
       if (!mounted) return;
       AppToast.show(
         context,
@@ -2252,6 +2540,18 @@ class _DirectiveCardState extends ConsumerState<_DirectiveCard> {
     } finally {
       if (mounted) setState(() => _logging = false);
     }
+  }
+
+  String _shortSource(String source) {
+    final s = source.toLowerCase();
+    if (s.contains('tagem')) return 'TAGEM';
+    if (s.contains('tarım ve orman') || s.contains('tarim ve orman')) {
+      return 'Tarım ve Orman';
+    }
+    if (s.contains('trakya')) return 'Trakya TAE';
+    if (s.contains('yalova')) return 'Yalova Bahçe';
+    if (s.contains('bakan')) return 'Bakanlık';
+    return source.length <= 22 ? source : '${source.substring(0, 22)}...';
   }
 
   @override
@@ -2324,6 +2624,68 @@ class _DirectiveCardState extends ConsumerState<_DirectiveCard> {
               height: 1.45,
             ),
           ),
+          if (d.steps.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            ...d.steps.take(4).map(
+                  (step) => Padding(
+                    padding: const EdgeInsets.only(bottom: 5),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(Icons.check_circle_rounded,
+                            color: Color(0xFF00E676), size: 14),
+                        const SizedBox(width: 7),
+                        Expanded(
+                          child: Text(
+                            step,
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                              height: 1.35,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+          ],
+          if (d.sourceRefs.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: d.sourceRefs.take(3).map((source) {
+                return Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF00E676).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: const Color(0xFF00E676).withValues(alpha: 0.35),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.verified_rounded,
+                          color: Color(0xFF00E676), size: 12),
+                      const SizedBox(width: 4),
+                      Text(
+                        _shortSource(source),
+                        style: const TextStyle(
+                          color: Color(0xFFB9F6CA),
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
           if (d.actionType != null) ...[
             const SizedBox(height: 12),
             SizedBox(
@@ -2389,8 +2751,9 @@ class _CropRoadmapCardState extends State<_CropRoadmapCard> {
   static const _mistake = Color(0xFFFFB74D);
   static const _info = Color(0xFF40C4FF);
 
-  String _formatArea(double area) =>
-      area == area.roundToDouble() ? '${area.round()}' : area.toStringAsFixed(1);
+  String _formatArea(double area) => area == area.roundToDouble()
+      ? '${area.round()}'
+      : area.toStringAsFixed(1);
 
   // Miktarı alana göre ölçekle ve okunabilir göster
   String _scaleToArea(String spec, double area) {
@@ -2402,7 +2765,11 @@ class _CropRoadmapCardState extends State<_CropRoadmapCard> {
         final val = double.tryParse(m.group(1) ?? '');
         if (val == null) return m.group(0)!;
         final scaled = val * area;
-        final unit = m.group(0)!.replaceAll(m.group(1)!, '').replaceAll('/da', '').trim();
+        final unit = m
+            .group(0)!
+            .replaceAll(m.group(1)!, '')
+            .replaceAll('/da', '')
+            .trim();
         final display = scaled == scaled.roundToDouble()
             ? '${scaled.round()}'
             : scaled.toStringAsFixed(1);
@@ -2434,8 +2801,7 @@ class _CropRoadmapCardState extends State<_CropRoadmapCard> {
         children: [
           // ── Başlık + progress ──
           InkWell(
-            borderRadius:
-                const BorderRadius.vertical(top: Radius.circular(18)),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
             onTap: () => setState(() => _expanded = !_expanded),
             child: Padding(
               padding: const EdgeInsets.fromLTRB(14, 14, 12, 12),
@@ -2462,7 +2828,8 @@ class _CropRoadmapCardState extends State<_CropRoadmapCard> {
                             Wrap(
                               spacing: 6,
                               children: [
-                                _cfgChip(cfg.soilType.emoji, cfg.soilType.label),
+                                _cfgChip(
+                                    cfg.soilType.emoji, cfg.soilType.label),
                                 _cfgChip(
                                     const Icon(Icons.water_drop_rounded,
                                             size: 11, color: _info)
@@ -2470,8 +2837,8 @@ class _CropRoadmapCardState extends State<_CropRoadmapCard> {
                                     cfg.irrigationMethod.label,
                                     isIcon: true,
                                     icon: cfg.irrigationMethod.icon),
-                                _cfgChip('📐',
-                                    '${_formatArea(cfg.areaDekar)} da'),
+                                _cfgChip(
+                                    '📐', '${_formatArea(cfg.areaDekar)} da'),
                               ],
                             )
                           else
@@ -2500,8 +2867,7 @@ class _CropRoadmapCardState extends State<_CropRoadmapCard> {
                           value: p.ratio,
                           minHeight: 7,
                           backgroundColor: Colors.white12,
-                          valueColor:
-                              const AlwaysStoppedAnimation(_accent),
+                          valueColor: const AlwaysStoppedAnimation(_accent),
                         ),
                       ),
                     ),
@@ -2530,8 +2896,7 @@ class _CropRoadmapCardState extends State<_CropRoadmapCard> {
                 children: p.protocol.steps.map((step) {
                   final isDone = p.completedOrders.contains(step.order);
                   final isActive = p.activeStep?.order == step.order;
-                  final isOpen =
-                      isActive || _expandedStep == step.order;
+                  final isOpen = isActive || _expandedStep == step.order;
                   return _RoadmapStepTile(
                     step: step,
                     isCompleted: isDone,
@@ -2563,10 +2928,9 @@ class _CropRoadmapCardState extends State<_CropRoadmapCard> {
   }
 
   Widget _cfgChip(String emoji, String label,
-      {bool isIcon = false, IconData? icon}) =>
+          {bool isIcon = false, IconData? icon}) =>
       Container(
-        padding:
-            const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: 0.07),
           borderRadius: BorderRadius.circular(20),
@@ -2578,8 +2942,7 @@ class _CropRoadmapCardState extends State<_CropRoadmapCard> {
             Text(emoji, style: const TextStyle(fontSize: 10)),
           const SizedBox(width: 4),
           Text(label,
-              style: const TextStyle(
-                  color: Colors.white70, fontSize: 10)),
+              style: const TextStyle(color: Colors.white70, fontSize: 10)),
         ]),
       );
 }
@@ -2625,8 +2988,9 @@ class _RoadmapStepTile extends StatelessWidget {
     final iconColor = isCompleted
         ? accent
         : (isActive ? const Color(0xFFFFB74D) : Colors.white24);
-    final titleColor =
-        isCompleted ? Colors.white54 : (isActive ? Colors.white : Colors.white70);
+    final titleColor = isCompleted
+        ? Colors.white54
+        : (isActive ? Colors.white : Colors.white70);
 
     return GestureDetector(
       onTap: onTap,
@@ -2679,9 +3043,8 @@ class _RoadmapStepTile extends StatelessWidget {
                             fontWeight: isActive || isOpen
                                 ? FontWeight.w700
                                 : FontWeight.w500,
-                            decoration: isCompleted
-                                ? TextDecoration.lineThrough
-                                : null,
+                            decoration:
+                                isCompleted ? TextDecoration.lineThrough : null,
                             decorationColor: Colors.white30,
                           ),
                         ),
@@ -2740,7 +3103,8 @@ class _RoadmapStepTile extends StatelessWidget {
 
                     // Sulama yöntemi notu
                     if (config != null &&
-                        step.irrigationNote(config!.irrigationMethod) != null) ...[
+                        step.irrigationNote(config!.irrigationMethod) !=
+                            null) ...[
                       const SizedBox(height: 8),
                       _infoBox(
                         icon: config!.irrigationMethod.icon,
@@ -2811,8 +3175,8 @@ class _RoadmapStepTile extends StatelessWidget {
                             child: Text(
                               config != null && area > 0
                                   ? 'Bu adım tahmini maliyet: '
-                                    '~₺${(step.estimatedCostPerDekar! * area).round()} '
-                                    '(${_formatArea(area)} da × ₺${step.estimatedCostPerDekar!.round()}/da)'
+                                      '~₺${(step.estimatedCostPerDekar! * area).round()} '
+                                      '(${_formatArea(area)} da × ₺${step.estimatedCostPerDekar!.round()}/da)'
                                   : '~₺${step.estimatedCostPerDekar!.round()}/da',
                               style: const TextStyle(
                                 color: Color(0xFFFFD54F),
@@ -2862,16 +3226,16 @@ class _RoadmapStepTile extends StatelessWidget {
             ],
 
             if (!isCompleted && isOpen)
-              Divider(
-                  color: Colors.white.withValues(alpha: 0.06), height: 1),
+              Divider(color: Colors.white.withValues(alpha: 0.06), height: 1),
           ],
         ),
       ),
     );
   }
 
-  String _formatArea(double area) =>
-      area == area.roundToDouble() ? '${area.round()}' : area.toStringAsFixed(1);
+  String _formatArea(double area) => area == area.roundToDouble()
+      ? '${area.round()}'
+      : area.toStringAsFixed(1);
 
   Widget _infoBox({
     required IconData icon,
@@ -2985,8 +3349,8 @@ class _CropSetupSheetState extends State<_CropSetupSheet> {
     final cfg = widget.initialConfig;
     _soil = cfg?.soilType ?? SoilType.loamy;
     _irrigation = cfg?.irrigationMethod ?? IrrigationMethod.furrow;
-    _areaCtrl = TextEditingController(
-        text: (cfg?.areaDekar ?? 10).toStringAsFixed(0));
+    _areaCtrl =
+        TextEditingController(text: (cfg?.areaDekar ?? 10).toStringAsFixed(0));
     _rowCtrl = TextEditingController(
         text: (cfg?.rowSpacingCm ?? widget.protocol.defaultRowSpacingCm)
             .toStringAsFixed(0));
@@ -3053,8 +3417,7 @@ class _CropSetupSheetState extends State<_CropSetupSheet> {
 
             // ── Başlık ──
             Row(children: [
-              Text(widget.protocol.emoji,
-                  style: const TextStyle(fontSize: 30)),
+              Text(widget.protocol.emoji, style: const TextStyle(fontSize: 30)),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -3096,9 +3459,7 @@ class _CropSetupSheetState extends State<_CropSetupSheet> {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 14, vertical: 10),
                     decoration: BoxDecoration(
-                      color: selected
-                          ? _accent.withValues(alpha: 0.18)
-                          : _card,
+                      color: selected ? _accent.withValues(alpha: 0.18) : _card,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
                         color: selected ? _accent : Colors.white12,
@@ -3108,8 +3469,7 @@ class _CropSetupSheetState extends State<_CropSetupSheet> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(s.emoji,
-                            style: const TextStyle(fontSize: 22)),
+                        Text(s.emoji, style: const TextStyle(fontSize: 22)),
                         const SizedBox(height: 4),
                         Text(s.label,
                             style: TextStyle(
@@ -3166,8 +3526,7 @@ class _CropSetupSheetState extends State<_CropSetupSheet> {
                         children: [
                           Text(m.label,
                               style: TextStyle(
-                                color:
-                                    selected ? _accent : Colors.white,
+                                color: selected ? _accent : Colors.white,
                                 fontSize: 14,
                                 fontWeight: selected
                                     ? FontWeight.w700
@@ -3216,7 +3575,8 @@ class _CropSetupSheetState extends State<_CropSetupSheet> {
                 child: _inputField(
                   controller: _plantCtrl,
                   label: 'Bitki arası',
-                  hint: widget.protocol.defaultPlantSpacingCm.toStringAsFixed(0),
+                  hint:
+                      widget.protocol.defaultPlantSpacingCm.toStringAsFixed(0),
                   suffix: 'cm',
                 ),
               ),
@@ -3229,8 +3589,7 @@ class _CropSetupSheetState extends State<_CropSetupSheet> {
               decoration: BoxDecoration(
                 color: _accent.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(10),
-                border:
-                    Border.all(color: _accent.withValues(alpha: 0.2)),
+                border: Border.all(color: _accent.withValues(alpha: 0.2)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

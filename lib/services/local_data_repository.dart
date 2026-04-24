@@ -433,6 +433,9 @@ class LocalDataRepository {
     required String eventType,
     required DateTime eventDate,
     Map<String, dynamic>? metadata,
+    double? quantity,
+    String? unit,
+    double? recommendedQuantity,
   }) async {
     final now = DateTime.now().toUtc();
     final id = _newId('event');
@@ -448,6 +451,9 @@ class LocalDataRepository {
             fieldId: Value(fieldId),
             cropId: Value(cropId),
             metadataJson: Value(metaJson),
+            quantity: Value(quantity),
+            unit: Value(unit),
+            recommendedQuantity: Value(recommendedQuantity),
           ),
         );
 
@@ -463,6 +469,9 @@ class LocalDataRepository {
         'event_type': eventType,
         'event_date': eventDate.toUtc().toIso8601String(),
         'metadata': metadata,
+        'quantity': quantity,
+        'unit': unit,
+        'recommended_quantity': recommendedQuantity,
       },
       updatedAt: now,
     );
@@ -470,6 +479,11 @@ class LocalDataRepository {
 
   /// Çiftçi dostu aktivite kaydı. Tek çağrıda Calendar event + sync outbox.
   /// [type] için [ActivityType] sabitlerini kullan.
+  ///
+  /// [recommendedQuantity]: direktif motorunun aynı anda önerdiği miktar
+  /// (ör. `TaskDirectiveService` "22 dk sula" diyorsa 22). `GrowthEngine`
+  /// uygulanan/önerilen oranını bu kolondan okuyarak su açığı + azot stresini
+  /// hesaplar. Null ise çiftçinin manuel-keyfî kaydı.
   Future<void> logActivity({
     required String fieldId,
     required String type,
@@ -477,6 +491,7 @@ class LocalDataRepository {
     String? note,
     double? quantity,
     String? quantityUnit,
+    double? recommendedQuantity,
     Map<String, dynamic>? metadata,
     DateTime? at,
   }) async {
@@ -490,6 +505,9 @@ class LocalDataRepository {
     if (note != null && note.trim().isNotEmpty) meta['note'] = note.trim();
     if (quantity != null) meta['quantity'] = quantity;
     if (quantityUnit != null) meta['quantity_unit'] = quantityUnit;
+    if (recommendedQuantity != null) {
+      meta['recommended_quantity'] = recommendedQuantity;
+    }
     await addCalendarEvent(
       fieldId: fieldId,
       cropId: cropId,
@@ -497,6 +515,9 @@ class LocalDataRepository {
       eventType: type,
       eventDate: at ?? DateTime.now(),
       metadata: meta.isEmpty ? null : meta,
+      quantity: quantity,
+      unit: quantityUnit,
+      recommendedQuantity: recommendedQuantity,
     );
 
     // Sulama log'u → bekleyen sulama planını "tamamlandı" olarak işaretle.
@@ -690,6 +711,12 @@ class LocalDataRepository {
             if (decoded is Map) meta = Map<String, dynamic>.from(decoded);
           } catch (_) {}
         }
+        // Yeni kolonları (v4) kolay erişim için aç — fallback olarak
+        // metadata JSON'u da destekle (eski kayıtlar için geriye uyumluluk).
+        final qty = ev.quantity ?? (meta?['quantity'] as num?)?.toDouble();
+        final unit = ev.unit ?? meta?['quantity_unit']?.toString();
+        final recQty = ev.recommendedQuantity ??
+            (meta?['recommended_quantity'] as num?)?.toDouble();
         return <String, dynamic>{
           'id': ev.id,
           'field_id': ev.fieldId,
@@ -699,6 +726,9 @@ class LocalDataRepository {
           'type': ev.eventType,
           'date': ev.eventDate.toLocal(),
           'source': ev.source,
+          'quantity': qty,
+          'unit': unit,
+          'recommended_quantity': recQty,
           'metadata': meta,
         };
       }).toList();
@@ -1011,6 +1041,14 @@ class LocalDataRepository {
         'id': cropId,
         'field_id': fieldId,
         'name': name,
+        'zone_start': 0.0,
+        'zone_end': 1.0,
+        'row_spacing_cm': rowSpacingCm,
+        'plant_spacing_cm': plantSpacingCm,
+        'color_value': colorValue,
+        'planted_date': plantedDate,
+        'harvest_days': harvestDays,
+        'water_interval_days': waterIntervalDays,
         'zone_polygon_json': zonePolygonJson,
       },
       updatedAt: now,
@@ -1067,12 +1105,26 @@ class LocalDataRepository {
       updatedAt: Value(now),
     ));
 
+    final crop = await (_db.select(_db.fieldCrops)
+          ..where((tbl) => tbl.id.equals(cropId)))
+        .getSingleOrNull();
+
     await _enqueueSyncJob(
       entityType: 'field_crops',
       entityId: cropId,
       operation: 'upsert',
       payload: {
         'id': cropId,
+        if (crop != null) 'field_id': crop.fieldId,
+        if (crop != null) 'name': crop.name,
+        if (crop != null) 'zone_start': crop.zoneStart,
+        if (crop != null) 'zone_end': crop.zoneEnd,
+        if (crop != null) 'row_spacing_cm': crop.rowSpacingCm,
+        if (crop != null) 'plant_spacing_cm': crop.plantSpacingCm,
+        if (crop != null) 'color_value': crop.colorValue,
+        if (crop != null) 'planted_date': crop.plantedDate,
+        if (crop != null) 'harvest_days': crop.harvestDays,
+        if (crop != null) 'water_interval_days': crop.waterIntervalDays,
         'zone_polygon_json': zonePolygonJson,
       },
       updatedAt: now,

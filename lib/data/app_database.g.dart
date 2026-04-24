@@ -1446,6 +1446,23 @@ class $CalendarEventsTable extends CalendarEvents
   late final GeneratedColumn<String> metadataJson = GeneratedColumn<String>(
       'metadata_json', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _quantityMeta =
+      const VerificationMeta('quantity');
+  @override
+  late final GeneratedColumn<double> quantity = GeneratedColumn<double>(
+      'quantity', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _unitMeta = const VerificationMeta('unit');
+  @override
+  late final GeneratedColumn<String> unit = GeneratedColumn<String>(
+      'unit', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _recommendedQuantityMeta =
+      const VerificationMeta('recommendedQuantity');
+  @override
+  late final GeneratedColumn<double> recommendedQuantity =
+      GeneratedColumn<double>('recommended_quantity', aliasedName, true,
+          type: DriftSqlType.double, requiredDuringInsert: false);
   static const VerificationMeta _createdAtMeta =
       const VerificationMeta('createdAt');
   @override
@@ -1474,6 +1491,9 @@ class $CalendarEventsTable extends CalendarEvents
         eventDate,
         source,
         metadataJson,
+        quantity,
+        unit,
+        recommendedQuantity,
         createdAt,
         updatedAt,
         deletedAt
@@ -1529,6 +1549,20 @@ class $CalendarEventsTable extends CalendarEvents
           metadataJson.isAcceptableOrUnknown(
               data['metadata_json']!, _metadataJsonMeta));
     }
+    if (data.containsKey('quantity')) {
+      context.handle(_quantityMeta,
+          quantity.isAcceptableOrUnknown(data['quantity']!, _quantityMeta));
+    }
+    if (data.containsKey('unit')) {
+      context.handle(
+          _unitMeta, unit.isAcceptableOrUnknown(data['unit']!, _unitMeta));
+    }
+    if (data.containsKey('recommended_quantity')) {
+      context.handle(
+          _recommendedQuantityMeta,
+          recommendedQuantity.isAcceptableOrUnknown(
+              data['recommended_quantity']!, _recommendedQuantityMeta));
+    }
     if (data.containsKey('created_at')) {
       context.handle(_createdAtMeta,
           createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
@@ -1570,6 +1604,12 @@ class $CalendarEventsTable extends CalendarEvents
           .read(DriftSqlType.string, data['${effectivePrefix}source'])!,
       metadataJson: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}metadata_json']),
+      quantity: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}quantity']),
+      unit: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}unit']),
+      recommendedQuantity: attachedDatabase.typeMapping.read(
+          DriftSqlType.double, data['${effectivePrefix}recommended_quantity']),
       createdAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
       updatedAt: attachedDatabase.typeMapping
@@ -1594,6 +1634,18 @@ class CalendarEvent extends DataClass implements Insertable<CalendarEvent> {
   final DateTime eventDate;
   final String source;
   final String? metadataJson;
+
+  /// Çiftçinin gerçekten uyguladığı miktar (ör. sulama dk, gübre kg, ilaç mL).
+  /// metadata_json içinde de tutulur; bu kolon GrowthEngine sorguları için
+  /// indekslenebilir hızlı erişim sağlar (v4).
+  final double? quantity;
+
+  /// Miktar birimi — 'dk', 'kg', 'L', 'g', 'mL'. (v4)
+  final String? unit;
+
+  /// Direktif motorunun aynı anda önerdiği miktar — eksik/fazla oranını
+  /// hesaplamak için. Null ise öneri-dışı manuel kayıt. (v4)
+  final double? recommendedQuantity;
   final DateTime createdAt;
   final DateTime updatedAt;
   final DateTime? deletedAt;
@@ -1606,6 +1658,9 @@ class CalendarEvent extends DataClass implements Insertable<CalendarEvent> {
       required this.eventDate,
       required this.source,
       this.metadataJson,
+      this.quantity,
+      this.unit,
+      this.recommendedQuantity,
       required this.createdAt,
       required this.updatedAt,
       this.deletedAt});
@@ -1625,6 +1680,15 @@ class CalendarEvent extends DataClass implements Insertable<CalendarEvent> {
     map['source'] = Variable<String>(source);
     if (!nullToAbsent || metadataJson != null) {
       map['metadata_json'] = Variable<String>(metadataJson);
+    }
+    if (!nullToAbsent || quantity != null) {
+      map['quantity'] = Variable<double>(quantity);
+    }
+    if (!nullToAbsent || unit != null) {
+      map['unit'] = Variable<String>(unit);
+    }
+    if (!nullToAbsent || recommendedQuantity != null) {
+      map['recommended_quantity'] = Variable<double>(recommendedQuantity);
     }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
@@ -1649,6 +1713,13 @@ class CalendarEvent extends DataClass implements Insertable<CalendarEvent> {
       metadataJson: metadataJson == null && nullToAbsent
           ? const Value.absent()
           : Value(metadataJson),
+      quantity: quantity == null && nullToAbsent
+          ? const Value.absent()
+          : Value(quantity),
+      unit: unit == null && nullToAbsent ? const Value.absent() : Value(unit),
+      recommendedQuantity: recommendedQuantity == null && nullToAbsent
+          ? const Value.absent()
+          : Value(recommendedQuantity),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
       deletedAt: deletedAt == null && nullToAbsent
@@ -1669,6 +1740,10 @@ class CalendarEvent extends DataClass implements Insertable<CalendarEvent> {
       eventDate: serializer.fromJson<DateTime>(json['eventDate']),
       source: serializer.fromJson<String>(json['source']),
       metadataJson: serializer.fromJson<String?>(json['metadataJson']),
+      quantity: serializer.fromJson<double?>(json['quantity']),
+      unit: serializer.fromJson<String?>(json['unit']),
+      recommendedQuantity:
+          serializer.fromJson<double?>(json['recommendedQuantity']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
@@ -1686,6 +1761,9 @@ class CalendarEvent extends DataClass implements Insertable<CalendarEvent> {
       'eventDate': serializer.toJson<DateTime>(eventDate),
       'source': serializer.toJson<String>(source),
       'metadataJson': serializer.toJson<String?>(metadataJson),
+      'quantity': serializer.toJson<double?>(quantity),
+      'unit': serializer.toJson<String?>(unit),
+      'recommendedQuantity': serializer.toJson<double?>(recommendedQuantity),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'deletedAt': serializer.toJson<DateTime?>(deletedAt),
@@ -1701,6 +1779,9 @@ class CalendarEvent extends DataClass implements Insertable<CalendarEvent> {
           DateTime? eventDate,
           String? source,
           Value<String?> metadataJson = const Value.absent(),
+          Value<double?> quantity = const Value.absent(),
+          Value<String?> unit = const Value.absent(),
+          Value<double?> recommendedQuantity = const Value.absent(),
           DateTime? createdAt,
           DateTime? updatedAt,
           Value<DateTime?> deletedAt = const Value.absent()}) =>
@@ -1714,6 +1795,11 @@ class CalendarEvent extends DataClass implements Insertable<CalendarEvent> {
         source: source ?? this.source,
         metadataJson:
             metadataJson.present ? metadataJson.value : this.metadataJson,
+        quantity: quantity.present ? quantity.value : this.quantity,
+        unit: unit.present ? unit.value : this.unit,
+        recommendedQuantity: recommendedQuantity.present
+            ? recommendedQuantity.value
+            : this.recommendedQuantity,
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
         deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
@@ -1730,6 +1816,11 @@ class CalendarEvent extends DataClass implements Insertable<CalendarEvent> {
       metadataJson: data.metadataJson.present
           ? data.metadataJson.value
           : this.metadataJson,
+      quantity: data.quantity.present ? data.quantity.value : this.quantity,
+      unit: data.unit.present ? data.unit.value : this.unit,
+      recommendedQuantity: data.recommendedQuantity.present
+          ? data.recommendedQuantity.value
+          : this.recommendedQuantity,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
@@ -1747,6 +1838,9 @@ class CalendarEvent extends DataClass implements Insertable<CalendarEvent> {
           ..write('eventDate: $eventDate, ')
           ..write('source: $source, ')
           ..write('metadataJson: $metadataJson, ')
+          ..write('quantity: $quantity, ')
+          ..write('unit: $unit, ')
+          ..write('recommendedQuantity: $recommendedQuantity, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('deletedAt: $deletedAt')
@@ -1755,8 +1849,21 @@ class CalendarEvent extends DataClass implements Insertable<CalendarEvent> {
   }
 
   @override
-  int get hashCode => Object.hash(id, fieldId, cropId, title, eventType,
-      eventDate, source, metadataJson, createdAt, updatedAt, deletedAt);
+  int get hashCode => Object.hash(
+      id,
+      fieldId,
+      cropId,
+      title,
+      eventType,
+      eventDate,
+      source,
+      metadataJson,
+      quantity,
+      unit,
+      recommendedQuantity,
+      createdAt,
+      updatedAt,
+      deletedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1769,6 +1876,9 @@ class CalendarEvent extends DataClass implements Insertable<CalendarEvent> {
           other.eventDate == this.eventDate &&
           other.source == this.source &&
           other.metadataJson == this.metadataJson &&
+          other.quantity == this.quantity &&
+          other.unit == this.unit &&
+          other.recommendedQuantity == this.recommendedQuantity &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
           other.deletedAt == this.deletedAt);
@@ -1783,6 +1893,9 @@ class CalendarEventsCompanion extends UpdateCompanion<CalendarEvent> {
   final Value<DateTime> eventDate;
   final Value<String> source;
   final Value<String?> metadataJson;
+  final Value<double?> quantity;
+  final Value<String?> unit;
+  final Value<double?> recommendedQuantity;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<DateTime?> deletedAt;
@@ -1796,6 +1909,9 @@ class CalendarEventsCompanion extends UpdateCompanion<CalendarEvent> {
     this.eventDate = const Value.absent(),
     this.source = const Value.absent(),
     this.metadataJson = const Value.absent(),
+    this.quantity = const Value.absent(),
+    this.unit = const Value.absent(),
+    this.recommendedQuantity = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.deletedAt = const Value.absent(),
@@ -1810,6 +1926,9 @@ class CalendarEventsCompanion extends UpdateCompanion<CalendarEvent> {
     required DateTime eventDate,
     this.source = const Value.absent(),
     this.metadataJson = const Value.absent(),
+    this.quantity = const Value.absent(),
+    this.unit = const Value.absent(),
+    this.recommendedQuantity = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
     this.deletedAt = const Value.absent(),
@@ -1829,6 +1948,9 @@ class CalendarEventsCompanion extends UpdateCompanion<CalendarEvent> {
     Expression<DateTime>? eventDate,
     Expression<String>? source,
     Expression<String>? metadataJson,
+    Expression<double>? quantity,
+    Expression<String>? unit,
+    Expression<double>? recommendedQuantity,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<DateTime>? deletedAt,
@@ -1843,6 +1965,10 @@ class CalendarEventsCompanion extends UpdateCompanion<CalendarEvent> {
       if (eventDate != null) 'event_date': eventDate,
       if (source != null) 'source': source,
       if (metadataJson != null) 'metadata_json': metadataJson,
+      if (quantity != null) 'quantity': quantity,
+      if (unit != null) 'unit': unit,
+      if (recommendedQuantity != null)
+        'recommended_quantity': recommendedQuantity,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (deletedAt != null) 'deleted_at': deletedAt,
@@ -1859,6 +1985,9 @@ class CalendarEventsCompanion extends UpdateCompanion<CalendarEvent> {
       Value<DateTime>? eventDate,
       Value<String>? source,
       Value<String?>? metadataJson,
+      Value<double?>? quantity,
+      Value<String?>? unit,
+      Value<double?>? recommendedQuantity,
       Value<DateTime>? createdAt,
       Value<DateTime>? updatedAt,
       Value<DateTime?>? deletedAt,
@@ -1872,6 +2001,9 @@ class CalendarEventsCompanion extends UpdateCompanion<CalendarEvent> {
       eventDate: eventDate ?? this.eventDate,
       source: source ?? this.source,
       metadataJson: metadataJson ?? this.metadataJson,
+      quantity: quantity ?? this.quantity,
+      unit: unit ?? this.unit,
+      recommendedQuantity: recommendedQuantity ?? this.recommendedQuantity,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       deletedAt: deletedAt ?? this.deletedAt,
@@ -1906,6 +2038,15 @@ class CalendarEventsCompanion extends UpdateCompanion<CalendarEvent> {
     if (metadataJson.present) {
       map['metadata_json'] = Variable<String>(metadataJson.value);
     }
+    if (quantity.present) {
+      map['quantity'] = Variable<double>(quantity.value);
+    }
+    if (unit.present) {
+      map['unit'] = Variable<String>(unit.value);
+    }
+    if (recommendedQuantity.present) {
+      map['recommended_quantity'] = Variable<double>(recommendedQuantity.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -1932,6 +2073,9 @@ class CalendarEventsCompanion extends UpdateCompanion<CalendarEvent> {
           ..write('eventDate: $eventDate, ')
           ..write('source: $source, ')
           ..write('metadataJson: $metadataJson, ')
+          ..write('quantity: $quantity, ')
+          ..write('unit: $unit, ')
+          ..write('recommendedQuantity: $recommendedQuantity, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('deletedAt: $deletedAt, ')
@@ -3597,6 +3741,724 @@ class SyncStateCompanion extends UpdateCompanion<SyncStateData> {
   }
 }
 
+class $CropGrowthStatesTable extends CropGrowthStates
+    with TableInfo<$CropGrowthStatesTable, CropGrowthState> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CropGrowthStatesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _cropIdMeta = const VerificationMeta('cropId');
+  @override
+  late final GeneratedColumn<String> cropId = GeneratedColumn<String>(
+      'crop_id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _fieldIdMeta =
+      const VerificationMeta('fieldId');
+  @override
+  late final GeneratedColumn<String> fieldId = GeneratedColumn<String>(
+      'field_id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _asOfDateMeta =
+      const VerificationMeta('asOfDate');
+  @override
+  late final GeneratedColumn<DateTime> asOfDate = GeneratedColumn<DateTime>(
+      'as_of_date', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _accumulatedGddMeta =
+      const VerificationMeta('accumulatedGdd');
+  @override
+  late final GeneratedColumn<double> accumulatedGdd = GeneratedColumn<double>(
+      'accumulated_gdd', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  static const VerificationMeta _currentStageKeyMeta =
+      const VerificationMeta('currentStageKey');
+  @override
+  late final GeneratedColumn<String> currentStageKey = GeneratedColumn<String>(
+      'current_stage_key', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant('cimlenme'));
+  static const VerificationMeta _stageProgressMeta =
+      const VerificationMeta('stageProgress');
+  @override
+  late final GeneratedColumn<double> stageProgress = GeneratedColumn<double>(
+      'stage_progress', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  static const VerificationMeta _waterDeficitMmMeta =
+      const VerificationMeta('waterDeficitMm');
+  @override
+  late final GeneratedColumn<double> waterDeficitMm = GeneratedColumn<double>(
+      'water_deficit_mm', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  static const VerificationMeta _nStressIdxMeta =
+      const VerificationMeta('nStressIdx');
+  @override
+  late final GeneratedColumn<double> nStressIdx = GeneratedColumn<double>(
+      'n_stress_idx', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  static const VerificationMeta _diseasePressureMeta =
+      const VerificationMeta('diseasePressure');
+  @override
+  late final GeneratedColumn<double> diseasePressure = GeneratedColumn<double>(
+      'disease_pressure', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  static const VerificationMeta _heightCmMeta =
+      const VerificationMeta('heightCm');
+  @override
+  late final GeneratedColumn<double> heightCm = GeneratedColumn<double>(
+      'height_cm', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  static const VerificationMeta _biomassRelMeta =
+      const VerificationMeta('biomassRel');
+  @override
+  late final GeneratedColumn<double> biomassRel = GeneratedColumn<double>(
+      'biomass_rel', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  static const VerificationMeta _yieldMultiplierMeta =
+      const VerificationMeta('yieldMultiplier');
+  @override
+  late final GeneratedColumn<double> yieldMultiplier = GeneratedColumn<double>(
+      'yield_multiplier', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(1.0));
+  static const VerificationMeta _lastComputedAtMeta =
+      const VerificationMeta('lastComputedAt');
+  @override
+  late final GeneratedColumn<DateTime> lastComputedAt =
+      GeneratedColumn<DateTime>('last_computed_at', aliasedName, false,
+          type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _updatedAtMeta =
+      const VerificationMeta('updatedAt');
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+      'updated_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  @override
+  List<GeneratedColumn> get $columns => [
+        cropId,
+        fieldId,
+        asOfDate,
+        accumulatedGdd,
+        currentStageKey,
+        stageProgress,
+        waterDeficitMm,
+        nStressIdx,
+        diseasePressure,
+        heightCm,
+        biomassRel,
+        yieldMultiplier,
+        lastComputedAt,
+        updatedAt
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'crop_growth_states';
+  @override
+  VerificationContext validateIntegrity(Insertable<CropGrowthState> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('crop_id')) {
+      context.handle(_cropIdMeta,
+          cropId.isAcceptableOrUnknown(data['crop_id']!, _cropIdMeta));
+    } else if (isInserting) {
+      context.missing(_cropIdMeta);
+    }
+    if (data.containsKey('field_id')) {
+      context.handle(_fieldIdMeta,
+          fieldId.isAcceptableOrUnknown(data['field_id']!, _fieldIdMeta));
+    } else if (isInserting) {
+      context.missing(_fieldIdMeta);
+    }
+    if (data.containsKey('as_of_date')) {
+      context.handle(_asOfDateMeta,
+          asOfDate.isAcceptableOrUnknown(data['as_of_date']!, _asOfDateMeta));
+    } else if (isInserting) {
+      context.missing(_asOfDateMeta);
+    }
+    if (data.containsKey('accumulated_gdd')) {
+      context.handle(
+          _accumulatedGddMeta,
+          accumulatedGdd.isAcceptableOrUnknown(
+              data['accumulated_gdd']!, _accumulatedGddMeta));
+    }
+    if (data.containsKey('current_stage_key')) {
+      context.handle(
+          _currentStageKeyMeta,
+          currentStageKey.isAcceptableOrUnknown(
+              data['current_stage_key']!, _currentStageKeyMeta));
+    }
+    if (data.containsKey('stage_progress')) {
+      context.handle(
+          _stageProgressMeta,
+          stageProgress.isAcceptableOrUnknown(
+              data['stage_progress']!, _stageProgressMeta));
+    }
+    if (data.containsKey('water_deficit_mm')) {
+      context.handle(
+          _waterDeficitMmMeta,
+          waterDeficitMm.isAcceptableOrUnknown(
+              data['water_deficit_mm']!, _waterDeficitMmMeta));
+    }
+    if (data.containsKey('n_stress_idx')) {
+      context.handle(
+          _nStressIdxMeta,
+          nStressIdx.isAcceptableOrUnknown(
+              data['n_stress_idx']!, _nStressIdxMeta));
+    }
+    if (data.containsKey('disease_pressure')) {
+      context.handle(
+          _diseasePressureMeta,
+          diseasePressure.isAcceptableOrUnknown(
+              data['disease_pressure']!, _diseasePressureMeta));
+    }
+    if (data.containsKey('height_cm')) {
+      context.handle(_heightCmMeta,
+          heightCm.isAcceptableOrUnknown(data['height_cm']!, _heightCmMeta));
+    }
+    if (data.containsKey('biomass_rel')) {
+      context.handle(
+          _biomassRelMeta,
+          biomassRel.isAcceptableOrUnknown(
+              data['biomass_rel']!, _biomassRelMeta));
+    }
+    if (data.containsKey('yield_multiplier')) {
+      context.handle(
+          _yieldMultiplierMeta,
+          yieldMultiplier.isAcceptableOrUnknown(
+              data['yield_multiplier']!, _yieldMultiplierMeta));
+    }
+    if (data.containsKey('last_computed_at')) {
+      context.handle(
+          _lastComputedAtMeta,
+          lastComputedAt.isAcceptableOrUnknown(
+              data['last_computed_at']!, _lastComputedAtMeta));
+    } else if (isInserting) {
+      context.missing(_lastComputedAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(_updatedAtMeta,
+          updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {cropId};
+  @override
+  CropGrowthState map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CropGrowthState(
+      cropId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}crop_id'])!,
+      fieldId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}field_id'])!,
+      asOfDate: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}as_of_date'])!,
+      accumulatedGdd: attachedDatabase.typeMapping.read(
+          DriftSqlType.double, data['${effectivePrefix}accumulated_gdd'])!,
+      currentStageKey: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}current_stage_key'])!,
+      stageProgress: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}stage_progress'])!,
+      waterDeficitMm: attachedDatabase.typeMapping.read(
+          DriftSqlType.double, data['${effectivePrefix}water_deficit_mm'])!,
+      nStressIdx: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}n_stress_idx'])!,
+      diseasePressure: attachedDatabase.typeMapping.read(
+          DriftSqlType.double, data['${effectivePrefix}disease_pressure'])!,
+      heightCm: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}height_cm'])!,
+      biomassRel: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}biomass_rel'])!,
+      yieldMultiplier: attachedDatabase.typeMapping.read(
+          DriftSqlType.double, data['${effectivePrefix}yield_multiplier'])!,
+      lastComputedAt: attachedDatabase.typeMapping.read(
+          DriftSqlType.dateTime, data['${effectivePrefix}last_computed_at'])!,
+      updatedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
+    );
+  }
+
+  @override
+  $CropGrowthStatesTable createAlias(String alias) {
+    return $CropGrowthStatesTable(attachedDatabase, alias);
+  }
+}
+
+class CropGrowthState extends DataClass implements Insertable<CropGrowthState> {
+  /// FieldCrops.id ile aynı — 1:1 ilişki.
+  final String cropId;
+  final String fieldId;
+
+  /// Son hesaplama tarihi (local midnight).
+  final DateTime asOfDate;
+
+  /// Ekimden bu yana biriken GDD (gün-derece). Tbase bitkiye göre değişir.
+  final double accumulatedGdd;
+
+  /// Aktif fenoloji evresi: 'cimlenme' | 'vejetatif' | 'ciceklenme' |
+  /// 'meyve_dolumu' | 'olgunlasma' | 'hasat'.
+  final String currentStageKey;
+
+  /// Aktif evre içindeki ilerleme (0..1). Büyüme animasyonu bu değeri okur.
+  final double stageProgress;
+
+  /// Sulama açığı (mm) — öneriye göre eksik veren toplam. 0 = ideal, >0 stres.
+  final double waterDeficitMm;
+
+  /// Azot (N) stresi 0..1 — gübreleme eksikliğinin kümülatif etkisi.
+  final double nStressIdx;
+
+  /// Hastalık baskısı 0..1 — yağmur + eksik ilaçlama kombinasyonu.
+  final double diseasePressure;
+
+  /// Tahmin edilen boy (cm) — görsel büyüme için.
+  final double heightCm;
+
+  /// Göreceli biyokütle 0..1 (sigmoid).
+  final double biomassRel;
+
+  /// Verim çarpanı — 0.5..1.15 aralığında; her stres zinciri bunu aşağı çeker.
+  final double yieldMultiplier;
+  final DateTime lastComputedAt;
+  final DateTime updatedAt;
+  const CropGrowthState(
+      {required this.cropId,
+      required this.fieldId,
+      required this.asOfDate,
+      required this.accumulatedGdd,
+      required this.currentStageKey,
+      required this.stageProgress,
+      required this.waterDeficitMm,
+      required this.nStressIdx,
+      required this.diseasePressure,
+      required this.heightCm,
+      required this.biomassRel,
+      required this.yieldMultiplier,
+      required this.lastComputedAt,
+      required this.updatedAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['crop_id'] = Variable<String>(cropId);
+    map['field_id'] = Variable<String>(fieldId);
+    map['as_of_date'] = Variable<DateTime>(asOfDate);
+    map['accumulated_gdd'] = Variable<double>(accumulatedGdd);
+    map['current_stage_key'] = Variable<String>(currentStageKey);
+    map['stage_progress'] = Variable<double>(stageProgress);
+    map['water_deficit_mm'] = Variable<double>(waterDeficitMm);
+    map['n_stress_idx'] = Variable<double>(nStressIdx);
+    map['disease_pressure'] = Variable<double>(diseasePressure);
+    map['height_cm'] = Variable<double>(heightCm);
+    map['biomass_rel'] = Variable<double>(biomassRel);
+    map['yield_multiplier'] = Variable<double>(yieldMultiplier);
+    map['last_computed_at'] = Variable<DateTime>(lastComputedAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  CropGrowthStatesCompanion toCompanion(bool nullToAbsent) {
+    return CropGrowthStatesCompanion(
+      cropId: Value(cropId),
+      fieldId: Value(fieldId),
+      asOfDate: Value(asOfDate),
+      accumulatedGdd: Value(accumulatedGdd),
+      currentStageKey: Value(currentStageKey),
+      stageProgress: Value(stageProgress),
+      waterDeficitMm: Value(waterDeficitMm),
+      nStressIdx: Value(nStressIdx),
+      diseasePressure: Value(diseasePressure),
+      heightCm: Value(heightCm),
+      biomassRel: Value(biomassRel),
+      yieldMultiplier: Value(yieldMultiplier),
+      lastComputedAt: Value(lastComputedAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory CropGrowthState.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CropGrowthState(
+      cropId: serializer.fromJson<String>(json['cropId']),
+      fieldId: serializer.fromJson<String>(json['fieldId']),
+      asOfDate: serializer.fromJson<DateTime>(json['asOfDate']),
+      accumulatedGdd: serializer.fromJson<double>(json['accumulatedGdd']),
+      currentStageKey: serializer.fromJson<String>(json['currentStageKey']),
+      stageProgress: serializer.fromJson<double>(json['stageProgress']),
+      waterDeficitMm: serializer.fromJson<double>(json['waterDeficitMm']),
+      nStressIdx: serializer.fromJson<double>(json['nStressIdx']),
+      diseasePressure: serializer.fromJson<double>(json['diseasePressure']),
+      heightCm: serializer.fromJson<double>(json['heightCm']),
+      biomassRel: serializer.fromJson<double>(json['biomassRel']),
+      yieldMultiplier: serializer.fromJson<double>(json['yieldMultiplier']),
+      lastComputedAt: serializer.fromJson<DateTime>(json['lastComputedAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'cropId': serializer.toJson<String>(cropId),
+      'fieldId': serializer.toJson<String>(fieldId),
+      'asOfDate': serializer.toJson<DateTime>(asOfDate),
+      'accumulatedGdd': serializer.toJson<double>(accumulatedGdd),
+      'currentStageKey': serializer.toJson<String>(currentStageKey),
+      'stageProgress': serializer.toJson<double>(stageProgress),
+      'waterDeficitMm': serializer.toJson<double>(waterDeficitMm),
+      'nStressIdx': serializer.toJson<double>(nStressIdx),
+      'diseasePressure': serializer.toJson<double>(diseasePressure),
+      'heightCm': serializer.toJson<double>(heightCm),
+      'biomassRel': serializer.toJson<double>(biomassRel),
+      'yieldMultiplier': serializer.toJson<double>(yieldMultiplier),
+      'lastComputedAt': serializer.toJson<DateTime>(lastComputedAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  CropGrowthState copyWith(
+          {String? cropId,
+          String? fieldId,
+          DateTime? asOfDate,
+          double? accumulatedGdd,
+          String? currentStageKey,
+          double? stageProgress,
+          double? waterDeficitMm,
+          double? nStressIdx,
+          double? diseasePressure,
+          double? heightCm,
+          double? biomassRel,
+          double? yieldMultiplier,
+          DateTime? lastComputedAt,
+          DateTime? updatedAt}) =>
+      CropGrowthState(
+        cropId: cropId ?? this.cropId,
+        fieldId: fieldId ?? this.fieldId,
+        asOfDate: asOfDate ?? this.asOfDate,
+        accumulatedGdd: accumulatedGdd ?? this.accumulatedGdd,
+        currentStageKey: currentStageKey ?? this.currentStageKey,
+        stageProgress: stageProgress ?? this.stageProgress,
+        waterDeficitMm: waterDeficitMm ?? this.waterDeficitMm,
+        nStressIdx: nStressIdx ?? this.nStressIdx,
+        diseasePressure: diseasePressure ?? this.diseasePressure,
+        heightCm: heightCm ?? this.heightCm,
+        biomassRel: biomassRel ?? this.biomassRel,
+        yieldMultiplier: yieldMultiplier ?? this.yieldMultiplier,
+        lastComputedAt: lastComputedAt ?? this.lastComputedAt,
+        updatedAt: updatedAt ?? this.updatedAt,
+      );
+  CropGrowthState copyWithCompanion(CropGrowthStatesCompanion data) {
+    return CropGrowthState(
+      cropId: data.cropId.present ? data.cropId.value : this.cropId,
+      fieldId: data.fieldId.present ? data.fieldId.value : this.fieldId,
+      asOfDate: data.asOfDate.present ? data.asOfDate.value : this.asOfDate,
+      accumulatedGdd: data.accumulatedGdd.present
+          ? data.accumulatedGdd.value
+          : this.accumulatedGdd,
+      currentStageKey: data.currentStageKey.present
+          ? data.currentStageKey.value
+          : this.currentStageKey,
+      stageProgress: data.stageProgress.present
+          ? data.stageProgress.value
+          : this.stageProgress,
+      waterDeficitMm: data.waterDeficitMm.present
+          ? data.waterDeficitMm.value
+          : this.waterDeficitMm,
+      nStressIdx:
+          data.nStressIdx.present ? data.nStressIdx.value : this.nStressIdx,
+      diseasePressure: data.diseasePressure.present
+          ? data.diseasePressure.value
+          : this.diseasePressure,
+      heightCm: data.heightCm.present ? data.heightCm.value : this.heightCm,
+      biomassRel:
+          data.biomassRel.present ? data.biomassRel.value : this.biomassRel,
+      yieldMultiplier: data.yieldMultiplier.present
+          ? data.yieldMultiplier.value
+          : this.yieldMultiplier,
+      lastComputedAt: data.lastComputedAt.present
+          ? data.lastComputedAt.value
+          : this.lastComputedAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CropGrowthState(')
+          ..write('cropId: $cropId, ')
+          ..write('fieldId: $fieldId, ')
+          ..write('asOfDate: $asOfDate, ')
+          ..write('accumulatedGdd: $accumulatedGdd, ')
+          ..write('currentStageKey: $currentStageKey, ')
+          ..write('stageProgress: $stageProgress, ')
+          ..write('waterDeficitMm: $waterDeficitMm, ')
+          ..write('nStressIdx: $nStressIdx, ')
+          ..write('diseasePressure: $diseasePressure, ')
+          ..write('heightCm: $heightCm, ')
+          ..write('biomassRel: $biomassRel, ')
+          ..write('yieldMultiplier: $yieldMultiplier, ')
+          ..write('lastComputedAt: $lastComputedAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+      cropId,
+      fieldId,
+      asOfDate,
+      accumulatedGdd,
+      currentStageKey,
+      stageProgress,
+      waterDeficitMm,
+      nStressIdx,
+      diseasePressure,
+      heightCm,
+      biomassRel,
+      yieldMultiplier,
+      lastComputedAt,
+      updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CropGrowthState &&
+          other.cropId == this.cropId &&
+          other.fieldId == this.fieldId &&
+          other.asOfDate == this.asOfDate &&
+          other.accumulatedGdd == this.accumulatedGdd &&
+          other.currentStageKey == this.currentStageKey &&
+          other.stageProgress == this.stageProgress &&
+          other.waterDeficitMm == this.waterDeficitMm &&
+          other.nStressIdx == this.nStressIdx &&
+          other.diseasePressure == this.diseasePressure &&
+          other.heightCm == this.heightCm &&
+          other.biomassRel == this.biomassRel &&
+          other.yieldMultiplier == this.yieldMultiplier &&
+          other.lastComputedAt == this.lastComputedAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class CropGrowthStatesCompanion extends UpdateCompanion<CropGrowthState> {
+  final Value<String> cropId;
+  final Value<String> fieldId;
+  final Value<DateTime> asOfDate;
+  final Value<double> accumulatedGdd;
+  final Value<String> currentStageKey;
+  final Value<double> stageProgress;
+  final Value<double> waterDeficitMm;
+  final Value<double> nStressIdx;
+  final Value<double> diseasePressure;
+  final Value<double> heightCm;
+  final Value<double> biomassRel;
+  final Value<double> yieldMultiplier;
+  final Value<DateTime> lastComputedAt;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const CropGrowthStatesCompanion({
+    this.cropId = const Value.absent(),
+    this.fieldId = const Value.absent(),
+    this.asOfDate = const Value.absent(),
+    this.accumulatedGdd = const Value.absent(),
+    this.currentStageKey = const Value.absent(),
+    this.stageProgress = const Value.absent(),
+    this.waterDeficitMm = const Value.absent(),
+    this.nStressIdx = const Value.absent(),
+    this.diseasePressure = const Value.absent(),
+    this.heightCm = const Value.absent(),
+    this.biomassRel = const Value.absent(),
+    this.yieldMultiplier = const Value.absent(),
+    this.lastComputedAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  CropGrowthStatesCompanion.insert({
+    required String cropId,
+    required String fieldId,
+    required DateTime asOfDate,
+    this.accumulatedGdd = const Value.absent(),
+    this.currentStageKey = const Value.absent(),
+    this.stageProgress = const Value.absent(),
+    this.waterDeficitMm = const Value.absent(),
+    this.nStressIdx = const Value.absent(),
+    this.diseasePressure = const Value.absent(),
+    this.heightCm = const Value.absent(),
+    this.biomassRel = const Value.absent(),
+    this.yieldMultiplier = const Value.absent(),
+    required DateTime lastComputedAt,
+    required DateTime updatedAt,
+    this.rowid = const Value.absent(),
+  })  : cropId = Value(cropId),
+        fieldId = Value(fieldId),
+        asOfDate = Value(asOfDate),
+        lastComputedAt = Value(lastComputedAt),
+        updatedAt = Value(updatedAt);
+  static Insertable<CropGrowthState> custom({
+    Expression<String>? cropId,
+    Expression<String>? fieldId,
+    Expression<DateTime>? asOfDate,
+    Expression<double>? accumulatedGdd,
+    Expression<String>? currentStageKey,
+    Expression<double>? stageProgress,
+    Expression<double>? waterDeficitMm,
+    Expression<double>? nStressIdx,
+    Expression<double>? diseasePressure,
+    Expression<double>? heightCm,
+    Expression<double>? biomassRel,
+    Expression<double>? yieldMultiplier,
+    Expression<DateTime>? lastComputedAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (cropId != null) 'crop_id': cropId,
+      if (fieldId != null) 'field_id': fieldId,
+      if (asOfDate != null) 'as_of_date': asOfDate,
+      if (accumulatedGdd != null) 'accumulated_gdd': accumulatedGdd,
+      if (currentStageKey != null) 'current_stage_key': currentStageKey,
+      if (stageProgress != null) 'stage_progress': stageProgress,
+      if (waterDeficitMm != null) 'water_deficit_mm': waterDeficitMm,
+      if (nStressIdx != null) 'n_stress_idx': nStressIdx,
+      if (diseasePressure != null) 'disease_pressure': diseasePressure,
+      if (heightCm != null) 'height_cm': heightCm,
+      if (biomassRel != null) 'biomass_rel': biomassRel,
+      if (yieldMultiplier != null) 'yield_multiplier': yieldMultiplier,
+      if (lastComputedAt != null) 'last_computed_at': lastComputedAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  CropGrowthStatesCompanion copyWith(
+      {Value<String>? cropId,
+      Value<String>? fieldId,
+      Value<DateTime>? asOfDate,
+      Value<double>? accumulatedGdd,
+      Value<String>? currentStageKey,
+      Value<double>? stageProgress,
+      Value<double>? waterDeficitMm,
+      Value<double>? nStressIdx,
+      Value<double>? diseasePressure,
+      Value<double>? heightCm,
+      Value<double>? biomassRel,
+      Value<double>? yieldMultiplier,
+      Value<DateTime>? lastComputedAt,
+      Value<DateTime>? updatedAt,
+      Value<int>? rowid}) {
+    return CropGrowthStatesCompanion(
+      cropId: cropId ?? this.cropId,
+      fieldId: fieldId ?? this.fieldId,
+      asOfDate: asOfDate ?? this.asOfDate,
+      accumulatedGdd: accumulatedGdd ?? this.accumulatedGdd,
+      currentStageKey: currentStageKey ?? this.currentStageKey,
+      stageProgress: stageProgress ?? this.stageProgress,
+      waterDeficitMm: waterDeficitMm ?? this.waterDeficitMm,
+      nStressIdx: nStressIdx ?? this.nStressIdx,
+      diseasePressure: diseasePressure ?? this.diseasePressure,
+      heightCm: heightCm ?? this.heightCm,
+      biomassRel: biomassRel ?? this.biomassRel,
+      yieldMultiplier: yieldMultiplier ?? this.yieldMultiplier,
+      lastComputedAt: lastComputedAt ?? this.lastComputedAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (cropId.present) {
+      map['crop_id'] = Variable<String>(cropId.value);
+    }
+    if (fieldId.present) {
+      map['field_id'] = Variable<String>(fieldId.value);
+    }
+    if (asOfDate.present) {
+      map['as_of_date'] = Variable<DateTime>(asOfDate.value);
+    }
+    if (accumulatedGdd.present) {
+      map['accumulated_gdd'] = Variable<double>(accumulatedGdd.value);
+    }
+    if (currentStageKey.present) {
+      map['current_stage_key'] = Variable<String>(currentStageKey.value);
+    }
+    if (stageProgress.present) {
+      map['stage_progress'] = Variable<double>(stageProgress.value);
+    }
+    if (waterDeficitMm.present) {
+      map['water_deficit_mm'] = Variable<double>(waterDeficitMm.value);
+    }
+    if (nStressIdx.present) {
+      map['n_stress_idx'] = Variable<double>(nStressIdx.value);
+    }
+    if (diseasePressure.present) {
+      map['disease_pressure'] = Variable<double>(diseasePressure.value);
+    }
+    if (heightCm.present) {
+      map['height_cm'] = Variable<double>(heightCm.value);
+    }
+    if (biomassRel.present) {
+      map['biomass_rel'] = Variable<double>(biomassRel.value);
+    }
+    if (yieldMultiplier.present) {
+      map['yield_multiplier'] = Variable<double>(yieldMultiplier.value);
+    }
+    if (lastComputedAt.present) {
+      map['last_computed_at'] = Variable<DateTime>(lastComputedAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CropGrowthStatesCompanion(')
+          ..write('cropId: $cropId, ')
+          ..write('fieldId: $fieldId, ')
+          ..write('asOfDate: $asOfDate, ')
+          ..write('accumulatedGdd: $accumulatedGdd, ')
+          ..write('currentStageKey: $currentStageKey, ')
+          ..write('stageProgress: $stageProgress, ')
+          ..write('waterDeficitMm: $waterDeficitMm, ')
+          ..write('nStressIdx: $nStressIdx, ')
+          ..write('diseasePressure: $diseasePressure, ')
+          ..write('heightCm: $heightCm, ')
+          ..write('biomassRel: $biomassRel, ')
+          ..write('yieldMultiplier: $yieldMultiplier, ')
+          ..write('lastComputedAt: $lastComputedAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -3609,6 +4471,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $SuitabilityReportsTable(this);
   late final $SyncJobsTable syncJobs = $SyncJobsTable(this);
   late final $SyncStateTable syncState = $SyncStateTable(this);
+  late final $CropGrowthStatesTable cropGrowthStates =
+      $CropGrowthStatesTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -3620,7 +4484,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         irrigationPlans,
         suitabilityReports,
         syncJobs,
-        syncState
+        syncState,
+        cropGrowthStates
       ];
 }
 
@@ -4815,6 +5680,9 @@ typedef $$CalendarEventsTableCreateCompanionBuilder = CalendarEventsCompanion
   required DateTime eventDate,
   Value<String> source,
   Value<String?> metadataJson,
+  Value<double?> quantity,
+  Value<String?> unit,
+  Value<double?> recommendedQuantity,
   required DateTime createdAt,
   required DateTime updatedAt,
   Value<DateTime?> deletedAt,
@@ -4830,6 +5698,9 @@ typedef $$CalendarEventsTableUpdateCompanionBuilder = CalendarEventsCompanion
   Value<DateTime> eventDate,
   Value<String> source,
   Value<String?> metadataJson,
+  Value<double?> quantity,
+  Value<String?> unit,
+  Value<double?> recommendedQuantity,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
   Value<DateTime?> deletedAt,
@@ -4897,6 +5768,16 @@ class $$CalendarEventsTableFilterComposer
 
   ColumnFilters<String> get metadataJson => $composableBuilder(
       column: $table.metadataJson, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get quantity => $composableBuilder(
+      column: $table.quantity, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get unit => $composableBuilder(
+      column: $table.unit, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get recommendedQuantity => $composableBuilder(
+      column: $table.recommendedQuantity,
+      builder: (column) => ColumnFilters(column));
 
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnFilters(column));
@@ -4976,6 +5857,16 @@ class $$CalendarEventsTableOrderingComposer
       column: $table.metadataJson,
       builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<double> get quantity => $composableBuilder(
+      column: $table.quantity, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get unit => $composableBuilder(
+      column: $table.unit, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get recommendedQuantity => $composableBuilder(
+      column: $table.recommendedQuantity,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnOrderings(column));
 
@@ -5052,6 +5943,15 @@ class $$CalendarEventsTableAnnotationComposer
 
   GeneratedColumn<String> get metadataJson => $composableBuilder(
       column: $table.metadataJson, builder: (column) => column);
+
+  GeneratedColumn<double> get quantity =>
+      $composableBuilder(column: $table.quantity, builder: (column) => column);
+
+  GeneratedColumn<String> get unit =>
+      $composableBuilder(column: $table.unit, builder: (column) => column);
+
+  GeneratedColumn<double> get recommendedQuantity => $composableBuilder(
+      column: $table.recommendedQuantity, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -5135,6 +6035,9 @@ class $$CalendarEventsTableTableManager extends RootTableManager<
             Value<DateTime> eventDate = const Value.absent(),
             Value<String> source = const Value.absent(),
             Value<String?> metadataJson = const Value.absent(),
+            Value<double?> quantity = const Value.absent(),
+            Value<String?> unit = const Value.absent(),
+            Value<double?> recommendedQuantity = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
             Value<DateTime?> deletedAt = const Value.absent(),
@@ -5149,6 +6052,9 @@ class $$CalendarEventsTableTableManager extends RootTableManager<
             eventDate: eventDate,
             source: source,
             metadataJson: metadataJson,
+            quantity: quantity,
+            unit: unit,
+            recommendedQuantity: recommendedQuantity,
             createdAt: createdAt,
             updatedAt: updatedAt,
             deletedAt: deletedAt,
@@ -5163,6 +6069,9 @@ class $$CalendarEventsTableTableManager extends RootTableManager<
             required DateTime eventDate,
             Value<String> source = const Value.absent(),
             Value<String?> metadataJson = const Value.absent(),
+            Value<double?> quantity = const Value.absent(),
+            Value<String?> unit = const Value.absent(),
+            Value<double?> recommendedQuantity = const Value.absent(),
             required DateTime createdAt,
             required DateTime updatedAt,
             Value<DateTime?> deletedAt = const Value.absent(),
@@ -5177,6 +6086,9 @@ class $$CalendarEventsTableTableManager extends RootTableManager<
             eventDate: eventDate,
             source: source,
             metadataJson: metadataJson,
+            quantity: quantity,
+            unit: unit,
+            recommendedQuantity: recommendedQuantity,
             createdAt: createdAt,
             updatedAt: updatedAt,
             deletedAt: deletedAt,
@@ -6364,6 +7276,328 @@ typedef $$SyncStateTableProcessedTableManager = ProcessedTableManager<
     ),
     SyncStateData,
     PrefetchHooks Function()>;
+typedef $$CropGrowthStatesTableCreateCompanionBuilder
+    = CropGrowthStatesCompanion Function({
+  required String cropId,
+  required String fieldId,
+  required DateTime asOfDate,
+  Value<double> accumulatedGdd,
+  Value<String> currentStageKey,
+  Value<double> stageProgress,
+  Value<double> waterDeficitMm,
+  Value<double> nStressIdx,
+  Value<double> diseasePressure,
+  Value<double> heightCm,
+  Value<double> biomassRel,
+  Value<double> yieldMultiplier,
+  required DateTime lastComputedAt,
+  required DateTime updatedAt,
+  Value<int> rowid,
+});
+typedef $$CropGrowthStatesTableUpdateCompanionBuilder
+    = CropGrowthStatesCompanion Function({
+  Value<String> cropId,
+  Value<String> fieldId,
+  Value<DateTime> asOfDate,
+  Value<double> accumulatedGdd,
+  Value<String> currentStageKey,
+  Value<double> stageProgress,
+  Value<double> waterDeficitMm,
+  Value<double> nStressIdx,
+  Value<double> diseasePressure,
+  Value<double> heightCm,
+  Value<double> biomassRel,
+  Value<double> yieldMultiplier,
+  Value<DateTime> lastComputedAt,
+  Value<DateTime> updatedAt,
+  Value<int> rowid,
+});
+
+class $$CropGrowthStatesTableFilterComposer
+    extends Composer<_$AppDatabase, $CropGrowthStatesTable> {
+  $$CropGrowthStatesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get cropId => $composableBuilder(
+      column: $table.cropId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get fieldId => $composableBuilder(
+      column: $table.fieldId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get asOfDate => $composableBuilder(
+      column: $table.asOfDate, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get accumulatedGdd => $composableBuilder(
+      column: $table.accumulatedGdd,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get currentStageKey => $composableBuilder(
+      column: $table.currentStageKey,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get stageProgress => $composableBuilder(
+      column: $table.stageProgress, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get waterDeficitMm => $composableBuilder(
+      column: $table.waterDeficitMm,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get nStressIdx => $composableBuilder(
+      column: $table.nStressIdx, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get diseasePressure => $composableBuilder(
+      column: $table.diseasePressure,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get heightCm => $composableBuilder(
+      column: $table.heightCm, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get biomassRel => $composableBuilder(
+      column: $table.biomassRel, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get yieldMultiplier => $composableBuilder(
+      column: $table.yieldMultiplier,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get lastComputedAt => $composableBuilder(
+      column: $table.lastComputedAt,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnFilters(column));
+}
+
+class $$CropGrowthStatesTableOrderingComposer
+    extends Composer<_$AppDatabase, $CropGrowthStatesTable> {
+  $$CropGrowthStatesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get cropId => $composableBuilder(
+      column: $table.cropId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get fieldId => $composableBuilder(
+      column: $table.fieldId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get asOfDate => $composableBuilder(
+      column: $table.asOfDate, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get accumulatedGdd => $composableBuilder(
+      column: $table.accumulatedGdd,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get currentStageKey => $composableBuilder(
+      column: $table.currentStageKey,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get stageProgress => $composableBuilder(
+      column: $table.stageProgress,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get waterDeficitMm => $composableBuilder(
+      column: $table.waterDeficitMm,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get nStressIdx => $composableBuilder(
+      column: $table.nStressIdx, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get diseasePressure => $composableBuilder(
+      column: $table.diseasePressure,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get heightCm => $composableBuilder(
+      column: $table.heightCm, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get biomassRel => $composableBuilder(
+      column: $table.biomassRel, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get yieldMultiplier => $composableBuilder(
+      column: $table.yieldMultiplier,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get lastComputedAt => $composableBuilder(
+      column: $table.lastComputedAt,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
+}
+
+class $$CropGrowthStatesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CropGrowthStatesTable> {
+  $$CropGrowthStatesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get cropId =>
+      $composableBuilder(column: $table.cropId, builder: (column) => column);
+
+  GeneratedColumn<String> get fieldId =>
+      $composableBuilder(column: $table.fieldId, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get asOfDate =>
+      $composableBuilder(column: $table.asOfDate, builder: (column) => column);
+
+  GeneratedColumn<double> get accumulatedGdd => $composableBuilder(
+      column: $table.accumulatedGdd, builder: (column) => column);
+
+  GeneratedColumn<String> get currentStageKey => $composableBuilder(
+      column: $table.currentStageKey, builder: (column) => column);
+
+  GeneratedColumn<double> get stageProgress => $composableBuilder(
+      column: $table.stageProgress, builder: (column) => column);
+
+  GeneratedColumn<double> get waterDeficitMm => $composableBuilder(
+      column: $table.waterDeficitMm, builder: (column) => column);
+
+  GeneratedColumn<double> get nStressIdx => $composableBuilder(
+      column: $table.nStressIdx, builder: (column) => column);
+
+  GeneratedColumn<double> get diseasePressure => $composableBuilder(
+      column: $table.diseasePressure, builder: (column) => column);
+
+  GeneratedColumn<double> get heightCm =>
+      $composableBuilder(column: $table.heightCm, builder: (column) => column);
+
+  GeneratedColumn<double> get biomassRel => $composableBuilder(
+      column: $table.biomassRel, builder: (column) => column);
+
+  GeneratedColumn<double> get yieldMultiplier => $composableBuilder(
+      column: $table.yieldMultiplier, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get lastComputedAt => $composableBuilder(
+      column: $table.lastComputedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$CropGrowthStatesTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $CropGrowthStatesTable,
+    CropGrowthState,
+    $$CropGrowthStatesTableFilterComposer,
+    $$CropGrowthStatesTableOrderingComposer,
+    $$CropGrowthStatesTableAnnotationComposer,
+    $$CropGrowthStatesTableCreateCompanionBuilder,
+    $$CropGrowthStatesTableUpdateCompanionBuilder,
+    (
+      CropGrowthState,
+      BaseReferences<_$AppDatabase, $CropGrowthStatesTable, CropGrowthState>
+    ),
+    CropGrowthState,
+    PrefetchHooks Function()> {
+  $$CropGrowthStatesTableTableManager(
+      _$AppDatabase db, $CropGrowthStatesTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CropGrowthStatesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CropGrowthStatesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$CropGrowthStatesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> cropId = const Value.absent(),
+            Value<String> fieldId = const Value.absent(),
+            Value<DateTime> asOfDate = const Value.absent(),
+            Value<double> accumulatedGdd = const Value.absent(),
+            Value<String> currentStageKey = const Value.absent(),
+            Value<double> stageProgress = const Value.absent(),
+            Value<double> waterDeficitMm = const Value.absent(),
+            Value<double> nStressIdx = const Value.absent(),
+            Value<double> diseasePressure = const Value.absent(),
+            Value<double> heightCm = const Value.absent(),
+            Value<double> biomassRel = const Value.absent(),
+            Value<double> yieldMultiplier = const Value.absent(),
+            Value<DateTime> lastComputedAt = const Value.absent(),
+            Value<DateTime> updatedAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              CropGrowthStatesCompanion(
+            cropId: cropId,
+            fieldId: fieldId,
+            asOfDate: asOfDate,
+            accumulatedGdd: accumulatedGdd,
+            currentStageKey: currentStageKey,
+            stageProgress: stageProgress,
+            waterDeficitMm: waterDeficitMm,
+            nStressIdx: nStressIdx,
+            diseasePressure: diseasePressure,
+            heightCm: heightCm,
+            biomassRel: biomassRel,
+            yieldMultiplier: yieldMultiplier,
+            lastComputedAt: lastComputedAt,
+            updatedAt: updatedAt,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String cropId,
+            required String fieldId,
+            required DateTime asOfDate,
+            Value<double> accumulatedGdd = const Value.absent(),
+            Value<String> currentStageKey = const Value.absent(),
+            Value<double> stageProgress = const Value.absent(),
+            Value<double> waterDeficitMm = const Value.absent(),
+            Value<double> nStressIdx = const Value.absent(),
+            Value<double> diseasePressure = const Value.absent(),
+            Value<double> heightCm = const Value.absent(),
+            Value<double> biomassRel = const Value.absent(),
+            Value<double> yieldMultiplier = const Value.absent(),
+            required DateTime lastComputedAt,
+            required DateTime updatedAt,
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              CropGrowthStatesCompanion.insert(
+            cropId: cropId,
+            fieldId: fieldId,
+            asOfDate: asOfDate,
+            accumulatedGdd: accumulatedGdd,
+            currentStageKey: currentStageKey,
+            stageProgress: stageProgress,
+            waterDeficitMm: waterDeficitMm,
+            nStressIdx: nStressIdx,
+            diseasePressure: diseasePressure,
+            heightCm: heightCm,
+            biomassRel: biomassRel,
+            yieldMultiplier: yieldMultiplier,
+            lastComputedAt: lastComputedAt,
+            updatedAt: updatedAt,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$CropGrowthStatesTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $CropGrowthStatesTable,
+    CropGrowthState,
+    $$CropGrowthStatesTableFilterComposer,
+    $$CropGrowthStatesTableOrderingComposer,
+    $$CropGrowthStatesTableAnnotationComposer,
+    $$CropGrowthStatesTableCreateCompanionBuilder,
+    $$CropGrowthStatesTableUpdateCompanionBuilder,
+    (
+      CropGrowthState,
+      BaseReferences<_$AppDatabase, $CropGrowthStatesTable, CropGrowthState>
+    ),
+    CropGrowthState,
+    PrefetchHooks Function()>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -6382,4 +7616,6 @@ class $AppDatabaseManager {
       $$SyncJobsTableTableManager(_db, _db.syncJobs);
   $$SyncStateTableTableManager get syncState =>
       $$SyncStateTableTableManager(_db, _db.syncState);
+  $$CropGrowthStatesTableTableManager get cropGrowthStates =>
+      $$CropGrowthStatesTableTableManager(_db, _db.cropGrowthStates);
 }

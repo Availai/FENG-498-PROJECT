@@ -16,6 +16,7 @@ import 'repositories/auth_repository.dart';
 import 'sync_service.dart';
 import 'task_directive_service.dart';
 import 'field_state_service.dart';
+import 'growth_engine.dart';
 import 'weather_soil_service.dart';
 import 'api/sync_api_client.dart';
 
@@ -27,6 +28,12 @@ final localDataRepositoryProvider = Provider<LocalDataRepository>((ref) {
   final db = ref.watch(appDatabaseProvider);
   final uid = ref.watch(authStateChangesProvider).valueOrNull?.uid;
   return LocalDataRepository(database: db, currentUid: uid);
+});
+
+/// GDD + aktivite delta → CropGrowthStates üreten singleton. Tek bir
+/// AppDatabase üstünde çalışır; UI katmanı `watch(cropId)` ile canlı okur.
+final growthEngineProvider = Provider<GrowthEngine>((ref) {
+  return GrowthEngine(ref.watch(appDatabaseProvider));
 });
 
 
@@ -124,6 +131,13 @@ final fieldActivityLogProvider = StreamProvider.family
   return ref
       .watch(localDataRepositoryProvider)
       .watchActivityLog(fieldId: fieldId, limit: 200);
+});
+
+/// Tarla bazında canlı büyüme durumları. Görev modalı ve harita aynı
+/// `CropGrowthStates` kaynağını okur; böylece görsel büyüme ile öneriler ayrışmaz.
+final fieldGrowthStatesProvider = StreamProvider.family
+    .autoDispose<List<CropGrowthState>, String>((ref, fieldId) {
+  return ref.watch(growthEngineProvider).watchForField(fieldId);
 });
 
 /// Kural tabanlı "bugün ne yapmalıyım?" yönerge motoru. Saf servis; widget

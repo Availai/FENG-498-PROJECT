@@ -248,6 +248,7 @@ class SyncService {
       plantedDate: Value(p['planted_date']?.toString() ?? existing?.plantedDate),
       harvestDays: Value(_toInt(p['harvest_days']) ?? existing?.harvestDays ?? 90),
       waterIntervalDays: Value(_toInt(p['water_interval_days']) ?? existing?.waterIntervalDays ?? 7),
+      zonePolygonJson: Value(p['zone_polygon_json']?.toString() ?? existing?.zonePolygonJson),
       createdAt: Value(existing?.createdAt ?? item.updatedAt),
       updatedAt: Value(item.updatedAt),
       deletedAt: const Value(null),
