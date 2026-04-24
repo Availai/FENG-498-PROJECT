@@ -41,19 +41,20 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
     AgriDashboard(),       // 0 – Özet
     MyCropsScreen(),       // 1 – Tarlalarım
     CameraScreen(),        // 2 – AI Analiz (FAB)
-    CropCalendarScreen(),  // 3 – Takvim
-    GrowingGuideScreen(),  // 4 – Rehber
-    PlantDatabaseScreen(), // 5 – Arşiv
+    FieldStatusScreen(),   // 3 – Tarla Durumum
+    CropCalendarScreen(),  // 4 – Takvim
+    GrowingGuideScreen(),  // 5 – Rehber
+    PlantDatabaseScreen(), // 6 – Arşiv
   ];
 
-  // Bottom nav slots: 0=Özet, 1=Tarlalarım, [FAB gap], 2=Takvim, 3=Rehber
-  // Arşiv accessible via long-press or profile menu
-  static const List<int> _navToPage = [0, 1, 3, 4];
+  // Bottom nav slots: 0=Özet, 1=Tarlalarım, [FAB gap], 2=Durumum, 3=Takvim, 4=Rehber
+  // Arşiv profile menüsünden erişilir.
+  static const List<int> _navToPage = [0, 1, 3, 4, 5];
 
   int get _navIndex {
     if (_currentIndex == 2) return -1;
     final idx = _navToPage.indexOf(_currentIndex);
-    return idx; // -1 if page 5 (Arşiv) is active
+    return idx; // -1 if page 6 (Arşiv) is active
   }
 
   void _onNavTap(int navIdx) {
@@ -172,7 +173,7 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () {
                   Navigator.pop(context);
-                  setState(() => _currentIndex = 5);
+                  setState(() => _currentIndex = 6);
                 },
               ),
               const Divider(),
@@ -284,18 +285,25 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
                     _NavButton(
+                      icon: Icons.fact_check_outlined,
+                      activeIcon: Icons.fact_check,
+                      label: 'Durumum',
+                      isActive: _navIndex == 2,
+                      onTap: () => _onNavTap(2),
+                    ),
+                    _NavButton(
                       icon: Icons.calendar_month_outlined,
                       activeIcon: Icons.calendar_month,
                       label: 'Takvim',
-                      isActive: _navIndex == 2,
-                      onTap: () => _onNavTap(2),
+                      isActive: _navIndex == 3,
+                      onTap: () => _onNavTap(3),
                     ),
                     _NavButton(
                       icon: Icons.menu_book_outlined,
                       activeIcon: Icons.menu_book,
                       label: 'Rehber',
-                      isActive: _navIndex == 3,
-                      onTap: () => _onNavTap(3),
+                      isActive: _navIndex == 4,
+                      onTap: () => _onNavTap(4),
                     ),
                     _NavButton(
                       icon: Icons.person_outline_rounded,
