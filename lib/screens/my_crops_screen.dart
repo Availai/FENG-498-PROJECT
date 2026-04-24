@@ -225,7 +225,7 @@ class MyCropsScreen extends ConsumerWidget {
                                       Icon(Icons.warning_amber_rounded,
                                           color: AppColors.error),
                                       SizedBox(width: 8),
-                                      Text('Tarlayı Sil'),
+                                      Expanded(child: Text('Silmek istediğinize emin misiniz?')),
                                     ],
                                   ),
                                   content: Text(

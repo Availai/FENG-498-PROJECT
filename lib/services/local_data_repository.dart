@@ -159,16 +159,16 @@ class LocalDataRepository {
   }
 
   /// Tarlayı ve ilgili TÜM geçmiş kayıtlarını siler:
-  ///   - Fields (soft-delete)
-  ///   - FieldCrops (soft-delete)
-  ///   - IrrigationPlans (soft-delete)
-  ///   - CalendarEvents (soft-delete) — ekim/hasat/sulama/gübreleme/ilaçlama geçmişi
-  ///   - SuitabilityReports (soft-delete) — bitki uygunluk raporları
+  ///   - Fields (hard-delete)
+  ///   - FieldCrops (hard-delete)
+  ///   - IrrigationPlans (hard-delete)
+  ///   - CalendarEvents (hard-delete) — ekim/hasat/sulama/gübreleme/ilaçlama geçmişi
+  ///   - SuitabilityReports (hard-delete) — bitki uygunluk raporları
   ///   - CropGrowthStates (hard-delete) — FK yok; silinen ekine ait büyüme
   ///     durumu hayaleti kalmasın.
   ///
-  /// Her soft-delete için sync outbox'a `delete` job'u düşer; bulutta da
-  /// aynı temizlik yayılır.
+  /// Silme sonrasında her entity için sync outbox'a `delete` job'u düşer;
+  /// bulutta da aynı temizlik yayılır.
   Future<void> deleteField(String fieldId) async {
     final now = DateTime.now().toUtc();
 
@@ -199,46 +199,28 @@ class LocalDataRepository {
         .toList();
 
     await _db.transaction(() async {
-      await (_db.update(_db.fields)..where((tbl) => tbl.id.equals(fieldId)))
-          .write(FieldsCompanion(
-        updatedAt: Value(now),
-        deletedAt: Value(now),
-      ));
-      await (_db.update(_db.fieldCrops)
-            ..where((tbl) =>
-                tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull()))
-          .write(FieldCropsCompanion(
-        updatedAt: Value(now),
-        deletedAt: Value(now),
-      ));
-      await (_db.update(_db.irrigationPlans)
-            ..where((tbl) =>
-                tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull()))
-          .write(IrrigationPlansCompanion(
-        updatedAt: Value(now),
-        deletedAt: Value(now),
-      ));
-      await (_db.update(_db.calendarEvents)
-            ..where((tbl) =>
-                tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull()))
-          .write(CalendarEventsCompanion(
-        updatedAt: Value(now),
-        deletedAt: Value(now),
-      ));
-      await (_db.update(_db.suitabilityReports)
-            ..where((tbl) =>
-                tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull()))
-          .write(SuitabilityReportsCompanion(
-        updatedAt: Value(now),
-        deletedAt: Value(now),
-      ));
-      // CropGrowthStates — FK'siz, her ekin için 1 satır; sezonu silmek
-      // mantıklı olduğu için hard-delete yapıyoruz.
+      // Kalıcı temizlik: tarla ve ilişkili geçmiş kayıtları fiziksel olarak sil.
+      await (_db.delete(_db.calendarEvents)
+            ..where((tbl) => tbl.fieldId.equals(fieldId)))
+          .go();
+      await (_db.delete(_db.irrigationPlans)
+            ..where((tbl) => tbl.fieldId.equals(fieldId)))
+          .go();
+      await (_db.delete(_db.suitabilityReports)
+            ..where((tbl) => tbl.fieldId.equals(fieldId)))
+          .go();
+
+      // CropGrowthStates — FK'siz, her ekin için 1 satır.
       if (cropIds.isNotEmpty) {
         await (_db.delete(_db.cropGrowthStates)
               ..where((tbl) => tbl.cropId.isIn(cropIds)))
             .go();
       }
+
+      await (_db.delete(_db.fieldCrops)
+            ..where((tbl) => tbl.fieldId.equals(fieldId)))
+          .go();
+      await (_db.delete(_db.fields)..where((tbl) => tbl.id.equals(fieldId))).go();
     });
 
     // Sync outbox — her entity için ayrı delete job
