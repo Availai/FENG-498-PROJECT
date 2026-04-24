@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/agri_service.dart';
 import '../services/encyclopedia_extensions.dart';
+import '../services/harvest_shift_estimator.dart';
 import '../data/supported_crops.dart';
 import '../utils/location_utils.dart';
 import '../widgets/floating_toast.dart';
@@ -340,6 +341,16 @@ class _GrowingGuideScreenState extends State<GrowingGuideScreen> {
             waterPlan: waterPlan,
             cropName: _currentCrop,
             cropEmoji: _cropEmoji,
+          ),
+          const SizedBox(height: 14),
+
+          // ── 3b. Sıfırdan Hasada Yolculuk + Hasat Kestirimi ──
+          _buildHarvestJourneyCard(
+            crop: crop,
+            forecast: forecast,
+            avgTemp: temp,
+            idealTempMin: idealTempMin,
+            idealTempMax: idealTempMax,
           ),
           const SizedBox(height: 14),
 
@@ -1162,6 +1173,349 @@ class _GrowingGuideScreenState extends State<GrowingGuideScreen> {
         const SizedBox(width: 6),
         Text('$label ', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: color)),
         Expanded(child: Text(text, style: const TextStyle(fontSize: 13))),
+      ],
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Sıfırdan Hasada Yolculuk + Hasat Tarihi Kestirimi
+  //
+  // Çiftçi "tarih değişir mi" değil "ne olursa ne kadar değişir" ister.
+  // Bu kart ekimden hasada tüm aşamaları tarihli timeline olarak gösterir,
+  // altında mevcut hava + sulama koşullarının hasadı hangi yönde kaydıracağını
+  // somut gün sayılarıyla açıklar.
+  // ─────────────────────────────────────────────────────────────────────
+  Widget _buildHarvestJourneyCard({
+    required Map<String, dynamic> crop,
+    required List forecast,
+    required double avgTemp,
+    required double idealTempMin,
+    required double idealTempMax,
+  }) {
+    final baseHarvestDays = (crop['harvest_days'] as num?)?.toInt() ?? 90;
+    // Timeline ve kestirim: plantedDate bilinmiyorsa bugünü referans alıyoruz;
+    // çiftçi tarihleri "X gün sonra" formatında okuyabilir.
+    final plantedDate = DateTime.now();
+
+    final timeline = HarvestShiftEstimator.timelineFor(
+      cropName: _currentCrop,
+      plantedDate: plantedDate,
+    );
+
+    // Haftalık yağış toplamı — 7 günlük forecast'ten.
+    double? weeklyRain;
+    if (forecast.isNotEmpty) {
+      double sum = 0;
+      int counted = 0;
+      for (final d in forecast.take(7)) {
+        if (d is Map) {
+          final r = (d['rain'] as num?)?.toDouble() ?? 0;
+          sum += r;
+          counted++;
+        }
+      }
+      if (counted > 0) weeklyRain = sum;
+    }
+
+    final idealMid = (idealTempMin + idealTempMax) / 2.0;
+    final estimate = HarvestShiftEstimator.estimate(
+      baseHarvestDays: baseHarvestDays,
+      plantedDate: plantedDate,
+      weeklyRainMm: weeklyRain,
+      avgTempC: avgTemp,
+      idealTempC: idealMid,
+      cropName: _currentCrop,
+    );
+
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                Icon(Icons.timeline_rounded, color: Colors.teal),
+                SizedBox(width: 6),
+                Expanded(
+                  child: Text('Sıfırdan Hasada Yolculuk',
+                      style: TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 15)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Ekim gününden hasada kadar tüm aşamalar — ekimi yapar yapmaz '
+              'her adımın tahmini tarihi bu plana göre ilerler.',
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+            ),
+            const SizedBox(height: 10),
+
+            // Timeline
+            if (timeline.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Text(
+                  'Bu bitki için adım adım protokol bulunmuyor.',
+                  style: TextStyle(
+                      fontSize: 13, color: Colors.grey.shade700),
+                ),
+              )
+            else
+              ...timeline.map((step) => _buildTimelineRow(step, baseHarvestDays)),
+
+            const SizedBox(height: 10),
+            const Divider(height: 1),
+            const SizedBox(height: 10),
+
+            // Hasat kestirimi
+            Row(
+              children: [
+                Icon(Icons.event_available, color: Colors.green.shade700),
+                const SizedBox(width: 6),
+                const Expanded(
+                  child: Text('Hasat Tarihi Kestirimi',
+                      style: TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 14)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            _buildHarvestEstimateBlock(estimate, baseHarvestDays),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTimelineRow(HarvestTimelineStep step, int totalDays) {
+    final isLast = step.dayOffset >= totalDays - 1;
+    final dayLabel = step.dayOffset == 0
+        ? 'Ekim günü'
+        : '${step.dayOffset}. gün';
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Column(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.teal.shade50,
+                  border: Border.all(color: Colors.teal.shade200),
+                ),
+                child: Text(step.emoji, style: const TextStyle(fontSize: 16)),
+              ),
+              if (!isLast)
+                Expanded(
+                  child: Container(
+                    width: 2,
+                    margin: const EdgeInsets.symmetric(vertical: 2),
+                    color: Colors.teal.shade100,
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          '${step.order}. ${step.title}',
+                          style: const TextStyle(
+                              fontSize: 13, fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.teal.shade50,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          dayLabel,
+                          style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.teal.shade800),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    step.description,
+                    style: const TextStyle(fontSize: 12, height: 1.3),
+                  ),
+                  if (step.criticalWarning != null) ...[
+                    const SizedBox(height: 4),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.warning_amber_rounded,
+                            size: 14, color: Colors.red.shade700),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            step.criticalWarning!,
+                            style: TextStyle(
+                                fontSize: 11, color: Colors.red.shade800),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                  if (step.farmerTip != null) ...[
+                    const SizedBox(height: 2),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.lightbulb_outline,
+                            size: 14, color: Colors.amber.shade800),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            step.farmerTip!,
+                            style: TextStyle(
+                                fontSize: 11, color: Colors.amber.shade900),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHarvestEstimateBlock(
+      HarvestShiftEstimate estimate, int baseHarvestDays) {
+    final base = estimate.baseHarvestDate;
+    final est = estimate.estimatedHarvestDate;
+    final shift = estimate.daysShift;
+    Color accent;
+    IconData icon;
+    String shiftLabel;
+    if (shift == 0) {
+      accent = Colors.green.shade700;
+      icon = Icons.check_circle;
+      shiftLabel = 'Değişiklik yok';
+    } else if (shift > 0) {
+      accent = Colors.orange.shade800;
+      icon = Icons.schedule;
+      shiftLabel = '+$shift gün (gecikme)';
+    } else {
+      accent = Colors.blue.shade800;
+      icon = Icons.bolt;
+      shiftLabel = '$shift gün (erken)';
+    }
+
+    String fmt(DateTime d) =>
+        '${d.day.toString().padLeft(2, '0')}.${d.month.toString().padLeft(2, '0')}.${d.year}';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: accent.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: accent.withValues(alpha: 0.3)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(icon, size: 18, color: accent),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      shiftLabel,
+                      style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: accent),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Baz hasat: ${fmt(base)}  ($baseHarvestDays gün)',
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade800),
+              ),
+              Text(
+                'Tahmini hasat: ${fmt(est)}',
+                style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: accent),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                estimate.summary,
+                style: const TextStyle(fontSize: 12, height: 1.35),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        if (estimate.factors.isNotEmpty)
+          ...estimate.factors.map((f) => Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(f.icon, style: const TextStyle(fontSize: 16)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            f.label,
+                            style: const TextStyle(
+                                fontSize: 12, fontWeight: FontWeight.w700),
+                          ),
+                          const SizedBox(height: 1),
+                          Text(
+                            f.detail,
+                            style: const TextStyle(fontSize: 11, height: 1.3),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              )),
+        const SizedBox(height: 4),
+        Text(
+          'Not: Kestirim mevcut haftalık hava tahmini ve sıcaklığa göredir. '
+          'Sulamayı planına göre yaparsan gecikme etkisi azalır; ihmal edersen büyür.',
+          style: TextStyle(
+              fontSize: 11,
+              color: Colors.grey.shade700,
+              fontStyle: FontStyle.italic),
+        ),
       ],
     );
   }

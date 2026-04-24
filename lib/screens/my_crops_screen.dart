@@ -213,7 +213,58 @@ class MyCropsScreen extends ConsumerWidget {
                             onPressed: () async {
                               final id = item['id']?.toString();
                               if (id == null) return;
-                              await ref.read(fieldRepositoryProvider).deleteField(id);
+                              final fieldName =
+                                  (item['name'] ?? 'İsimsiz Tarla').toString();
+                              final confirmed = await showDialog<bool>(
+                                context: context,
+                                builder: (ctx) => AlertDialog(
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: AppRadius.md),
+                                  title: Row(
+                                    children: const [
+                                      Icon(Icons.warning_amber_rounded,
+                                          color: AppColors.error),
+                                      SizedBox(width: 8),
+                                      Text('Tarlayı Sil'),
+                                    ],
+                                  ),
+                                  content: Text(
+                                    '"$fieldName" tarlasını ve bu tarlaya ait '
+                                    'tüm geçmiş kayıtları (takvim etkinlikleri, '
+                                    'sulama planları, uygunluk raporları, '
+                                    'büyüme durumu) kalıcı olarak silmek '
+                                    'istediğinize emin misiniz?\n\n'
+                                    'Bu işlem geri alınamaz.',
+                                    style: AppText.body(ctx),
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.of(ctx).pop(false),
+                                      child: const Text('Vazgeç'),
+                                    ),
+                                    TextButton(
+                                      style: TextButton.styleFrom(
+                                          foregroundColor: AppColors.error),
+                                      onPressed: () =>
+                                          Navigator.of(ctx).pop(true),
+                                      child: const Text('Sil'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                              if (confirmed != true) return;
+                              await ref
+                                  .read(fieldRepositoryProvider)
+                                  .deleteField(id);
+                              if (context.mounted) {
+                                AppToast.show(
+                                  context,
+                                  message:
+                                      '"$fieldName" ve tüm geçmişi silindi.',
+                                  type: ToastType.success,
+                                );
+                              }
                             },
                           ),
                         ],

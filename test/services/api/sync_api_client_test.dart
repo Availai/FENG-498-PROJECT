@@ -12,6 +12,16 @@ import 'package:feng_498/services/api/sync_api_client.dart';
 void main() {
   late AppDatabase database;
 
+  String? headerValue(Map<String, String> headers, String name) {
+    final lowerName = name.toLowerCase();
+    for (final entry in headers.entries) {
+      if (entry.key.toLowerCase() == lowerName) {
+        return entry.value;
+      }
+    }
+    return null;
+  }
+
   setUp(() {
     database = AppDatabase(NativeDatabase.memory());
   });
@@ -57,7 +67,7 @@ void main() {
     final result = await apiClient.pushJobs([job]);
 
     expect(captured.url.toString(), 'https://example.test/api/sync/push');
-    expect(captured.headers['authorization'], 'Bearer token-123');
+    expect(headerValue(captured.headers, 'Authorization'), 'Bearer token-123');
 
     final body = jsonDecode(captured.body) as Map<String, dynamic>;
     expect((body['items'] as List).length, 1);

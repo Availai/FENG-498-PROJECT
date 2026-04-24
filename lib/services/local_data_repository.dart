@@ -5,6 +5,7 @@ import 'package:drift/drift.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:http/http.dart' as http;
 
+import '../data/activity_types.dart';
 import '../data/app_database.dart';
 
 class LocalDataRepository {
@@ -157,27 +158,90 @@ class LocalDataRepository {
     return fieldId;
   }
 
+  /// Tarlayı ve ilgili TÜM geçmiş kayıtlarını siler:
+  ///   - Fields (soft-delete)
+  ///   - FieldCrops (soft-delete)
+  ///   - IrrigationPlans (soft-delete)
+  ///   - CalendarEvents (soft-delete) — ekim/hasat/sulama/gübreleme/ilaçlama geçmişi
+  ///   - SuitabilityReports (soft-delete) — bitki uygunluk raporları
+  ///   - CropGrowthStates (hard-delete) — FK yok; silinen ekine ait büyüme
+  ///     durumu hayaleti kalmasın.
+  ///
+  /// Her soft-delete için sync outbox'a `delete` job'u düşer; bulutta da
+  /// aynı temizlik yayılır.
   Future<void> deleteField(String fieldId) async {
     final now = DateTime.now().toUtc();
-    await (_db.update(_db.fields)..where((tbl) => tbl.id.equals(fieldId))).write(
-      FieldsCompanion(
-        updatedAt: Value(now),
-        deletedAt: Value(now),
-      ),
-    );
-    await (_db.update(_db.fieldCrops)..where((tbl) => tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull())).write(
-      FieldCropsCompanion(
-        updatedAt: Value(now),
-        deletedAt: Value(now),
-      ),
-    );
-    await (_db.update(_db.irrigationPlans)..where((tbl) => tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull())).write(
-      IrrigationPlansCompanion(
-        updatedAt: Value(now),
-        deletedAt: Value(now),
-      ),
-    );
 
+    // Silinmeden önce id'leri topla — her kayıt için ayrı sync job gerek.
+    final cropIds = (await (_db.select(_db.fieldCrops)
+              ..where((tbl) =>
+                  tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull()))
+            .get())
+        .map((c) => c.id)
+        .toList();
+    final irrigationIds = (await (_db.select(_db.irrigationPlans)
+              ..where((tbl) =>
+                  tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull()))
+            .get())
+        .map((p) => p.id)
+        .toList();
+    final calendarIds = (await (_db.select(_db.calendarEvents)
+              ..where((tbl) =>
+                  tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull()))
+            .get())
+        .map((e) => e.id)
+        .toList();
+    final suitabilityIds = (await (_db.select(_db.suitabilityReports)
+              ..where((tbl) =>
+                  tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull()))
+            .get())
+        .map((r) => r.id)
+        .toList();
+
+    await _db.transaction(() async {
+      await (_db.update(_db.fields)..where((tbl) => tbl.id.equals(fieldId)))
+          .write(FieldsCompanion(
+        updatedAt: Value(now),
+        deletedAt: Value(now),
+      ));
+      await (_db.update(_db.fieldCrops)
+            ..where((tbl) =>
+                tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull()))
+          .write(FieldCropsCompanion(
+        updatedAt: Value(now),
+        deletedAt: Value(now),
+      ));
+      await (_db.update(_db.irrigationPlans)
+            ..where((tbl) =>
+                tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull()))
+          .write(IrrigationPlansCompanion(
+        updatedAt: Value(now),
+        deletedAt: Value(now),
+      ));
+      await (_db.update(_db.calendarEvents)
+            ..where((tbl) =>
+                tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull()))
+          .write(CalendarEventsCompanion(
+        updatedAt: Value(now),
+        deletedAt: Value(now),
+      ));
+      await (_db.update(_db.suitabilityReports)
+            ..where((tbl) =>
+                tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull()))
+          .write(SuitabilityReportsCompanion(
+        updatedAt: Value(now),
+        deletedAt: Value(now),
+      ));
+      // CropGrowthStates — FK'siz, her ekin için 1 satır; sezonu silmek
+      // mantıklı olduğu için hard-delete yapıyoruz.
+      if (cropIds.isNotEmpty) {
+        await (_db.delete(_db.cropGrowthStates)
+              ..where((tbl) => tbl.cropId.isIn(cropIds)))
+            .go();
+      }
+    });
+
+    // Sync outbox — her entity için ayrı delete job
     await _enqueueSyncJob(
       entityType: 'fields',
       entityId: fieldId,
@@ -185,6 +249,43 @@ class LocalDataRepository {
       payload: {'id': fieldId},
       updatedAt: now,
     );
+    for (final id in cropIds) {
+      await _enqueueSyncJob(
+        entityType: 'field_crops',
+        entityId: id,
+        operation: 'delete',
+        payload: {'id': id},
+        updatedAt: now,
+      );
+    }
+    for (final id in irrigationIds) {
+      await _enqueueSyncJob(
+        entityType: 'irrigation_plans',
+        entityId: id,
+        operation: 'delete',
+        payload: {'id': id},
+        updatedAt: now,
+      );
+    }
+    for (final id in calendarIds) {
+      await _enqueueSyncJob(
+        entityType: 'calendar_events',
+        entityId: id,
+        operation: 'delete',
+        payload: {'id': id, 'deleted_at': now.toIso8601String()},
+        updatedAt: now,
+      );
+    }
+    for (final id in suitabilityIds) {
+      await _enqueueSyncJob(
+        entityType: 'suitability_reports',
+        entityId: id,
+        operation: 'delete',
+        payload: {'id': id},
+        updatedAt: now,
+      );
+    }
+
     await _mirrorActiveFieldsToHive();
   }
 
@@ -436,6 +537,7 @@ class LocalDataRepository {
     double? quantity,
     String? unit,
     double? recommendedQuantity,
+    String source = 'manual',
   }) async {
     final now = DateTime.now().toUtc();
     final id = _newId('event');
@@ -450,6 +552,7 @@ class LocalDataRepository {
             updatedAt: now,
             fieldId: Value(fieldId),
             cropId: Value(cropId),
+            source: Value(source),
             metadataJson: Value(metaJson),
             quantity: Value(quantity),
             unit: Value(unit),
@@ -528,6 +631,182 @@ class LocalDataRepository {
     if (type == 'watering') {
       await _consumeNextIrrigationPlan(fieldId: fieldId, cropId: cropId);
     }
+
+    // Auto-seed takvim programı (sulama/gübreleme/ilaçlama) — eşleşen en yakın
+    // planlı kaydı soft-delete ederek "tamamlandı" olarak işaretle. Böylece
+    // takvim temizlenir, TaskDirectiveService "yapılmadı" senaryosu üretmez.
+    if (type == ActivityType.watering ||
+        type == ActivityType.fertilizing ||
+        type == ActivityType.spraying) {
+      await _consumeNextAutoSeedEvent(
+        fieldId: fieldId,
+        cropId: cropId,
+        type: type,
+        loggedAt: at ?? DateTime.now(),
+      );
+    }
+  }
+
+  /// Tarla + bitki + tip için en yakın auto_seed CalendarEvent'i soft-delete
+  /// eder. "En yakın" = bugüne ±10 gün penceresinde tarih farkı en az olan.
+  /// Daha uzak planlar çiftçinin başka bir uygulaması kabul edilip
+  /// dokunulmaz — böylece sezon sonundaki gelecek planlar yanlışlıkla
+  /// tüketilmez.
+  Future<void> _consumeNextAutoSeedEvent({
+    required String fieldId,
+    required String? cropId,
+    required String type,
+    required DateTime loggedAt,
+  }) async {
+    final logUtc = loggedAt.toUtc();
+    final windowStart = logUtc.subtract(const Duration(days: 10));
+    final windowEnd = logUtc.add(const Duration(days: 10));
+
+    final query = _db.select(_db.calendarEvents)
+      ..where((tbl) =>
+          tbl.fieldId.equals(fieldId) &
+          tbl.eventType.equals(type) &
+          tbl.source.equals('auto_seed') &
+          tbl.deletedAt.isNull() &
+          tbl.eventDate.isBiggerOrEqualValue(windowStart) &
+          tbl.eventDate.isSmallerOrEqualValue(windowEnd));
+    if (cropId != null) {
+      query.where((tbl) => tbl.cropId.equals(cropId));
+    }
+    final candidates = await query.get();
+    if (candidates.isEmpty) return;
+
+    CalendarEvent best = candidates.first;
+    int bestDistance = _absDays(best.eventDate, logUtc);
+    for (final c in candidates.skip(1)) {
+      final d = _absDays(c.eventDate, logUtc);
+      if (d < bestDistance) {
+        best = c;
+        bestDistance = d;
+      }
+    }
+
+    final now = DateTime.now().toUtc();
+    await (_db.update(_db.calendarEvents)
+          ..where((tbl) => tbl.id.equals(best.id)))
+        .write(CalendarEventsCompanion(
+      deletedAt: Value(now),
+      updatedAt: Value(now),
+    ));
+  }
+
+  static int _absDays(DateTime a, DateTime b) {
+    final diff = a.difference(b).inDays;
+    return diff < 0 ? -diff : diff;
+  }
+
+  /// Tarlada aynı (veya eş) isimde aktif bir `FieldCrop` varsa döner.
+  /// İsim karşılaştırması case-insensitive + trim.
+  Future<FieldCrop?> findActiveCropByName({
+    required String fieldId,
+    required String name,
+  }) async {
+    final target = name.trim().toLowerCase();
+    if (target.isEmpty) return null;
+    final rows = await (_db.select(_db.fieldCrops)
+          ..where((tbl) =>
+              tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull()))
+        .get();
+    for (final c in rows) {
+      if (c.name.trim().toLowerCase() == target) return c;
+    }
+    return null;
+  }
+
+  /// Mevcut bitkiyi "yeniden ekim" ile günceller: plantedDate + hasat süresi +
+  /// sulama aralığı + spacing + zone (varsa). Yeni satır oluşturmaz; aynı
+  /// cropId'yi koruyarak büyüme geçmişinin sürekliliğini sağlar. Eski
+  /// auto_seed takvim kayıtları çağıran servis tarafından temizlenmelidir.
+  Future<void> updateCropReplanting({
+    required String cropId,
+    required String plantedDate,
+    required int harvestDays,
+    required int waterIntervalDays,
+    double? rowSpacingCm,
+    double? plantSpacingCm,
+    int? colorValue,
+    String? zonePolygonJson,
+    bool replaceZone = false,
+  }) async {
+    final now = DateTime.now().toUtc();
+    final existing = await (_db.select(_db.fieldCrops)
+          ..where((tbl) => tbl.id.equals(cropId)))
+        .getSingleOrNull();
+    if (existing == null) return;
+
+    String? zoneJson = existing.zonePolygonJson;
+    if (replaceZone) {
+      zoneJson = zonePolygonJson;
+    } else if (zonePolygonJson != null && zonePolygonJson.isNotEmpty) {
+      zoneJson = _mergeZonePolygons(existing.zonePolygonJson, zonePolygonJson);
+    }
+
+    await (_db.update(_db.fieldCrops)..where((tbl) => tbl.id.equals(cropId)))
+        .write(FieldCropsCompanion(
+      plantedDate: Value(plantedDate),
+      harvestDays: Value(harvestDays),
+      waterIntervalDays: Value(waterIntervalDays),
+      rowSpacingCm:
+          rowSpacingCm == null ? const Value.absent() : Value(rowSpacingCm),
+      plantSpacingCm:
+          plantSpacingCm == null ? const Value.absent() : Value(plantSpacingCm),
+      colorValue: colorValue == null ? const Value.absent() : Value(colorValue),
+      zonePolygonJson: Value(zoneJson),
+      updatedAt: Value(now),
+    ));
+
+    // Eski büyüme durumunu (GrowthEngine sonucu) sıfırla — yeniden ekimde
+    // GDD kümülasyonu baştan başlamalı. GrowthEngine.recompute() tekrar
+    // çağrıldığında uyumlu satırı üretir, ama önce mevcut kaydı silmek
+    // gerek; aksi halde `insertOnConflictUpdate` eski alanları koruyabilir.
+    await (_db.delete(_db.cropGrowthStates)
+          ..where((tbl) => tbl.cropId.equals(cropId)))
+        .go();
+
+    await _enqueueSyncJob(
+      entityType: 'field_crops',
+      entityId: cropId,
+      operation: 'upsert',
+      payload: {
+        'id': cropId,
+        'field_id': existing.fieldId,
+        'name': existing.name,
+        'zone_start': existing.zoneStart,
+        'zone_end': existing.zoneEnd,
+        'row_spacing_cm': rowSpacingCm ?? existing.rowSpacingCm,
+        'plant_spacing_cm': plantSpacingCm ?? existing.plantSpacingCm,
+        'color_value': colorValue ?? existing.colorValue,
+        'planted_date': plantedDate,
+        'harvest_days': harvestDays,
+        'water_interval_days': waterIntervalDays,
+        'zone_polygon_json': zoneJson,
+        'replant': true,
+      },
+      updatedAt: now,
+    );
+
+    await _regenerateIrrigationPlans(fieldId: existing.fieldId, referenceTime: now);
+    await _mirrorActiveFieldsToHive();
+  }
+
+  /// İki bölge poligonunu birleştirir — basit yaklaşım: noktaları arka arkaya
+  /// ekler. Aynı bölgeye tekrar ekim senaryosunda kullanıcı genelde aynı
+  /// poligonu tekrar çizdiği için `replaceZone=true` tercih edilmeli.
+  String? _mergeZonePolygons(String? existing, String newJson) {
+    if (existing == null || existing.isEmpty) return newJson;
+    try {
+      final a = jsonDecode(existing);
+      final b = jsonDecode(newJson);
+      if (a is List && b is List) {
+        return jsonEncode([...a, ...b]);
+      }
+    } catch (_) {}
+    return newJson;
   }
 
   Future<void> _consumeNextIrrigationPlan({
@@ -729,6 +1008,46 @@ class LocalDataRepository {
           'quantity': qty,
           'unit': unit,
           'recommended_quantity': recQty,
+          'metadata': meta,
+        };
+      }).toList();
+    });
+  }
+
+  /// Takvimde auto_seed kaynaklı, tamamlanmamış (soft-delete'siz) planları
+  /// döner. TaskDirectiveService "yapılmadı" senaryosu üretmek için tüketir.
+  /// [fieldId] null ise tüm tarlaları kapsar.
+  Stream<List<Map<String, dynamic>>> watchScheduledAutoSeedEvents({
+    String? fieldId,
+  }) {
+    final query = _db.select(_db.calendarEvents)
+      ..where((tbl) =>
+          tbl.deletedAt.isNull() & tbl.source.equals('auto_seed'));
+    if (fieldId != null) {
+      query.where((tbl) => tbl.fieldId.equals(fieldId));
+    }
+    query.orderBy([(tbl) => OrderingTerm.asc(tbl.eventDate)]);
+    return query.watch().map((rows) {
+      return rows.map((ev) {
+        Map<String, dynamic>? meta;
+        final raw = ev.metadataJson;
+        if (raw != null && raw.isNotEmpty) {
+          try {
+            final decoded = jsonDecode(raw);
+            if (decoded is Map) meta = Map<String, dynamic>.from(decoded);
+          } catch (_) {}
+        }
+        return <String, dynamic>{
+          'id': ev.id,
+          'field_id': ev.fieldId,
+          'crop_id': ev.cropId,
+          'title': ev.title,
+          'type': ev.eventType,
+          'date': ev.eventDate.toLocal(),
+          'source': ev.source,
+          'quantity': ev.quantity,
+          'unit': ev.unit,
+          'recommended_quantity': ev.recommendedQuantity,
           'metadata': meta,
         };
       }).toList();

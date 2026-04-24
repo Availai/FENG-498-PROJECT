@@ -12,6 +12,7 @@ import 'my_crops_screen.dart';
 import 'camera_screen.dart';
 import 'plant_database_screen.dart';
 import 'crop_calendar_screen.dart';
+import 'field_status_screen.dart';
 import 'map_hub_screen.dart';
 
 class MainNavigationScreen extends ConsumerStatefulWidget {
@@ -129,6 +130,29 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
                   Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (_) => const MapHubScreen(),
+                    ),
+                  );
+                },
+              ),
+              const Divider(),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                      color: Colors.teal.shade50,
+                      borderRadius: BorderRadius.circular(10)),
+                  child: Icon(Icons.agriculture_rounded,
+                      color: Colors.teal.shade700, size: 20),
+                ),
+                title: const Text('Tarla Durumum'),
+                subtitle: const Text(
+                    'Ne yetiştiriliyor, sonraki işleme kaç gün, nasıl yap'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const FieldStatusScreen(),
                     ),
                   );
                 },

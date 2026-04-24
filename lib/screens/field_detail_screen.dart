@@ -9,6 +9,7 @@ import '../services/agri_service.dart';
 import '../services/app_providers.dart';
 import '../services/crop_placement.dart';
 import '../services/crop_protocol_service.dart';
+import '../services/crop_schedule_seeder.dart';
 import '../services/growth_engine.dart';
 import '../services/notification_service.dart';
 import '../services/task_directive_service.dart';
@@ -1252,31 +1253,75 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
         config?.rowSpacingCm ?? protocol?.defaultRowSpacingCm ?? 50.0;
     final plantSpacingCm =
         config?.plantSpacingCm ?? protocol?.defaultPlantSpacingCm ?? 40.0;
-    final cropId = await repo.addSingleCropToField(
-      fieldId: fieldId,
-      name: plant.nameTr,
-      colorValue: plant.renderColor.toARGB32(),
-      plantedDate:
-          '${DateTime.now().day.toString().padLeft(2, '0')}.${DateTime.now().month.toString().padLeft(2, '0')}.${DateTime.now().year}',
-      harvestDays: plant.daysToHarvest,
-      waterIntervalDays: 7,
-      rowSpacingCm: rowSpacingCm,
-      plantSpacingCm: plantSpacingCm,
-      zonePolygonJson: zonePolygonJson,
-    );
+    final waterIntervalDays =
+        CropScheduleSeeder.intervalForMethod(config?.irrigationMethod);
+    final plantedDate =
+        '${DateTime.now().day.toString().padLeft(2, '0')}.${DateTime.now().month.toString().padLeft(2, '0')}.${DateTime.now().year}';
+
+    // Aynı tarlada aynı bitki zaten varsa: yeni satır yaratma, mevcudu
+    // "yeniden ekim" olarak güncelle — takvim + büyüme durumu sıfırlanır.
+    final existing =
+        await repo.findActiveCropByName(fieldId: fieldId, name: plant.nameTr);
+    final bool isReplant = existing != null;
+    final String cropId;
+    if (isReplant) {
+      cropId = existing.id;
+      await repo.updateCropReplanting(
+        cropId: cropId,
+        plantedDate: plantedDate,
+        harvestDays: plant.daysToHarvest,
+        waterIntervalDays: waterIntervalDays,
+        rowSpacingCm: rowSpacingCm,
+        plantSpacingCm: plantSpacingCm,
+        colorValue: plant.renderColor.toARGB32(),
+        zonePolygonJson: zonePolygonJson,
+        replaceZone: true,
+      );
+    } else {
+      cropId = await repo.addSingleCropToField(
+        fieldId: fieldId,
+        name: plant.nameTr,
+        colorValue: plant.renderColor.toARGB32(),
+        plantedDate: plantedDate,
+        harvestDays: plant.daysToHarvest,
+        waterIntervalDays: waterIntervalDays,
+        rowSpacingCm: rowSpacingCm,
+        plantSpacingCm: plantSpacingCm,
+        zonePolygonJson: zonePolygonJson,
+      );
+    }
 
     await repo.logActivity(
       fieldId: fieldId,
       type: ActivityType.planting,
       cropId: cropId,
-      note: '${plant.nameTr} tarlaya eklendi',
+      note: isReplant
+          ? '${plant.nameTr} yeniden ekildi (geçmiş planlar sıfırlandı)'
+          : '${plant.nameTr} tarlaya eklendi',
       metadata: {
         'setup_version': 1,
+        'replant': isReplant,
         if (config != null) 'area_dekar': config.areaDekar,
+        if (config != null) 'irrigation_method': config.irrigationMethod.name,
+        'water_interval_days': waterIntervalDays,
         'row_spacing_cm': rowSpacingCm,
         'plant_spacing_cm': plantSpacingCm,
       },
     );
+
+    // Sezonluk takvim programını yaz — sulama + gübre + koruyucu ilaç.
+    // Bitki playbook'u yoksa (3 vitrin dışı) yalnızca sulama programı yazılır.
+    await ref.read(cropScheduleSeederProvider).seedForCrop(
+          fieldId: fieldId,
+          cropId: cropId,
+          cropName: plant.nameTr,
+          plantedDate: DateTime.now(),
+          harvestDays: plant.daysToHarvest,
+          waterIntervalDays: waterIntervalDays,
+          areaDekar: config?.areaDekar,
+          irrigationMethod: config?.irrigationMethod,
+        );
+
     await ref.read(growthEngineProvider).recompute(cropId: cropId);
 
     await _loadFieldCrops();
@@ -1450,29 +1495,68 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
 
     final repo = ref.read(localDataRepositoryProvider);
     final protocol = CropProtocols.resolveByName(plant.nameTr);
-    final cropId = await repo.addSingleCropToField(
-      fieldId: fieldId,
-      name: plant.nameTr,
-      colorValue: plant.renderColor.toARGB32(),
-      plantedDate:
-          '${DateTime.now().day.toString().padLeft(2, '0')}.${DateTime.now().month.toString().padLeft(2, '0')}.${DateTime.now().year}',
-      harvestDays: plant.daysToHarvest,
-      waterIntervalDays: 7,
-      rowSpacingCm: protocol?.defaultRowSpacingCm ?? 50.0,
-      plantSpacingCm: protocol?.defaultPlantSpacingCm ?? 40.0,
-      zonePolygonJson: zoneJson,
-    );
+    final rowSpacingCm = protocol?.defaultRowSpacingCm ?? 50.0;
+    final plantSpacingCm = protocol?.defaultPlantSpacingCm ?? 40.0;
+    const waterIntervalDays = 7; // Yöntem seçimi yok — varsayılan karık aralığı.
+    final plantedDateStr =
+        '${DateTime.now().day.toString().padLeft(2, '0')}.${DateTime.now().month.toString().padLeft(2, '0')}.${DateTime.now().year}';
+
+    final existing =
+        await repo.findActiveCropByName(fieldId: fieldId, name: plant.nameTr);
+    final bool isReplant = existing != null;
+    final String cropId;
+    if (isReplant) {
+      cropId = existing.id;
+      await repo.updateCropReplanting(
+        cropId: cropId,
+        plantedDate: plantedDateStr,
+        harvestDays: plant.daysToHarvest,
+        waterIntervalDays: waterIntervalDays,
+        rowSpacingCm: rowSpacingCm,
+        plantSpacingCm: plantSpacingCm,
+        colorValue: plant.renderColor.toARGB32(),
+        zonePolygonJson: zoneJson,
+        replaceZone: true,
+      );
+    } else {
+      cropId = await repo.addSingleCropToField(
+        fieldId: fieldId,
+        name: plant.nameTr,
+        colorValue: plant.renderColor.toARGB32(),
+        plantedDate: plantedDateStr,
+        harvestDays: plant.daysToHarvest,
+        waterIntervalDays: waterIntervalDays,
+        rowSpacingCm: rowSpacingCm,
+        plantSpacingCm: plantSpacingCm,
+        zonePolygonJson: zoneJson,
+      );
+    }
+
     await repo.logActivity(
       fieldId: fieldId,
       type: ActivityType.planting,
       cropId: cropId,
-      note: '${plant.nameTr} seçilen bölgeye eklendi',
+      note: isReplant
+          ? '${plant.nameTr} seçilen bölgeye yeniden ekildi'
+          : '${plant.nameTr} seçilen bölgeye eklendi',
       metadata: {
         'setup_version': 1,
-        'row_spacing_cm': protocol?.defaultRowSpacingCm ?? 50.0,
-        'plant_spacing_cm': protocol?.defaultPlantSpacingCm ?? 40.0,
+        'replant': isReplant,
+        'row_spacing_cm': rowSpacingCm,
+        'plant_spacing_cm': plantSpacingCm,
+        'water_interval_days': waterIntervalDays,
       },
     );
+
+    await ref.read(cropScheduleSeederProvider).seedForCrop(
+          fieldId: fieldId,
+          cropId: cropId,
+          cropName: plant.nameTr,
+          plantedDate: DateTime.now(),
+          harvestDays: plant.daysToHarvest,
+          waterIntervalDays: waterIntervalDays,
+        );
+
     await ref.read(growthEngineProvider).recompute(cropId: cropId);
 
     setState(() {
@@ -2365,6 +2449,9 @@ class _DirectivesModalContent extends ConsumerWidget {
                       yieldMultiplier: state.yieldMultiplier,
                     ),
                 };
+                final scheduledAsync = ref.watch(
+                  fieldScheduledAutoSeedProvider(fieldData['id'].toString()),
+                );
                 final directives = service.generate(
                   fieldCrops: fieldCrops,
                   activities: activities,
@@ -2374,6 +2461,7 @@ class _DirectivesModalContent extends ConsumerWidget {
                       (analysis?['soil_moisture'] as num?)?.toDouble(),
                   growthStates: growthMap,
                   fieldStates: fieldStateMap,
+                  scheduledEvents: scheduledAsync.valueOrNull,
                 );
                 // Sezon özet kartları (her ekili 3-vitrin bitki için).
                 final summaryCards = <Widget>[];
