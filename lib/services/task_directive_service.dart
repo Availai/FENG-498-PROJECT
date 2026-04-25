@@ -116,10 +116,26 @@ class TaskDirectiveService {
     double? soilMoisture,
     Map<String, GrowthSnapshot>? growthStates,
     Map<String, CropFieldState>? fieldStates,
+    /// Takvime otomatik yazılmış (auto_seed) sulama/gübre/ilaç planları —
+    /// `CropScheduleSeeder.seedForCrop` çıktısı. Tarihi geçmiş ve log ile
+    /// eşleşmemiş kayıtlar "yapılmadı" senaryosu olarak üstte gösterilir.
+    List<Map<String, dynamic>>? scheduledEvents,
     DateTime? now,
   }) {
     final t = now ?? DateTime.now();
     final out = <FieldDirective>[];
+
+    // ── Tarihi geçmiş takvim planları (auto_seed) → somut "yapılmadı" ──
+    // senaryosu üret. Her kayıt "kaç gün geçti" + "hangi evredeyim" bilgisi
+    // ile zenginleştirilir.
+    if (scheduledEvents != null && scheduledEvents.isNotEmpty) {
+      out.addAll(_overdueAutoSeedDirectives(
+        scheduledEvents: scheduledEvents,
+        fieldCrops: fieldCrops,
+        growthStates: growthStates,
+        now: t,
+      ));
+    }
 
     // ── Hava tahmini türev değerleri ────────────────────────────
     final forecast = _parseForecast(dailyForecast);
@@ -357,6 +373,166 @@ class TaskDirectiveService {
     // En acilden bilgiye sırala
     out.sort((a, b) => b.urgency.compareTo(a.urgency));
     return out;
+  }
+
+  // ───────────────── auto_seed "yapılmadı" senaryosu ─────────────────
+
+  /// Tarihi geçmiş (bugünden önce) auto_seed takvim kayıtlarını "yapılmadı"
+  /// direktiflerine dönüştürür. Her direktif; gecikme gün sayısı + aktif
+  /// fenoloji evresi + verim kaybı tahmini ile zenginleştirilir.
+  static List<FieldDirective> _overdueAutoSeedDirectives({
+    required List<Map<String, dynamic>> scheduledEvents,
+    required List<Map<String, dynamic>> fieldCrops,
+    required Map<String, GrowthSnapshot>? growthStates,
+    required DateTime now,
+  }) {
+    final cropById = <String, Map<String, dynamic>>{
+      for (final c in fieldCrops)
+        if (c['id'] != null) c['id'].toString(): c,
+    };
+
+    // Aynı cropId + type için yalnız en eski (en kritik) plan; başlığı
+    // "3 gündür ihmal edildi" gibi rapor eder. Diğerleri sessizce atlanır.
+    final byKey = <String, Map<String, dynamic>>{};
+    for (final ev in scheduledEvents) {
+      final rawDate = ev['date'];
+      DateTime? evDate;
+      if (rawDate is DateTime) {
+        evDate = rawDate;
+      } else if (rawDate is String) {
+        evDate = DateTime.tryParse(rawDate);
+      }
+      if (evDate == null) continue;
+      if (!evDate.isBefore(DateTime(now.year, now.month, now.day))) continue;
+
+      final type = ev['type']?.toString() ?? '';
+      final cropId = ev['crop_id']?.toString() ?? '';
+      final key = '$cropId::$type';
+      final prev = byKey[key];
+      final prevDate = prev?['date'];
+      if (prev == null ||
+          (prevDate is DateTime && evDate.isBefore(prevDate))) {
+        byKey[key] = ev;
+      }
+    }
+
+    final out = <FieldDirective>[];
+    for (final ev in byKey.values) {
+      final cropId = ev['crop_id']?.toString();
+      final type = ev['type']?.toString() ?? '';
+      final crop = cropId == null ? null : cropById[cropId];
+      final cropName =
+          (crop?['name']?.toString() ?? ev['title']?.toString() ?? 'Bitki')
+              .trim();
+      final evDate = ev['date'] as DateTime;
+      final lateDays = DateTime(now.year, now.month, now.day)
+          .difference(DateTime(evDate.year, evDate.month, evDate.day))
+          .inDays;
+      final meta = ev['metadata'] is Map
+          ? Map<String, dynamic>.from(ev['metadata'] as Map)
+          : const <String, dynamic>{};
+      final recommended = (ev['recommended_quantity'] as num?)?.toDouble();
+      final unit = ev['unit']?.toString();
+      final growth = cropId == null ? null : growthStates?[cropId];
+
+      final stageLabel = _stageLabelFromSnapshot(growth);
+      final lossNote = growth != null && growth.yieldLossPct > 4
+          ? ' Verim tahmini %${growth.yieldLossPct} düştü.'
+          : '';
+      final urgency = lateDays >= 3 ? 2 : 1;
+      final cropLabel = cropName.isEmpty ? 'Bitki' : cropName;
+
+      switch (type) {
+        case 'watering':
+          final minutes = recommended?.round();
+          out.add(FieldDirective(
+            urgency: urgency,
+            headline: minutes == null
+                ? '$cropLabel: SULAMA GECİKTİ'
+                : '$cropLabel: $minutes DK SULA (GECİKTİ)',
+            reason:
+                'Takvimdeki sulama $lateDays gün önce planlıydı, kayıt yok. '
+                '${stageLabel.isEmpty ? '' : '$stageLabel evresinde '}'
+                'kök su açığı birikir.$lossNote',
+            kind: 'overdue_water',
+            actionType: ActivityType.watering,
+            suggestedQuantity: recommended,
+            recommendedQuantity: recommended,
+            quantityUnit: unit,
+            cropId: cropId,
+            cropName: cropName,
+          ));
+          break;
+        case 'fertilizing':
+          final productName = meta['fertilizer_name']?.toString();
+          final dose = recommended?.toStringAsFixed(1);
+          out.add(FieldDirective(
+            urgency: urgency,
+            headline: '$cropLabel: ${productName ?? 'GÜBRELEME'} GECİKTİ',
+            reason: productName == null
+                ? 'Planlı gübreleme $lateDays gündür yapılmadı. '
+                    '${stageLabel.isEmpty ? '' : '$stageLabel evresinde '}'
+                    'azot yetmezliği başlıyor.$lossNote'
+                : '$productName ${dose ?? '—'} ${unit ?? ''} uygulaması '
+                    '$lateDays gün önce planlıydı. '
+                    '${stageLabel.isEmpty ? '' : '$stageLabel evresinde '}'
+                    'gecikme verim kaybına döner.$lossNote',
+            kind: 'overdue_fertilize',
+            actionType: ActivityType.fertilizing,
+            suggestedQuantity: recommended,
+            recommendedQuantity: recommended,
+            quantityUnit: unit,
+            steps: [
+              if (meta['tip'] is String) meta['tip'] as String,
+            ],
+            cropId: cropId,
+            cropName: cropName,
+          ));
+          break;
+        case 'spraying':
+          final productName = meta['pesticide_name']?.toString();
+          final targets = (meta['targets'] as List?)?.join(', ');
+          out.add(FieldDirective(
+            urgency: urgency,
+            headline: '$cropLabel: ${productName ?? 'İLAÇLAMA'} GECİKTİ',
+            reason: productName == null
+                ? 'Koruyucu ilaçlama $lateDays gün önce planlıydı.$lossNote'
+                : '$productName uygulaması $lateDays gün önce planlıydı'
+                    '${targets == null ? '' : ' ($targets)'}'
+                    '.$lossNote',
+            kind: 'overdue_spray',
+            actionType: ActivityType.spraying,
+            suggestedQuantity: recommended,
+            recommendedQuantity: recommended,
+            quantityUnit: unit,
+            steps: [
+              if (meta['tip'] is String) meta['tip'] as String,
+            ],
+            cropId: cropId,
+            cropName: cropName,
+          ));
+          break;
+      }
+    }
+    return out;
+  }
+
+  static String _stageLabelFromSnapshot(GrowthSnapshot? g) {
+    if (g == null) return '';
+    switch (g.stageKey) {
+      case 'cimlenme':
+        return 'çimlenme';
+      case 'vejetatif':
+        return 'vejetatif büyüme';
+      case 'ciceklenme':
+        return 'çiçeklenme';
+      case 'meyve_dolumu':
+        return 'meyve dolumu';
+      case 'olgunlasma':
+        return 'olgunlaşma';
+      default:
+        return '';
+    }
   }
 
   // ───────────────────────────── yardımcılar ─────────────────

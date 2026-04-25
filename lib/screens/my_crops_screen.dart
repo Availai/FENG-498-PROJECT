@@ -214,12 +214,53 @@ class MyCropsScreen extends ConsumerWidget {
                               final id = item['id']?.toString();
                               if (id == null) return;
                               final fieldName =
+<<<<<<< HEAD
                                   (item['name']?.toString().trim().isNotEmpty ?? false)
                                       ? item['name'].toString()
                                       : 'Bu tarla';
                               final confirmed = await _confirmDeleteField(
                                 context,
                                 fieldName,
+=======
+                                  (item['name'] ?? 'İsimsiz Tarla').toString();
+                              final confirmed = await showDialog<bool>(
+                                context: context,
+                                builder: (ctx) => AlertDialog(
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: AppRadius.md),
+                                  title: Row(
+                                    children: const [
+                                      Icon(Icons.warning_amber_rounded,
+                                          color: AppColors.error),
+                                      SizedBox(width: 8),
+                                      Expanded(child: Text('Silmek istediğinize emin misiniz?')),
+                                    ],
+                                  ),
+                                  content: Text(
+                                    '"$fieldName" tarlasını ve bu tarlaya ait '
+                                    'tüm geçmiş kayıtları (takvim etkinlikleri, '
+                                    'sulama planları, uygunluk raporları, '
+                                    'büyüme durumu) kalıcı olarak silmek '
+                                    'istediğinize emin misiniz?\n\n'
+                                    'Bu işlem geri alınamaz.',
+                                    style: AppText.body(ctx),
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.of(ctx).pop(false),
+                                      child: const Text('Vazgeç'),
+                                    ),
+                                    TextButton(
+                                      style: TextButton.styleFrom(
+                                          foregroundColor: AppColors.error),
+                                      onPressed: () =>
+                                          Navigator.of(ctx).pop(true),
+                                      child: const Text('Sil'),
+                                    ),
+                                  ],
+                                ),
+>>>>>>> bfa38d7d23bc8c0bec06f2054cc027bacd3b42cd
                               );
                               if (confirmed != true) return;
                               await ref
@@ -228,7 +269,12 @@ class MyCropsScreen extends ConsumerWidget {
                               if (context.mounted) {
                                 AppToast.show(
                                   context,
+<<<<<<< HEAD
                                   message: '$fieldName ve tüm kayıtları silindi.',
+=======
+                                  message:
+                                      '"$fieldName" ve tüm geçmişi silindi.',
+>>>>>>> bfa38d7d23bc8c0bec06f2054cc027bacd3b42cd
                                   type: ToastType.success,
                                 );
                               }

@@ -95,7 +95,8 @@ void main() {
         .getSingle();
     expect(failed.status, 'failed');
     expect(failed.attemptCount, 1);
-    expect(failed.lastError, contains('Push hatası'));
+    expect(failed.lastError, isNotNull);
+    expect(failed.lastError, contains('network down'));
   });
 
   test('runPullCycle keeps field crop zone and spacing payload', () async {

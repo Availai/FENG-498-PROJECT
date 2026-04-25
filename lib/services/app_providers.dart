@@ -16,6 +16,7 @@ import 'repositories/auth_repository.dart';
 import 'sync_service.dart';
 import 'task_directive_service.dart';
 import 'field_state_service.dart';
+import 'crop_schedule_seeder.dart';
 import 'growth_engine.dart';
 import 'weather_soil_service.dart';
 import 'backend_service.dart';
@@ -35,6 +36,12 @@ final localDataRepositoryProvider = Provider<LocalDataRepository>((ref) {
 /// AppDatabase üstünde çalışır; UI katmanı `watch(cropId)` ile canlı okur.
 final growthEngineProvider = Provider<GrowthEngine>((ref) {
   return GrowthEngine(ref.watch(appDatabaseProvider));
+});
+
+/// Bitki tarlaya eklendiğinde sezonluk sulama/gübreleme/ilaçlama programını
+/// takvime yazan seeder.
+final cropScheduleSeederProvider = Provider<CropScheduleSeeder>((ref) {
+  return CropScheduleSeeder(ref.watch(appDatabaseProvider));
 });
 
 
@@ -163,8 +170,21 @@ final fieldDirectivesSummaryProvider = FutureProvider.family
   final repo = ref.watch(localDataRepositoryProvider);
   final activities = await ref.watch(fieldActivityLogProvider(fieldId).future);
   final crops = await repo.loadFieldCrops(fieldId);
-  return ref
-      .watch(taskDirectiveServiceProvider)
-      .generate(fieldCrops: crops, activities: activities);
+  final scheduled = await repo
+      .watchScheduledAutoSeedEvents(fieldId: fieldId)
+      .first;
+  return ref.watch(taskDirectiveServiceProvider).generate(
+        fieldCrops: crops,
+        activities: activities,
+        scheduledEvents: scheduled,
+      );
+});
+
+/// Tek bir tarlanın auto_seed takvim planlarını canlı izler. UI direktif
+/// listesi + takvim görünümü bunu tüketir.
+final fieldScheduledAutoSeedProvider = StreamProvider.family
+    .autoDispose<List<Map<String, dynamic>>, String>((ref, fieldId) {
+  final repo = ref.watch(localDataRepositoryProvider);
+  return repo.watchScheduledAutoSeedEvents(fieldId: fieldId);
 });
 
