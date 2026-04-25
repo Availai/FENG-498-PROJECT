@@ -1078,10 +1078,15 @@ class AgriService {
     String fieldName,
     double areaDekar,
   ) async {
-    final env = await BackendService.fieldEnvironment(
+    // Bağımsız iki ağ çağrısını PARALEL başlat; agroSoil opsiyonel —
+    // bekletmemek için kendi 6s timeout'u var (BackendService).
+    final envFuture = BackendService.fieldEnvironment(
       lat: latitude,
       lng: longitude,
     );
+    final agroFuture = _getAgroSoilData(latitude, longitude);
+    final env = await envFuture;
+    final agroData = await agroFuture;
 
     final numericTemp = (env?['temp'] as num?)?.toDouble() ?? 20.0;
     final numericHumidity = (env?['humidity'] as num?)?.toDouble() ?? 50.0;
@@ -1096,7 +1101,6 @@ class AgriService {
         .whereType<Map>()
         .map((e) => Map<String, dynamic>.from(e))
         .toList();
-    final agroData = await _getAgroSoilData(latitude, longitude);
     final soilMoisture = (agroData?['moisture'] as num?)?.toDouble() ?? 0.0;
     final soilTempC = (agroData?['soil_temp_c'] as num?)?.toDouble() ?? 0.0;
 

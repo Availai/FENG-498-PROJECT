@@ -134,11 +134,15 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
     });
     try {
       final d = widget.fieldData;
+      // Sıkı timeout — analiz takılırsa UI ebediyen kilitli kalmasın.
       final result = await AgriService.getFieldAnalysis(
         (d['latitude'] as num).toDouble(),
         (d['longitude'] as num).toDouble(),
         d['name'] ?? 'Tarla',
         (d['area_dekar'] as num?)?.toDouble() ?? 1.0,
+      ).timeout(
+        const Duration(seconds: 12),
+        onTimeout: () => {'success': false, 'error': 'Analiz zaman aşımı.'},
       );
       if (result['success'] == true) {
         await _persistSuitabilityReport(result);
@@ -148,7 +152,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
           if (result['success'] == true) {
             _analysis = result;
           } else {
-            _error = result['error'] ?? 'Bilinmeyen hata';
+            _error = result['error']?.toString() ?? 'Bilinmeyen hata';
           }
           _isLoading = false;
         });
@@ -156,7 +160,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = 'Bağlantı Hatası: $e';
+          _error = 'Bağlantı hatası — analiz yüklenemedi.';
           _isLoading = false;
         });
       }
@@ -423,8 +427,8 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
           // Live Stats, Uygunluk Raporu, Field Details, Bölge Lejandı
           // Bunların detaylarına alt kısımdaki Bottom Navigasyon barından (Görevler, Veri Trendleri vb.) ulaşılabilir.
 
-          // 4d. Alert badges (sol taraf, harita üstü)
-          if (!_isLoading && _error == null && !_isZoneDrawingMode)
+          // 4d. Alert badges (sol taraf, harita üstü) — analiz hazırsa.
+          if (_analysis != null && !_isZoneDrawingMode)
             Positioned(
               left: 12,
               top: MediaQuery.of(context).size.height * 0.15,
@@ -434,8 +438,9 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
               ),
             ),
 
-          // 5. Bottom System Nav — normal mod
-          if (!_isLoading && _error == null && !_isZoneDrawingMode)
+          // 5. Bottom System Nav — analiz hazır olmasa da göster.
+          // Bu menü statik navigasyon; analize bağlı değil.
+          if (!_isZoneDrawingMode)
             Positioned(
               left: 16,
               right: 16,
@@ -491,14 +496,85 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
               ),
             ),
 
+          // Analiz yükleniyorken küçük, blok etmeyen pill göstergesi.
           if (_isLoading)
-            const Center(
-                child: CircularProgressIndicator(color: Color(0xFF00E676))),
-          if (_error != null)
-            Center(
-                child: GlassPanel(
-                    child: Text(_error!,
-                        style: const TextStyle(color: Colors.white)))),
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 60,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.7),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.15)),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Color(0xFF00E676),
+                        ),
+                      ),
+                      SizedBox(width: 10),
+                      Text(
+                        'Analiz hazırlanıyor...',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          if (_error != null && !_isZoneDrawingMode)
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 60,
+              left: 16,
+              right: 16,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade900.withValues(alpha: 0.85),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: Colors.red.shade400),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.warning_amber_rounded,
+                        color: Colors.white, size: 18),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _error!,
+                        style: const TextStyle(
+                            color: Colors.white, fontSize: 12),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: _loadAnalysis,
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size(0, 32),
+                      ),
+                      child: const Text('Tekrar Dene'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
         ],
       ),
     );

@@ -255,62 +255,74 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
           height: 56,
           child: Row(
             children: [
-              // Left: Özet + Tarlalarım
+              // Left: Özet + Tarlalar
               Expanded(
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
-                    _NavButton(
-                      icon: Icons.dashboard_outlined,
-                      activeIcon: Icons.dashboard,
-                      label: 'Özet',
-                      isActive: _navIndex == 0,
-                      onTap: () => _onNavTap(0),
+                    Flexible(
+                      child: _NavButton(
+                        icon: Icons.dashboard_outlined,
+                        activeIcon: Icons.dashboard,
+                        label: 'Özet',
+                        isActive: _navIndex == 0,
+                        onTap: () => _onNavTap(0),
+                      ),
                     ),
-                    _NavButton(
-                      icon: Icons.grass_outlined,
-                      activeIcon: Icons.grass,
-                      label: 'Tarlalar',
-                      isActive: _navIndex == 1,
-                      onTap: () => _onNavTap(1),
+                    Flexible(
+                      child: _NavButton(
+                        icon: Icons.grass_outlined,
+                        activeIcon: Icons.grass,
+                        label: 'Tarlalar',
+                        isActive: _navIndex == 1,
+                        onTap: () => _onNavTap(1),
+                      ),
                     ),
                   ],
                 ),
               ),
               // FAB gap
               const SizedBox(width: 56),
-              // Right: Takvim + Rehber + Profil
+              // Right: Durumum + Takvim + Rehber + Profil
               Expanded(
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
-                    _NavButton(
-                      icon: Icons.fact_check_outlined,
-                      activeIcon: Icons.fact_check,
-                      label: 'Durumum',
-                      isActive: _navIndex == 2,
-                      onTap: () => _onNavTap(2),
+                    Flexible(
+                      child: _NavButton(
+                        icon: Icons.fact_check_outlined,
+                        activeIcon: Icons.fact_check,
+                        label: 'Durumum',
+                        isActive: _navIndex == 2,
+                        onTap: () => _onNavTap(2),
+                      ),
                     ),
-                    _NavButton(
-                      icon: Icons.calendar_month_outlined,
-                      activeIcon: Icons.calendar_month,
-                      label: 'Takvim',
-                      isActive: _navIndex == 3,
-                      onTap: () => _onNavTap(3),
+                    Flexible(
+                      child: _NavButton(
+                        icon: Icons.calendar_month_outlined,
+                        activeIcon: Icons.calendar_month,
+                        label: 'Takvim',
+                        isActive: _navIndex == 3,
+                        onTap: () => _onNavTap(3),
+                      ),
                     ),
-                    _NavButton(
-                      icon: Icons.menu_book_outlined,
-                      activeIcon: Icons.menu_book,
-                      label: 'Rehber',
-                      isActive: _navIndex == 4,
-                      onTap: () => _onNavTap(4),
+                    Flexible(
+                      child: _NavButton(
+                        icon: Icons.menu_book_outlined,
+                        activeIcon: Icons.menu_book,
+                        label: 'Rehber',
+                        isActive: _navIndex == 4,
+                        onTap: () => _onNavTap(4),
+                      ),
                     ),
-                    _NavButton(
-                      icon: Icons.person_outline_rounded,
-                      activeIcon: Icons.person_rounded,
-                      label: 'Profil',
-                      isActive: false,
-                      onTap: _showProfileSheet,
+                    Flexible(
+                      child: _NavButton(
+                        icon: Icons.person_outline_rounded,
+                        activeIcon: Icons.person_rounded,
+                        label: 'Profil',
+                        isActive: false,
+                        onTap: _showProfileSheet,
+                      ),
                     ),
                   ],
                 ),
@@ -347,7 +359,7 @@ class _NavButton extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
         decoration: BoxDecoration(
           color: isActive ? AppColors.emerald.withValues(alpha: 0.1) : Colors.transparent,
           borderRadius: AppRadius.md,
@@ -373,7 +385,10 @@ class _NavButton extends StatelessWidget {
                 color: isActive ? AppColors.emerald : AppColors.textTertiary,
                 letterSpacing: 0.1,
               ),
-              child: Text(label),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(label, maxLines: 1),
+              ),
             ),
             // Aktif öğe altında spring-animated gösterge noktası
             AnimatedContainer(

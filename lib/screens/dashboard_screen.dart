@@ -41,7 +41,43 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
       duration: const Duration(milliseconds: 900),
     );
     _fadeAnim = CurvedAnimation(parent: _animController, curve: Curves.easeOut);
+
+    // Önceki konumun cache'ini varsa anında göster — UI ilk frame'de
+    // boş görünmesin. Konum + ağ tamamlanınca _refreshData taze değer atar.
+    _hydrateFromLastCache();
+    _animController.forward();
     _refreshData();
+  }
+
+  /// Son başarılı tarihteki cache'i Hive'dan oku — instant first paint.
+  void _hydrateFromLastCache() {
+    try {
+      final box = Hive.box('settingsBox');
+      final lastLat = box.get('last_dashboard_lat');
+      final lastLng = box.get('last_dashboard_lng');
+      if (lastLat is num && lastLng is num) {
+        final cached = const WeatherSoilService().readCachedConditions(
+          latitude: lastLat.toDouble(),
+          longitude: lastLng.toDouble(),
+        );
+        if (cached != null && !cached.isEmpty) {
+          _temp = cached.temperatureC != null
+              ? '${cached.temperatureC!.round()}'
+              : '--';
+          _humidity = cached.humidity?.toString() ?? '--';
+          _wind = cached.windSpeedMs?.toStringAsFixed(1) ?? '--';
+          _weatherDesc = cached.weatherDescriptionTr.isNotEmpty
+              ? cached.weatherDescriptionTr[0].toUpperCase() +
+                  cached.weatherDescriptionTr.substring(1)
+              : '';
+          _weatherCondition = _mapWeatherCondition(_weatherDesc);
+        }
+      }
+      final lastAddr = box.get('last_dashboard_address');
+      if (lastAddr is String && lastAddr.isNotEmpty) {
+        _location = lastAddr;
+      }
+    } catch (_) {}
   }
 
   @override
@@ -91,64 +127,80 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
 
   Future<void> _refreshData() async {
     setState(() => _isLoading = true);
-    _animController.reset();
     try {
       await ensureLocationPermission();
       final pos = await getCurrentPosition();
 
       _triggerWeatherAlertIfDue(pos.latitude, pos.longitude);
 
-      String detailedAddress = 'Adres çözümleniyor...';
+      // Konum koordinatlarını cache et — bir sonraki açılışta hava için
+      // hangi koordinata bakılacağı bilinsin (instant first paint).
       try {
-        List<Placemark> placemarks =
-            await placemarkFromCoordinates(pos.latitude, pos.longitude);
-        if (placemarks.isNotEmpty) {
-          Placemark place = placemarks.first;
-          String mahalle = place.subLocality ?? place.thoroughfare ?? '';
-          String ilce = place.subAdministrativeArea ?? '';
-          String il = place.administrativeArea ?? '';
-          detailedAddress = [mahalle, ilce, il]
-              .where((s) => s.isNotEmpty)
-              .join(', ');
-        }
-      } catch (_) {
-        detailedAddress =
-            '${pos.latitude.toStringAsFixed(4)}, ${pos.longitude.toStringAsFixed(4)}';
-      }
+        final box = Hive.box('settingsBox');
+        await box.put('last_dashboard_lat', pos.latitude);
+        await box.put('last_dashboard_lng', pos.longitude);
+      } catch (_) {}
 
-      final cond = await const WeatherSoilService().fetchDashboardConditions(
+      // Geocoding + weather'ı paralel başlat — sıralı await yerine.
+      final addrFuture = _resolveAddress(pos.latitude, pos.longitude);
+      final condFuture = const WeatherSoilService().fetchDashboardConditions(
         latitude: pos.latitude,
         longitude: pos.longitude,
       );
 
+      final results = await Future.wait([addrFuture, condFuture]);
+      final detailedAddress = results[0] as String;
+      final cond = results[1] as DashboardConditions;
+
+      try {
+        await Hive.box('settingsBox')
+            .put('last_dashboard_address', detailedAddress);
+      } catch (_) {}
+
       if (mounted) {
         setState(() {
           _location = detailedAddress;
-          _temp = cond.temperatureC != null ? '${cond.temperatureC!.round()}' : '--';
-          _humidity = cond.humidity != null ? '${cond.humidity}' : '--';
-          _wind = cond.windSpeedMs != null
-              ? cond.windSpeedMs!.toStringAsFixed(1)
-              : '--';
+          if (cond.temperatureC != null) {
+            _temp = '${cond.temperatureC!.round()}';
+          }
+          if (cond.humidity != null) {
+            _humidity = '${cond.humidity}';
+          }
+          if (cond.windSpeedMs != null) {
+            _wind = cond.windSpeedMs!.toStringAsFixed(1);
+          }
           final desc = cond.weatherDescriptionTr;
-          _weatherDesc = desc.isNotEmpty
-              ? desc[0].toUpperCase() + desc.substring(1)
-              : '';
-          _weatherCondition = _mapWeatherCondition(desc);
+          if (desc.isNotEmpty) {
+            _weatherDesc = desc[0].toUpperCase() + desc.substring(1);
+            _weatherCondition = _mapWeatherCondition(desc);
+          }
         });
         _animController.forward();
       }
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          _location = 'Konum veya internet hatası';
-          _temp = '--';
-          _humidity = '--';
-        });
-        _animController.forward();
+      // Hata olsa bile cache'den hidrasyon devrede; sadece adresi güncelle.
+      if (mounted && _location == 'Konum aranıyor...') {
+        setState(() => _location = 'Konum veya internet hatası');
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  Future<String> _resolveAddress(double lat, double lng) async {
+    try {
+      final placemarks = await placemarkFromCoordinates(lat, lng)
+          .timeout(const Duration(seconds: 5));
+      if (placemarks.isNotEmpty) {
+        final place = placemarks.first;
+        final mahalle = place.subLocality ?? place.thoroughfare ?? '';
+        final ilce = place.subAdministrativeArea ?? '';
+        final il = place.administrativeArea ?? '';
+        final addr = [mahalle, ilce, il].where((s) => s.isNotEmpty).join(', ');
+        if (addr.isNotEmpty) return addr;
+      }
+    } catch (_) {}
+    return '${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)}';
   }
 
   void _triggerWeatherAlertIfDue(double lat, double lng) {

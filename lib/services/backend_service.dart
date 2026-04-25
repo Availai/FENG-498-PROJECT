@@ -133,6 +133,7 @@ class BackendService {
   }
 
   // ── AGROMONITORING — toprak verisi ──────────────────────────────────────
+  // Opsiyonel veri; dashboard'ı tutmasın — 6s'de gelmezse null dön.
   static Future<Map<String, double>?> satelliteSoil({
     required double lat,
     required double lng,
@@ -143,7 +144,7 @@ class BackendService {
             'lat': lat,
             'lng': lng,
           }), headers: await _headers())
-          .timeout(_timeout);
+          .timeout(const Duration(seconds: 6));
       if (resp.statusCode != 200) return null;
       final j = jsonDecode(resp.body) as Map<String, dynamic>;
       return {
@@ -195,6 +196,8 @@ class BackendService {
   }
 
   // HAVA + TOPRAK — backend proxy. UI bu veriyi sadece cache/fallback olarak kullanır.
+  // Dashboard'ı yavaşlatmamak için 6s sınırı; başarısızlıkta caller direkt
+  // Open-Meteo'ya düşer (WeatherSoilService).
   static Future<Map<String, dynamic>?> fieldEnvironment({
     required double lat,
     required double lng,
@@ -205,7 +208,7 @@ class BackendService {
             'lat': lat,
             'lng': lng,
           }), headers: await _headers())
-          .timeout(_timeout);
+          .timeout(const Duration(seconds: 6));
       if (resp.statusCode != 200) return null;
       return jsonDecode(resp.body) as Map<String, dynamic>;
     } catch (_) {

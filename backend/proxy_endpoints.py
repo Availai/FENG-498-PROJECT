@@ -343,8 +343,11 @@ Bu fotoğrafı incele ve tek bir JSON nesnesi döndür (markdown veya başka met
 
 @router.get("/proxy/satellite/soil", summary="Agromonitoring — Toprak (proxy)")
 async def agro_soil(lat: float, lng: float, offset_deg: float = 0.001):
-    """Geçici polygon yaratır, soil cevabını çeker, polygon'u temizler."""
+    """Geçici polygon yaratır, soil cevabını çeker, polygon'u temizler.
+    Sıkı timeout — istemci dashboard'unu bekletmesin. Cleanup async."""
     _require_key(_AGRO_KEY, "AGROMONITORING_API_KEY")
+
+    import asyncio
 
     polygon = {
         "name": f"tarlam_temp_{int(datetime.utcnow().timestamp())}",
@@ -366,7 +369,9 @@ async def agro_soil(lat: float, lng: float, offset_deg: float = 0.001):
         },
     }
 
-    async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT) as client:
+    fast_timeout = httpx.Timeout(5.0, connect=3.0)
+    client = httpx.AsyncClient(timeout=fast_timeout)
+    try:
         try:
             create = await client.post(
                 "https://api.agromonitoring.com/agro/1.0/polygons",
@@ -374,15 +379,18 @@ async def agro_soil(lat: float, lng: float, offset_deg: float = 0.001):
                 json=polygon,
             )
         except httpx.HTTPError as e:
+            await client.aclose()
             raise HTTPException(status_code=502, detail=f"Agromonitoring erişilemedi: {e}")
 
         if create.status_code not in (200, 201):
+            await client.aclose()
             raise HTTPException(
                 status_code=502,
                 detail=f"Agromonitoring polygon HTTP {create.status_code}",
             )
         poly_id = (create.json() or {}).get("id")
         if not poly_id:
+            await client.aclose()
             raise HTTPException(status_code=502, detail="Agromonitoring polygon ID dönmedi")
 
         try:
@@ -390,26 +398,38 @@ async def agro_soil(lat: float, lng: float, offset_deg: float = 0.001):
                 "https://api.agromonitoring.com/agro/1.0/soil",
                 params={"polyid": poly_id, "appid": _AGRO_KEY},
             )
-        finally:
-            # Polygon'u temizle (free tier sınırı)
-            try:
-                await client.delete(
-                    f"https://api.agromonitoring.com/agro/1.0/polygons/{poly_id}",
-                    params={"appid": _AGRO_KEY},
-                )
-            except httpx.HTTPError:
-                pass
+        except httpx.HTTPError as e:
+            # Async cleanup; istemciyi bekletme
+            asyncio.create_task(_async_delete_polygon(poly_id))
+            raise HTTPException(status_code=502, detail=f"Agromonitoring soil erişilemedi: {e}")
 
-    if soil.status_code != 200:
-        raise HTTPException(status_code=502, detail=f"Agromonitoring soil HTTP {soil.status_code}")
-    sd = soil.json() or {}
-    t10_k = float(sd.get("t10") or 288.15)
-    moisture = float(sd.get("moisture") or 0.0)
-    return {
-        "success": True,
-        "soil_temp_c": round(t10_k - 273.15, 2),
-        "moisture": moisture,
-    }
+        # Cleanup'ı arka plana at — istemci anında soil cevabını alsın.
+        asyncio.create_task(_async_delete_polygon(poly_id))
+
+        if soil.status_code != 200:
+            raise HTTPException(status_code=502, detail=f"Agromonitoring soil HTTP {soil.status_code}")
+        sd = soil.json() or {}
+        t10_k = float(sd.get("t10") or 288.15)
+        moisture = float(sd.get("moisture") or 0.0)
+        return {
+            "success": True,
+            "soil_temp_c": round(t10_k - 273.15, 2),
+            "moisture": moisture,
+        }
+    finally:
+        await client.aclose()
+
+
+async def _async_delete_polygon(poly_id: str) -> None:
+    """Polygon temizliğini istemci response'undan bağımsız arka planda yapar."""
+    try:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(8.0, connect=3.0)) as client:
+            await client.delete(
+                f"https://api.agromonitoring.com/agro/1.0/polygons/{poly_id}",
+                params={"appid": _AGRO_KEY},
+            )
+    except Exception:
+        pass
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -516,25 +536,44 @@ async def soil_profile(lat: float, lng: float):
 
 @router.get("/proxy/environment/field", summary="Tarla Çevre Verisi (proxy)")
 async def field_environment(lat: float, lng: float):
-    async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT) as client:
+    # Daha kısa istemci timeout — dashboard'ı tutmasın.
+    fast_timeout = httpx.Timeout(7.0, connect=4.0)
+    async with httpx.AsyncClient(timeout=fast_timeout) as client:
+        # Open-Meteo + SoilGrids'i PARALEL çek; SoilGrids genelde yavaş ama
+        # ph yoksa varsayılana düşeriz, hava verisini bekletmesin.
+        import asyncio
+
+        weather_task = client.get(
+            "https://api.open-meteo.com/v1/forecast",
+            params={
+                "latitude": lat,
+                "longitude": lng,
+                "current": "temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m,cloud_cover,surface_pressure,weather_code",
+                "hourly": "temperature_2m,precipitation,precipitation_probability,weather_code,wind_speed_10m,wind_direction_10m,relative_humidity_2m",
+                "daily": "temperature_2m_max,temperature_2m_min,precipitation_sum,uv_index_max,wind_speed_10m_max",
+                "wind_speed_unit": "ms",
+                "forecast_days": 7,
+                "timezone": "auto",
+            },
+        )
+        soil_task = _fetch_soil_profile(client, lat, lng)
+
         try:
-            weather = await client.get(
-                "https://api.open-meteo.com/v1/forecast",
-                params={
-                    "latitude": lat,
-                    "longitude": lng,
-                    "current": "temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m,cloud_cover,surface_pressure,weather_code",
-                    "hourly": "temperature_2m,precipitation,precipitation_probability,weather_code,wind_speed_10m,wind_direction_10m,relative_humidity_2m",
-                    "daily": "temperature_2m_max,temperature_2m_min,precipitation_sum,uv_index_max,wind_speed_10m_max",
-                    "wind_speed_unit": "ms",
-                    "forecast_days": 7,
-                    "timezone": "auto",
-                },
+            weather, soil = await asyncio.gather(
+                weather_task, soil_task, return_exceptions=True,
             )
         except httpx.HTTPError as e:
             raise HTTPException(status_code=502, detail=f"Open-Meteo erişilemedi: {e}")
+
+        if isinstance(weather, BaseException):
+            raise HTTPException(
+                status_code=502, detail=f"Open-Meteo erişilemedi: {weather}",
+            )
         if weather.status_code != 200:
             raise HTTPException(status_code=502, detail=f"Open-Meteo HTTP {weather.status_code}")
+
+        if isinstance(soil, BaseException) or not isinstance(soil, dict):
+            soil = {"ph_real": 6.8}
 
         body = weather.json() or {}
         cur = body.get("current") or {}
@@ -572,11 +611,7 @@ async def field_environment(lat: float, lng: float):
                 "humidity": int((hourly.get("relative_humidity_2m") or [0])[i] or 0),
             })
 
-        try:
-            soil = await _fetch_soil_profile(client, lat, lng)
-        except Exception:
-            soil = {"ph_real": 6.8}
-
+    # `soil` zaten yukarıda Open-Meteo ile paralel alındı.
     weather_code = int(cur.get("weather_code") or 0)
     return {
         "success": True,

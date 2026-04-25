@@ -18,7 +18,9 @@
       "Bash(venv/Scripts/python.exe -c \"import sys; sys.path.insert\\(0, '.'\\); from main import app; print\\('OK', len\\(app.routes\\), 'routes'\\)\")",
       "Bash(venv/Scripts/python.exe -m pip install -q httpx)",
       "Bash(venv/Scripts/python.exe -c \"import sys; sys.path.insert\\(0, '.'\\); from main import app; print\\('OK,', len\\(app.routes\\), 'routes'\\)\")",
-      "Bash(venv/Scripts/python.exe -m pip install -q python-multipart)"
+      "Bash(venv/Scripts/python.exe -m pip install -q python-multipart)",
+      "Bash(venv/Scripts/python.exe -c \"import sys; sys.path.insert\\(0,'.'\\); from main import app; print\\('OK', len\\(app.routes\\), 'routes'\\)\")",
+      "Bash(backend/venv/Scripts/python.exe -c \"import sys; sys.path.insert\\(0,'backend'\\); from main import app; print\\('OK', len\\(app.routes\\), 'routes'\\)\")"
     ]
   }
 }
