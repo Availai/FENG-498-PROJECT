@@ -38,6 +38,7 @@ class _AgriDashboardState extends State<AgriDashboard>
       duration: const Duration(milliseconds: 900),
     );
     _fadeAnim = CurvedAnimation(parent: _animController, curve: Curves.easeOut);
+    _animController.value = 1;
     _refreshData();
   }
 
@@ -88,9 +89,13 @@ class _AgriDashboardState extends State<AgriDashboard>
 
   Future<void> _refreshData() async {
     setState(() => _isLoading = true);
-    _animController.reset();
     try {
-      await ensureLocationPermission();
+      await ensureLocationPermission().timeout(
+        const Duration(seconds: 12),
+        onTimeout: () => throw Exception(
+          'Konum izni isteği zaman aşımına uğradı. Devam etmek için tekrar deneyin.',
+        ),
+      );
       final pos = await getCurrentPosition();
 
       String detailedAddress = 'Adres çözümleniyor...';
@@ -153,10 +158,13 @@ class _AgriDashboardState extends State<AgriDashboard>
     } catch (e) {
       if (mounted) {
         setState(() {
-          _location = 'Konum veya internet hatası';
+          _location = 'Konum alınamadı (çevrimdışı mod)';
           _temp = '--';
           _humidity = '--';
+          _wind = '--';
           _ph = '--';
+          _weatherDesc = 'Konum izni veya internet bağlantısı gerekli';
+          _weatherCondition = 'cloudy';
         });
         _animController.forward();
       }
