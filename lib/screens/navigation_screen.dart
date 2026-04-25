@@ -227,9 +227,9 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 24), // Float above the very bottom
       child: GlassPanel(
         borderRadius: 28,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
         child: SizedBox(
-          height: 56,
+          height: 68,
           child: Row(
             children: [
               // Left: Özet + Tarlalar + Pazar
@@ -324,7 +324,7 @@ class _NavButton extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
         decoration: BoxDecoration(
           color: isActive ? AppColors.emerald.withValues(alpha: 0.1) : Colors.transparent,
           borderRadius: AppRadius.md,
@@ -338,14 +338,14 @@ class _NavButton extends StatelessWidget {
                 isActive ? activeIcon : icon,
                 key: ValueKey(isActive),
                 color: isActive ? AppColors.emerald : AppColors.textTertiary,
-                size: 22,
+                size: 26,
               ),
             ),
             const SizedBox(height: 2),
             AnimatedDefaultTextStyle(
               duration: const Duration(milliseconds: 200),
               style: GoogleFonts.inter(
-                fontSize: 10,
+                fontSize: 12,
                 fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
                 color: isActive ? AppColors.emerald : AppColors.textTertiary,
                 letterSpacing: 0.1,
