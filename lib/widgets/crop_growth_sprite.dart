@@ -23,6 +23,10 @@ class CropGrowthSprite extends StatefulWidget {
   final String stageKey;
   final double overallProgress;
   final double stressIndex;
+  final double waterStress;
+  final double nitrogenStress;
+  final double diseasePressure;
+  final bool harvestReady;
   final bool animateSway;
 
   const CropGrowthSprite({
@@ -31,6 +35,10 @@ class CropGrowthSprite extends StatefulWidget {
     required this.stageKey,
     required this.overallProgress,
     this.stressIndex = 0.0,
+    this.waterStress = 0.0,
+    this.nitrogenStress = 0.0,
+    this.diseasePressure = 0.0,
+    this.harvestReady = false,
     this.animateSway = true,
   });
 
@@ -78,6 +86,10 @@ class _CropGrowthSpriteState extends State<CropGrowthSprite>
           stageKey: widget.stageKey,
           overallProgress: widget.overallProgress.clamp(0.0, 1.0),
           stressIndex: widget.stressIndex.clamp(0.0, 1.0),
+          waterStress: widget.waterStress.clamp(0.0, 1.0),
+          nitrogenStress: widget.nitrogenStress.clamp(0.0, 1.0),
+          diseasePressure: widget.diseasePressure.clamp(0.0, 1.0),
+          harvestReady: widget.harvestReady,
           swayPhase: _sway.value * 2 * math.pi,
         ),
       ),
@@ -91,6 +103,10 @@ class _CropPainter extends CustomPainter {
     required this.stageKey,
     required this.overallProgress,
     required this.stressIndex,
+    required this.waterStress,
+    required this.nitrogenStress,
+    required this.diseasePressure,
+    required this.harvestReady,
     required this.swayPhase,
   });
 
@@ -98,6 +114,10 @@ class _CropPainter extends CustomPainter {
   final String stageKey;
   final double overallProgress;
   final double stressIndex;
+  final double waterStress;
+  final double nitrogenStress;
+  final double diseasePressure;
+  final bool harvestReady;
   final double swayPhase;
 
   static const _ripeStages = {'olgunlasma'};
@@ -125,6 +145,14 @@ class _CropPainter extends CustomPainter {
     final leanX = math.sin(swayPhase) * swayAmp;
 
     final leafColor = _leafColor();
+    if (harvestReady) {
+      _drawHarvestHalo(
+        canvas,
+        centerX + leanX * 0.5,
+        groundY - height * 0.72,
+        math.min(size.width, size.height),
+      );
+    }
 
     switch (cropKey) {
       case 'aycicegi':
@@ -137,20 +165,36 @@ class _CropPainter extends CustomPainter {
         _drawTomato(canvas, centerX, groundY, height, leanX, leafColor);
         break;
     }
+    if (diseasePressure > 0.08) {
+      _drawDiseaseSpots(canvas, centerX, groundY, height, leanX);
+    }
+    if (nitrogenStress > 0.12) {
+      _drawYellowingVeins(canvas, centerX, groundY, height, leanX);
+    }
+    if (waterStress < 0.18 && overallProgress > 0.03) {
+      _drawMoistureDots(canvas, centerX, groundY, size.width);
+    }
   }
 
   // ── Renk yardımcıları ─────────────────────────────────────────────
 
   Color _leafColor() {
     // Sağlıklı: hue 120 (yeşil). Stres: hue 55 (hardal/sarı).
-    final hue = 120.0 - 65.0 * stressIndex;
-    final saturation = (0.55 - 0.15 * stressIndex).clamp(0.2, 0.8);
-    final lightness = (0.32 + 0.08 * stressIndex).clamp(0.2, 0.6);
+    final yellowing = math.max(stressIndex, nitrogenStress);
+    final hue = 120.0 - 65.0 * yellowing;
+    final saturation = (0.55 - 0.15 * yellowing).clamp(0.2, 0.8);
+    final lightness = (0.32 + 0.08 * yellowing).clamp(0.2, 0.6);
     return HSLColor.fromAHSL(1.0, hue, saturation, lightness).toColor();
   }
 
   void _drawGround(Canvas canvas, Size size, double groundY) {
-    final paint = Paint()..color = AppColors.soilLight.withValues(alpha: 0.45);
+    final dry = waterStress.clamp(0.0, 1.0);
+    final base = Color.lerp(
+      AppColors.soil.withValues(alpha: 0.55),
+      const Color(0xFFC49A6C).withValues(alpha: 0.62),
+      dry,
+    )!;
+    final paint = Paint()..color = base;
     canvas.drawRect(
       Rect.fromLTRB(0, groundY, size.width, size.height),
       paint,
@@ -160,6 +204,91 @@ class _CropPainter extends CustomPainter {
       ..color = AppColors.soil.withValues(alpha: 0.5)
       ..strokeWidth = 1.5;
     canvas.drawLine(Offset(0, groundY), Offset(size.width, groundY), line);
+    if (dry > 0.35) {
+      final crackPaint = Paint()
+        ..color = const Color(0xFF5D4037).withValues(alpha: 0.18 + dry * 0.22)
+        ..strokeWidth = 1.0
+        ..style = PaintingStyle.stroke;
+      final crackCount = (3 + dry * 5).round();
+      for (int i = 0; i < crackCount; i++) {
+        final x = size.width * (0.12 + i / (crackCount + 1));
+        final y = groundY + 7 + (i % 3) * 5;
+        canvas.drawPath(
+          Path()
+            ..moveTo(x, y)
+            ..lineTo(x + 7, y + 3)
+            ..lineTo(x + 2, y + 8)
+            ..moveTo(x + 7, y + 3)
+            ..lineTo(x + 14, y + 1),
+          crackPaint,
+        );
+      }
+    }
+  }
+
+  void _drawHarvestHalo(Canvas canvas, double cx, double cy, double size) {
+    final pulse = 0.5 + math.sin(swayPhase * 1.2) * 0.5;
+    final radius = size * (0.14 + pulse * 0.025);
+    final paint = Paint()
+      ..color = const Color(0xFFFFD54F).withValues(alpha: 0.10 + pulse * 0.08)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0 + pulse * 1.5;
+    canvas.drawCircle(Offset(cx, cy), radius, paint);
+  }
+
+  void _drawDiseaseSpots(
+    Canvas canvas,
+    double cx,
+    double groundY,
+    double height,
+    double leanX,
+  ) {
+    final count = (2 + diseasePressure * 10).round();
+    final paint = Paint()
+      ..color = const Color(0xFF6D4C41).withValues(alpha: 0.35);
+    for (int i = 0; i < count; i++) {
+      final t = 0.25 + (i % 6) * 0.11;
+      final side = i.isEven ? 1.0 : -1.0;
+      final x = cx + leanX * t * 0.4 + side * height * (0.035 + i % 3 * 0.018);
+      final y = groundY - height * t;
+      canvas.drawCircle(Offset(x, y), 1.2 + diseasePressure * 2.2, paint);
+    }
+  }
+
+  void _drawYellowingVeins(
+    Canvas canvas,
+    double cx,
+    double groundY,
+    double height,
+    double leanX,
+  ) {
+    final paint = Paint()
+      ..color = const Color(0xFFFFD54F)
+          .withValues(alpha: 0.22 + nitrogenStress * 0.26)
+      ..strokeWidth = 1.1
+      ..strokeCap = StrokeCap.round;
+    final count = (2 + nitrogenStress * 5).round();
+    for (int i = 0; i < count; i++) {
+      final t = 0.22 + i * 0.12;
+      final side = i.isEven ? 1.0 : -1.0;
+      final start = Offset(cx + leanX * t * 0.3, groundY - height * t);
+      final end =
+          Offset(start.dx + side * height * 0.10, start.dy - height * 0.03);
+      canvas.drawLine(start, end, paint);
+    }
+  }
+
+  void _drawMoistureDots(
+      Canvas canvas, double cx, double groundY, double width) {
+    final paint = Paint()
+      ..color = AppColors.frost.withValues(alpha: 0.18)
+      ..style = PaintingStyle.fill;
+    for (int i = 0; i < 7; i++) {
+      final phase = swayPhase + i * 0.9;
+      final x = cx + math.sin(phase) * width * 0.20 + (i - 3) * width * 0.035;
+      final y = groundY + 8 + math.cos(phase) * 2.0;
+      canvas.drawCircle(Offset(x, y), 1.5, paint);
+    }
   }
 
   // ── Ortak yaprak çizici ───────────────────────────────────────────
@@ -495,5 +624,9 @@ class _CropPainter extends CustomPainter {
       old.stageKey != stageKey ||
       old.overallProgress != overallProgress ||
       old.stressIndex != stressIndex ||
+      old.waterStress != waterStress ||
+      old.nitrogenStress != nitrogenStress ||
+      old.diseasePressure != diseasePressure ||
+      old.harvestReady != harvestReady ||
       old.swayPhase != swayPhase;
 }

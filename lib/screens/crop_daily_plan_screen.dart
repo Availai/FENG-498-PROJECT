@@ -13,6 +13,7 @@ import '../services/task_directive_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/activity_quick_log.dart';
 import '../widgets/floating_toast.dart';
+import '../widgets/live_crop_growth.dart';
 import '../widgets/particle_background.dart';
 import '../widgets/season_summary_card.dart';
 import '../widgets/tap_scale.dart';
@@ -239,6 +240,16 @@ class _CropDailyPlanScreenState extends ConsumerState<CropDailyPlanScreen> {
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
       children: [
         _HeaderCard(result: r),
+        const SizedBox(height: 16),
+        LiveCropGuideScene(
+          cropId: r.cropId,
+          cropName: r.cropName,
+          plantedDate: r.plantedDate,
+          harvestDate: r.harvestDate,
+          fallbackStageKey: r.currentStageKey,
+          fallbackWaterDeficitMm: r.waterDeficitMm,
+          yieldLossPct: r.yieldLossPct,
+        ),
         const SizedBox(height: 16),
         _WaterAccountingCard(result: r),
         if (directives.isNotEmpty) ...[
