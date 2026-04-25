@@ -1160,3 +1160,73 @@ class CropProtocols {
       .replaceAll('ö', 'o')
       .replaceAll(RegExp(r'[^a-z]'), '');
 }
+
+// ═══════════════════════════════════════════════════════════════════════
+// PROTOCOLSTEP — TARLA AKTİVİTESİYLE EŞLEŞTİRME
+// activity_logs / CalendarEvents kayıtlarına göre step'in tamamlanmış,
+// aktif veya gelecek olduğunu belirler. Yetiştirme rehberindeki ✓/●/○
+// gösterimini bu helper'lar besler.
+// ═══════════════════════════════════════════════════════════════════════
+
+extension ProtocolStepProgress on ProtocolStep {
+  DateTime expectedDateFrom(DateTime plantedDate) =>
+      plantedDate.add(Duration(days: dayOffset));
+
+  /// Bu step'e eşleşen bir aktivite log'u var mı?
+  /// `activities` öğeleri en az şu alanlara sahip olmalı:
+  ///   - 'eventType' (String) ya da 'type'
+  ///   - 'eventDate' (ISO timestamp) ya da 'at'
+  bool isCompletedFor(
+    List<Map<String, dynamic>> activities,
+    DateTime plantedDate,
+  ) {
+    if (expectedActivity == null) return false;
+    final windowStart = plantedDate.add(Duration(days: dayOffset - 3));
+    final windowEnd = plantedDate.add(Duration(days: dayOffset + 7));
+    for (final a in activities) {
+      final type = (a['eventType'] ?? a['type'])?.toString();
+      if (type != expectedActivity) continue;
+      final raw = a['eventDate'] ?? a['at'] ?? a['date'];
+      final at = raw is DateTime
+          ? raw
+          : (raw is String ? DateTime.tryParse(raw) : null);
+      if (at == null) continue;
+      if (at.isAfter(windowStart) && at.isBefore(windowEnd)) return true;
+    }
+    return false;
+  }
+
+  /// Aktif step: bugünkü tarihe denk düşen veya hemen geçmişteki step.
+  bool isActiveOn(DateTime plantedDate, {DateTime? now}) {
+    final today = now ?? DateTime.now();
+    final dayDiff = today.difference(plantedDate).inDays;
+    return dayDiff >= dayOffset - 3 && dayDiff <= dayOffset + 7;
+  }
+}
+
+/// CropProtocol seviyesinde toplu yardımcılar.
+/// Not: `crop_protocol_service.dart`'taki `CropProtocolProgress` *sınıfı* ile
+/// karışmaması için extension adı farklı tutuldu.
+extension CropProtocolStepLookup on CropProtocol {
+  /// Plant tarihi + aktivite log'u baz alarak şu anda aktif olan step'i bulur.
+  /// Aktivite eşleşmesi olmayan, dayOffset'i bugüne en yakın olan step "aktif".
+  ProtocolStep? activeStep(
+    DateTime plantedDate,
+    List<Map<String, dynamic>> activities, {
+    DateTime? now,
+  }) {
+    final today = now ?? DateTime.now();
+    final dayDiff = today.difference(plantedDate).inDays;
+    ProtocolStep? best;
+    int bestDelta = 1 << 30;
+    for (final s in steps) {
+      if (s.isCompletedFor(activities, plantedDate)) continue;
+      final delta = (s.dayOffset - dayDiff).abs();
+      if (delta < bestDelta) {
+        bestDelta = delta;
+        best = s;
+      }
+    }
+    return best;
+  }
+}

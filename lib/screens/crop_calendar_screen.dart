@@ -4,6 +4,8 @@ import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
 
 import '../services/app_providers.dart';
+import '../widgets/activity_quick_log.dart';
+import '../widgets/floating_toast.dart';
 
 /// Crop Cycle & Guide Calendar.
 /// Fulfills: "Crop Cycle and Guide Calendar (Crop Calendar)"
@@ -52,6 +54,8 @@ class _CropCalendarScreenState extends ConsumerState<CropCalendarScreen> {
         _CalEvent(
           title: entry['title']?.toString() ?? 'Etkinlik',
           type: _eventTypeFromName(entry['type']?.toString() ?? 'registration'),
+          fieldId: entry['field_id']?.toString(),
+          cropId: entry['crop_id']?.toString(),
         ),
       );
     }
@@ -62,6 +66,82 @@ class _CropCalendarScreenState extends ConsumerState<CropCalendarScreen> {
 
   List<_CalEvent> _eventsForDay(DateTime day) {
     return _events[DateTime.utc(day.year, day.month, day.day)] ?? [];
+  }
+
+  Future<void> _openQuickLogForEvent(_CalEvent ev) async {
+    final fieldId = ev.fieldId;
+    if (fieldId == null) return;
+
+    final repo = ref.read(localDataRepositoryProvider);
+    final field = await repo.loadFieldById(fieldId);
+    if (field == null) {
+      if (!mounted) return;
+      AppToast.show(
+        context,
+        message: 'Tarla bulunamadı.',
+        type: ToastType.warning,
+      );
+      return;
+    }
+    final fieldCrops = await repo.loadFieldCrops(fieldId);
+    if (!mounted) return;
+
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(
+          left: 16,
+          right: 16,
+          top: 12,
+          bottom: MediaQuery.of(ctx).padding.bottom + 16,
+        ),
+        child: Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFF14241B),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+          ),
+          padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.white24,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                ev.title,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 12),
+              ActivityQuickLog(
+                fieldId: fieldId,
+                cropId: ev.cropId,
+                fieldCrops: fieldCrops,
+                fieldAreaDekar: (field['area_dekar'] as num?)?.toDouble() ?? 1.0,
+                onLogged: () {
+                  Navigator.of(ctx).maybePop();
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    // Yeni log atıldıysa takvim verisini tazele.
+    await _buildEventsFromRepository();
   }
 
   // ── Build ─────────────────────────────────────────────────────────────────
@@ -212,7 +292,9 @@ class _CropCalendarScreenState extends ConsumerState<CropCalendarScreen> {
                     itemCount: selectedEvents.length,
                     itemBuilder: (ctx, i) {
                       final ev = selectedEvents[i];
-                      return Container(
+                      final tappable =
+                          ev.type == _EventType.watering && ev.fieldId != null;
+                      final tile = Container(
                         margin: const EdgeInsets.only(bottom: 8),
                         padding: const EdgeInsets.symmetric(
                             horizontal: 16, vertical: 12),
@@ -251,8 +333,18 @@ class _CropCalendarScreenState extends ConsumerState<CropCalendarScreen> {
                                 ],
                               ),
                             ),
+                            if (tappable)
+                              Icon(Icons.touch_app_rounded,
+                                  size: 18,
+                                  color: ev.type.color.withValues(alpha: 0.7)),
                           ],
                         ),
+                      );
+                      if (!tappable) return tile;
+                      return InkWell(
+                        borderRadius: BorderRadius.circular(14),
+                        onTap: () => _openQuickLogForEvent(ev),
+                        child: tile,
                       );
                     },
                   ),
@@ -420,7 +512,14 @@ extension _EventTypeX on _EventType {
 class _CalEvent {
   final String title;
   final _EventType type;
-  const _CalEvent({required this.title, required this.type});
+  final String? fieldId;
+  final String? cropId;
+  const _CalEvent({
+    required this.title,
+    required this.type,
+    this.fieldId,
+    this.cropId,
+  });
 }
 
 _EventType _eventTypeFromName(String name) {

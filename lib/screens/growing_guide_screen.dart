@@ -1,21 +1,1299 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
+import '../data/activity_types.dart';
+import '../data/app_database.dart';
+import '../data/crop_protocols.dart';
+import '../data/supported_crops.dart';
 import '../services/agri_service.dart';
+import '../services/app_providers.dart';
+import '../services/crop_protocol_service.dart';
 import '../services/encyclopedia_extensions.dart';
 import '../services/harvest_shift_estimator.dart';
-import '../data/supported_crops.dart';
+import '../services/task_directive_service.dart';
 import '../utils/location_utils.dart';
+import '../widgets/activity_quick_log.dart';
 import '../widgets/floating_toast.dart';
 import '../widgets/weekly_water_card.dart';
 
 
-class GrowingGuideScreen extends StatefulWidget {
-  const GrowingGuideScreen({super.key});
+// ═══════════════════════════════════════════════════════════════════════
+// TARLA-AWARE YETİŞTİRME REHBERİ — üst düzey wrapper.
+//
+// Üç mod arası geçiş yapar:
+//   • Picker  → Tarla seçici giriş ekranı (varsayılan, tarlası olan kullanıcı)
+//   • Field   → Tarla Modu (canlı direktifler + protocol roadmap)
+//   • Generic → Eski search-driven ansiklopedi (genel bitki rehberi)
+//
+// `MainNavigationScreen._pages` parametresiz çağırır → Picker açılır.
+// `field_detail_screen` parametreli çağırır (fieldId+cropId) → direkt Field.
+// ═══════════════════════════════════════════════════════════════════════
+
+enum _GuideMode { picker, field, generic }
+
+class GrowingGuideScreen extends ConsumerStatefulWidget {
+  const GrowingGuideScreen({super.key, this.fieldId, this.cropId});
+
+  final String? fieldId;
+  final String? cropId;
 
   @override
-  State<GrowingGuideScreen> createState() => _GrowingGuideScreenState();
+  ConsumerState<GrowingGuideScreen> createState() => _GrowingGuideScreenState();
 }
 
-class _GrowingGuideScreenState extends State<GrowingGuideScreen> {
+class _GrowingGuideScreenState extends ConsumerState<GrowingGuideScreen> {
+  _GuideMode _mode = _GuideMode.picker;
+  String? _fieldId;
+  String? _cropId;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.fieldId != null) {
+      _mode = _GuideMode.field;
+      _fieldId = widget.fieldId;
+      _cropId = widget.cropId;
+    }
+  }
+
+  void _selectField(String fieldId, String? cropId) {
+    setState(() {
+      _mode = _GuideMode.field;
+      _fieldId = fieldId;
+      _cropId = cropId;
+    });
+  }
+
+  void _backToPicker() {
+    if (widget.fieldId != null) {
+      Navigator.of(context).maybePop();
+    } else {
+      setState(() {
+        _mode = _GuideMode.picker;
+        _fieldId = null;
+        _cropId = null;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    switch (_mode) {
+      case _GuideMode.picker:
+        return _GuidePickerView(
+          onPickField: _selectField,
+          onPickGeneric: () => setState(() => _mode = _GuideMode.generic),
+        );
+      case _GuideMode.field:
+        return _FieldGuideView(
+          fieldId: _fieldId!,
+          initialCropId: _cropId,
+          onBack: _backToPicker,
+        );
+      case _GuideMode.generic:
+        return _GenericGuideScreen(onBack: _backToPicker);
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// PICKER — Hangi tarladan başlayalım?
+// ═══════════════════════════════════════════════════════════════════════
+
+class _GuidePickerView extends ConsumerWidget {
+  const _GuidePickerView({required this.onPickField, required this.onPickGeneric});
+
+  final void Function(String fieldId, String? cropId) onPickField;
+  final VoidCallback onPickGeneric;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final repo = ref.watch(localDataRepositoryProvider);
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Yetiştirme Rehberi'),
+      ),
+      body: FutureBuilder<List<_FieldCropEntry>>(
+        future: _loadEntries(repo),
+        builder: (context, snap) {
+          if (snap.connectionState != ConnectionState.done) {
+            return const Center(
+              child: CircularProgressIndicator(color: Color(0xFF2E7D32)),
+            );
+          }
+          final entries = snap.data ?? const <_FieldCropEntry>[];
+
+          return ListView(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+            children: [
+              if (entries.isEmpty) ...[
+                _PickerEmptyState(),
+                const SizedBox(height: 16),
+              ] else ...[
+                Text(
+                  'Hangi tarladan başlayalım?',
+                  style: GoogleFonts.outfit(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF1B5E20),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Sulama, gübreleme ve hasat takvimini tarlana göre canlı izle.',
+                  style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                ),
+                const SizedBox(height: 14),
+                ...entries.map(
+                  (e) => Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: _FieldCropTile(
+                      entry: e,
+                      onTap: () => onPickField(e.fieldId, e.cropId),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const Divider(),
+                const SizedBox(height: 12),
+              ],
+              OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  side: const BorderSide(color: Color(0xFF2E7D32)),
+                  foregroundColor: const Color(0xFF2E7D32),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                onPressed: onPickGeneric,
+                icon: const Icon(Icons.menu_book_rounded),
+                label: const Text(
+                  'Genel Bitki Rehberi (ansiklopedi)',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Future<List<_FieldCropEntry>> _loadEntries(dynamic repo) async {
+    final fields = await repo.loadFieldMaps() as List<Map<String, dynamic>>;
+    final out = <_FieldCropEntry>[];
+    for (final f in fields) {
+      final fieldId = f['id']?.toString();
+      if (fieldId == null || fieldId.isEmpty) continue;
+      final crops =
+          await repo.loadFieldCrops(fieldId) as List<Map<String, dynamic>>;
+      if (crops.isEmpty) {
+        out.add(_FieldCropEntry(
+          fieldId: fieldId,
+          fieldName: f['name']?.toString() ?? 'Tarla',
+          cropId: null,
+          cropName: null,
+          plantedDate: null,
+        ));
+        continue;
+      }
+      for (final c in crops) {
+        out.add(_FieldCropEntry(
+          fieldId: fieldId,
+          fieldName: f['name']?.toString() ?? 'Tarla',
+          cropId: c['id']?.toString(),
+          cropName: c['name']?.toString(),
+          plantedDate: _parseDateLoose(c['planted_date']),
+        ));
+      }
+    }
+    return out;
+  }
+}
+
+class _FieldCropEntry {
+  const _FieldCropEntry({
+    required this.fieldId,
+    required this.fieldName,
+    required this.cropId,
+    required this.cropName,
+    required this.plantedDate,
+  });
+  final String fieldId;
+  final String fieldName;
+  final String? cropId;
+  final String? cropName;
+  final DateTime? plantedDate;
+}
+
+class _FieldCropTile extends StatelessWidget {
+  const _FieldCropTile({required this.entry, required this.onTap});
+  final _FieldCropEntry entry;
+  final VoidCallback onTap;
+
+  String _emojiFor(String? cropName) {
+    final n = (cropName ?? '').toLowerCase();
+    if (n.contains('domates')) return '🍅';
+    if (n.contains('mısır') || n.contains('misir')) return '🌽';
+    if (n.contains('ayçiç') || n.contains('aycic')) return '🌻';
+    if (n.contains('buğday') || n.contains('bugday')) return '🌾';
+    if (n.contains('biber')) return '🫑';
+    if (n.contains('patates')) return '🥔';
+    return '🌱';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final daysSince = entry.plantedDate == null
+        ? null
+        : DateTime.now().difference(entry.plantedDate!).inDays;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.grey.shade200),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Text(_emojiFor(entry.cropName), style: const TextStyle(fontSize: 32)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    entry.fieldName,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF1B5E20),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    entry.cropName == null
+                        ? 'Henüz bitki ekilmedi'
+                        : daysSince == null
+                            ? entry.cropName!
+                            : '${entry.cropName} · $daysSince. gün',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey.shade700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right_rounded, color: Color(0xFF2E7D32)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PickerEmptyState extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFFE8F5E9),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.eco_rounded, color: Color(0xFF2E7D32), size: 36),
+          const SizedBox(height: 8),
+          Text(
+            'Henüz kayıtlı tarlan yok',
+            style: GoogleFonts.outfit(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFF1B5E20),
+            ),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Tarla eklediğinde burada canlı yetiştirme rehberi görüneceğin için '
+            'şimdilik aşağıdaki Genel Bitki Rehberi\'ni kullanabilirsin.',
+            style: TextStyle(fontSize: 13, color: Colors.black87, height: 1.4),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+DateTime? _parseDateLoose(dynamic raw) {
+  if (raw == null) return null;
+  if (raw is DateTime) return raw;
+  final s = raw.toString().trim();
+  if (s.isEmpty) return null;
+  // ISO format
+  final iso = DateTime.tryParse(s);
+  if (iso != null) return iso;
+  // dd.MM.yyyy format (Tarlam'ın legacy planted_date'i)
+  final parts = s.split('.');
+  if (parts.length == 3) {
+    final d = int.tryParse(parts[0]);
+    final m = int.tryParse(parts[1]);
+    final y = int.tryParse(parts[2]);
+    if (d != null && m != null && y != null) return DateTime(y, m, d);
+  }
+  return null;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// FIELD GUIDE — Canlı, aktivite-reactive yetiştirme rehberi
+// ═══════════════════════════════════════════════════════════════════════
+
+class _FieldGuideView extends ConsumerStatefulWidget {
+  const _FieldGuideView({
+    required this.fieldId,
+    required this.initialCropId,
+    required this.onBack,
+  });
+
+  final String fieldId;
+  final String? initialCropId;
+  final VoidCallback onBack;
+
+  @override
+  ConsumerState<_FieldGuideView> createState() => _FieldGuideViewState();
+}
+
+class _FieldGuideViewState extends ConsumerState<_FieldGuideView> {
+  Map<String, dynamic>? _field;
+  List<Map<String, dynamic>> _crops = [];
+  String? _selectedCropId;
+  bool _loaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedCropId = widget.initialCropId;
+    _loadFieldAndCrops();
+  }
+
+  Future<void> _loadFieldAndCrops() async {
+    final repo = ref.read(localDataRepositoryProvider);
+    final field = await repo.loadFieldById(widget.fieldId);
+    final crops = await repo.loadFieldCrops(widget.fieldId);
+    if (!mounted) return;
+    setState(() {
+      _field = field;
+      _crops = crops;
+      _selectedCropId ??= crops.isEmpty ? null : crops.first['id']?.toString();
+      _loaded = true;
+    });
+  }
+
+  Map<String, dynamic>? get _selectedCrop {
+    if (_selectedCropId == null) return null;
+    for (final c in _crops) {
+      if (c['id']?.toString() == _selectedCropId) return c;
+    }
+    return _crops.isEmpty ? null : _crops.first;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_loaded) {
+      return Scaffold(
+        appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: widget.onBack,
+          ),
+          title: const Text('Yetiştirme Rehberi'),
+        ),
+        body: const Center(
+          child: CircularProgressIndicator(color: Color(0xFF2E7D32)),
+        ),
+      );
+    }
+
+    if (_field == null) {
+      return Scaffold(
+        appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: widget.onBack,
+          ),
+          title: const Text('Yetiştirme Rehberi'),
+        ),
+        body: const Center(child: Text('Tarla bulunamadı.')),
+      );
+    }
+
+    final crop = _selectedCrop;
+    final fieldAreaDekar =
+        (_field!['area_dekar'] as num?)?.toDouble() ?? 1.0;
+
+    return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: widget.onBack,
+        ),
+        title: Text(_field!['name']?.toString() ?? 'Tarla'),
+        actions: [
+          if (_crops.length > 1)
+            PopupMenuButton<String>(
+              tooltip: 'Bitki seç',
+              icon: const Icon(Icons.swap_horiz_rounded),
+              onSelected: (id) => setState(() => _selectedCropId = id),
+              itemBuilder: (_) => _crops
+                  .map(
+                    (c) => PopupMenuItem<String>(
+                      value: c['id']?.toString() ?? '',
+                      child: Text(c['name']?.toString() ?? 'Bitki'),
+                    ),
+                  )
+                  .toList(),
+            ),
+        ],
+      ),
+      body: crop == null
+          ? _NoCropEmptyState(fieldName: _field!['name']?.toString() ?? 'Tarla')
+          : _FieldGuideBody(
+              field: _field!,
+              crop: crop,
+              fieldAreaDekar: fieldAreaDekar,
+            ),
+    );
+  }
+}
+
+class _NoCropEmptyState extends StatelessWidget {
+  const _NoCropEmptyState({required this.fieldName});
+  final String fieldName;
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.grass_rounded,
+                size: 64, color: Color(0xFF2E7D32)),
+            const SizedBox(height: 12),
+            Text(
+              '$fieldName için ekilmiş bitki yok',
+              style: GoogleFonts.outfit(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Tarla detayından "Tarlayı Tara" ile bir bitki seç ve bölge çiz; '
+              'yetiştirme rehberi otomatik oluşturulur.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.black54, height: 1.4),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// FIELD GUIDE BODY — Canlı içerik. Provider'ları izler, log atınca tazelenir.
+// ─────────────────────────────────────────────────────────────────────────
+
+class _FieldGuideBody extends ConsumerWidget {
+  const _FieldGuideBody({
+    required this.field,
+    required this.crop,
+    required this.fieldAreaDekar,
+  });
+
+  final Map<String, dynamic> field;
+  final Map<String, dynamic> crop;
+  final double fieldAreaDekar;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final fieldId = field['id'].toString();
+    final activityAsync = ref.watch(fieldActivityLogProvider(fieldId));
+    final growthAsync = ref.watch(fieldGrowthStatesProvider(fieldId));
+    final scheduledAsync =
+        ref.watch(fieldScheduledAutoSeedProvider(fieldId));
+    final service = ref.watch(taskDirectiveServiceProvider);
+
+    return activityAsync.when(
+      loading: () => const Center(
+        child: CircularProgressIndicator(color: Color(0xFF2E7D32)),
+      ),
+      error: (e, _) =>
+          Center(child: Text('Aktivite günlüğü yüklenemedi: $e')),
+      data: (activities) {
+        // Sadece bu crop'a ait aktiviteleri filtrele.
+        final cropId = crop['id']?.toString();
+        final cropActivities = activities
+            .where((a) =>
+                cropId == null ||
+                a['crop_id'] == null ||
+                a['crop_id'].toString() == cropId)
+            .toList();
+
+        // Direktifleri üret (TaskDirectiveService) — sadece bu crop için.
+        final growthMap = {
+          for (final state
+              in growthAsync.valueOrNull ?? const <CropGrowthState>[])
+            state.cropId: GrowthSnapshot(
+              stageKey: state.currentStageKey,
+              stageProgress: state.stageProgress,
+              accumulatedGdd: state.accumulatedGdd,
+              waterDeficitMm: state.waterDeficitMm,
+              nStressIdx: state.nStressIdx,
+              diseasePressure: state.diseasePressure,
+              yieldMultiplier: state.yieldMultiplier,
+            ),
+        };
+        final allDirectives = service.generate(
+          fieldCrops: [crop],
+          activities: activities,
+          growthStates: growthMap,
+          scheduledEvents: scheduledAsync.valueOrNull,
+        );
+
+        // Protokol roadmap (3 vitrin bitki)
+        final progress = CropProtocolService.computeProgress(
+          crop: crop,
+          activities: cropActivities,
+          fieldId: fieldId,
+        );
+
+        final plantedDate = _parseDateLoose(crop['planted_date']);
+
+        return ListView(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+          children: [
+            _CropHeader(
+              crop: crop,
+              plantedDate: plantedDate,
+              progress: progress,
+              growthMap: growthMap,
+            ),
+            const SizedBox(height: 14),
+            _LastActivityCard(activities: cropActivities),
+            const SizedBox(height: 14),
+            _QuickLogStrip(
+              fieldId: fieldId,
+              cropId: cropId,
+              fieldCrops: [crop],
+              fieldAreaDekar: fieldAreaDekar,
+            ),
+            const SizedBox(height: 16),
+            _SectionTitle('Bu Hafta', icon: Icons.flag_rounded),
+            const SizedBox(height: 8),
+            if (allDirectives.isEmpty)
+              const _InfoNote(
+                'Şu an aktif bir görev yok. Tarla durumunu izlemeye devam edeceğim.',
+              )
+            else
+              ...allDirectives.map(
+                (d) => Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: _DirectiveTile(directive: d),
+                ),
+              ),
+            const SizedBox(height: 18),
+            if (progress != null) ...[
+              _SectionTitle('Yol Haritası', icon: Icons.timeline_rounded),
+              const SizedBox(height: 8),
+              _RoadmapTimeline(
+                progress: progress,
+                plantedDate: plantedDate,
+                activities: cropActivities,
+              ),
+            ] else ...[
+              _SectionTitle('Yol Haritası', icon: Icons.timeline_rounded),
+              const SizedBox(height: 8),
+              const _InfoNote(
+                'Bu bitki için adım adım yetiştirme yol haritası henüz hazır değil. '
+                'Yukarıdaki canlı görevler ve aktivite günlüğü kullanılabilir.',
+              ),
+            ],
+          ],
+        );
+      },
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// HEADER — Bitki, gün, faz, skor
+// ─────────────────────────────────────────────────────────────────────────
+
+class _CropHeader extends StatelessWidget {
+  const _CropHeader({
+    required this.crop,
+    required this.plantedDate,
+    required this.progress,
+    required this.growthMap,
+  });
+
+  final Map<String, dynamic> crop;
+  final DateTime? plantedDate;
+  final CropProtocolProgress? progress;
+  final Map<String, GrowthSnapshot> growthMap;
+
+  String _emojiFor(String name) {
+    final n = name.toLowerCase();
+    if (n.contains('domates')) return '🍅';
+    if (n.contains('mısır') || n.contains('misir')) return '🌽';
+    if (n.contains('ayçiç') || n.contains('aycic')) return '🌻';
+    if (n.contains('buğday') || n.contains('bugday')) return '🌾';
+    return '🌱';
+  }
+
+  String _stageLabel(String? key) {
+    switch (key) {
+      case 'cimlenme':
+        return 'Çimlenme';
+      case 'fideleme':
+        return 'Fideleme';
+      case 'vegetatif':
+        return 'Vegetatif';
+      case 'ciceklenme':
+        return 'Çiçeklenme';
+      case 'meyvelenme':
+        return 'Meyvelenme';
+      case 'olgunlasma':
+        return 'Olgunlaşma';
+      case 'hasat':
+        return 'Hasat';
+      default:
+        return key ?? '—';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cropName = crop['name']?.toString() ?? 'Bitki';
+    final cropId = crop['id']?.toString();
+    final daysSince = plantedDate == null
+        ? null
+        : DateTime.now().difference(plantedDate!).inDays;
+    final growth = cropId == null ? null : growthMap[cropId];
+    final stageLabel = _stageLabel(growth?.stageKey ??
+        progress?.activeStep?.title.toLowerCase());
+    final yieldPct = ((growth?.yieldMultiplier ?? 1.0) * 100).round();
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF1B5E20), Color(0xFF2E7D32)],
+        ),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(_emojiFor(cropName), style: const TextStyle(fontSize: 48)),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  cropName,
+                  style: GoogleFonts.outfit(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  daysSince == null
+                      ? stageLabel
+                      : '$daysSince. gün · $stageLabel',
+                  style: const TextStyle(color: Colors.white70, fontSize: 14),
+                ),
+                if (growth != null) ...[
+                  const SizedBox(height: 6),
+                  _MiniStat('Verim potansiyeli', '%$yieldPct'),
+                ],
+                if (progress != null) ...[
+                  const SizedBox(height: 8),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(6),
+                    child: LinearProgressIndicator(
+                      value: progress!.ratio.clamp(0.0, 1.0),
+                      minHeight: 6,
+                      backgroundColor: Colors.white24,
+                      valueColor: const AlwaysStoppedAnimation(
+                          Color(0xFF00E676)),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${progress!.completedCount}/${progress!.totalCount} adım tamamlandı',
+                    style: const TextStyle(
+                        color: Colors.white60, fontSize: 11),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MiniStat extends StatelessWidget {
+  const _MiniStat(this.label, this.value);
+  final String label;
+  final String value;
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        const Icon(Icons.eco_rounded, size: 14, color: Color(0xFF00E676)),
+        const SizedBox(width: 4),
+        Text(
+          '$label: ',
+          style: const TextStyle(color: Colors.white60, fontSize: 12),
+        ),
+        Text(
+          value,
+          style: const TextStyle(
+            color: Color(0xFF00E676),
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// LAST ACTIVITY — son aktivite özeti
+// ─────────────────────────────────────────────────────────────────────────
+
+class _LastActivityCard extends StatelessWidget {
+  const _LastActivityCard({required this.activities});
+  final List<Map<String, dynamic>> activities;
+
+  String _typeLabel(String? type) {
+    switch (type) {
+      case 'watering':
+        return 'sulama';
+      case 'fertilizing':
+        return 'gübreleme';
+      case 'spraying':
+        return 'ilaçlama';
+      case 'harvest':
+        return 'hasat';
+      case 'planting':
+        return 'ekim';
+      default:
+        return type ?? 'aktivite';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final last = activities.isEmpty ? null : activities.first;
+    if (last == null) {
+      return const _InfoNote(
+          'Bu bitki için henüz aktivite kaydı yok. Aşağıdan suladım/gübreledim '
+          'olarak işaretleyebilirsin.');
+    }
+    final date = last['date'];
+    final dt = date is DateTime
+        ? date
+        : DateTime.tryParse(date?.toString() ?? '');
+    final daysAgo =
+        dt == null ? null : DateTime.now().difference(dt).inDays;
+    final qty = last['quantity'] as num?;
+    final unit = last['unit']?.toString() ?? '';
+    final qtyText = qty == null ? '' : ' (${qty.toStringAsFixed(0)} $unit)';
+    final whenText = daysAgo == null
+        ? ''
+        : daysAgo == 0
+            ? 'bugün'
+            : daysAgo == 1
+                ? 'dün'
+                : '$daysAgo gün önce';
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFE8F5E9),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFF2E7D32).withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.history_rounded, color: Color(0xFF2E7D32)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Son aktivite: $whenText ${_typeLabel(last['type']?.toString())}'
+              '$qtyText',
+              style: const TextStyle(
+                fontSize: 13,
+                color: Color(0xFF1B5E20),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// QUICK LOG STRIP — Suladım / Gübreledim / İlaçladım / Hasat ettim
+// ─────────────────────────────────────────────────────────────────────────
+
+class _QuickLogStrip extends StatelessWidget {
+  const _QuickLogStrip({
+    required this.fieldId,
+    required this.cropId,
+    required this.fieldCrops,
+    required this.fieldAreaDekar,
+  });
+
+  final String fieldId;
+  final String? cropId;
+  final List<Map<String, dynamic>> fieldCrops;
+  final double fieldAreaDekar;
+
+  @override
+  Widget build(BuildContext context) {
+    return ActivityQuickLog(
+      fieldId: fieldId,
+      cropId: cropId,
+      fieldCrops: fieldCrops,
+      fieldAreaDekar: fieldAreaDekar,
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// SECTION TITLE / INFO NOTE
+// ─────────────────────────────────────────────────────────────────────────
+
+class _SectionTitle extends StatelessWidget {
+  const _SectionTitle(this.text, {required this.icon});
+  final String text;
+  final IconData icon;
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: const Color(0xFF1B5E20)),
+        const SizedBox(width: 6),
+        Text(
+          text,
+          style: GoogleFonts.outfit(
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            color: const Color(0xFF1B5E20),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _InfoNote extends StatelessWidget {
+  const _InfoNote(this.text);
+  final String text;
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: Text(text,
+          style: TextStyle(
+              fontSize: 13, color: Colors.grey.shade800, height: 1.4)),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// DIRECTIVE TILE — Bu hafta yapılacak görev satırı
+// ─────────────────────────────────────────────────────────────────────────
+
+class _DirectiveTile extends StatelessWidget {
+  const _DirectiveTile({required this.directive});
+  final FieldDirective directive;
+
+  Color get _color {
+    switch (directive.urgency) {
+      case 2:
+        return const Color(0xFFE53935); // bugün
+      case 1:
+        return const Color(0xFFFB8C00); // bu hafta
+      default:
+        return const Color(0xFF1976D2); // bilgi
+    }
+  }
+
+  IconData get _icon {
+    switch (directive.actionType) {
+      case ActivityType.watering:
+        return Icons.water_drop_rounded;
+      case ActivityType.fertilizing:
+        return Icons.scatter_plot_rounded;
+      case ActivityType.spraying:
+        return Icons.shield_rounded;
+      case ActivityType.harvest:
+        return Icons.agriculture_rounded;
+      default:
+        return Icons.flag_rounded;
+    }
+  }
+
+  String get _badge {
+    switch (directive.urgency) {
+      case 2:
+        return 'BUGÜN';
+      case 1:
+        return 'BU HAFTA';
+      default:
+        return 'BİLGİ';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _color.withValues(alpha: 0.4)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8,
+          ),
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: _color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(_icon, color: _color, size: 22),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: _color,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        _badge,
+                        style: const TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        directive.headline,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                if (directive.reason.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    directive.reason,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey.shade700,
+                      height: 1.3,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// ROADMAP TIMELINE — Protokol step'leri ✓/●/○
+// ─────────────────────────────────────────────────────────────────────────
+
+class _RoadmapTimeline extends StatelessWidget {
+  const _RoadmapTimeline({
+    required this.progress,
+    required this.plantedDate,
+    required this.activities,
+  });
+
+  final CropProtocolProgress progress;
+  final DateTime? plantedDate;
+  final List<Map<String, dynamic>> activities;
+
+  @override
+  Widget build(BuildContext context) {
+    final fmt = DateFormat('d MMM', 'tr_TR');
+    final today = DateTime.now();
+    final tiles = <Widget>[];
+    final p = progress;
+
+    for (int i = 0; i < p.protocol.steps.length; i++) {
+      final step = p.protocol.steps[i];
+      final isCompleted = p.completedOrders.contains(step.order);
+      final isActive = p.activeStep?.order == step.order;
+      final expected =
+          plantedDate == null ? null : step.expectedDateFrom(plantedDate!);
+      final daysAway = expected?.difference(today).inDays;
+
+      tiles.add(
+        _RoadmapTile(
+          step: step,
+          isCompleted: isCompleted,
+          isActive: isActive,
+          isLast: i == p.protocol.steps.length - 1,
+          expectedDateLabel: expected == null ? null : fmt.format(expected),
+          daysAway: daysAway,
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(children: tiles),
+    );
+  }
+}
+
+class _RoadmapTile extends StatelessWidget {
+  const _RoadmapTile({
+    required this.step,
+    required this.isCompleted,
+    required this.isActive,
+    required this.isLast,
+    required this.expectedDateLabel,
+    required this.daysAway,
+  });
+
+  final ProtocolStep step;
+  final bool isCompleted;
+  final bool isActive;
+  final bool isLast;
+  final String? expectedDateLabel;
+  final int? daysAway;
+
+  Color get _markerColor {
+    if (isCompleted) return const Color(0xFF2E7D32);
+    if (isActive) return const Color(0xFF00E676);
+    return Colors.grey.shade400;
+  }
+
+  IconData get _markerIcon {
+    if (isCompleted) return Icons.check_circle_rounded;
+    if (isActive) return Icons.radio_button_checked_rounded;
+    return Icons.radio_button_unchecked_rounded;
+  }
+
+  String _whenLabel() {
+    if (expectedDateLabel == null) return '';
+    if (daysAway == null) return expectedDateLabel!;
+    if (daysAway! < -7) return expectedDateLabel!;
+    if (daysAway! == 0) return 'Bugün · $expectedDateLabel';
+    if (daysAway! == 1) return 'Yarın · $expectedDateLabel';
+    if (daysAway! > 0) return '$daysAway gün sonra · $expectedDateLabel';
+    return '${-daysAway!} gün önce · $expectedDateLabel';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final muted = !isActive && !isCompleted;
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Marker + dikey çizgi
+          Column(
+            children: [
+              Icon(_markerIcon, color: _markerColor, size: 22),
+              if (!isLast)
+                Expanded(
+                  child: Container(
+                    width: 2,
+                    color: _markerColor.withValues(alpha: 0.4),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(bottom: isLast ? 0 : 14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(step.stageEmoji,
+                          style: const TextStyle(fontSize: 18)),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          'Gün ${step.dayOffset} · ${step.title}',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight:
+                                isActive ? FontWeight.w800 : FontWeight.w600,
+                            color: muted ? Colors.grey.shade600 : Colors.black87,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (expectedDateLabel != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      _whenLabel(),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isActive
+                            ? const Color(0xFF1B5E20)
+                            : Colors.grey.shade600,
+                        fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                  if (isActive) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      step.description,
+                      style: const TextStyle(fontSize: 12.5, height: 1.4),
+                    ),
+                    if (step.fertilizerSpec != null)
+                      _InlineSpec('🌾 Gübre', step.fertilizerSpec!),
+                    if (step.pesticideSpec != null)
+                      _InlineSpec('🛡️ İlaç', step.pesticideSpec!),
+                    if (step.waterSpec != null)
+                      _InlineSpec('💧 Sulama', step.waterSpec!),
+                    if (step.criticalWarning != null)
+                      _InlineSpec('⚠️', step.criticalWarning!,
+                          color: const Color(0xFFE53935)),
+                    if (step.farmerTip != null)
+                      _InlineSpec('💡', step.farmerTip!,
+                          color: const Color(0xFFFB8C00)),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InlineSpec extends StatelessWidget {
+  const _InlineSpec(this.label, this.value, {this.color});
+  final String label;
+  final String value;
+  final Color? color;
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: const TextStyle(fontSize: 12)),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: 12,
+                color: color ?? Colors.black87,
+                height: 1.3,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+
+class _GenericGuideScreen extends StatefulWidget {
+  const _GenericGuideScreen({this.onBack});
+
+  final VoidCallback? onBack;
+
+  @override
+  State<_GenericGuideScreen> createState() => _GenericGuideScreenState();
+}
+
+class _GenericGuideScreenState extends State<_GenericGuideScreen> {
   final TextEditingController _searchCtrl = TextEditingController();
   String _scale = 'Hobi Bahçesi';
   bool _isLoading = false;
@@ -98,7 +1376,16 @@ class _GrowingGuideScreenState extends State<GrowingGuideScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Akıllı Tarım Rehberi'), elevation: 0),
+      appBar: AppBar(
+        leading: widget.onBack == null
+            ? null
+            : IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: widget.onBack,
+              ),
+        title: const Text('Akıllı Tarım Rehberi'),
+        elevation: 0,
+      ),
       body: Column(
         children: [
           // ── Arama Bölümü ──

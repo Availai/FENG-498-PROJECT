@@ -29,6 +29,7 @@ import '../widgets/crop_zone_tooltip.dart';
 import '../widgets/crop_render_factory.dart';
 import 'cost_ledger_screen.dart';
 import 'farm_journal_screen.dart';
+import 'growing_guide_screen.dart';
 import 'plant_zone_drawing_screen.dart';
 import '../widgets/animated_route.dart';
 
@@ -2679,6 +2680,37 @@ class _DirectivesModalContent extends ConsumerWidget {
                       fontWeight: FontWeight.w700,
                       color: Colors.white)),
               const Spacer(),
+              TextButton.icon(
+                onPressed: () {
+                  Navigator.pop(context);
+                  final firstCropId = fieldCrops.isEmpty
+                      ? null
+                      : fieldCrops.first['id']?.toString();
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => GrowingGuideScreen(
+                        fieldId: fieldId,
+                        cropId: firstCropId,
+                      ),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.menu_book_rounded,
+                    color: Color(0xFF00E676), size: 18),
+                label: const Text(
+                  'Detaylı Rehber',
+                  style: TextStyle(
+                    color: Color(0xFF00E676),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  minimumSize: const Size(0, 32),
+                ),
+              ),
               IconButton(
                 onPressed: () => Navigator.pop(context),
                 icon: const Icon(Icons.close, color: Colors.white54),

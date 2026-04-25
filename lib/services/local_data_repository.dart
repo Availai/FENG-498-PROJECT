@@ -467,6 +467,7 @@ class LocalDataRepository {
     }
 
     await _regenerateIrrigationPlans(fieldId: fieldId, referenceTime: now);
+    await _touchFieldUpdatedAt(fieldId, now);
     if (mirrorLegacy) {
       await _mirrorActiveFieldsToHive();
     }
@@ -495,6 +496,8 @@ class LocalDataRepository {
           'title': '${field.name} — Tarla Kaydı',
           'type': 'registration',
           'date': regDate,
+          'field_id': field.id,
+          'crop_id': null,
         });
       }
 
@@ -509,23 +512,30 @@ class LocalDataRepository {
           'title': '${crop.name} — ${field.name} Ekimi',
           'type': 'planting',
           'date': plantedDate,
+          'field_id': field.id,
+          'crop_id': crop.id,
         });
         entries.add({
           'id': 'harvest_${crop.id}',
           'title': '${crop.name} — ${field.name} Hasat',
           'type': 'harvest',
           'date': plantedDate.add(Duration(days: crop.harvestDays ?? 90)),
+          'field_id': field.id,
+          'crop_id': crop.id,
         });
       }
     }
 
     for (final plan in irrigationPlans) {
-      final fieldName = fieldNames[plan.fieldId] ?? 'Tarla';
+      final fieldName = fieldNames[plan.fieldId];
+      if (fieldName == null) continue; // skip orphaned plans (field hard-deleted)
       entries.add({
         'id': plan.id,
         'title': '$fieldName — Sulama',
         'type': 'watering',
         'date': plan.scheduledDate.toLocal(),
+        'field_id': plan.fieldId,
+        'crop_id': plan.cropId,
       });
     }
 
@@ -535,6 +545,8 @@ class LocalDataRepository {
         'title': event.title,
         'type': event.eventType,
         'date': event.eventDate.toLocal(),
+        'field_id': event.fieldId,
+        'crop_id': event.cropId,
       });
     }
 
@@ -1389,6 +1401,7 @@ class LocalDataRepository {
     );
 
     await _regenerateIrrigationPlans(fieldId: fieldId, referenceTime: now);
+    await _touchFieldUpdatedAt(fieldId, now);
     await _mirrorActiveFieldsToHive();
     return cropId;
   }
@@ -1520,6 +1533,11 @@ class LocalDataRepository {
       ..where((tbl) => tbl.deletedAt.isNull() &
           (uid != null ? tbl.farmerUid.equals(uid) : tbl.farmerUid.isNull()))
       ..orderBy([(tbl) => OrderingTerm.asc(tbl.createdAt)]);
+  }
+
+  Future<void> _touchFieldUpdatedAt(String fieldId, DateTime now) async {
+    await (_db.update(_db.fields)..where((tbl) => tbl.id.equals(fieldId)))
+        .write(FieldsCompanion(updatedAt: Value(now)));
   }
 
   String _newId(String prefix) {
