@@ -42,7 +42,8 @@ class _SeedSelectorScreenState extends State<SeedSelectorScreen>
 
   void _loadVarieties() {
     setState(() {
-      final raw = AnatolianSeedDB.getAll(cropTr: _selectedCrop, region: _region);
+      final raw =
+          AnatolianSeedDB.getAll(cropTr: _selectedCrop, region: _region);
       // Prototip: Ayçiçeği / Mısır / Domates dışındaki çeşitler gizli.
       _varieties =
           raw.where((v) => SupportedCrops.isSupported(v.cropTr)).toList();
@@ -52,8 +53,12 @@ class _SeedSelectorScreenState extends State<SeedSelectorScreen>
   }
 
   void _selectVariety(SeedVariety v) {
-    final sim = AgriSimService.simulate(variety: v, sowDate: DateTime.now(), region: _region);
-    setState(() { _selected = v; _sim = sim; });
+    final sim = AgriSimService.simulate(
+        variety: v, sowDate: DateTime.now(), region: _region);
+    setState(() {
+      _selected = v;
+      _sim = sim;
+    });
     _tabs.animateTo(1);
   }
 
@@ -75,7 +80,8 @@ class _SeedSelectorScreenState extends State<SeedSelectorScreen>
             indicatorWeight: 2,
             labelColor: AppColors.emeraldDark,
             unselectedLabelColor: AppColors.textSecondary,
-            labelStyle: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600),
+            labelStyle:
+                GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600),
             tabs: const [Tab(text: 'Çeşit Tarama'), Tab(text: 'Simülasyon')],
           ),
         ),
@@ -89,8 +95,14 @@ class _SeedSelectorScreenState extends State<SeedSelectorScreen>
             region: _region,
             varieties: _varieties,
             selected: _selected,
-            onCropChanged: (c) { _selectedCrop = c; _loadVarieties(); },
-            onRegionChanged: (r) { _region = r; _loadVarieties(); },
+            onCropChanged: (c) {
+              _selectedCrop = c;
+              _loadVarieties();
+            },
+            onRegionChanged: (r) {
+              _region = r;
+              _loadVarieties();
+            },
             onVarietyTap: _selectVariety,
           ),
           _SimulationTab(variety: _selected, sim: _sim),
@@ -113,9 +125,14 @@ class _VarietyBrowserTab extends StatelessWidget {
   final ValueChanged<SeedVariety> onVarietyTap;
 
   const _VarietyBrowserTab({
-    required this.crops, required this.selectedCrop, required this.region,
-    required this.varieties, required this.selected,
-    required this.onCropChanged, required this.onRegionChanged, required this.onVarietyTap,
+    required this.crops,
+    required this.selectedCrop,
+    required this.region,
+    required this.varieties,
+    required this.selected,
+    required this.onCropChanged,
+    required this.onRegionChanged,
+    required this.onVarietyTap,
   });
 
   @override
@@ -138,17 +155,24 @@ class _VarietyBrowserTab extends StatelessWidget {
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 180),
                         margin: const EdgeInsets.only(right: 8),
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 7),
                         decoration: BoxDecoration(
                           color: isSelected ? AppColors.emerald : AppColors.bg,
                           borderRadius: AppRadius.full,
-                          border: Border.all(color: isSelected ? AppColors.emerald : AppColors.border),
+                          border: Border.all(
+                              color: isSelected
+                                  ? AppColors.emerald
+                                  : AppColors.border),
                         ),
                         child: Text(
                           c ?? 'Tümü',
                           style: GoogleFonts.inter(
-                            fontSize: 12, fontWeight: FontWeight.w600,
-                            color: isSelected ? Colors.white : AppColors.textSecondary,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: isSelected
+                                ? Colors.white
+                                : AppColors.textSecondary,
                           ),
                         ),
                       ),
@@ -168,17 +192,26 @@ class _VarietyBrowserTab extends StatelessWidget {
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 180),
                         margin: const EdgeInsets.only(right: 8),
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 5),
                         decoration: BoxDecoration(
-                          color: isSelected ? AppColors.emeraldDark : Colors.transparent,
+                          color: isSelected
+                              ? AppColors.emeraldDark
+                              : Colors.transparent,
                           borderRadius: AppRadius.full,
-                          border: Border.all(color: isSelected ? AppColors.emeraldDark : AppColors.border),
+                          border: Border.all(
+                              color: isSelected
+                                  ? AppColors.emeraldDark
+                                  : AppColors.border),
                         ),
                         child: Text(
                           r.label,
                           style: GoogleFonts.inter(
-                            fontSize: 11, fontWeight: FontWeight.w500,
-                            color: isSelected ? Colors.white : AppColors.textTertiary,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                            color: isSelected
+                                ? Colors.white
+                                : AppColors.textTertiary,
                           ),
                         ),
                       ),
@@ -218,7 +251,8 @@ class _VarietyCard extends StatelessWidget {
   final SeedVariety variety;
   final bool isSelected;
   final VoidCallback onTap;
-  const _VarietyCard({required this.variety, required this.isSelected, required this.onTap});
+  const _VarietyCard(
+      {required this.variety, required this.isSelected, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -246,40 +280,57 @@ class _VarietyCard extends StatelessWidget {
                   child: Text(
                     variety.nameTr,
                     style: AppText.h3(context).copyWith(
-                      color: isSelected ? AppColors.emeraldDark : AppColors.textPrimary,
+                      color: isSelected
+                          ? AppColors.emeraldDark
+                          : AppColors.textPrimary,
                     ),
                   ),
                 ),
-                AppTag(variety.cropTr, color: AppColors.sage, bgColor: AppColors.mint),
+                AppTag(variety.cropTr,
+                    color: AppColors.sage, bgColor: AppColors.mint),
                 const SizedBox(width: 6),
-                Text(variety.registrationYear.toString(), style: AppText.xs(context)),
+                Text(variety.registrationYear.toString(),
+                    style: AppText.xs(context)),
               ]),
               const SizedBox(height: 4),
               Text(variety.breeder, style: AppText.sm(context)),
               const SizedBox(height: 10),
               // Stats row
               Row(children: [
-                _ToleranceDot('Verim', '${variety.avgYieldKgDekar.round()} kg/da', AppColors.emerald),
+                _ToleranceDot(
+                    'Verim',
+                    '${variety.avgYieldKgDekar.round()} kg/da',
+                    AppColors.emerald),
                 const SizedBox(width: 8),
-                _ToleranceDot('Kuraklık', _pct(variety.droughtTolerance), _toleranceColor(variety.droughtTolerance)),
+                _ToleranceDot('Kuraklık', _pct(variety.droughtTolerance),
+                    _toleranceColor(variety.droughtTolerance)),
                 const SizedBox(width: 8),
-                _ToleranceDot('Don', _pct(variety.frostTolerance), _toleranceColor(variety.frostTolerance)),
+                _ToleranceDot('Don', _pct(variety.frostTolerance),
+                    _toleranceColor(variety.frostTolerance)),
               ]),
               const SizedBox(height: 10),
               // Phenology mini timeline
               _PhenologyBar(stages: variety.phenology),
               if (variety.notes.isNotEmpty) ...[
                 const SizedBox(height: 8),
-                Text(variety.notes, style: AppText.sm(context), maxLines: 2, overflow: TextOverflow.ellipsis),
+                Text(variety.notes,
+                    style: AppText.sm(context),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis),
               ],
               if (isSelected) ...[
                 const SizedBox(height: 10),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    const Icon(Icons.play_circle_outline_rounded, size: 14, color: AppColors.emerald),
+                    const Icon(Icons.play_circle_outline_rounded,
+                        size: 14, color: AppColors.emerald),
                     const SizedBox(width: 4),
-                    Text('Simülasyonu Görüntüle →', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.emerald)),
+                    Text('Simülasyonu Görüntüle →',
+                        style: GoogleFonts.inter(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.emerald)),
                   ],
                 ),
               ],
@@ -319,7 +370,9 @@ class _ToleranceDot extends StatelessWidget {
           children: [
             Text(label, style: AppText.xs(context)),
             const SizedBox(height: 2),
-            Text(value, style: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.w700, color: color)),
+            Text(value,
+                style: GoogleFonts.outfit(
+                    fontSize: 13, fontWeight: FontWeight.w700, color: color)),
           ],
         ),
       ),
@@ -352,16 +405,25 @@ class _PhenologyBar extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: isLast ? AppColors.emerald : AppColors.bg,
                           shape: BoxShape.circle,
-                          border: Border.all(color: isLast ? AppColors.emerald : AppColors.border),
+                          border: Border.all(
+                              color: isLast
+                                  ? AppColors.emerald
+                                  : AppColors.border),
                         ),
-                        child: Center(child: Text(e.value.stage.icon, style: const TextStyle(fontSize: 10))),
+                        child: Center(
+                            child: Text(e.value.stage.icon,
+                                style: const TextStyle(fontSize: 10))),
                       ),
                       const SizedBox(height: 3),
-                      Text(e.value.stage.labelTr, style: AppText.xs(context).copyWith(fontSize: 9), overflow: TextOverflow.visible, softWrap: false),
+                      Text(e.value.stage.labelTr,
+                          style: AppText.xs(context).copyWith(fontSize: 9),
+                          overflow: TextOverflow.visible,
+                          softWrap: false),
                     ],
                   ),
                   if (!isLast)
-                    Expanded(child: Container(height: 1, color: AppColors.border)),
+                    Expanded(
+                        child: Container(height: 1, color: AppColors.border)),
                 ],
               ),
             );
@@ -389,15 +451,20 @@ class _SimulationTab extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 72, height: 72,
-                decoration: BoxDecoration(color: AppColors.mint, borderRadius: AppRadius.lg),
-                child: const Center(child: Text('🌱', style: TextStyle(fontSize: 32))),
+                width: 72,
+                height: 72,
+                decoration: BoxDecoration(
+                    color: AppColors.mint, borderRadius: AppRadius.lg),
+                child: const Center(
+                    child: Text('🌱', style: TextStyle(fontSize: 32))),
               ),
               const SizedBox(height: 16),
               Text('Çeşit Seçilmedi', style: AppText.h3(context)),
               const SizedBox(height: 6),
-              Text('Çeşit Tarama sekmesinden bir çeşit seçerek büyüme simülasyonunu başlatın.',
-                  style: AppText.sm(context), textAlign: TextAlign.center),
+              Text(
+                  'Çeşit Tarama sekmesinden bir çeşit seçerek büyüme simülasyonunu başlatın.',
+                  style: AppText.sm(context),
+                  textAlign: TextAlign.center),
             ],
           ),
         ),
@@ -426,7 +493,10 @@ class _SimSummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final daysLeft = result.estimatedHarvestDate.difference(DateTime.now()).inDays.clamp(0, 999);
+    final daysLeft = result.estimatedHarvestDate
+        .difference(DateTime.now())
+        .inDays
+        .clamp(0, 999);
     return Container(
       decoration: BoxDecoration(
         gradient: AppGradients.forestHero,
@@ -454,7 +524,8 @@ class _SimSummaryCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('İlerleme', style: AppText.bodyDark(context).copyWith(fontSize: 11)),
+                  Text('İlerleme',
+                      style: AppText.bodyDark(context).copyWith(fontSize: 11)),
                   const SizedBox(height: 6),
                   ClipRRect(
                     borderRadius: AppRadius.full,
@@ -462,11 +533,13 @@ class _SimSummaryCard extends StatelessWidget {
                       value: result.progressPercent / 100,
                       minHeight: 6,
                       backgroundColor: Colors.white.withValues(alpha: 0.15),
-                      valueColor: const AlwaysStoppedAnimation(AppColors.emeraldLight),
+                      valueColor:
+                          const AlwaysStoppedAnimation(AppColors.emeraldLight),
                     ),
                   ),
                   const SizedBox(height: 4),
-                  Text('${result.progressPercent.toStringAsFixed(0)}% — ${result.currentStage.labelTr}',
+                  Text(
+                      '${result.progressPercent.toStringAsFixed(0)}% — ${result.currentStage.labelTr}',
                       style: AppText.bodyDark(context).copyWith(fontSize: 11)),
                 ],
               ),
@@ -474,8 +547,13 @@ class _SimSummaryCard extends StatelessWidget {
             const SizedBox(width: 16),
             Column(
               children: [
-                Text(result.predictedYieldKgDekar.toStringAsFixed(0), style: GoogleFonts.outfit(fontSize: 28, fontWeight: FontWeight.w800, color: AppColors.emeraldLight)),
-                Text('kg/da', style: AppText.bodyDark(context).copyWith(fontSize: 10)),
+                Text(result.predictedYieldKgDekar.toStringAsFixed(0),
+                    style: GoogleFonts.outfit(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.emeraldLight)),
+                Text('kg/da',
+                    style: AppText.bodyDark(context).copyWith(fontSize: 10)),
               ],
             ),
           ]),
@@ -484,7 +562,8 @@ class _SimSummaryCard extends StatelessWidget {
     );
   }
 
-  String _fmtDate(DateTime d) => '${d.day.toString().padLeft(2, '0')}.${d.month.toString().padLeft(2, '0')}.${d.year}';
+  String _fmtDate(DateTime d) =>
+      '${d.day.toString().padLeft(2, '0')}.${d.month.toString().padLeft(2, '0')}.${d.year}';
 }
 
 class _DarkStat extends StatelessWidget {
@@ -497,8 +576,14 @@ class _DarkStat extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: GoogleFonts.inter(fontSize: 10, color: AppColors.textOnDarkMuted)),
-        Text(value, style: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textOnDark)),
+        Text(label,
+            style: GoogleFonts.inter(
+                fontSize: 10, color: AppColors.textOnDarkMuted)),
+        Text(value,
+            style: GoogleFonts.outfit(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textOnDark)),
       ],
     );
   }
@@ -511,7 +596,11 @@ class _PhenologyDatesCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(color: AppColors.surface, borderRadius: AppRadius.md, boxShadow: AppShadows.sm, border: Border.all(color: AppColors.border)),
+      decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: AppRadius.md,
+          boxShadow: AppShadows.sm,
+          border: Border.all(color: AppColors.border)),
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -529,7 +618,10 @@ class _PhenologyDatesCard extends StatelessWidget {
                 Expanded(
                   child: Text(
                     e.key.labelTr,
-                    style: AppText.body(context).copyWith(color: isPast ? AppColors.textTertiary : AppColors.textPrimary),
+                    style: AppText.body(context).copyWith(
+                        color: isPast
+                            ? AppColors.textTertiary
+                            : AppColors.textPrimary),
                   ),
                 ),
                 AppTag(
@@ -552,10 +644,15 @@ class _GrowthChartCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final slice = records.length > 30 ? records.sublist(records.length - 30) : records;
+    final slice =
+        records.length > 30 ? records.sublist(records.length - 30) : records;
     return Container(
       height: 140,
-      decoration: BoxDecoration(color: AppColors.surface, borderRadius: AppRadius.md, boxShadow: AppShadows.sm, border: Border.all(color: AppColors.border)),
+      decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: AppRadius.md,
+          boxShadow: AppShadows.sm,
+          border: Border.all(color: AppColors.border)),
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -564,7 +661,8 @@ class _GrowthChartCard extends StatelessWidget {
           const SizedBox(height: 8),
           Expanded(
             child: CustomPaint(
-              painter: _MiniLinePainter(values: slice.map((r) => r.heightCm).toList()),
+              painter: _MiniLinePainter(
+                  values: slice.map((r) => r.heightCm).toList()),
               size: const Size(double.infinity, double.infinity),
             ),
           ),
@@ -588,18 +686,40 @@ class _MiniLinePainter extends CustomPainter {
     for (int i = 0; i < values.length; i++) {
       final x = i / (values.length - 1) * size.width;
       final y = size.height - (values[i] / maxV) * size.height;
-      if (i == 0) { path.moveTo(x, y); } else { path.lineTo(x, y); }
+      if (i == 0) {
+        path.moveTo(x, y);
+      } else {
+        path.lineTo(x, y);
+      }
     }
-    canvas.drawPath(path, Paint()..color = AppColors.emerald..strokeWidth = 2..style = PaintingStyle.stroke..strokeCap = StrokeCap.round..strokeJoin = StrokeJoin.round);
+    canvas.drawPath(
+        path,
+        Paint()
+          ..color = AppColors.emerald
+          ..strokeWidth = 2
+          ..style = PaintingStyle.stroke
+          ..strokeCap = StrokeCap.round
+          ..strokeJoin = StrokeJoin.round);
 
-    final fill = Path.from(path)..lineTo(size.width, size.height)..lineTo(0, size.height)..close();
-    canvas.drawPath(fill, Paint()..color = AppColors.emerald.withValues(alpha: 0.08)..style = PaintingStyle.fill);
+    final fill = Path.from(path)
+      ..lineTo(size.width, size.height)
+      ..lineTo(0, size.height)
+      ..close();
+    canvas.drawPath(
+        fill,
+        Paint()
+          ..color = AppColors.emerald.withValues(alpha: 0.08)
+          ..style = PaintingStyle.fill);
 
     // Grid lines
     for (int i = 1; i <= 3; i++) {
       final y = size.height * i / 4;
-      canvas.drawLine(Offset(0, y), Offset(size.width, y),
-          Paint()..color = AppColors.border..strokeWidth = 0.5);
+      canvas.drawLine(
+          Offset(0, y),
+          Offset(size.width, y),
+          Paint()
+            ..color = AppColors.border
+            ..strokeWidth = 0.5);
     }
   }
 
@@ -616,7 +736,11 @@ class _EventsCard extends StatelessWidget {
     final events = records.where((r) => r.event != null).toList();
     if (events.isEmpty) return const SizedBox.shrink();
     return Container(
-      decoration: BoxDecoration(color: AppColors.surface, borderRadius: AppRadius.md, boxShadow: AppShadows.sm, border: Border.all(color: AppColors.border)),
+      decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: AppRadius.md,
+          boxShadow: AppShadows.sm,
+          border: Border.all(color: AppColors.border)),
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -624,14 +748,24 @@ class _EventsCard extends StatelessWidget {
           Text('Önemli Olaylar', style: AppText.h3(context)),
           const SizedBox(height: 10),
           ...events.map((r) => Padding(
-            padding: const EdgeInsets.symmetric(vertical: 5),
-            child: Row(children: [
-              Container(width: 36, height: 36, decoration: BoxDecoration(color: AppColors.mint, borderRadius: AppRadius.sm),
-                  child: Center(child: Text('Gün\n${r.dayNumber}', textAlign: TextAlign.center, style: GoogleFonts.inter(fontSize: 9, fontWeight: FontWeight.w700, color: AppColors.emeraldDark)))),
-              const SizedBox(width: 10),
-              Expanded(child: Text(r.event!, style: AppText.body(context))),
-            ]),
-          )),
+                padding: const EdgeInsets.symmetric(vertical: 5),
+                child: Row(children: [
+                  Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                          color: AppColors.mint, borderRadius: AppRadius.sm),
+                      child: Center(
+                          child: Text('Gün\n${r.dayNumber}',
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.inter(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.emeraldDark)))),
+                  const SizedBox(width: 10),
+                  Expanded(child: Text(r.event!, style: AppText.body(context))),
+                ]),
+              )),
         ],
       ),
     );

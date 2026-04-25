@@ -95,7 +95,8 @@ class MyCropsScreen extends ConsumerWidget {
                         color: AppColors.emerald.withValues(alpha: 0.1),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.radar, size: 64, color: AppColors.emerald),
+                      child: const Icon(Icons.radar,
+                          size: 64, color: AppColors.emerald),
                     ),
                     const SizedBox(height: 24),
                     Text(
@@ -114,7 +115,7 @@ class MyCropsScreen extends ConsumerWidget {
               ),
             );
           }
-          
+
           return ListView.builder(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
             itemCount: fields.length,
@@ -123,7 +124,7 @@ class MyCropsScreen extends ConsumerWidget {
               final hasLocation = item['latitude'] != null;
               final areaDekar = item['area_dekar'];
               final cropName = item['crop'] ?? 'Bilinmiyor';
-              
+
               return Padding(
                 padding: const EdgeInsets.only(bottom: 12),
                 child: TapScale(
@@ -151,10 +152,12 @@ class MyCropsScreen extends ConsumerWidget {
                           Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: AppColors.emeraldLight.withValues(alpha: 0.2),
+                              color:
+                                  AppColors.emeraldLight.withValues(alpha: 0.2),
                               borderRadius: AppRadius.sm,
                             ),
-                            child: const Icon(Icons.dashboard_customize, color: AppColors.emerald, size: 28),
+                            child: const Icon(Icons.dashboard_customize,
+                                color: AppColors.emerald, size: 28),
                           ),
                           const SizedBox(width: 16),
                           Expanded(
@@ -168,12 +171,17 @@ class MyCropsScreen extends ConsumerWidget {
                                 const SizedBox(height: 4),
                                 Row(
                                   children: [
-                                    const Icon(Icons.calendar_today, size: 12, color: AppColors.textSecondary),
+                                    const Icon(Icons.calendar_today,
+                                        size: 12,
+                                        color: AppColors.textSecondary),
                                     const SizedBox(width: 4),
-                                    Text('${item['date']}', style: AppText.xs(context)),
+                                    Text('${item['date']}',
+                                        style: AppText.xs(context)),
                                     if (areaDekar != null) ...[
                                       const SizedBox(width: 12),
-                                      const Icon(Icons.square_foot, size: 12, color: AppColors.textSecondary),
+                                      const Icon(Icons.square_foot,
+                                          size: 12,
+                                          color: AppColors.textSecondary),
                                       const SizedBox(width: 4),
                                       Text(
                                         '${(areaDekar as num).toStringAsFixed(1)} da',
@@ -190,17 +198,27 @@ class MyCropsScreen extends ConsumerWidget {
                                     if (hasLocation)
                                       Row(
                                         children: [
-                                          Text('Bağlı', style: AppText.xs(context).copyWith(color: AppColors.emerald)),
+                                          Text('Bağlı',
+                                              style: AppText.xs(context)
+                                                  .copyWith(
+                                                      color:
+                                                          AppColors.emerald)),
                                           const SizedBox(width: 4),
-                                          const Icon(Icons.link, size: 12, color: AppColors.emerald),
+                                          const Icon(Icons.link,
+                                              size: 12,
+                                              color: AppColors.emerald),
                                         ],
                                       )
-                                    else 
+                                    else
                                       Row(
                                         children: [
-                                          Text('Koordinat Yok', style: AppText.xs(context).copyWith(color: AppColors.error)),
+                                          Text('Koordinat Yok',
+                                              style: AppText.xs(context)
+                                                  .copyWith(
+                                                      color: AppColors.error)),
                                           const SizedBox(width: 4),
-                                          const Icon(Icons.location_off, size: 12, color: AppColors.error),
+                                          const Icon(Icons.location_off,
+                                              size: 12, color: AppColors.error),
                                         ],
                                       )
                                   ],
@@ -209,12 +227,14 @@ class MyCropsScreen extends ConsumerWidget {
                             ),
                           ),
                           IconButton(
-                            icon: const Icon(Icons.delete_outline, color: AppColors.error),
+                            icon: const Icon(Icons.delete_outline,
+                                color: AppColors.error),
                             onPressed: () async {
                               final id = item['id']?.toString();
                               if (id == null) return;
                               final fieldName =
-                                  (item['name']?.toString().trim().isNotEmpty ?? false)
+                                  (item['name']?.toString().trim().isNotEmpty ??
+                                          false)
                                       ? item['name'].toString()
                                       : 'Bu tarla';
                               final confirmed = await _confirmDeleteField(
@@ -228,7 +248,8 @@ class MyCropsScreen extends ConsumerWidget {
                               if (context.mounted) {
                                 AppToast.show(
                                   context,
-                                  message: '"$fieldName" ve tüm kayıtları silindi.',
+                                  message:
+                                      '"$fieldName" ve tüm kayıtları silindi.',
                                   type: ToastType.success,
                                 );
                               }
@@ -281,8 +302,8 @@ class MyCropsScreen extends ConsumerWidget {
               decoration: BoxDecoration(
                 color: AppColors.errorBg,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                    color: AppColors.error.withValues(alpha: 0.2)),
+                border:
+                    Border.all(color: AppColors.error.withValues(alpha: 0.2)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

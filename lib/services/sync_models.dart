@@ -1,5 +1,4 @@
 import '../data/app_database.dart';
-import 'trusted_clock.dart';
 
 class SyncPushResult {
   const SyncPushResult({
@@ -56,9 +55,9 @@ class SyncPullItem {
       payload: (json['payload'] is Map)
           ? Map<String, dynamic>.from(json['payload'] as Map)
           : const <String, dynamic>{},
-      updatedAt: DateTime.tryParse(json['updated_at']?.toString() ?? '')
-              ?.toUtc() ??
-          DateTime.now().toUtc(),
+      updatedAt:
+          DateTime.tryParse(json['updated_at']?.toString() ?? '')?.toUtc() ??
+              DateTime.now().toUtc(),
     );
   }
 }
@@ -73,4 +72,3 @@ class SyncPullResult {
   final List<SyncPullItem> items;
   final DateTime? serverTime;
 }
-

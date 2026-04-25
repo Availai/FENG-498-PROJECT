@@ -20,7 +20,14 @@ class RotationAdvice {
 }
 
 class CropRotationAdvisor {
-  static const _grains = {'buğday', 'arpa', 'yulaf', 'çavdar', 'tritikale', 'mısır'};
+  static const _grains = {
+    'buğday',
+    'arpa',
+    'yulaf',
+    'çavdar',
+    'tritikale',
+    'mısır'
+  };
   static const _solanaceae = {'domates', 'biber', 'patlıcan', 'patates'};
   static const _sunflower = 'ayçiçeği';
 
@@ -44,8 +51,7 @@ class CropRotationAdvisor {
       list.add(const RotationAdvice(
         severity: 'warning',
         title: 'Tahıl Monokültürü',
-        message:
-            '3 yıl üst üste tahıl ekimi toprak verimliliğini düşürür ve '
+        message: '3 yıl üst üste tahıl ekimi toprak verimliliğini düşürür ve '
             'Gaeumannomyces graminis (kök yanıklığı) riskini artırır. '
             'Gelecek sezon baklagil veya ayçiçeği ekimi önerilir.',
         suggestedCrops: ['nohut', 'mercimek', 'fasulye', 'ayçiçeği', 'kanola'],
@@ -53,13 +59,14 @@ class CropRotationAdvisor {
     }
 
     // Solanaceae tekrarı (domates-domates, biber-biber vb.)
-    if (h.isNotEmpty && n != null &&
-        _solanaceae.contains(h[0]) && _solanaceae.contains(n)) {
+    if (h.isNotEmpty &&
+        n != null &&
+        _solanaceae.contains(h[0]) &&
+        _solanaceae.contains(n)) {
       list.add(RotationAdvice(
         severity: 'warning',
         title: 'Patlıcangiller Tekrarı',
-        message:
-            '${h[0]} sonrası $n ekimi — aynı familyadan ardışık ekim '
+        message: '${h[0]} sonrası $n ekimi — aynı familyadan ardışık ekim '
             'Verticillium, nematod (Meloidogyne spp.) ve Sclerotinia '
             'birikimi yapar. En az 3 yıl ara verin.',
         suggestedCrops: const ['buğday', 'mısır', 'fasulye', 'bakla'],

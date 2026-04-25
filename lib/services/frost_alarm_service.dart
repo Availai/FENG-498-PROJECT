@@ -59,8 +59,7 @@ class FrostAlarmService {
         min3DayC: min3Day,
         message:
             '3 gün içinde ${min3Day.toStringAsFixed(1)}°C MGM don riski eşiği görüldü.',
-        actionHint:
-            'Gece sabahına doğru hassas ürünleri örtü altına alın.',
+        actionHint: 'Gece sabahına doğru hassas ürünleri örtü altına alın.',
       );
     }
 
@@ -78,8 +77,9 @@ class FrostAlarmService {
   }) async {
     final result = await check(lat: lat, lon: lon);
     if (!result.shouldAlert) return;
-    final title =
-        fieldName != null ? 'Zirai Don Alarmı - $fieldName' : 'Zirai Don Alarmı';
+    final title = fieldName != null
+        ? 'Zirai Don Alarmı - $fieldName'
+        : 'Zirai Don Alarmı';
     try {
       await NotificationService.show(
         id: 3001,

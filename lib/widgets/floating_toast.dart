@@ -72,13 +72,29 @@ class _ToastWidgetState extends State<_ToastWidget>
   ({Color bg, Color fg, IconData icon}) _styleFor(ToastType t) {
     switch (t) {
       case ToastType.success:
-        return (bg: const Color(0xFF2E7D32), fg: Colors.white, icon: Icons.check_circle_rounded);
+        return (
+          bg: const Color(0xFF2E7D32),
+          fg: Colors.white,
+          icon: Icons.check_circle_rounded
+        );
       case ToastType.error:
-        return (bg: const Color(0xFFC62828), fg: Colors.white, icon: Icons.error_rounded);
+        return (
+          bg: const Color(0xFFC62828),
+          fg: Colors.white,
+          icon: Icons.error_rounded
+        );
       case ToastType.warning:
-        return (bg: const Color(0xFFF57C00), fg: Colors.white, icon: Icons.warning_amber_rounded);
+        return (
+          bg: const Color(0xFFF57C00),
+          fg: Colors.white,
+          icon: Icons.warning_amber_rounded
+        );
       case ToastType.info:
-        return (bg: const Color(0xFF37474F), fg: Colors.white, icon: Icons.info_rounded);
+        return (
+          bg: const Color(0xFF37474F),
+          fg: Colors.white,
+          icon: Icons.info_rounded
+        );
     }
   }
 

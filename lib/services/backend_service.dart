@@ -65,10 +65,12 @@ class BackendService {
     String scientificName = '',
   }) async {
     final resp = await http
-        .get(_u('/api/proxy/plants/details', {
-          'common_name': commonName,
-          'scientific_name': scientificName,
-        }), headers: await _headers())
+        .get(
+            _u('/api/proxy/plants/details', {
+              'common_name': commonName,
+              'scientific_name': scientificName,
+            }),
+            headers: await _headers())
         .timeout(_timeout);
     return _expectJson(resp)['data'] as Map<String, dynamic>? ?? {};
   }
@@ -81,7 +83,8 @@ class BackendService {
     final streamed = await req.send().timeout(_timeout);
     final body = await streamed.stream.bytesToString();
     if (streamed.statusCode != 200) {
-      throw BackendException('Imagga proxy hatası', statusCode: streamed.statusCode);
+      throw BackendException('Imagga proxy hatası',
+          statusCode: streamed.statusCode);
     }
     final json = jsonDecode(body) as Map<String, dynamic>;
     return (json['tags'] as List? ?? const []).cast<String>();
@@ -96,12 +99,14 @@ class BackendService {
     final streamed = await req.send().timeout(_timeout);
     final body = await streamed.stream.bytesToString();
     if (streamed.statusCode == 429) {
-      throw const BackendException('PlantNet günlük kota dolu', statusCode: 429);
+      throw const BackendException('PlantNet günlük kota dolu',
+          statusCode: 429);
     }
     if (streamed.statusCode != 200) {
       try {
         final errJson = jsonDecode(body) as Map<String, dynamic>;
-        throw BackendException(errJson['detail']?.toString() ?? 'PlantNet hatası',
+        throw BackendException(
+            errJson['detail']?.toString() ?? 'PlantNet hatası',
             statusCode: streamed.statusCode);
       } catch (_) {
         throw BackendException('PlantNet HTTP ${streamed.statusCode}',
@@ -140,10 +145,12 @@ class BackendService {
   }) async {
     try {
       final resp = await http
-          .get(_u('/api/proxy/satellite/soil', {
-            'lat': lat,
-            'lng': lng,
-          }), headers: await _headers())
+          .get(
+              _u('/api/proxy/satellite/soil', {
+                'lat': lat,
+                'lng': lng,
+              }),
+              headers: await _headers())
           .timeout(const Duration(seconds: 6));
       if (resp.statusCode != 200) return null;
       final j = jsonDecode(resp.body) as Map<String, dynamic>;
@@ -166,13 +173,15 @@ class BackendService {
   }) async {
     try {
       final resp = await http
-          .get(_u('/api/proxy/climate/historical', {
-            'lat': lat,
-            'lng': lng,
-            'start': startYyyymmdd,
-            'end': endYyyymmdd,
-            'parameters': parameters,
-          }), headers: await _headers())
+          .get(
+              _u('/api/proxy/climate/historical', {
+                'lat': lat,
+                'lng': lng,
+                'start': startYyyymmdd,
+                'end': endYyyymmdd,
+                'parameters': parameters,
+              }),
+              headers: await _headers())
           .timeout(_timeout);
       if (resp.statusCode != 200) return null;
       final j = jsonDecode(resp.body) as Map<String, dynamic>;
@@ -191,7 +200,8 @@ class BackendService {
     return _postText('/api/analyze/weekly_comment', body);
   }
 
-  static Future<String?> analyzeEnvironmentalReport(Map<String, dynamic> body) async {
+  static Future<String?> analyzeEnvironmentalReport(
+      Map<String, dynamic> body) async {
     return _postText('/api/analyze/environmental_report', body);
   }
 
@@ -204,10 +214,12 @@ class BackendService {
   }) async {
     try {
       final resp = await http
-          .get(_u('/api/proxy/environment/field', {
-            'lat': lat,
-            'lng': lng,
-          }), headers: await _headers())
+          .get(
+              _u('/api/proxy/environment/field', {
+                'lat': lat,
+                'lng': lng,
+              }),
+              headers: await _headers())
           .timeout(const Duration(seconds: 6));
       if (resp.statusCode != 200) return null;
       return jsonDecode(resp.body) as Map<String, dynamic>;
@@ -222,10 +234,12 @@ class BackendService {
   }) async {
     try {
       final resp = await http
-          .get(_u('/api/proxy/weather/hourly', {
-            'lat': lat,
-            'lng': lng,
-          }), headers: await _headers())
+          .get(
+              _u('/api/proxy/weather/hourly', {
+                'lat': lat,
+                'lng': lng,
+              }),
+              headers: await _headers())
           .timeout(_timeout);
       if (resp.statusCode != 200) return const [];
       final decoded = jsonDecode(resp.body) as Map<String, dynamic>;
@@ -247,10 +261,12 @@ class BackendService {
   }) async {
     try {
       final resp = await http
-          .get(_u('/api/proxy/soil/profile', {
-            'lat': lat,
-            'lng': lng,
-          }), headers: await _headers())
+          .get(
+              _u('/api/proxy/soil/profile', {
+                'lat': lat,
+                'lng': lng,
+              }),
+              headers: await _headers())
           .timeout(_timeout);
       if (resp.statusCode != 200) return null;
       return jsonDecode(resp.body) as Map<String, dynamic>;
@@ -321,7 +337,8 @@ class BackendService {
   }
 
   // ── helpers ─────────────────────────────────────────────────────────────
-  static Future<String?> _postText(String path, Map<String, dynamic> body) async {
+  static Future<String?> _postText(
+      String path, Map<String, dynamic> body) async {
     try {
       final resp = await http
           .post(

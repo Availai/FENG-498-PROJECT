@@ -50,4 +50,3 @@ class AuthRepository {
     return _firebaseAuth.currentUser?.getIdToken(forceRefresh);
   }
 }
-

@@ -14,15 +14,15 @@ import 'dart:math' as math;
 
 /// Tek bir günlük ETo girdisi.
 class EToInput {
-  final double tMaxC;       // Maks sıcaklık °C
-  final double tMinC;       // Min sıcaklık °C
-  final double rhMaxPct;    // Maks bağıl nem %
-  final double rhMinPct;    // Min bağıl nem %
-  final double windMs;      // 2m rüzgar hızı m/s (ya da 10m'den çevrilmiş)
+  final double tMaxC; // Maks sıcaklık °C
+  final double tMinC; // Min sıcaklık °C
+  final double rhMaxPct; // Maks bağıl nem %
+  final double rhMinPct; // Min bağıl nem %
+  final double windMs; // 2m rüzgar hızı m/s (ya da 10m'den çevrilmiş)
   final double solarRadMjM2Day; // Net solar radyasyon MJ/m²/gün
-  final double elevationM;  // Deniz seviyesinden yükseklik m
+  final double elevationM; // Deniz seviyesinden yükseklik m
   final double latitudeDeg; // Enlem (radyasyon hesabı için)
-  final int dayOfYear;      // 1-365
+  final int dayOfYear; // 1-365
 
   const EToInput({
     required this.tMaxC,
@@ -63,12 +63,13 @@ class FaoEtoService {
     final es = (esTmax + esTmin) / 2.0;
 
     // 4) Gerçek buhar basıncı ea (kPa) — Eq. 17
-    final ea = (esTmin * (i.rhMaxPct / 100.0) + esTmax * (i.rhMinPct / 100.0)) / 2.0;
+    final ea =
+        (esTmin * (i.rhMaxPct / 100.0) + esTmax * (i.rhMinPct / 100.0)) / 2.0;
 
     // 5) Doygunluk buhar basıncı eğimi Δ (kPa/°C) — Eq. 13
-    final delta = (4098 *
-            (0.6108 * math.exp((17.27 * tMean) / (tMean + 237.3)))) /
-        math.pow(tMean + 237.3, 2);
+    final delta =
+        (4098 * (0.6108 * math.exp((17.27 * tMean) / (tMean + 237.3)))) /
+            math.pow(tMean + 237.3, 2);
 
     // 6) Net radyasyon Rn (MJ/m²/gün)
     //    Solar radyasyondan basit çıkarım: Rn ≈ 0.77 × Rs (FAO-56 ortalama)
@@ -89,7 +90,8 @@ class FaoEtoService {
   }
 
   /// 10m rüzgarı 2m'ye çevir (FAO-56 Eq. 47).
-  static double wind10mTo2m(double u10) => u10 * (4.87 / math.log(67.8 * 10 - 5.42));
+  static double wind10mTo2m(double u10) =>
+      u10 * (4.87 / math.log(67.8 * 10 - 5.42));
 
   /// Solar radyasyon ölçümü yoksa Hargreaves yaklaşımı (FAO-56 Eq. 50):
   /// Rs ≈ 0.16 × √(Tmax−Tmin) × Ra
@@ -151,112 +153,220 @@ class FaoCropCoefficients {
   /// FAO-56 Table 12 — başlıca kültür bitkileri için resmi değerler.
   static const Map<String, FaoCropCoefficients> _data = {
     'domates': FaoCropCoefficients(
-      nameTr: 'Domates', kcInit: 0.60, kcMid: 1.15, kcEnd: 0.80,
-      totalLengthDays: 135, faoTableRef: 'FAO-56 Table 12 — Tomato',
+      nameTr: 'Domates',
+      kcInit: 0.60,
+      kcMid: 1.15,
+      kcEnd: 0.80,
+      totalLengthDays: 135,
+      faoTableRef: 'FAO-56 Table 12 — Tomato',
     ),
     'biber': FaoCropCoefficients(
-      nameTr: 'Biber (Sweet Pepper)', kcInit: 0.60, kcMid: 1.05, kcEnd: 0.90,
-      totalLengthDays: 125, faoTableRef: 'FAO-56 Table 12 — Sweet Pepper',
+      nameTr: 'Biber (Sweet Pepper)',
+      kcInit: 0.60,
+      kcMid: 1.05,
+      kcEnd: 0.90,
+      totalLengthDays: 125,
+      faoTableRef: 'FAO-56 Table 12 — Sweet Pepper',
     ),
     'patlıcan': FaoCropCoefficients(
-      nameTr: 'Patlıcan', kcInit: 0.60, kcMid: 1.05, kcEnd: 0.90,
-      totalLengthDays: 130, faoTableRef: 'FAO-56 Table 12 — Eggplant',
+      nameTr: 'Patlıcan',
+      kcInit: 0.60,
+      kcMid: 1.05,
+      kcEnd: 0.90,
+      totalLengthDays: 130,
+      faoTableRef: 'FAO-56 Table 12 — Eggplant',
     ),
     'salatalık': FaoCropCoefficients(
-      nameTr: 'Salatalık (taze)', kcInit: 0.60, kcMid: 1.00, kcEnd: 0.75,
-      totalLengthDays: 105, faoTableRef: 'FAO-56 Table 12 — Cucumber Fresh',
+      nameTr: 'Salatalık (taze)',
+      kcInit: 0.60,
+      kcMid: 1.00,
+      kcEnd: 0.75,
+      totalLengthDays: 105,
+      faoTableRef: 'FAO-56 Table 12 — Cucumber Fresh',
     ),
     'kabak': FaoCropCoefficients(
-      nameTr: 'Kabak', kcInit: 0.50, kcMid: 1.00, kcEnd: 0.80,
-      totalLengthDays: 100, faoTableRef: 'FAO-56 Table 12 — Squash',
+      nameTr: 'Kabak',
+      kcInit: 0.50,
+      kcMid: 1.00,
+      kcEnd: 0.80,
+      totalLengthDays: 100,
+      faoTableRef: 'FAO-56 Table 12 — Squash',
     ),
     'karpuz': FaoCropCoefficients(
-      nameTr: 'Karpuz', kcInit: 0.40, kcMid: 1.00, kcEnd: 0.75,
-      totalLengthDays: 100, faoTableRef: 'FAO-56 Table 12 — Watermelon',
+      nameTr: 'Karpuz',
+      kcInit: 0.40,
+      kcMid: 1.00,
+      kcEnd: 0.75,
+      totalLengthDays: 100,
+      faoTableRef: 'FAO-56 Table 12 — Watermelon',
     ),
     'kavun': FaoCropCoefficients(
-      nameTr: 'Kavun', kcInit: 0.50, kcMid: 1.05, kcEnd: 0.75,
-      totalLengthDays: 100, faoTableRef: 'FAO-56 Table 12 — Sweet Melons',
+      nameTr: 'Kavun',
+      kcInit: 0.50,
+      kcMid: 1.05,
+      kcEnd: 0.75,
+      totalLengthDays: 100,
+      faoTableRef: 'FAO-56 Table 12 — Sweet Melons',
     ),
     'patates': FaoCropCoefficients(
-      nameTr: 'Patates', kcInit: 0.50, kcMid: 1.15, kcEnd: 0.75,
-      totalLengthDays: 130, faoTableRef: 'FAO-56 Table 12 — Potato',
+      nameTr: 'Patates',
+      kcInit: 0.50,
+      kcMid: 1.15,
+      kcEnd: 0.75,
+      totalLengthDays: 130,
+      faoTableRef: 'FAO-56 Table 12 — Potato',
     ),
     'soğan': FaoCropCoefficients(
-      nameTr: 'Soğan (kuru)', kcInit: 0.70, kcMid: 1.05, kcEnd: 0.75,
-      totalLengthDays: 150, faoTableRef: 'FAO-56 Table 12 — Onion Dry',
+      nameTr: 'Soğan (kuru)',
+      kcInit: 0.70,
+      kcMid: 1.05,
+      kcEnd: 0.75,
+      totalLengthDays: 150,
+      faoTableRef: 'FAO-56 Table 12 — Onion Dry',
     ),
     'sarımsak': FaoCropCoefficients(
-      nameTr: 'Sarımsak', kcInit: 0.70, kcMid: 1.00, kcEnd: 0.70,
-      totalLengthDays: 210, faoTableRef: 'FAO-56 Table 12 — Garlic',
+      nameTr: 'Sarımsak',
+      kcInit: 0.70,
+      kcMid: 1.00,
+      kcEnd: 0.70,
+      totalLengthDays: 210,
+      faoTableRef: 'FAO-56 Table 12 — Garlic',
     ),
     'havuç': FaoCropCoefficients(
-      nameTr: 'Havuç', kcInit: 0.70, kcMid: 1.05, kcEnd: 0.95,
-      totalLengthDays: 115, faoTableRef: 'FAO-56 Table 12 — Carrots',
+      nameTr: 'Havuç',
+      kcInit: 0.70,
+      kcMid: 1.05,
+      kcEnd: 0.95,
+      totalLengthDays: 115,
+      faoTableRef: 'FAO-56 Table 12 — Carrots',
     ),
     'lahana': FaoCropCoefficients(
-      nameTr: 'Lahana', kcInit: 0.70, kcMid: 1.05, kcEnd: 0.95,
-      totalLengthDays: 130, faoTableRef: 'FAO-56 Table 12 — Cabbage',
+      nameTr: 'Lahana',
+      kcInit: 0.70,
+      kcMid: 1.05,
+      kcEnd: 0.95,
+      totalLengthDays: 130,
+      faoTableRef: 'FAO-56 Table 12 — Cabbage',
     ),
     'marul': FaoCropCoefficients(
-      nameTr: 'Marul', kcInit: 0.70, kcMid: 1.00, kcEnd: 0.95,
-      totalLengthDays: 80, faoTableRef: 'FAO-56 Table 12 — Lettuce',
+      nameTr: 'Marul',
+      kcInit: 0.70,
+      kcMid: 1.00,
+      kcEnd: 0.95,
+      totalLengthDays: 80,
+      faoTableRef: 'FAO-56 Table 12 — Lettuce',
     ),
     'fasulye': FaoCropCoefficients(
-      nameTr: 'Fasulye (yeşil)', kcInit: 0.50, kcMid: 1.05, kcEnd: 0.90,
-      totalLengthDays: 90, faoTableRef: 'FAO-56 Table 12 — Beans Green',
+      nameTr: 'Fasulye (yeşil)',
+      kcInit: 0.50,
+      kcMid: 1.05,
+      kcEnd: 0.90,
+      totalLengthDays: 90,
+      faoTableRef: 'FAO-56 Table 12 — Beans Green',
     ),
     'nohut': FaoCropCoefficients(
-      nameTr: 'Nohut', kcInit: 0.40, kcMid: 1.00, kcEnd: 0.35,
-      totalLengthDays: 95, faoTableRef: 'FAO-56 Table 12 — Chick Pea',
+      nameTr: 'Nohut',
+      kcInit: 0.40,
+      kcMid: 1.00,
+      kcEnd: 0.35,
+      totalLengthDays: 95,
+      faoTableRef: 'FAO-56 Table 12 — Chick Pea',
     ),
     'mercimek': FaoCropCoefficients(
-      nameTr: 'Mercimek', kcInit: 0.40, kcMid: 1.10, kcEnd: 0.30,
-      totalLengthDays: 150, faoTableRef: 'FAO-56 Table 12 — Lentil',
+      nameTr: 'Mercimek',
+      kcInit: 0.40,
+      kcMid: 1.10,
+      kcEnd: 0.30,
+      totalLengthDays: 150,
+      faoTableRef: 'FAO-56 Table 12 — Lentil',
     ),
     'buğday': FaoCropCoefficients(
-      nameTr: 'Buğday (kışlık)', kcInit: 0.70, kcMid: 1.15, kcEnd: 0.40,
-      totalLengthDays: 235, faoTableRef: 'FAO-56 Table 12 — Winter Wheat',
+      nameTr: 'Buğday (kışlık)',
+      kcInit: 0.70,
+      kcMid: 1.15,
+      kcEnd: 0.40,
+      totalLengthDays: 235,
+      faoTableRef: 'FAO-56 Table 12 — Winter Wheat',
     ),
     'arpa': FaoCropCoefficients(
-      nameTr: 'Arpa', kcInit: 0.30, kcMid: 1.15, kcEnd: 0.25,
-      totalLengthDays: 130, faoTableRef: 'FAO-56 Table 12 — Barley',
+      nameTr: 'Arpa',
+      kcInit: 0.30,
+      kcMid: 1.15,
+      kcEnd: 0.25,
+      totalLengthDays: 130,
+      faoTableRef: 'FAO-56 Table 12 — Barley',
     ),
     'mısır': FaoCropCoefficients(
-      nameTr: 'Mısır (dane)', kcInit: 0.30, kcMid: 1.20, kcEnd: 0.60,
-      totalLengthDays: 150, faoTableRef: 'FAO-56 Table 12 — Maize Grain',
+      nameTr: 'Mısır (dane)',
+      kcInit: 0.30,
+      kcMid: 1.20,
+      kcEnd: 0.60,
+      totalLengthDays: 150,
+      faoTableRef: 'FAO-56 Table 12 — Maize Grain',
     ),
     'çeltik': FaoCropCoefficients(
-      nameTr: 'Çeltik', kcInit: 1.05, kcMid: 1.20, kcEnd: 0.90,
-      totalLengthDays: 150, faoTableRef: 'FAO-56 Table 12 — Rice',
+      nameTr: 'Çeltik',
+      kcInit: 1.05,
+      kcMid: 1.20,
+      kcEnd: 0.90,
+      totalLengthDays: 150,
+      faoTableRef: 'FAO-56 Table 12 — Rice',
     ),
     'ayçiçeği': FaoCropCoefficients(
-      nameTr: 'Ayçiçeği', kcInit: 0.35, kcMid: 1.15, kcEnd: 0.35,
-      totalLengthDays: 130, faoTableRef: 'FAO-56 Table 12 — Sunflower',
+      nameTr: 'Ayçiçeği',
+      kcInit: 0.35,
+      kcMid: 1.15,
+      kcEnd: 0.35,
+      totalLengthDays: 130,
+      faoTableRef: 'FAO-56 Table 12 — Sunflower',
     ),
     'pamuk': FaoCropCoefficients(
-      nameTr: 'Pamuk', kcInit: 0.35, kcMid: 1.20, kcEnd: 0.60,
-      totalLengthDays: 195, faoTableRef: 'FAO-56 Table 12 — Cotton',
+      nameTr: 'Pamuk',
+      kcInit: 0.35,
+      kcMid: 1.20,
+      kcEnd: 0.60,
+      totalLengthDays: 195,
+      faoTableRef: 'FAO-56 Table 12 — Cotton',
     ),
     'şekerpancarı': FaoCropCoefficients(
-      nameTr: 'Şeker pancarı', kcInit: 0.35, kcMid: 1.20, kcEnd: 0.70,
-      totalLengthDays: 180, faoTableRef: 'FAO-56 Table 12 — Sugar Beet',
+      nameTr: 'Şeker pancarı',
+      kcInit: 0.35,
+      kcMid: 1.20,
+      kcEnd: 0.70,
+      totalLengthDays: 180,
+      faoTableRef: 'FAO-56 Table 12 — Sugar Beet',
     ),
     'yonca': FaoCropCoefficients(
-      nameTr: 'Yonca', kcInit: 0.40, kcMid: 0.95, kcEnd: 0.90,
-      totalLengthDays: 165, faoTableRef: 'FAO-56 Table 12 — Alfalfa Hay',
+      nameTr: 'Yonca',
+      kcInit: 0.40,
+      kcMid: 0.95,
+      kcEnd: 0.90,
+      totalLengthDays: 165,
+      faoTableRef: 'FAO-56 Table 12 — Alfalfa Hay',
     ),
     'üzüm': FaoCropCoefficients(
-      nameTr: 'Üzüm (sofralık)', kcInit: 0.30, kcMid: 0.85, kcEnd: 0.45,
-      totalLengthDays: 205, faoTableRef: 'FAO-56 Table 12 — Grapes Table',
+      nameTr: 'Üzüm (sofralık)',
+      kcInit: 0.30,
+      kcMid: 0.85,
+      kcEnd: 0.45,
+      totalLengthDays: 205,
+      faoTableRef: 'FAO-56 Table 12 — Grapes Table',
     ),
     'zeytin': FaoCropCoefficients(
-      nameTr: 'Zeytin', kcInit: 0.65, kcMid: 0.70, kcEnd: 0.70,
-      totalLengthDays: 365, faoTableRef: 'FAO-56 Table 12 — Olives',
+      nameTr: 'Zeytin',
+      kcInit: 0.65,
+      kcMid: 0.70,
+      kcEnd: 0.70,
+      totalLengthDays: 365,
+      faoTableRef: 'FAO-56 Table 12 — Olives',
     ),
     'elma': FaoCropCoefficients(
-      nameTr: 'Elma', kcInit: 0.60, kcMid: 0.95, kcEnd: 0.75,
-      totalLengthDays: 240, faoTableRef: 'FAO-56 Table 12 — Apples',
+      nameTr: 'Elma',
+      kcInit: 0.60,
+      kcMid: 0.95,
+      kcEnd: 0.75,
+      totalLengthDays: 240,
+      faoTableRef: 'FAO-56 Table 12 — Apples',
     ),
   };
 
@@ -280,8 +390,8 @@ class FaoCropCoefficients {
   }) {
     final daysSince = DateTime.now().difference(plantedDate).inDays;
     final pct = daysSince / crop.totalLengthDays;
-    if (pct < 0.20) return crop.kcInit;        // 0-20%: başlangıç
-    if (pct < 0.75) return crop.kcMid;         // 20-75%: gelişme + orta sezon
-    return crop.kcEnd;                          // 75-100%: hasat sonu
+    if (pct < 0.20) return crop.kcInit; // 0-20%: başlangıç
+    if (pct < 0.75) return crop.kcMid; // 20-75%: gelişme + orta sezon
+    return crop.kcEnd; // 75-100%: hasat sonu
   }
 }

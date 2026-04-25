@@ -102,11 +102,7 @@ class _CropPainter extends CustomPainter {
 
   static const _ripeStages = {'olgunlasma'};
   static const _fruitingStages = {'meyve_dolumu', 'olgunlasma'};
-  static const _floweringStages = {
-    'ciceklenme',
-    'meyve_dolumu',
-    'olgunlasma'
-  };
+  static const _floweringStages = {'ciceklenme', 'meyve_dolumu', 'olgunlasma'};
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -124,7 +120,8 @@ class _CropPainter extends CustomPainter {
     final height = minH + (maxH - minH) * overallProgress;
 
     // Rüzgar salınımı — boy arttıkça artar, stres artınca söner.
-    final swayAmp = size.width * 0.04 * overallProgress * (1 - stressIndex * 0.6);
+    final swayAmp =
+        size.width * 0.04 * overallProgress * (1 - stressIndex * 0.6);
     final leanX = math.sin(swayPhase) * swayAmp;
 
     final leafColor = _leafColor();
@@ -220,8 +217,10 @@ class _CropPainter extends CustomPainter {
       Path()
         ..moveTo(cx, groundY)
         ..quadraticBezierTo(
-          cx + leanX * 0.4, groundY - height * 0.5,
-          topX, topY,
+          cx + leanX * 0.4,
+          groundY - height * 0.5,
+          topX,
+          topY,
         ),
       stemPaint,
     );
@@ -229,24 +228,26 @@ class _CropPainter extends CustomPainter {
     // Yapraklar — boy arttıkça sayı artar, boy 6 çift max
     final leafPairs = (1 + 5 * overallProgress).round();
     final leafColorDark = HSLColor.fromColor(leafColor)
-        .withLightness((HSLColor.fromColor(leafColor).lightness - 0.08).clamp(0.1, 0.9))
+        .withLightness(
+            (HSLColor.fromColor(leafColor).lightness - 0.08).clamp(0.1, 0.9))
         .toColor();
     for (int i = 1; i <= leafPairs; i++) {
       final t = i / (leafPairs + 1);
       final ax = cx + leanX * t * 0.4;
       final ay = groundY - height * t;
       final len = height * (0.15 - t * 0.05);
-      _drawLeaf(canvas, Offset(ax, ay), len, math.pi + 0.2 + t * 0.3, leafColorDark);
+      _drawLeaf(
+          canvas, Offset(ax, ay), len, math.pi + 0.2 + t * 0.3, leafColorDark);
       _drawLeaf(canvas, Offset(ax, ay), len, -0.2 - t * 0.3, leafColorDark);
     }
 
     // Tabla / çiçek — çiçeklenme ve sonrası
     if (_floweringStages.contains(stageKey)) {
-      final flowerR = height * 0.09 + height * 0.05 * (overallProgress - 0.4).clamp(0.0, 0.6);
+      final flowerR = height * 0.09 +
+          height * 0.05 * (overallProgress - 0.4).clamp(0.0, 0.6);
       final isRipe = _ripeStages.contains(stageKey);
-      final petalColor = isRipe
-          ? const Color(0xFFB8860B)
-          : const Color(0xFFFFC107);
+      final petalColor =
+          isRipe ? const Color(0xFFB8860B) : const Color(0xFFFFC107);
       final centerColor =
           isRipe ? const Color(0xFF3E2A14) : const Color(0xFF5D3A1F);
 
@@ -312,8 +313,10 @@ class _CropPainter extends CustomPainter {
       Path()
         ..moveTo(cx, groundY)
         ..quadraticBezierTo(
-          cx + leanX * 0.3, groundY - height * 0.5,
-          topX, topY,
+          cx + leanX * 0.3,
+          groundY - height * 0.5,
+          topX,
+          topY,
         ),
       stemPaint,
     );
@@ -408,9 +411,12 @@ class _CropPainter extends CustomPainter {
       Path()
         ..moveTo(cx, groundY)
         ..cubicTo(
-          cx - leanX * 0.3, groundY - height * 0.3,
-          cx + leanX * 0.8, groundY - height * 0.65,
-          topX, topY,
+          cx - leanX * 0.3,
+          groundY - height * 0.3,
+          cx + leanX * 0.8,
+          groundY - height * 0.65,
+          topX,
+          topY,
         ),
       stemPaint,
     );
@@ -463,9 +469,8 @@ class _CropPainter extends CustomPainter {
       final isRipe = _ripeStages.contains(stageKey);
       final fruitColor =
           isRipe ? const Color(0xFFD32F2F) : const Color(0xFFC9D87E);
-      final fruitHighlight = isRipe
-          ? const Color(0xFFFF6B6B)
-          : const Color(0xFFDDE79E);
+      final fruitHighlight =
+          isRipe ? const Color(0xFFFF6B6B) : const Color(0xFFDDE79E);
       // 3 meyve kümesi
       final positions = [
         Offset(cx - height * 0.12, groundY - height * 0.35),

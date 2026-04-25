@@ -19,25 +19,42 @@ enum TurkishRegion {
 extension TurkishRegionLabel on TurkishRegion {
   String get label {
     switch (this) {
-      case TurkishRegion.trakya:           return 'Trakya';
-      case TurkishRegion.icAnadolu:        return 'İç Anadolu';
-      case TurkishRegion.ege:              return 'Ege';
-      case TurkishRegion.akdeniz:          return 'Akdeniz';
-      case TurkishRegion.karadeniz:        return 'Karadeniz';
-      case TurkishRegion.doguAnadolu:      return 'Doğu Anadolu';
-      case TurkishRegion.guneydoguAnadolu: return 'Güneydoğu Anadolu';
+      case TurkishRegion.trakya:
+        return 'Trakya';
+      case TurkishRegion.icAnadolu:
+        return 'İç Anadolu';
+      case TurkishRegion.ege:
+        return 'Ege';
+      case TurkishRegion.akdeniz:
+        return 'Akdeniz';
+      case TurkishRegion.karadeniz:
+        return 'Karadeniz';
+      case TurkishRegion.doguAnadolu:
+        return 'Doğu Anadolu';
+      case TurkishRegion.guneydoguAnadolu:
+        return 'Güneydoğu Anadolu';
     }
   }
 
   double yieldMultiplier(String cropTr) {
     const table = <String, Map<String, double>>{
-      'trakya':           {'buğday':1.15,'ayçiçeği':1.20,'mısır':0.95,'arpa':1.10},
-      'icAnadolu':        {'buğday':1.00,'ayçiçeği':1.00,'mısır':1.05,'arpa':1.00,'nohut':1.15},
-      'ege':              {'pamuk':1.20,'mısır':1.10,'buğday':0.95},
-      'akdeniz':          {'pamuk':1.25,'mısır':1.15,'buğday':0.90},
-      'karadeniz':        {'fındık':1.40,'mısır':1.05,'buğday':0.85},
-      'doguAnadolu':      {'buğday':0.80,'arpa':0.85},
-      'guneydoguAnadolu': {'buğday':0.90,'pamuk':1.10,'kırmızı mercimek':1.20},
+      'trakya': {'buğday': 1.15, 'ayçiçeği': 1.20, 'mısır': 0.95, 'arpa': 1.10},
+      'icAnadolu': {
+        'buğday': 1.00,
+        'ayçiçeği': 1.00,
+        'mısır': 1.05,
+        'arpa': 1.00,
+        'nohut': 1.15
+      },
+      'ege': {'pamuk': 1.20, 'mısır': 1.10, 'buğday': 0.95},
+      'akdeniz': {'pamuk': 1.25, 'mısır': 1.15, 'buğday': 0.90},
+      'karadeniz': {'fındık': 1.40, 'mısır': 1.05, 'buğday': 0.85},
+      'doguAnadolu': {'buğday': 0.80, 'arpa': 0.85},
+      'guneydoguAnadolu': {
+        'buğday': 0.90,
+        'pamuk': 1.10,
+        'kırmızı mercimek': 1.20
+      },
     };
     return table[name]?[cropTr] ?? 1.0;
   }
@@ -48,38 +65,38 @@ extension TurkishRegionLabel on TurkishRegion {
 // ─────────────────────────────────────────────────────────────────────────────
 
 enum PhenologyStage {
-  cimlenme,     // Çimlenme — Germination
-  cikis,        // Çıkış — Emergence
-  vejetatif,    // Vejetatif büyüme — Vegetative
-  ciceklenme,   // Çiçeklenme — Flowering
-  dolum,        // Dolum (Süt/hamur) — Grain/fruit fill
-  olgunluk,     // Fizyolojik olgunluk — Physiological maturity
-  hasat,        // Hasat olgunluğu — Harvest readiness
+  cimlenme, // Çimlenme — Germination
+  cikis, // Çıkış — Emergence
+  vejetatif, // Vejetatif büyüme — Vegetative
+  ciceklenme, // Çiçeklenme — Flowering
+  dolum, // Dolum (Süt/hamur) — Grain/fruit fill
+  olgunluk, // Fizyolojik olgunluk — Physiological maturity
+  hasat, // Hasat olgunluğu — Harvest readiness
 }
 
 extension PhenologyStageMeta on PhenologyStage {
   String get labelTr {
     const m = {
-      PhenologyStage.cimlenme:   'Çimlenme',
-      PhenologyStage.cikis:      'Çıkış',
-      PhenologyStage.vejetatif:  'Vejetatif',
+      PhenologyStage.cimlenme: 'Çimlenme',
+      PhenologyStage.cikis: 'Çıkış',
+      PhenologyStage.vejetatif: 'Vejetatif',
       PhenologyStage.ciceklenme: 'Çiçeklenme',
-      PhenologyStage.dolum:      'Dolum',
-      PhenologyStage.olgunluk:   'Olgunluk',
-      PhenologyStage.hasat:      'Hasat',
+      PhenologyStage.dolum: 'Dolum',
+      PhenologyStage.olgunluk: 'Olgunluk',
+      PhenologyStage.hasat: 'Hasat',
     };
     return m[this]!;
   }
 
   String get icon {
     const m = {
-      PhenologyStage.cimlenme:   '🌱',
-      PhenologyStage.cikis:      '🌿',
-      PhenologyStage.vejetatif:  '🌾',
+      PhenologyStage.cimlenme: '🌱',
+      PhenologyStage.cikis: '🌿',
+      PhenologyStage.vejetatif: '🌾',
       PhenologyStage.ciceklenme: '🌸',
-      PhenologyStage.dolum:      '🍃',
-      PhenologyStage.olgunluk:   '🌾',
-      PhenologyStage.hasat:      '🚜',
+      PhenologyStage.dolum: '🍃',
+      PhenologyStage.olgunluk: '🌾',
+      PhenologyStage.hasat: '🚜',
     };
     return m[this]!;
   }
@@ -91,12 +108,12 @@ extension PhenologyStageMeta on PhenologyStage {
 
 class PhenologyStageDef {
   final PhenologyStage stage;
-  final int baseDurationDays;    // Optimum koşulda süre
-  final double minTempC;         // Bu evreye geçiş için min sıcaklık
+  final int baseDurationDays; // Optimum koşulda süre
+  final double minTempC; // Bu evreye geçiş için min sıcaklık
   final double maxTempC;
-  final double optTempC;         // Optimum sıcaklık
-  final double requiredGdd;      // Bu evre için gerekli GDD (büyüme gün-derece)
-  final String careNote;         // Bakım notu
+  final double optTempC; // Optimum sıcaklık
+  final double requiredGdd; // Bu evre için gerekli GDD (büyüme gün-derece)
+  final String careNote; // Bakım notu
 
   const PhenologyStageDef({
     required this.stage,
@@ -117,21 +134,21 @@ class SeedVariety {
   final String id;
   final String nameTr;
   final String cropTr;
-  final String breeder;                      // Islahçı kuruluş
+  final String breeder; // Islahçı kuruluş
   final int registrationYear;
   final List<TurkishRegion> suitableRegions;
   final List<PhenologyStageDef> phenology;
   final double avgYieldKgDekar;
   final double maxYieldKgDekar;
-  final double droughtTolerance;             // 0.0–1.0
-  final double frostTolerance;               // 0.0–1.0
-  final double diseaseResistance;            // 0.0–1.0 (genel)
-  final double salinityTolerance;            // 0.0–1.0
-  final String soilSuitability;              // 'Killi-tınlı, drenajlı...'
+  final double droughtTolerance; // 0.0–1.0
+  final double frostTolerance; // 0.0–1.0
+  final double diseaseResistance; // 0.0–1.0 (genel)
+  final double salinityTolerance; // 0.0–1.0
+  final String soilSuitability; // 'Killi-tınlı, drenajlı...'
   final double idealPhMin;
   final double idealPhMax;
-  final String notes;                        // Özellikler / avantajlar
-  final String? imageAsset;                  // assets path
+  final String notes; // Özellikler / avantajlar
+  final String? imageAsset; // assets path
 
   const SeedVariety({
     required this.id,
@@ -187,10 +204,10 @@ class GrowthDayRecord {
   final int dayNumber;
   final PhenologyStage stage;
   final double accumulatedGdd;
-  final double heightCm;           // Tahmini boy (cm)
-  final double biomassRelative;    // 0.0–1.0
-  final double stressIndex;        // 0.0 (stres yok) → 1.0 (kritik stres)
-  final String? event;             // 'İlk çiçek açtı', 'Don riski!' vs.
+  final double heightCm; // Tahmini boy (cm)
+  final double biomassRelative; // 0.0–1.0
+  final double stressIndex; // 0.0 (stres yok) → 1.0 (kritik stres)
+  final String? event; // 'İlk çiçek açtı', 'Don riski!' vs.
 
   const GrowthDayRecord({
     required this.dayNumber,
@@ -209,7 +226,7 @@ class SimulationResult {
   final DateTime estimatedHarvestDate;
   final List<GrowthDayRecord> dailyRecords;
   final Map<PhenologyStage, DateTime> stageDates;
-  final double predictedYieldKgDekar;   // Gerçek hava verisine göre ayarlı verim
+  final double predictedYieldKgDekar; // Gerçek hava verisine göre ayarlı verim
 
   const SimulationResult({
     required this.variety,

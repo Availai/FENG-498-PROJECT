@@ -43,7 +43,8 @@ class _CropCalendarScreenState extends ConsumerState<CropCalendarScreen> {
       map.putIfAbsent(key, () => []).add(ev);
     }
 
-    final entries = await ref.read(calendarRepositoryProvider).loadCalendarEntries();
+    final entries =
+        await ref.read(calendarRepositoryProvider).loadCalendarEntries();
     for (final entry in entries) {
       final date = entry['date'];
       if (date is! DateTime) continue;
@@ -104,8 +105,8 @@ class _CropCalendarScreenState extends ConsumerState<CropCalendarScreen> {
                     ),
                     const SizedBox(width: 4),
                     Text(t.label,
-                        style:
-                            const TextStyle(fontSize: 11, color: Colors.black54)),
+                        style: const TextStyle(
+                            fontSize: 11, color: Colors.black54)),
                   ],
                 );
               }).toList(),
@@ -174,10 +175,10 @@ class _CropCalendarScreenState extends ConsumerState<CropCalendarScreen> {
                 fontWeight: FontWeight.w700,
                 color: Color(0xFF1B5E20),
               ),
-              leftChevronIcon: const Icon(Icons.chevron_left,
-                  color: Color(0xFF2E7D32)),
-              rightChevronIcon: const Icon(Icons.chevron_right,
-                  color: Color(0xFF2E7D32)),
+              leftChevronIcon:
+                  const Icon(Icons.chevron_left, color: Color(0xFF2E7D32)),
+              rightChevronIcon:
+                  const Icon(Icons.chevron_right, color: Color(0xFF2E7D32)),
             ),
           ),
 
@@ -264,7 +265,8 @@ class _CropCalendarScreenState extends ConsumerState<CropCalendarScreen> {
         onPressed: () => _showAddEventDialog(),
         backgroundColor: Colors.green.shade700,
         icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text('Etkinlik Ekle', style: TextStyle(color: Colors.white)),
+        label:
+            const Text('Etkinlik Ekle', style: TextStyle(color: Colors.white)),
       ),
     );
   }
@@ -280,7 +282,8 @@ class _CropCalendarScreenState extends ConsumerState<CropCalendarScreen> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDlgState) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: const Text('Yeni Etkinlik',
               style: TextStyle(fontWeight: FontWeight.w700)),
           content: Column(
@@ -337,7 +340,8 @@ class _CropCalendarScreenState extends ConsumerState<CropCalendarScreen> {
                       const Icon(Icons.calendar_today_outlined,
                           size: 18, color: Colors.green),
                       const SizedBox(width: 8),
-                      Text(DateFormat('dd MMMM yyyy', 'tr_TR').format(pickedDate)),
+                      Text(DateFormat('dd MMMM yyyy', 'tr_TR')
+                          .format(pickedDate)),
                     ],
                   ),
                 ),

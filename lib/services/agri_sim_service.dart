@@ -27,13 +27,104 @@ class AgriSimService {
 
   /// Bölgesel aylık ortalama sıcaklık tahmini (°C)
   static const Map<TurkishRegion, List<double>> _monthlyAvgTemp = {
-    TurkishRegion.trakya:           [3.5,4.5,7.5,13.0,18.0,23.0,26.0,25.5,21.0,15.5,9.5,5.0],
-    TurkishRegion.icAnadolu:        [0.0,1.5,5.5,11.5,16.5,21.5,25.0,24.5,19.5,13.0,6.0,1.5],
-    TurkishRegion.ege:              [7.5,8.5,11.5,16.5,21.5,26.5,29.5,29.0,24.5,18.5,13.0,9.0],
-    TurkishRegion.akdeniz:          [9.0,10.0,13.5,18.0,23.0,28.0,31.0,31.0,26.5,20.5,15.0,10.5],
-    TurkishRegion.karadeniz:        [5.0,5.5,8.0,12.5,17.0,21.0,24.0,24.0,19.5,14.5,10.0,6.5],
-    TurkishRegion.doguAnadolu:      [-7.0,-5.5,-1.5,7.0,12.5,17.5,22.0,21.5,16.5,9.5,2.5,-3.5],
-    TurkishRegion.guneydoguAnadolu: [4.0,6.0,10.5,17.0,23.0,29.5,34.0,33.5,28.5,21.0,12.5,6.0],
+    TurkishRegion.trakya: [
+      3.5,
+      4.5,
+      7.5,
+      13.0,
+      18.0,
+      23.0,
+      26.0,
+      25.5,
+      21.0,
+      15.5,
+      9.5,
+      5.0
+    ],
+    TurkishRegion.icAnadolu: [
+      0.0,
+      1.5,
+      5.5,
+      11.5,
+      16.5,
+      21.5,
+      25.0,
+      24.5,
+      19.5,
+      13.0,
+      6.0,
+      1.5
+    ],
+    TurkishRegion.ege: [
+      7.5,
+      8.5,
+      11.5,
+      16.5,
+      21.5,
+      26.5,
+      29.5,
+      29.0,
+      24.5,
+      18.5,
+      13.0,
+      9.0
+    ],
+    TurkishRegion.akdeniz: [
+      9.0,
+      10.0,
+      13.5,
+      18.0,
+      23.0,
+      28.0,
+      31.0,
+      31.0,
+      26.5,
+      20.5,
+      15.0,
+      10.5
+    ],
+    TurkishRegion.karadeniz: [
+      5.0,
+      5.5,
+      8.0,
+      12.5,
+      17.0,
+      21.0,
+      24.0,
+      24.0,
+      19.5,
+      14.5,
+      10.0,
+      6.5
+    ],
+    TurkishRegion.doguAnadolu: [
+      -7.0,
+      -5.5,
+      -1.5,
+      7.0,
+      12.5,
+      17.5,
+      22.0,
+      21.5,
+      16.5,
+      9.5,
+      2.5,
+      -3.5
+    ],
+    TurkishRegion.guneydoguAnadolu: [
+      4.0,
+      6.0,
+      10.5,
+      17.0,
+      23.0,
+      29.5,
+      34.0,
+      33.5,
+      28.5,
+      21.0,
+      12.5,
+      6.0
+    ],
   };
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -50,7 +141,8 @@ class AgriSimService {
     List<Map<String, dynamic>> dailyTemps = const [],
   }) {
     final tBase = _tBase[variety.cropTr] ?? 0.0;
-    final monthlyAvg = _monthlyAvgTemp[region] ?? _monthlyAvgTemp[TurkishRegion.icAnadolu]!;
+    final monthlyAvg =
+        _monthlyAvgTemp[region] ?? _monthlyAvgTemp[TurkishRegion.icAnadolu]!;
 
     double accGdd = 0.0;
     int stageIdx = 0;
@@ -101,7 +193,8 @@ class AgriSimService {
 
       // Evre geçiş kontrolü
       String? event;
-      if (accGdd >= stageDef.requiredGdd && stageIdx < variety.phenology.length - 1) {
+      if (accGdd >= stageDef.requiredGdd &&
+          stageIdx < variety.phenology.length - 1) {
         stageIdx++;
         final nextStage = variety.phenology[stageIdx].stage;
         stageDates[nextStage] = current;
@@ -110,16 +203,22 @@ class AgriSimService {
       }
 
       // Özel olaylar
-      if (variety.cropTr == 'buğday' && day == variety.daysUntilStageStart(PhenologyStage.ciceklenme)) {
+      if (variety.cropTr == 'buğday' &&
+          day == variety.daysUntilStageStart(PhenologyStage.ciceklenme)) {
         event = '🌾 Başak çıkışı — üst gübre zamanı';
       }
-      if (variety.cropTr == 'ayçiçeği' && day == variety.daysUntilStageStart(PhenologyStage.ciceklenme)) {
+      if (variety.cropTr == 'ayçiçeği' &&
+          day == variety.daysUntilStageStart(PhenologyStage.ciceklenme)) {
         event = '🌻 İlk çiçek açtı — ilaçlama durdurun';
       }
 
       records.add(GrowthDayRecord(
         dayNumber: day + 1,
-        stage: variety.phenology[stageIdx < variety.phenology.length ? stageIdx : variety.phenology.length - 1].stage,
+        stage: variety
+            .phenology[stageIdx < variety.phenology.length
+                ? stageIdx
+                : variety.phenology.length - 1]
+            .stage,
         accumulatedGdd: accGdd,
         heightCm: heightCm,
         biomassRelative: biomass,
@@ -148,9 +247,14 @@ class AgriSimService {
 
   static double _estimateHeight(String cropTr, double progress) {
     final maxH = {
-      'buğday': 90.0, 'arpa': 80.0, 'mısır': 250.0,
-      'ayçiçeği': 200.0, 'pamuk': 120.0, 'çeltik': 100.0,
-      'kolza': 150.0, 'nohut': 60.0,
+      'buğday': 90.0,
+      'arpa': 80.0,
+      'mısır': 250.0,
+      'ayçiçeği': 200.0,
+      'pamuk': 120.0,
+      'çeltik': 100.0,
+      'kolza': 150.0,
+      'nohut': 60.0,
     };
     final max = maxH[cropTr] ?? 100.0;
     // Sigmoid büyüme; olgunlukta hafif azalma

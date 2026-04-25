@@ -217,7 +217,8 @@ const _aycicegiWater = <WaterGuideBand>[
   WaterGuideBand(dayFrom: 15, dayTo: 44, weeklyMm: 35, stage: 'İlk gelişme'),
   WaterGuideBand(dayFrom: 45, dayTo: 74, weeklyMm: 55, stage: 'Vejetatif'),
   WaterGuideBand(dayFrom: 75, dayTo: 99, weeklyMm: 65, stage: 'Çiçeklenme'),
-  WaterGuideBand(dayFrom: 100, dayTo: 120, weeklyMm: 15, stage: 'Olgunlaşma (suyu kes)'),
+  WaterGuideBand(
+      dayFrom: 100, dayTo: 120, weeklyMm: 15, stage: 'Olgunlaşma (suyu kes)'),
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -290,7 +291,11 @@ const _misirPesticides = <PesticideProduct>[
     name: 'Coragen',
     activeIngredient: 'Chlorantraniliprole %20',
     category: PesticideCategory.insecticide,
-    targets: ['Mısır koçan kurdu', 'Çizgili yaprak kurdu', 'Sonbahar ordu kurdu'],
+    targets: [
+      'Mısır koçan kurdu',
+      'Çizgili yaprak kurdu',
+      'Sonbahar ordu kurdu'
+    ],
     defaultDosePerDa: 15,
     unit: 'mL',
     preharvestIntervalDays: 14,
@@ -319,10 +324,16 @@ const _misirPesticides = <PesticideProduct>[
 const _misirWater = <WaterGuideBand>[
   WaterGuideBand(dayFrom: 0, dayTo: 14, weeklyMm: 25, stage: 'Çimlenme'),
   WaterGuideBand(dayFrom: 15, dayTo: 39, weeklyMm: 35, stage: 'Fide'),
-  WaterGuideBand(dayFrom: 40, dayTo: 59, weeklyMm: 50, stage: 'Hızlı vejetatif'),
-  WaterGuideBand(dayFrom: 60, dayTo: 79, weeklyMm: 75, stage: 'Püsküllenme + koçan (KRİTİK)'),
+  WaterGuideBand(
+      dayFrom: 40, dayTo: 59, weeklyMm: 50, stage: 'Hızlı vejetatif'),
+  WaterGuideBand(
+      dayFrom: 60,
+      dayTo: 79,
+      weeklyMm: 75,
+      stage: 'Püsküllenme + koçan (KRİTİK)'),
   WaterGuideBand(dayFrom: 80, dayTo: 99, weeklyMm: 55, stage: 'Dane dolumu'),
-  WaterGuideBand(dayFrom: 100, dayTo: 110, weeklyMm: 15, stage: 'Olgunlaşma (suyu kes)'),
+  WaterGuideBand(
+      dayFrom: 100, dayTo: 110, weeklyMm: 15, stage: 'Olgunlaşma (suyu kes)'),
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -442,12 +453,16 @@ const _domatesPesticides = <PesticideProduct>[
 ];
 
 const _domatesWater = <WaterGuideBand>[
-  WaterGuideBand(dayFrom: 0, dayTo: 7, weeklyMm: 15, stage: 'Fide tutumu (can suyu)'),
-  WaterGuideBand(dayFrom: 8, dayTo: 34, weeklyMm: 30, stage: 'Vejetatif başlangıç'),
+  WaterGuideBand(
+      dayFrom: 0, dayTo: 7, weeklyMm: 15, stage: 'Fide tutumu (can suyu)'),
+  WaterGuideBand(
+      dayFrom: 8, dayTo: 34, weeklyMm: 30, stage: 'Vejetatif başlangıç'),
   WaterGuideBand(dayFrom: 35, dayTo: 54, weeklyMm: 45, stage: 'Hızlı büyüme'),
-  WaterGuideBand(dayFrom: 55, dayTo: 69, weeklyMm: 55, stage: 'Çiçeklenme + meyve tutumu'),
+  WaterGuideBand(
+      dayFrom: 55, dayTo: 69, weeklyMm: 55, stage: 'Çiçeklenme + meyve tutumu'),
   WaterGuideBand(dayFrom: 70, dayTo: 84, weeklyMm: 40, stage: 'Meyve dolumu'),
-  WaterGuideBand(dayFrom: 85, dayTo: 95, weeklyMm: 25, stage: 'Hasat (sulamayı azalt)'),
+  WaterGuideBand(
+      dayFrom: 85, dayTo: 95, weeklyMm: 25, stage: 'Hasat (sulamayı azalt)'),
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════

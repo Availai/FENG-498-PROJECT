@@ -250,8 +250,9 @@ class TurkiyeCropGuide {
         'nutritionPlan': nutritionPlan.map((n) => n.toJson()).toList(),
       };
 
-  static String _fmt(double value) =>
-      value == value.roundToDouble() ? value.toStringAsFixed(0) : value.toStringAsFixed(1);
+  static String _fmt(double value) => value == value.roundToDouble()
+      ? value.toStringAsFixed(0)
+      : value.toStringAsFixed(1);
 }
 
 class TurkiyeCropGuides {
@@ -290,7 +291,8 @@ class TurkiyeCropGuides {
       fertilizerType: 'Taban P + bölünmüş azot',
       dailyWaterLitersPerPlant: 2,
       companionPlants: 'Buğday, arpa, baklagil münavebesi',
-      avoidPlants: 'Ayçiçeği üst üste ekim, yoğun canavar otu geçmişi olan parsel',
+      avoidPlants:
+          'Ayçiçeği üst üste ekim, yoğun canavar otu geçmişi olan parsel',
       pruning: 'Yok',
       droughtTolerant: true,
       plantingTip:
@@ -389,19 +391,22 @@ class TurkiyeCropGuides {
           region: 'Marmara-Trakya',
           plantingWindow: 'Mart sonu-Nisan',
           harvestWindow: 'Ağustos sonu-Eylül',
-          notes: 'Ana üretim bölgesi; orobanş ve mildiyö dayanımı çeşit seçiminde kritiktir.',
+          notes:
+              'Ana üretim bölgesi; orobanş ve mildiyö dayanımı çeşit seçiminde kritiktir.',
         ),
         RegionalCropCalendar(
           region: 'İç Anadolu',
           plantingWindow: 'Nisan',
           harvestWindow: 'Eylül',
-          notes: 'İlkbahar yağışından yararlanmak için tav yakalanınca gecikmeden ekim yapılır.',
+          notes:
+              'İlkbahar yağışından yararlanmak için tav yakalanınca gecikmeden ekim yapılır.',
         ),
         RegionalCropCalendar(
           region: 'Akdeniz-Güneydoğu',
           plantingWindow: 'Mart-Nisan',
           harvestWindow: 'Ağustos',
-          notes: 'Sıcak ve sulanan alanlarda tabla dönemi sulaması ve yabancı ot yönetimi öne çıkar.',
+          notes:
+              'Sıcak ve sulanan alanlarda tabla dönemi sulaması ve yabancı ot yönetimi öne çıkar.',
         ),
       ],
       nutritionPlan: [
@@ -431,7 +436,8 @@ class TurkiyeCropGuides {
         'TAGEM Açık Alan Domates Entegre Mücadele Teknik Talimatı, 2022',
         'Tarım ve Orman Bakanlığı il müdürlükleri açıkta domates yetiştiriciliği broşürleri',
       ],
-      sowingWindow: 'Fide: Mart-Nisan; tarlaya dikim: don riski geçince Nisan-Mayıs',
+      sowingWindow:
+          'Fide: Mart-Nisan; tarlaya dikim: don riski geçince Nisan-Mayıs',
       harvestWindow: 'Haziran-Ekim; çeşit ve bölgeye göre kademeli hasat',
       sowingDepthCm: 1,
       rowSpacingCm: 100,
@@ -451,8 +457,10 @@ class TurkiyeCropGuides {
       fertilizerType: 'Dengeli NPK + meyvede potasyum/kalsiyum',
       dailyWaterLitersPerPlant: 2.5,
       companionPlants: 'Fesleğen, kadife çiçeği, soğan, sarımsak',
-      avoidPlants: 'Patates, biber, patlıcan ardışık ekim; sık ve havasız dikim',
-      pruning: 'Sırık çeşitlerde koltuk alma, bağlama ve gerektiğinde alt yaprak temizliği',
+      avoidPlants:
+          'Patates, biber, patlıcan ardışık ekim; sık ve havasız dikim',
+      pruning:
+          'Sırık çeşitlerde koltuk alma, bağlama ve gerektiğinde alt yaprak temizliği',
       droughtTolerant: false,
       plantingTip:
           'Fideleri serin saatte dik; kök boğazını çok derine gömme, hemen can suyu ver ve sırık çeşitte erken destek sistemini kur.',
@@ -479,16 +487,14 @@ class TurkiyeCropGuides {
           timing: 'Don riski geçince',
           action:
               '100 x 50 cm ana aralığı koru; serin saatte dik, can suyu ver ve sırık çeşitte destek planını hazırla.',
-          risk:
-              'Sıcak saatte dikim ve yetersiz can suyu fide kaybı yapar.',
+          risk: 'Sıcak saatte dikim ve yetersiz can suyu fide kaybı yapar.',
         ),
         GuideStage(
           title: 'Köklenme ve ilk çapa',
           timing: 'Dikimden 10-20 gün sonra',
           action:
               'İlk çapayı yap, yabancı otları temizle, kök boğazını havalandır ve damla hattını kontrol et.',
-          risk:
-              'Kabuk bağlayan veya otlu toprak kök gelişimini zayıflatır.',
+          risk: 'Kabuk bağlayan veya otlu toprak kök gelişimini zayıflatır.',
         ),
         GuideStage(
           title: 'Çiçeklenme ve meyve tutumu',
@@ -550,13 +556,15 @@ class TurkiyeCropGuides {
           region: 'Akdeniz',
           plantingWindow: 'Şubat-Nisan; örtü altında daha erken',
           harvestWindow: 'Haziran-Ekim',
-          notes: 'Erken üretim avantajlıdır; yaz sıcaklarında gölgeleme ve düzenli sulama gerekir.',
+          notes:
+              'Erken üretim avantajlıdır; yaz sıcaklarında gölgeleme ve düzenli sulama gerekir.',
         ),
         RegionalCropCalendar(
           region: 'Ege-Marmara',
           plantingWindow: 'Mart-Mayıs',
           harvestWindow: 'Temmuz-Ekim',
-          notes: 'Açık tarla için don sonrası dikim ve sırık çeşitlerde destek önemlidir.',
+          notes:
+              'Açık tarla için don sonrası dikim ve sırık çeşitlerde destek önemlidir.',
         ),
         RegionalCropCalendar(
           region: 'İç Anadolu',
@@ -568,7 +576,8 @@ class TurkiyeCropGuides {
           region: 'Karadeniz',
           plantingWindow: 'Nisan-Mayıs',
           harvestWindow: 'Temmuz-Eylül',
-          notes: 'Nemli iklim nedeniyle sıra havalanması ve mantari hastalık takibi kritik olur.',
+          notes:
+              'Nemli iklim nedeniyle sıra havalanması ve mantari hastalık takibi kritik olur.',
         ),
       ],
       nutritionPlan: [
@@ -604,7 +613,8 @@ class TurkiyeCropGuides {
         'TAGEM Mısır Entegre Mücadele Teknik Talimatı, 2022',
         'Trakya Tarımsal Araştırma Enstitüsü Mısır Tarımı notları',
       ],
-      sowingWindow: 'Nisan-Mayıs ana ürün; güneyde Haziran sonuna kadar II. ürün',
+      sowingWindow:
+          'Nisan-Mayıs ana ürün; güneyde Haziran sonuna kadar II. ürün',
       harvestWindow: 'Silaj: süt-hamur olum; dane: Eylül-Ekim',
       sowingDepthCm: 5,
       rowSpacingCm: 70,
@@ -624,7 +634,8 @@ class TurkiyeCropGuides {
       fertilizerType: 'Taban P-K + bölünmüş azot + çinko takibi',
       dailyWaterLitersPerPlant: 3.5,
       companionPlants: 'Baklagil ve buğday münavebesi',
-      avoidPlants: 'Üst üste mısır, yoğun mısır kurdu geçmişi ve kötü parçalanmış sap artığı',
+      avoidPlants:
+          'Üst üste mısır, yoğun mısır kurdu geçmişi ve kötü parçalanmış sap artığı',
       pruning: 'Yok',
       droughtTolerant: false,
       plantingTip:
@@ -676,8 +687,7 @@ class TurkiyeCropGuides {
           timing: 'Süt olum-hasat',
           action:
               'Silaj ve dane amacına göre hasat zamanını ayır; depolanacak danede nemi düşür.',
-          risk:
-              'Nemli depolama küf ve aflatoksin riskini artırır.',
+          risk: 'Nemli depolama küf ve aflatoksin riskini artırır.',
         ),
       ],
       pests: [
@@ -723,19 +733,22 @@ class TurkiyeCropGuides {
           region: 'Akdeniz-Güneydoğu',
           plantingWindow: 'Mart-Nisan ana ürün; Haziran II. ürün',
           harvestWindow: 'Ağustos-Ekim',
-          notes: 'Sulama planı yüksek sıcaklık ve ikinci ürün takvimine göre sıkı tutulmalıdır.',
+          notes:
+              'Sulama planı yüksek sıcaklık ve ikinci ürün takvimine göre sıkı tutulmalıdır.',
         ),
         RegionalCropCalendar(
           region: 'Ege-Marmara',
           plantingWindow: 'Nisan-Mayıs',
           harvestWindow: 'Eylül-Ekim',
-          notes: 'Dane ve silaj için uygun; Trakya’da geç II. ürün dane riski taşır.',
+          notes:
+              'Dane ve silaj için uygun; Trakya’da geç II. ürün dane riski taşır.',
         ),
         RegionalCropCalendar(
           region: 'Karadeniz',
           plantingWindow: 'Nisan-Mayıs',
           harvestWindow: 'Ağustos-Eylül',
-          notes: 'Nemli koşullarda yaprak hastalıkları ve hasat nemi yakından izlenmelidir.',
+          notes:
+              'Nemli koşullarda yaprak hastalıkları ve hasat nemi yakından izlenmelidir.',
         ),
       ],
       nutritionPlan: [

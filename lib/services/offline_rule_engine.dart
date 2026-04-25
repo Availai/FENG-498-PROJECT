@@ -11,20 +11,20 @@ library;
 
 enum RiskLevel {
   critical, // 🔴 Acil müdahale
-  warning,  // 🟡 Dikkat
-  info,     // 🔵 Bilgi
-  ok,       // 🟢 Normal
+  warning, // 🟡 Dikkat
+  info, // 🔵 Bilgi
+  ok, // 🟢 Normal
 }
 
 enum RuleCategory {
-  disease,       // Hastalık / mantar / bakteri
-  pest,          // Zararlı
-  irrigation,    // Sulama
-  soil,          // Toprak
-  weather,       // Hava
-  season,        // Mevsim / ekim zamanı
+  disease, // Hastalık / mantar / bakteri
+  pest, // Zararlı
+  irrigation, // Sulama
+  soil, // Toprak
+  weather, // Hava
+  season, // Mevsim / ekim zamanı
   compatibility, // Bitki-tarla uyumu
-  harvest,       // Hasat
+  harvest, // Hasat
 }
 
 class RuleResult {
@@ -44,35 +44,47 @@ class RuleResult {
 
   String get emoji {
     switch (level) {
-      case RiskLevel.critical: return '🔴';
-      case RiskLevel.warning:  return '🟡';
-      case RiskLevel.info:     return '🔵';
-      case RiskLevel.ok:       return '🟢';
+      case RiskLevel.critical:
+        return '🔴';
+      case RiskLevel.warning:
+        return '🟡';
+      case RiskLevel.info:
+        return '🔵';
+      case RiskLevel.ok:
+        return '🟢';
     }
   }
 
   String get categoryLabel {
     switch (category) {
-      case RuleCategory.disease:       return 'Hastalık';
-      case RuleCategory.pest:          return 'Zararlı';
-      case RuleCategory.irrigation:    return 'Sulama';
-      case RuleCategory.soil:          return 'Toprak';
-      case RuleCategory.weather:       return 'Hava';
-      case RuleCategory.season:        return 'Mevsim';
-      case RuleCategory.compatibility: return 'Uyum';
-      case RuleCategory.harvest:       return 'Hasat';
+      case RuleCategory.disease:
+        return 'Hastalık';
+      case RuleCategory.pest:
+        return 'Zararlı';
+      case RuleCategory.irrigation:
+        return 'Sulama';
+      case RuleCategory.soil:
+        return 'Toprak';
+      case RuleCategory.weather:
+        return 'Hava';
+      case RuleCategory.season:
+        return 'Mevsim';
+      case RuleCategory.compatibility:
+        return 'Uyum';
+      case RuleCategory.harvest:
+        return 'Hasat';
     }
   }
 
   Map<String, dynamic> toMap() => {
-    'level': level.name,
-    'category': category.name,
-    'title': title,
-    'message': message,
-    'recommendation': recommendation,
-    'emoji': emoji,
-    'category_label': categoryLabel,
-  };
+        'level': level.name,
+        'category': category.name,
+        'title': title,
+        'message': message,
+        'recommendation': recommendation,
+        'emoji': emoji,
+        'category_label': categoryLabel,
+      };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -82,20 +94,20 @@ class RuleResult {
 class OfflineRuleEngine {
   /// Tam analiz — tüm kategorileri çalıştırır.
   static List<RuleResult> analyze({
-    String commonName = '',           // Türkçe bitki adı (Domates, Buğday…)
-    String scientificName = '',       // Latince
+    String commonName = '', // Türkçe bitki adı (Domates, Buğday…)
+    String scientificName = '', // Latince
     Map<String, dynamic> plantDetails = const {}, // Perenual / cache verisi
-    double temperature = 20.0,        // °C anlık
-    double avgWeeklyTemp = 20.0,      // °C haftalık ort.
-    double humidity = 60.0,           // % anlık
-    double weeklyRain = 15.0,         // mm/hafta
-    double soilPh = 6.8,              // 0-14
-    double soilMoisture = 0.25,       // 0-1 (AgroMonitoring)
-    double soilTempC = 15.0,          // °C
-    double ndvi = 0.6,                // 0-1 (AgroMonitoring; 0=ölü, 1=sağlıklı)
-    double windSpeed = 3.0,           // m/s
-    int month = 6,                    // 1-12
-    double precipProbNext3h = 0.0,    // % (0-100)
+    double temperature = 20.0, // °C anlık
+    double avgWeeklyTemp = 20.0, // °C haftalık ort.
+    double humidity = 60.0, // % anlık
+    double weeklyRain = 15.0, // mm/hafta
+    double soilPh = 6.8, // 0-14
+    double soilMoisture = 0.25, // 0-1 (AgroMonitoring)
+    double soilTempC = 15.0, // °C
+    double ndvi = 0.6, // 0-1 (AgroMonitoring; 0=ölü, 1=sağlıklı)
+    double windSpeed = 3.0, // m/s
+    int month = 6, // 1-12
+    double precipProbNext3h = 0.0, // % (0-100)
   }) {
     final results = <RuleResult>[];
     final name = commonName.toLowerCase();
@@ -104,8 +116,8 @@ class OfflineRuleEngine {
         weeklyRain, windSpeed, precipProbNext3h));
     results.addAll(_irrigationRules(ndvi, soilMoisture, weeklyRain,
         precipProbNext3h, plantDetails, temperature));
-    results.addAll(_diseaseRules(name, temperature, humidity, weeklyRain,
-        soilMoisture, month));
+    results.addAll(_diseaseRules(
+        name, temperature, humidity, weeklyRain, soilMoisture, month));
     results.addAll(_pestRules(name, temperature, humidity, windSpeed, month));
     results.addAll(_soilRules(soilPh, soilTempC, plantDetails, month));
     results.addAll(_seasonRules(name, month, plantDetails));
@@ -145,8 +157,7 @@ class OfflineRuleEngine {
         level: RiskLevel.critical,
         category: RuleCategory.weather,
         title: 'Don Riski',
-        message:
-            'Sıcaklık ${temp.toStringAsFixed(1)}°C — donma eşiğine yakın.',
+        message: 'Sıcaklık ${temp.toStringAsFixed(1)}°C — donma eşiğine yakın.',
         recommendation:
             'Bitkilerinizi örtü bezi veya naylon ile örtün. Sulama yapılacaksa gece değil sabah erken yapın.',
       ));
@@ -181,7 +192,8 @@ class OfflineRuleEngine {
         level: RiskLevel.critical,
         category: RuleCategory.weather,
         title: 'Şiddetli Rüzgar',
-        message: '${wind.toStringAsFixed(1)} m/s rüzgar — bitki devrilme riski.',
+        message:
+            '${wind.toStringAsFixed(1)} m/s rüzgar — bitki devrilme riski.',
         recommendation:
             'Uzun gövdeli bitkiler (domates, biber) için destek kazığı kontrol edin. Sera perdelerini tamamen kapatın.',
       ));
@@ -202,8 +214,7 @@ class OfflineRuleEngine {
         level: RiskLevel.warning,
         category: RuleCategory.weather,
         title: 'Sulama Yapma — Yağmur Geliyor',
-        message:
-            'Önümüzdeki 3 saatte yağış olasılığı %${precipProb.round()}.',
+        message: 'Önümüzdeki 3 saatte yağış olasılığı %${precipProb.round()}.',
         recommendation:
             'Sulama ertelensin. İlaçlama/gübreleme kesinlikle yapılmasın — yağmur kimyasalları yıkayarak kök bölgesine taşır.',
       ));
@@ -258,7 +269,8 @@ class OfflineRuleEngine {
     double temp,
   ) {
     final r = <RuleResult>[];
-    final watering = (plantDetails['watering'] ?? 'Average').toString().toLowerCase();
+    final watering =
+        (plantDetails['watering'] ?? 'Average').toString().toLowerCase();
     final droughtTolerant = plantDetails['drought_tolerant'] == true;
 
     // KURAL 2 (Kullanıcının belirttiği): NDVI < 0.4 + toprak nemi düşük
@@ -385,7 +397,9 @@ class OfflineRuleEngine {
 
     // MİLDİYÖ (PATATES + DOMATES — soğuk+nemli)
     if ((name.contains('patates') || name.contains('domates')) &&
-        humidity > 85 && temp >= 10 && temp <= 20) {
+        humidity > 85 &&
+        temp >= 10 &&
+        temp <= 20) {
       r.add(RuleResult(
         level: RiskLevel.critical,
         category: RuleCategory.disease,
@@ -398,10 +412,15 @@ class OfflineRuleEngine {
     }
 
     // KÜLLEME (Salatalık, Kabak, Üzüm — kuru+sıcak)
-    if ((name.contains('salatalık') || name.contains('kabak') ||
-            name.contains('üzüm') || name.contains('kavun') ||
+    if ((name.contains('salatalık') ||
+            name.contains('kabak') ||
+            name.contains('üzüm') ||
+            name.contains('kavun') ||
             name.contains('karpuz')) &&
-        temp >= 22 && temp <= 28 && humidity >= 45 && humidity <= 70) {
+        temp >= 22 &&
+        temp <= 28 &&
+        humidity >= 45 &&
+        humidity <= 70) {
       r.add(RuleResult(
         level: RiskLevel.warning,
         category: RuleCategory.disease,
@@ -480,9 +499,12 @@ class OfflineRuleEngine {
     final r = <RuleResult>[];
 
     // KIRMIZI ÖRÜMCEK (Tetranychus) — sıcak+kuru
-    if ((name.contains('domates') || name.contains('biber') ||
-            name.contains('salatalık') || name.contains('patlıcan')) &&
-        temp > 30 && humidity < 40) {
+    if ((name.contains('domates') ||
+            name.contains('biber') ||
+            name.contains('salatalık') ||
+            name.contains('patlıcan')) &&
+        temp > 30 &&
+        humidity < 40) {
       r.add(RuleResult(
         level: RiskLevel.warning,
         category: RuleCategory.pest,
@@ -495,7 +517,10 @@ class OfflineRuleEngine {
     }
 
     // YAPRAK BİTİ (Aphid) — ılık bahar
-    if ((month >= 3 && month <= 6) && temp >= 15 && temp <= 25 && humidity >= 60) {
+    if ((month >= 3 && month <= 6) &&
+        temp >= 15 &&
+        temp <= 25 &&
+        humidity >= 60) {
       r.add(RuleResult(
         level: RiskLevel.info,
         category: RuleCategory.pest,
@@ -509,7 +534,9 @@ class OfflineRuleEngine {
 
     // COLORADO BÖCEĞİ (Patates, Patlıcan)
     if ((name.contains('patates') || name.contains('patlıcan')) &&
-        temp > 20 && month >= 5 && month <= 8) {
+        temp > 20 &&
+        month >= 5 &&
+        month <= 8) {
       r.add(RuleResult(
         level: RiskLevel.warning,
         category: RuleCategory.pest,
@@ -523,7 +550,8 @@ class OfflineRuleEngine {
 
     // BEYAZSINEK (Domates, Biber)
     if ((name.contains('domates') || name.contains('biber')) &&
-        temp > 25 && humidity < 70) {
+        temp > 25 &&
+        humidity < 70) {
       r.add(RuleResult(
         level: RiskLevel.info,
         category: RuleCategory.pest,
@@ -541,8 +569,7 @@ class OfflineRuleEngine {
         level: RiskLevel.warning,
         category: RuleCategory.pest,
         title: 'Mısır Kurdu (Helicoverpa) Riski',
-        message:
-            'Sıcak yaz — koçan kurdu ve yaprak kurdu aktif dönemde.',
+        message: 'Sıcak yaz — koçan kurdu ve yaprak kurdu aktif dönemde.',
         recommendation:
             'Koçan tepe kısmını kontrol edin. Feromonlu tuzaklar kurun. Bacillus thuringiensis (Bt) biyolojik mücadele.',
       ));
@@ -560,8 +587,10 @@ class OfflineRuleEngine {
     int month,
   ) {
     final r = <RuleResult>[];
-    final idealPhMin = (plantDetails['ideal_ph_min'] as num?)?.toDouble() ?? 5.5;
-    final idealPhMax = (plantDetails['ideal_ph_max'] as num?)?.toDouble() ?? 7.0;
+    final idealPhMin =
+        (plantDetails['ideal_ph_min'] as num?)?.toDouble() ?? 5.5;
+    final idealPhMax =
+        (plantDetails['ideal_ph_max'] as num?)?.toDouble() ?? 7.0;
 
     // pH AŞIRI ASİDİK
     if (ph < 5.0) {
@@ -701,7 +730,8 @@ class OfflineRuleEngine {
     }
 
     // Domates/biber/patlıcan yaz bitkisi kontrolü
-    if ((name.contains('domates') || name.contains('biber') ||
+    if ((name.contains('domates') ||
+            name.contains('biber') ||
             name.contains('patlıcan')) &&
         (month == 12 || month == 1 || month == 2)) {
       r.add(const RuleResult(
@@ -715,9 +745,12 @@ class OfflineRuleEngine {
     }
 
     // İdeal mevsim (ilkbahar yaz bitkiler)
-    if ((name.contains('domates') || name.contains('biber') ||
-            name.contains('salatalık') || name.contains('kabak')) &&
-        month >= 4 && month <= 6) {
+    if ((name.contains('domates') ||
+            name.contains('biber') ||
+            name.contains('salatalık') ||
+            name.contains('kabak')) &&
+        month >= 4 &&
+        month <= 6) {
       r.add(const RuleResult(
         level: RiskLevel.ok,
         category: RuleCategory.season,
@@ -746,9 +779,9 @@ class OfflineRuleEngine {
 
     final idealTempMin = (plant['ideal_temp_min'] as num?)?.toDouble() ?? 10;
     final idealTempMax = (plant['ideal_temp_max'] as num?)?.toDouble() ?? 35;
-    final idealPhMin   = (plant['ideal_ph_min']  as num?)?.toDouble() ?? 5.5;
-    final idealPhMax   = (plant['ideal_ph_max']  as num?)?.toDouble() ?? 7.5;
-    final waterNeed    = (plant['water_need_mm_week'] as num?)?.toDouble() ?? 15;
+    final idealPhMin = (plant['ideal_ph_min'] as num?)?.toDouble() ?? 5.5;
+    final idealPhMax = (plant['ideal_ph_max'] as num?)?.toDouble() ?? 7.5;
+    final waterNeed = (plant['water_need_mm_week'] as num?)?.toDouble() ?? 15;
 
     // pH UYUMU
     if (ph < idealPhMin - 0.5) {
@@ -756,7 +789,8 @@ class OfflineRuleEngine {
         level: RiskLevel.warning,
         category: RuleCategory.compatibility,
         title: 'pH Uyumsuz — Çok Asidik',
-        message: 'Tarla pH ${ph.toStringAsFixed(1)}, bitki için ideal: ${idealPhMin.toStringAsFixed(1)}-${idealPhMax.toStringAsFixed(1)}.',
+        message:
+            'Tarla pH ${ph.toStringAsFixed(1)}, bitki için ideal: ${idealPhMin.toStringAsFixed(1)}-${idealPhMax.toStringAsFixed(1)}.',
         recommendation: 'Tarım kireci uygulayarak pH\'ı yükseltin.',
       ));
     } else if (ph > idealPhMax + 0.5) {
@@ -764,7 +798,8 @@ class OfflineRuleEngine {
         level: RiskLevel.warning,
         category: RuleCategory.compatibility,
         title: 'pH Uyumsuz — Çok Bazik',
-        message: 'Tarla pH ${ph.toStringAsFixed(1)}, bitki için ideal: ${idealPhMin.toStringAsFixed(1)}-${idealPhMax.toStringAsFixed(1)}.',
+        message:
+            'Tarla pH ${ph.toStringAsFixed(1)}, bitki için ideal: ${idealPhMin.toStringAsFixed(1)}-${idealPhMax.toStringAsFixed(1)}.',
         recommendation: 'Kükürt uygulaması ile pH\'ı düşürün.',
       ));
     } else {
@@ -813,7 +848,8 @@ class OfflineRuleEngine {
         title: 'Sıcaklık Çok Yüksek',
         message:
             'Mevcut ${avgTemp.toStringAsFixed(1)}°C, ideal max ${idealTempMax.toStringAsFixed(0)}°C.',
-        recommendation: 'Gölgeleme ağı ve bol sulama ile sıcaklık etkisini azaltın.',
+        recommendation:
+            'Gölgeleme ağı ve bol sulama ile sıcaklık etkisini azaltın.',
       ));
     }
 
@@ -858,8 +894,7 @@ class OfflineRuleEngine {
         level: RiskLevel.info,
         category: RuleCategory.harvest,
         title: 'Hasat Kalite İpucu — Kavun/Karpuz',
-        message:
-            'Olgunlaşma döneminde sulama azaltılırsa şeker oranı artar.',
+        message: 'Olgunlaşma döneminde sulama azaltılırsa şeker oranı artar.',
         recommendation:
             'Hasattan 10-14 gün önce sulamayı azaltın. Sapın kurumaya başlaması ve koku olgunluğun işareti.',
       ));
@@ -879,59 +914,85 @@ class OfflineRuleEngine {
     required int month,
     Map<String, dynamic> plantDetails = const {},
   }) {
-    final monthNames = ['','Ocak','Şubat','Mart','Nisan','Mayıs','Haziran',
-      'Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+    final monthNames = [
+      '',
+      'Ocak',
+      'Şubat',
+      'Mart',
+      'Nisan',
+      'Mayıs',
+      'Haziran',
+      'Temmuz',
+      'Ağustos',
+      'Eylül',
+      'Ekim',
+      'Kasım',
+      'Aralık'
+    ];
     final season = _currentSeason(month);
     final buf = StringBuffer();
 
-    final rowSp   = (plantDetails['row_spacing_cm']   as num?)?.toInt() ?? 60;
+    final rowSp = (plantDetails['row_spacing_cm'] as num?)?.toInt() ?? 60;
     final plantSp = (plantDetails['plant_spacing_cm'] as num?)?.toInt() ?? 40;
-    final depth   = (plantDetails['depth_cm']         as num?)?.toInt() ?? 3;
-    final seeds   = (plantDetails['seeds_per_dekar']  as num?)?.toInt() ?? 500;
-    final harvest = (plantDetails['harvest_days']     as num?)?.toInt() ?? 90;
-    final watering= (plantDetails['watering'] ?? 'Average').toString();
-    final care    = (plantDetails['care_description'] ?? '').toString();
-    final pests   = (plantDetails['pest_susceptibility'] ?? 'Genel zararlı takibi').toString();
+    final depth = (plantDetails['depth_cm'] as num?)?.toInt() ?? 3;
+    final seeds = (plantDetails['seeds_per_dekar'] as num?)?.toInt() ?? 500;
+    final harvest = (plantDetails['harvest_days'] as num?)?.toInt() ?? 90;
+    final watering = (plantDetails['watering'] ?? 'Average').toString();
+    final care = (plantDetails['care_description'] ?? '').toString();
+    final pests =
+        (plantDetails['pest_susceptibility'] ?? 'Genel zararlı takibi')
+            .toString();
 
     // Tahmini hasat tarihi
     final now = DateTime.now();
     final harvestDate = now.add(Duration(days: harvest));
 
     buf.writeln('📋 $plantName — $fieldName Ekim Planı');
-    buf.writeln('Tarih: ${now.day} ${monthNames[month]} ${now.year} | Mevsim: $season');
+    buf.writeln(
+        'Tarih: ${now.day} ${monthNames[month]} ${now.year} | Mevsim: $season');
     buf.writeln('Alan: ${areaDekar.toStringAsFixed(1)} dekar\n');
 
     // 1. Toprak Hazırlığı
     buf.writeln('🌱 1. TOPRAK HAZIRLIĞI');
     if (ph < 5.5) {
-      buf.writeln('• pH ${ph.toStringAsFixed(1)} — ZORUNLU: Ekimden 1 ay önce dekara 200 kg tarım kireci uygulayın.');
+      buf.writeln(
+          '• pH ${ph.toStringAsFixed(1)} — ZORUNLU: Ekimden 1 ay önce dekara 200 kg tarım kireci uygulayın.');
     } else if (ph > 7.5) {
-      buf.writeln('• pH ${ph.toStringAsFixed(1)} — Dekara 20 kg elementel kükürt uygulayın.');
+      buf.writeln(
+          '• pH ${ph.toStringAsFixed(1)} — Dekara 20 kg elementel kükürt uygulayın.');
     } else {
-      buf.writeln('• pH ${ph.toStringAsFixed(1)} ✅ toprak ideal aralıkta, kireçleme gerekmez.');
+      buf.writeln(
+          '• pH ${ph.toStringAsFixed(1)} ✅ toprak ideal aralıkta, kireçleme gerekmez.');
     }
-    buf.writeln('• Taban gübresi: Ekimden 5-7 gün önce dekara 20 kg 15-15-15 NPK uygulayın.');
-    buf.writeln('• Derin sürüm (25-30 cm) ve diskaro ile toprak hazırlığı yapın.\n');
+    buf.writeln(
+        '• Taban gübresi: Ekimden 5-7 gün önce dekara 20 kg 15-15-15 NPK uygulayın.');
+    buf.writeln(
+        '• Derin sürüm (25-30 cm) ve diskaro ile toprak hazırlığı yapın.\n');
 
     // 2. Ekim/Dikim
     buf.writeln('🌾 2. EKİM / DİKİM SÜRECİ');
     buf.writeln('• Ekim derinliği: $depth cm');
     buf.writeln('• Sıra arası: $rowSp cm | Bitki arası: $plantSp cm');
     buf.writeln('• Tohumluk/Fide: Dekara $seeds adet');
-    buf.writeln('• ${areaDekar.toStringAsFixed(1)} dekar için toplam: ${(seeds * areaDekar).round()} adet fide/tohum');
-    buf.writeln('• Tahmini hasat: ${harvestDate.day} ${monthNames[harvestDate.month]} ${harvestDate.year}\n');
+    buf.writeln(
+        '• ${areaDekar.toStringAsFixed(1)} dekar için toplam: ${(seeds * areaDekar).round()} adet fide/tohum');
+    buf.writeln(
+        '• Tahmini hasat: ${harvestDate.day} ${monthNames[harvestDate.month]} ${harvestDate.year}\n');
 
     // 3. Sulama & Gübre
     buf.writeln('💧 3. SULAMA VE GÜBRELEME TAKVİMİ');
     buf.writeln('• Mevcut haftalık yağış: ${totalRain.round()} mm');
     if (watering.toLowerCase() == 'frequent' && totalRain < 15) {
-      buf.writeln('• ⚠️ Bu bitki sık sulama ister — haftada 3 kez sabah erken sulama yapın.');
+      buf.writeln(
+          '• ⚠️ Bu bitki sık sulama ister — haftada 3 kez sabah erken sulama yapın.');
     } else if (watering.toLowerCase() == 'minimum') {
-      buf.writeln('• Bu bitki az su ister — haftada 1 kez derin sulama yeterli.');
+      buf.writeln(
+          '• Bu bitki az su ister — haftada 1 kez derin sulama yeterli.');
     } else {
       buf.writeln('• Haftada 2 kez, sabah 06:00-08:00 arası sulama önerilir.');
     }
-    buf.writeln('• Gübre takvimi: Fide dönemi azot → çiçek dönemi fosfor → meyve dönemi potasyum.\n');
+    buf.writeln(
+        '• Gübre takvimi: Fide dönemi azot → çiçek dönemi fosfor → meyve dönemi potasyum.\n');
 
     // 4. Bakım & Hastalık
     buf.writeln('🌡️ 4. BAKIM VE HASTALIK TAKİBİ');
@@ -946,10 +1007,12 @@ class OfflineRuleEngine {
     // 5. Hasat Beklentisi
     buf.writeln('🎯 5. HASAT BEKLENTİSİ');
     buf.writeln('• Ekim tarihinden ~$harvest gün sonra hasat.');
-    buf.writeln('• ${areaDekar.toStringAsFixed(1)} dekar alandan beklenen verim:');
+    buf.writeln(
+        '• ${areaDekar.toStringAsFixed(1)} dekar alandan beklenen verim:');
     // Yaklaşık verim tahmini (bitki başı ortalama)
     final plantCount = ((10000 * areaDekar) / (rowSp * plantSp)).round();
-    buf.writeln('  Toplam $plantCount bitki × ortalama verim = tür bazlı hesap yapın.');
+    buf.writeln(
+        '  Toplam $plantCount bitki × ortalama verim = tür bazlı hesap yapın.');
     buf.writeln('• Hasat sabah erken saatlerde, serin havada yapılmalıdır.');
 
     return buf.toString();
@@ -969,20 +1032,36 @@ class OfflineRuleEngine {
     required List<Map<String, dynamic>> crops,
     required int month,
   }) {
-    final monthNames = ['','Ocak','Şubat','Mart','Nisan','Mayıs','Haziran',
-      'Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+    final monthNames = [
+      '',
+      'Ocak',
+      'Şubat',
+      'Mart',
+      'Nisan',
+      'Mayıs',
+      'Haziran',
+      'Temmuz',
+      'Ağustos',
+      'Eylül',
+      'Ekim',
+      'Kasım',
+      'Aralık'
+    ];
     final season = _currentSeason(month);
     final suggestedCrops = crops.map((c) => c['name']).take(5).join(', ');
     final buf = StringBuffer();
 
     buf.writeln('🌤️ HAFTALIK HAVA DEĞERLENDİRMESİ');
     buf.writeln('Tarla: $fieldName | ${monthNames[month]} — $season');
-    buf.writeln('Anlık: ${temp.toStringAsFixed(1)}°C, Nem %${humidity.round()}, Rüzgar ${wind.toStringAsFixed(1)} m/s');
-    buf.writeln('Haftalık ort: ${avgTemp.toStringAsFixed(1)}°C | Yağış: ${totalWeeklyRain.round()} mm\n');
+    buf.writeln(
+        'Anlık: ${temp.toStringAsFixed(1)}°C, Nem %${humidity.round()}, Rüzgar ${wind.toStringAsFixed(1)} m/s');
+    buf.writeln(
+        'Haftalık ort: ${avgTemp.toStringAsFixed(1)}°C | Yağış: ${totalWeeklyRain.round()} mm\n');
 
     buf.writeln('🌱 BU HAFTA YAPILMASI GEREKENLER');
     if (totalWeeklyRain < 10) {
-      buf.writeln('• Sulama: Haftada 2-3 kez, sabah erken saatleri tercih edin.');
+      buf.writeln(
+          '• Sulama: Haftada 2-3 kez, sabah erken saatleri tercih edin.');
     } else if (totalWeeklyRain > 40) {
       buf.writeln('• Sulama: Bu hafta yağış yeterli — sulama yapmayın.');
       buf.writeln('• Drenaj kanallarını kontrol edin.');
@@ -990,22 +1069,27 @@ class OfflineRuleEngine {
       buf.writeln('• Sulama: Haftada 1-2 kez yeterli olacaktır.');
     }
     if (avgTemp >= 18 && avgTemp <= 30) {
-      buf.writeln('• Gübreleme: Bu hafta gübre uygulaması için uygun koşullar.');
+      buf.writeln(
+          '• Gübreleme: Bu hafta gübre uygulaması için uygun koşullar.');
     }
     if (month >= 3 && month <= 5) {
-      buf.writeln('• İlkbahar bakım: Yabancı ot kontrolü ve çapalama önerilir.');
+      buf.writeln(
+          '• İlkbahar bakım: Yabancı ot kontrolü ve çapalama önerilir.');
     }
     buf.writeln('');
 
     buf.writeln('🧪 TOPRAK VE GÜBRE DURUMU');
     if (ph < 5.5) {
-      buf.writeln('⚠️ Toprak asidik (pH ${ph.toStringAsFixed(1)}) — kireçleme gerekli.');
+      buf.writeln(
+          '⚠️ Toprak asidik (pH ${ph.toStringAsFixed(1)}) — kireçleme gerekli.');
     } else if (ph > 7.5) {
-      buf.writeln('⚠️ Toprak bazik (pH ${ph.toStringAsFixed(1)}) — kükürt uygulaması önerilir.');
+      buf.writeln(
+          '⚠️ Toprak bazik (pH ${ph.toStringAsFixed(1)}) — kükürt uygulaması önerilir.');
     } else {
       buf.writeln('✅ Toprak pH\'ı (${ph.toStringAsFixed(1)}) ideal aralıkta.');
     }
-    buf.writeln('Toprak nemi: %${(soilMoisture * 100).round()} | Toprak sıcaklığı: ${soilTempC.toStringAsFixed(1)}°C');
+    buf.writeln(
+        'Toprak nemi: %${(soilMoisture * 100).round()} | Toprak sıcaklığı: ${soilTempC.toStringAsFixed(1)}°C');
     buf.writeln('');
 
     buf.writeln('⚠️ RİSKLER');
@@ -1039,12 +1123,26 @@ class OfflineRuleEngine {
     required double soilTempC,
     required int month,
   }) {
-    final monthNames = ['','Ocak','Şubat','Mart','Nisan','Mayıs','Haziran',
-      'Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+    final monthNames = [
+      '',
+      'Ocak',
+      'Şubat',
+      'Mart',
+      'Nisan',
+      'Mayıs',
+      'Haziran',
+      'Temmuz',
+      'Ağustos',
+      'Eylül',
+      'Ekim',
+      'Kasım',
+      'Aralık'
+    ];
     final season = _currentSeason(month);
     final buf = StringBuffer();
 
-    buf.writeln('Fotoğraf tarımsal bir içerik olarak tanımlanamadı. Ancak bulunduğunuz bölgedeki güncel tarımsal çevre şartları şu şekildedir:');
+    buf.writeln(
+        'Fotoğraf tarımsal bir içerik olarak tanımlanamadı. Ancak bulunduğunuz bölgedeki güncel tarımsal çevre şartları şu şekildedir:');
     buf.writeln('');
     buf.writeln('📍 BÖLGE ÇEVRESİ — ${monthNames[month]} $season');
     buf.writeln('🌡️ Anlık Sıcaklık: ${temp.toStringAsFixed(1)}°C');
@@ -1061,9 +1159,11 @@ class OfflineRuleEngine {
 
     // Genel yorum
     if (temp >= 15 && temp <= 28 && humidity >= 40 && humidity <= 70) {
-      buf.writeln('✅ Bölgeniz şu an tarımsal faaliyet için uygun koşullara sahip.');
+      buf.writeln(
+          '✅ Bölgeniz şu an tarımsal faaliyet için uygun koşullara sahip.');
     } else if (temp < 5) {
-      buf.writeln('⚠️ Soğuk koşullar — açık alanda hassas bitki yetiştiriciliği önerilmez.');
+      buf.writeln(
+          '⚠️ Soğuk koşullar — açık alanda hassas bitki yetiştiriciliği önerilmez.');
     } else if (temp > 36) {
       buf.writeln('⚠️ Aşırı sıcak — sulama ve gölgeleme önlemleri alın.');
     }

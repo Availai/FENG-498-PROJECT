@@ -78,16 +78,20 @@ class _CameraScreenState extends State<CameraScreen> {
               ],
             ),
           ),
-          if (_isLoading) const LinearProgressIndicator(color: AppColors.emerald),
+          if (_isLoading)
+            const LinearProgressIndicator(color: AppColors.emerald),
           if (_photos.isEmpty && !_isLoading)
             Expanded(
               child: Center(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.document_scanner_outlined, size: 80, color: AppColors.emerald.withValues(alpha: 0.2)),
+                    Icon(Icons.document_scanner_outlined,
+                        size: 80,
+                        color: AppColors.emerald.withValues(alpha: 0.2)),
                     const SizedBox(height: 16),
-                    Text('Analiz İçin Görsel Seçin', style: AppText.h3(context)),
+                    Text('Analiz İçin Görsel Seçin',
+                        style: AppText.h3(context)),
                     const SizedBox(height: 8),
                     Text(
                       'Hastalık, zararlı böcek\nve bitki türü teşhisi yapar.',
@@ -121,7 +125,9 @@ class _CameraScreenState extends State<CameraScreen> {
                       children: [
                         Image.file(_photos[i], fit: BoxFit.cover),
                         Positioned(
-                          bottom: 0, left: 0, right: 0,
+                          bottom: 0,
+                          left: 0,
+                          right: 0,
                           child: GlassPanel(
                             borderRadius: 0,
                             padding: const EdgeInsets.all(10),
@@ -129,9 +135,11 @@ class _CameraScreenState extends State<CameraScreen> {
                               onPressed: _isLoading ? null : () => _analyze(i),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppColors.emerald,
-                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 12),
                               ),
-                              child: const Text('YARDIM AL', style: TextStyle(letterSpacing: 1.2)),
+                              child: const Text('YARDIM AL',
+                                  style: TextStyle(letterSpacing: 1.2)),
                             ),
                           ),
                         ),
@@ -153,7 +161,8 @@ class _CameraScreenState extends State<CameraScreen> {
       final pos = await getCurrentPosition();
 
       // Upload öncesi WebP sıkıştırma (zaten sıkıştırılmışsa atlar)
-      final compressedPhoto = await ImageCompressor.compressToWebP(_photos[index]);
+      final compressedPhoto =
+          await ImageCompressor.compressToWebP(_photos[index]);
 
       final res = await AgriService.analyzeImage(
         compressedPhoto,

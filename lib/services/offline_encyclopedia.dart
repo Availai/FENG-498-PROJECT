@@ -34,7 +34,8 @@ class OfflineEncyclopedia {
       'pruning_month': 'Mayıs, Haziran',
       'origin': 'Güney Amerika',
       'propagation': 'Tohumla, Fideyle',
-      'pest_susceptibility': 'Beyazsinek, Kırmızı örümcek, Botrytis, Alternaria yaprak lekesi',
+      'pest_susceptibility':
+          'Beyazsinek, Kırmızı örümcek, Botrytis, Alternaria yaprak lekesi',
       'ideal_temp_min': 18.0,
       'ideal_temp_max': 27.0,
       'ideal_ph_min': 6.0,
@@ -47,9 +48,9 @@ class OfflineEncyclopedia {
       'depth_cm': 1,
       'care_description':
           '💧 Sulama: Haftada 2-3 kez derin sulama. Toprağın üst 5cm\'i kuruyunca sulayın.\n\n'
-          '☀️ Güneş İhtiyacı: Günlük en az 8 saat doğrudan güneş.\n\n'
-          '✂️ Budama: Sürgün alma (kalem alma) her hafta yapılmalı.\n\n'
-          '🧪 Gübreleme: Dikimde 15-15-15 NPK; çiçek döneminde potasyum ağırlıklı.',
+              '☀️ Güneş İhtiyacı: Günlük en az 8 saat doğrudan güneş.\n\n'
+              '✂️ Budama: Sürgün alma (kalem alma) her hafta yapılmalı.\n\n'
+              '🧪 Gübreleme: Dikimde 15-15-15 NPK; çiçek döneminde potasyum ağırlıklı.',
     },
     'biber': {
       'other_names': 'Biber, Pepper',
@@ -81,8 +82,7 @@ class OfflineEncyclopedia {
       'row_spacing_cm': 60,
       'plant_spacing_cm': 40,
       'depth_cm': 1,
-      'care_description':
-          '💧 Sulama: Düzenli sulama, aşırı nemden kaçının.\n\n'
+      'care_description': '💧 Sulama: Düzenli sulama, aşırı nemden kaçının.\n\n'
           '☀️ Güneş İhtiyacı: Tam güneş, 8+ saat.\n\n'
           '✂️ Budama: İlk çiçekler atılarak güçlü büyüme sağlanır.\n\n'
           '🧪 Gübreleme: Azot ağırlıklı başlangıç; meyve dönemi fosfor-potasyum.',
@@ -114,8 +114,7 @@ class OfflineEncyclopedia {
       'row_spacing_cm': 70,
       'plant_spacing_cm': 50,
       'depth_cm': 1,
-      'care_description':
-          '💧 Sulama: Haftalık 2 kez, kök bölgesine.\n\n'
+      'care_description': '💧 Sulama: Haftalık 2 kez, kök bölgesine.\n\n'
           '☀️ Güneş İhtiyacı: 8-10 saat tam güneş.\n\n'
           '✂️ Budama: 3-4 ana dal bırakılır, diğerleri çıkarılır.\n\n'
           '🧪 Gübreleme: Ekim öncesi çiftlik gübresi; büyüme döneminde azot.',
@@ -149,9 +148,9 @@ class OfflineEncyclopedia {
       'depth_cm': 2,
       'care_description':
           '💧 Sulama: Günlük sulama gerektirebilir, toprak her zaman nemli kalmalı.\n\n'
-          '☀️ Güneş İhtiyacı: Tam güneş.\n\n'
-          '✂️ Budama: Tırmanma kafesine yönlendirme.\n\n'
-          '🧪 Gübreleme: Potasyum ağırlıklı — kalite ve tat için.',
+              '☀️ Güneş İhtiyacı: Tam güneş.\n\n'
+              '✂️ Budama: Tırmanma kafesine yönlendirme.\n\n'
+              '🧪 Gübreleme: Potasyum ağırlıklı — kalite ve tat için.',
     },
     'buğday': {
       'other_names': 'Buğday, Wheat',
@@ -183,9 +182,9 @@ class OfflineEncyclopedia {
       'depth_cm': 4,
       'care_description':
           '💧 Sulama: Kışlık buğday yağışa bağımlı; kritik dönemler: kardeşlenme ve başaklanma.\n\n'
-          '☀️ Güneş İhtiyacı: Tam güneş.\n\n'
-          '✂️ Budama: Uygulanmaz.\n\n'
-          '🧪 Gübreleme: Ekim: DAP; kardeşlenme: Amonyum Nitrat; sapa kalkma: Üre.',
+              '☀️ Güneş İhtiyacı: Tam güneş.\n\n'
+              '✂️ Budama: Uygulanmaz.\n\n'
+              '🧪 Gübreleme: Ekim: DAP; kardeşlenme: Amonyum Nitrat; sapa kalkma: Üre.',
     },
     'mısır': {
       'other_names': 'Mısır',
@@ -205,7 +204,8 @@ class OfflineEncyclopedia {
       'harvest_method': 'Elle veya makine',
       'origin': 'Orta Amerika',
       'propagation': 'Tohumla',
-      'pest_susceptibility': 'Mısır kurdu, mısır koçankurdu, yaprak yanıklığı, pas',
+      'pest_susceptibility':
+          'Mısır kurdu, mısır koçankurdu, yaprak yanıklığı, pas',
       'ideal_temp_min': 18.0,
       'ideal_temp_max': 32.0,
       'ideal_ph_min': 5.8,
@@ -218,9 +218,9 @@ class OfflineEncyclopedia {
       'depth_cm': 5,
       'care_description':
           '💧 Sulama: Tepe sürmesi ve koçan bağlama dönemlerinde kritik.\n\n'
-          '☀️ Güneş İhtiyacı: Tam güneş, uzun gün bitkisi.\n\n'
-          '✂️ Budama: Yan koçanlar çıkarılabilir.\n\n'
-          '🧪 Gübreleme: Yüksek azot ihtiyacı; bölünmüş uygulama en verimli.',
+              '☀️ Güneş İhtiyacı: Tam güneş, uzun gün bitkisi.\n\n'
+              '✂️ Budama: Yan koçanlar çıkarılabilir.\n\n'
+              '🧪 Gübreleme: Yüksek azot ihtiyacı; bölünmüş uygulama en verimli.',
     },
     'patates': {
       'other_names': 'Patates, Potato',
@@ -252,9 +252,9 @@ class OfflineEncyclopedia {
       'depth_cm': 10,
       'care_description':
           '💧 Sulama: Düzenli, toprağı hafif nemli tutun; hasat öncesi 2 haftada kesin.\n\n'
-          '☀️ Güneş İhtiyacı: Tam güneş.\n\n'
-          '✂️ Budama: Uygulanmaz.\n\n'
-          '🧪 Gübreleme: Potasyum ve fosfor ağırlıklı; fazla azottan kaçının.',
+              '☀️ Güneş İhtiyacı: Tam güneş.\n\n'
+              '✂️ Budama: Uygulanmaz.\n\n'
+              '🧪 Gübreleme: Potasyum ve fosfor ağırlıklı; fazla azottan kaçının.',
     },
     'soğan': {
       'other_names': 'Soğan, Onion',
@@ -286,9 +286,9 @@ class OfflineEncyclopedia {
       'depth_cm': 2,
       'care_description':
           '💧 Sulama: Orta düzey; hasat öncesi son 2 hafta sulama yapılmaz.\n\n'
-          '☀️ Güneş İhtiyacı: Tam güneş, uzun gün çeşitleri Türkiye\'de yaygın.\n\n'
-          '✂️ Budama: Uygulanmaz.\n\n'
-          '🧪 Gübreleme: Azot başlangıçta, potasyum olgunlaşmada.',
+              '☀️ Güneş İhtiyacı: Tam güneş, uzun gün çeşitleri Türkiye\'de yaygın.\n\n'
+              '✂️ Budama: Uygulanmaz.\n\n'
+              '🧪 Gübreleme: Azot başlangıçta, potasyum olgunlaşmada.',
     },
     'sarımsak': {
       'other_names': 'Sarımsak, Garlic',
@@ -321,9 +321,9 @@ class OfflineEncyclopedia {
       'depth_cm': 5,
       'care_description':
           '💧 Sulama: Az sulama; çürüme riskine karşı dikkatli olun.\n\n'
-          '☀️ Güneş İhtiyacı: Tam güneş.\n\n'
-          '✂️ Budama: Scape\'ler (çiçek sapları) kesilirse baş daha iri olur.\n\n'
-          '🧪 Gübreleme: Sonbahar ekiminde fosfor; ilkbaharda hafif azot.',
+              '☀️ Güneş İhtiyacı: Tam güneş.\n\n'
+              '✂️ Budama: Scape\'ler (çiçek sapları) kesilirse baş daha iri olur.\n\n'
+              '🧪 Gübreleme: Sonbahar ekiminde fosfor; ilkbaharda hafif azot.',
     },
     'havuç': {
       'other_names': 'Havuç, Carrot',
@@ -354,9 +354,9 @@ class OfflineEncyclopedia {
       'depth_cm': 1,
       'care_description':
           '💧 Sulama: Düzenli; kuraklık havucun çatlamasına neden olur.\n\n'
-          '☀️ Güneş İhtiyacı: Tam güneş.\n\n'
-          '✂️ Budama: Seyreltime yapılır (her 5cm\'de 1 bitki).\n\n'
-          '🧪 Gübreleme: Fosfor ve potasyum; azottan kaçının (saplar büyür, kök küçük kalır).',
+              '☀️ Güneş İhtiyacı: Tam güneş.\n\n'
+              '✂️ Budama: Seyreltime yapılır (her 5cm\'de 1 bitki).\n\n'
+              '🧪 Gübreleme: Fosfor ve potasyum; azottan kaçının (saplar büyür, kök küçük kalır).',
     },
     'fasulye': {
       'other_names': 'Fasulye, Bean',
@@ -388,9 +388,9 @@ class OfflineEncyclopedia {
       'depth_cm': 3,
       'care_description':
           '💧 Sulama: Çiçeklenme döneminde düzenli sulama kritik.\n\n'
-          '☀️ Güneş İhtiyacı: Tam güneş.\n\n'
-          '✂️ Budama: Uygulanmaz.\n\n'
-          '🧪 Gübreleme: Az azot (kendi azotunu bağlar); fosfor ve potasyum yeterli.',
+              '☀️ Güneş İhtiyacı: Tam güneş.\n\n'
+              '✂️ Budama: Uygulanmaz.\n\n'
+              '🧪 Gübreleme: Az azot (kendi azotunu bağlar); fosfor ve potasyum yeterli.',
     },
     'kabak': {
       'other_names': 'Kabak, Zucchini, Squash',
@@ -422,9 +422,9 @@ class OfflineEncyclopedia {
       'depth_cm': 3,
       'care_description':
           '💧 Sulama: Bol sulama; yaprakları ıslatmaktan kaçının (külleme riski).\n\n'
-          '☀️ Güneş İhtiyacı: Tam güneş.\n\n'
-          '✂️ Budama: Kalabalık yapraklar hava sirkülasyonu için temizlenir.\n\n'
-          '🧪 Gübreleme: Dengeli NPK; çiçeklenme öncesi potasyum artışı.',
+              '☀️ Güneş İhtiyacı: Tam güneş.\n\n'
+              '✂️ Budama: Kalabalık yapraklar hava sirkülasyonu için temizlenir.\n\n'
+              '🧪 Gübreleme: Dengeli NPK; çiçeklenme öncesi potasyum artışı.',
     },
     'çilek': {
       'other_names': 'Çilek, Strawberry',
@@ -458,9 +458,9 @@ class OfflineEncyclopedia {
       'depth_cm': 1,
       'care_description':
           '💧 Sulama: Damla sulama ideal; meyveye su değmemeli.\n\n'
-          '☀️ Güneş İhtiyacı: Tam güneş, 6-8 saat.\n\n'
-          '✂️ Budama: Hasat sonrası eski yapraklar temizlenir.\n\n'
-          '🧪 Gübreleme: Çiçeklenme öncesi potasyum-fosfor; azottan kaçının.',
+              '☀️ Güneş İhtiyacı: Tam güneş, 6-8 saat.\n\n'
+              '✂️ Budama: Hasat sonrası eski yapraklar temizlenir.\n\n'
+              '🧪 Gübreleme: Çiçeklenme öncesi potasyum-fosfor; azottan kaçının.',
     },
     'karpuz': {
       'other_names': 'Karpuz, Watermelon',
@@ -492,9 +492,9 @@ class OfflineEncyclopedia {
       'depth_cm': 2,
       'care_description':
           '💧 Sulama: Meyve oluşumuna kadar bol; olgunlaşma döneminde azalt.\n\n'
-          '☀️ Güneş İhtiyacı: Bol güneş, sıcak iklim şart.\n\n'
-          '✂️ Budama: Ana sap + 2 yan sap bırakılır.\n\n'
-          '🧪 Gübreleme: Çiçeklenme öncesi azot; meyve bağlama döneminde potasyum.',
+              '☀️ Güneş İhtiyacı: Bol güneş, sıcak iklim şart.\n\n'
+              '✂️ Budama: Ana sap + 2 yan sap bırakılır.\n\n'
+              '🧪 Gübreleme: Çiçeklenme öncesi azot; meyve bağlama döneminde potasyum.',
     },
     'kavun': {
       'other_names': 'Kavun, Melon',
@@ -525,9 +525,9 @@ class OfflineEncyclopedia {
       'depth_cm': 2,
       'care_description':
           '💧 Sulama: Düzenli; olgunlaşmada azalt (şeker oranı artar).\n\n'
-          '☀️ Güneş İhtiyacı: Tam güneş.\n\n'
-          '✂️ Budama: Her dalda 1-2 meyve bırak.\n\n'
-          '🧪 Gübreleme: Potasyum ağırlıklı olgunlaşma dönemi gübresi.',
+              '☀️ Güneş İhtiyacı: Tam güneş.\n\n'
+              '✂️ Budama: Her dalda 1-2 meyve bırak.\n\n'
+              '🧪 Gübreleme: Potasyum ağırlıklı olgunlaşma dönemi gübresi.',
     },
     'ispanak': {
       'other_names': 'Ispanak, Spinach',
@@ -556,8 +556,7 @@ class OfflineEncyclopedia {
       'row_spacing_cm': 30,
       'plant_spacing_cm': 8,
       'depth_cm': 2,
-      'care_description':
-          '💧 Sulama: Düzenli nemli tutun; kuruluğa hassas.\n\n'
+      'care_description': '💧 Sulama: Düzenli nemli tutun; kuruluğa hassas.\n\n'
           '☀️ Güneş İhtiyacı: Kısmi gölge tolere eder; sıcakta hızla tohumlanır.\n\n'
           '✂️ Budama: Dış yaprak hasadı iç yaprakların büyümesini teşvik eder.\n\n'
           '🧪 Gübreleme: Azot ağırlıklı; gövde ve yaprak gelişimi için.',
@@ -591,9 +590,9 @@ class OfflineEncyclopedia {
       'depth_cm': 1,
       'care_description':
           '💧 Sulama: Sık ama hafif sulama; kök çürüklüğünden kaçının.\n\n'
-          '☀️ Güneş İhtiyacı: Serin hava sever; yazın gölge faydalı.\n\n'
-          '✂️ Budama: Dış yaprakların hasat edilmesi büyümeyi destekler.\n\n'
-          '🧪 Gübreleme: Hafif azot; organik gübre tercih edilir.',
+              '☀️ Güneş İhtiyacı: Serin hava sever; yazın gölge faydalı.\n\n'
+              '✂️ Budama: Dış yaprakların hasat edilmesi büyümeyi destekler.\n\n'
+              '🧪 Gübreleme: Hafif azot; organik gübre tercih edilir.',
     },
     'ayçiçeği': {
       'other_names': 'Ayçiçeği, günebakan',
@@ -614,7 +613,8 @@ class OfflineEncyclopedia {
       'harvest_method': 'Biçerdöver',
       'origin': 'Kuzey Amerika',
       'propagation': 'Tohumla',
-      'pest_susceptibility': 'Canavar otu, ayçiçeği mildiyösü, sklerotinya, pas, yeşilkurt',
+      'pest_susceptibility':
+          'Canavar otu, ayçiçeği mildiyösü, sklerotinya, pas, yeşilkurt',
       'ideal_temp_min': 18.0,
       'ideal_temp_max': 30.0,
       'ideal_ph_min': 6.0,
@@ -627,9 +627,9 @@ class OfflineEncyclopedia {
       'depth_cm': 5,
       'care_description':
           '💧 Sulama: Çiçeklenme başlangıcında kritik; kuraklığa dayanıklı.\n\n'
-          '☀️ Güneş İhtiyacı: Tam güneş, günlük en az 8 saat.\n\n'
-          '✂️ Budama: Uygulanmaz.\n\n'
-          '🧪 Gübreleme: Fosfor ve potasyum; aşırı azot yatmaya neden olur.',
+              '☀️ Güneş İhtiyacı: Tam güneş, günlük en az 8 saat.\n\n'
+              '✂️ Budama: Uygulanmaz.\n\n'
+              '🧪 Gübreleme: Fosfor ve potasyum; aşırı azot yatmaya neden olur.',
     },
     'elma': {
       'other_names': 'Elma, Apple',
@@ -651,7 +651,8 @@ class OfflineEncyclopedia {
       'pruning_month': 'Şubat, Mart',
       'origin': 'Orta Asya',
       'propagation': 'Aşılama',
-      'pest_susceptibility': 'Elma içkurdu, Ateş yanıklığı, Elma uyuzu (karaleke)',
+      'pest_susceptibility':
+          'Elma içkurdu, Ateş yanıklığı, Elma uyuzu (karaleke)',
       'ideal_temp_min': 5.0,
       'ideal_temp_max': 24.0,
       'ideal_ph_min': 6.0,
@@ -660,9 +661,9 @@ class OfflineEncyclopedia {
       'harvest_days': 150,
       'care_description':
           '💧 Sulama: Vejetasyon döneminde düzenli; kuraklıkta meyve dökülür.\n\n'
-          '☀️ Güneş İhtiyacı: Tam güneş, iç kısımlara ışık girmeli.\n\n'
-          '✂️ Budama: Kış budaması zorunlu; kuru, hasta, çapraz dallar kesilir.\n\n'
-          '🧪 Gübreleme: Şubat\'ta dengeli NPK; meyve büyüme döneminde potasyum.',
+              '☀️ Güneş İhtiyacı: Tam güneş, iç kısımlara ışık girmeli.\n\n'
+              '✂️ Budama: Kış budaması zorunlu; kuru, hasta, çapraz dallar kesilir.\n\n'
+              '🧪 Gübreleme: Şubat\'ta dengeli NPK; meyve büyüme döneminde potasyum.',
     },
     'üzüm': {
       'other_names': 'Üzüm, Grape',
@@ -693,9 +694,9 @@ class OfflineEncyclopedia {
       'harvest_days': 150,
       'care_description':
           '💧 Sulama: Kök yerleştikten sonra az sulama; fazla su kaliteyi düşürür.\n\n'
-          '☀️ Güneş İhtiyacı: Tam güneş şart; şeker oranı için kritik.\n\n'
-          '✂️ Budama: Kış budaması temel bakım; terbiye sistemi seçimi önemli.\n\n'
-          '🧪 Gübreleme: Sonbahar: Organik gübre; ilkbahar: Potasyum ağırlıklı.',
+              '☀️ Güneş İhtiyacı: Tam güneş şart; şeker oranı için kritik.\n\n'
+              '✂️ Budama: Kış budaması temel bakım; terbiye sistemi seçimi önemli.\n\n'
+              '🧪 Gübreleme: Sonbahar: Organik gübre; ilkbahar: Potasyum ağırlıklı.',
     },
     'zeytin': {
       'other_names': 'Zeytin, Olive',
@@ -726,9 +727,9 @@ class OfflineEncyclopedia {
       'harvest_days': 200,
       'care_description':
           '💧 Sulama: Yaz aylarında haftada 1, kışın yok; kuraklığa çok dayanıklı.\n\n'
-          '☀️ Güneş İhtiyacı: Akdeniz güneşi, tam güneş şart.\n\n'
-          '✂️ Budama: Her 2-3 yılda bir gençleştirme budaması.\n\n'
-          '🧪 Gübreleme: Kış: Organik gübre; çiçeklenme öncesi potasyum.',
+              '☀️ Güneş İhtiyacı: Akdeniz güneşi, tam güneş şart.\n\n'
+              '✂️ Budama: Her 2-3 yılda bir gençleştirme budaması.\n\n'
+              '🧪 Gübreleme: Kış: Organik gübre; çiçeklenme öncesi potasyum.',
     },
   };
 
@@ -754,7 +755,8 @@ class OfflineEncyclopedia {
     for (final entry in _crops.entries) {
       final existing = await PlantCacheService.get(entry.key);
       if (existing == null) {
-        await PlantCacheService.save(entry.key, Map<String, dynamic>.from(entry.value));
+        await PlantCacheService.save(
+            entry.key, Map<String, dynamic>.from(entry.value));
       }
     }
   }

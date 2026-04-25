@@ -254,8 +254,10 @@ class CropScheduleSeeder {
         return [v];
       }
     }
-    if (lower.contains('dikim') || lower.contains('ekim') ||
-        lower.contains('taban') || lower.contains('çukuru')) {
+    if (lower.contains('dikim') ||
+        lower.contains('ekim') ||
+        lower.contains('taban') ||
+        lower.contains('çukuru')) {
       return const [0];
     }
     if (lower.contains('çiçek')) {

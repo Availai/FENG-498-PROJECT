@@ -227,7 +227,8 @@ class AnalysisResultScreen extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Icon(Icons.check_circle_outline, color: AppColors.emerald, size: 22),
+            Icon(Icons.check_circle_outline,
+                color: AppColors.emerald, size: 22),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
@@ -277,11 +278,13 @@ class AnalysisResultScreen extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
               color: severityColor.withValues(alpha: 0.18),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(10)),
             ),
             child: Row(
               children: [
-                Icon(Icons.warning_amber_rounded, color: severityColor, size: 22),
+                Icon(Icons.warning_amber_rounded,
+                    color: severityColor, size: 22),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -294,7 +297,8 @@ class AnalysisResultScreen extends StatelessWidget {
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
                     color: severityColor.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(20),
@@ -320,9 +324,11 @@ class AnalysisResultScreen extends StatelessWidget {
                   Row(
                     children: [
                       const Text('Şiddet: ',
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 13)),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
                           color: severityColor.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(12),

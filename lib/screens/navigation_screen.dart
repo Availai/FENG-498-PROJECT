@@ -19,7 +19,8 @@ class MainNavigationScreen extends ConsumerStatefulWidget {
   const MainNavigationScreen({super.key});
 
   @override
-  ConsumerState<MainNavigationScreen> createState() => _MainNavigationScreenState();
+  ConsumerState<MainNavigationScreen> createState() =>
+      _MainNavigationScreenState();
 }
 
 class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
@@ -38,12 +39,12 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
 
   // Page order — camera (index 2) is exposed as FAB
   static const List<Widget> _pages = [
-    AgriDashboard(),       // 0 – Özet
-    MyCropsScreen(),       // 1 – Tarlalarım
-    CameraScreen(),        // 2 – AI Analiz (FAB)
-    FieldStatusScreen(),   // 3 – Tarla Durumum
-    CropCalendarScreen(),  // 4 – Takvim
-    GrowingGuideScreen(),  // 5 – Rehber
+    AgriDashboard(), // 0 – Özet
+    MyCropsScreen(), // 1 – Tarlalarım
+    CameraScreen(), // 2 – AI Analiz (FAB)
+    FieldStatusScreen(), // 3 – Tarla Durumum
+    CropCalendarScreen(), // 4 – Takvim
+    GrowingGuideScreen(), // 5 – Rehber
     PlantDatabaseScreen(), // 6 – Arşiv
   ];
 
@@ -105,13 +106,13 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
                 user?.isAnonymous == true
                     ? 'Misafir Kullanıcı'
                     : (user?.displayName ?? user?.email ?? 'Kullanıcı'),
-                style: const TextStyle(
-                    fontSize: 17, fontWeight: FontWeight.w700),
+                style:
+                    const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
               ),
               if (user?.email != null && user?.isAnonymous == false)
                 Text(user!.email!,
-                    style: TextStyle(
-                        fontSize: 13, color: Colors.grey.shade500)),
+                    style:
+                        TextStyle(fontSize: 13, color: Colors.grey.shade500)),
               const SizedBox(height: 24),
               // Archive button
               ListTile(
@@ -187,7 +188,9 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
                       color: Colors.red.shade700, size: 20),
                 ),
                 title: Text(
-                  user?.isAnonymous == true ? 'Çıkış / Hesap Oluştur' : 'Çıkış Yap',
+                  user?.isAnonymous == true
+                      ? 'Çıkış / Hesap Oluştur'
+                      : 'Çıkış Yap',
                   style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
                 onTap: () async {
@@ -227,15 +230,19 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
           height: 60,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            gradient: isActive ? AppGradients.emeraldCard : AppGradients.forestHero,
+            gradient:
+                isActive ? AppGradients.emeraldCard : AppGradients.forestHero,
             boxShadow: isActive ? AppShadows.emeraldGlow : AppShadows.md,
-            border: Border.all(color: Colors.white.withValues(alpha: 0.2), width: 1.5),
+            border: Border.all(
+                color: Colors.white.withValues(alpha: 0.2), width: 1.5),
           ),
           child: AnimatedRotation(
             turns: isActive ? 0.125 : 0.0,
             duration: const Duration(milliseconds: 250),
             child: Icon(
-              isActive ? Icons.document_scanner : Icons.document_scanner_outlined,
+              isActive
+                  ? Icons.document_scanner
+                  : Icons.document_scanner_outlined,
               color: Colors.white,
               size: 26,
             ),
@@ -247,7 +254,8 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
 
   Widget _buildBottomAppBar() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 24), // Float above the very bottom
+      padding: const EdgeInsets.fromLTRB(
+          16, 0, 16, 24), // Float above the very bottom
       child: GlassPanel(
         borderRadius: 28,
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
@@ -361,7 +369,9 @@ class _NavButton extends StatelessWidget {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
         decoration: BoxDecoration(
-          color: isActive ? AppColors.emerald.withValues(alpha: 0.1) : Colors.transparent,
+          color: isActive
+              ? AppColors.emerald.withValues(alpha: 0.1)
+              : Colors.transparent,
           borderRadius: AppRadius.md,
         ),
         child: Column(

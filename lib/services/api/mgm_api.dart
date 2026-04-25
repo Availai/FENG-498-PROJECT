@@ -56,7 +56,7 @@ class MgmStation {
 class MgmObservation {
   final double tempC;
   final double humidityPct;
-  final double windSpeedMs;     // m/s
+  final double windSpeedMs; // m/s
   final double windDirDeg;
   final double pressureHpa;
   final double rainLast1hMm;
@@ -141,8 +141,8 @@ class MgmApi {
     required double lon,
   }) async {
     try {
-      final uri = Uri.parse(
-          '$_baseUrl/sondurumlar/merkezler/?lat=$lat&lon=$lon');
+      final uri =
+          Uri.parse('$_baseUrl/sondurumlar/merkezler/?lat=$lat&lon=$lon');
       final res = await http.get(uri, headers: _headers).timeout(_timeout);
       if (res.statusCode != 200) return null;
       final data = jsonDecode(res.body);
@@ -172,8 +172,7 @@ class MgmApi {
   /// 5 günlük günlük tahmin.
   static Future<List<MgmDailyForecast>> dailyForecast(MgmStation s) async {
     try {
-      final uri = Uri.parse(
-          '$_baseUrl/tahminler/gunluk?istno=${s.istNo}');
+      final uri = Uri.parse('$_baseUrl/tahminler/gunluk?istno=${s.istNo}');
       final res = await http.get(uri, headers: _headers).timeout(_timeout);
       if (res.statusCode != 200) return [];
       final data = jsonDecode(res.body);

@@ -17,8 +17,8 @@ class PerenualPlant {
   final String commonName;
   final List<String> scientificNames;
   final String? imageUrl;
-  final String? cycle;              // annual / perennial / biennial
-  final String? watering;          // frequent / average / minimum / none
+  final String? cycle; // annual / perennial / biennial
+  final String? watering; // frequent / average / minimum / none
   final List<String> sunlight;
   final List<String> maintenance;
   final String? careLevel;
@@ -46,7 +46,8 @@ class PerenualPlant {
       id: j['id'] as int,
       commonName: j['common_name'] as String? ?? '',
       scientificNames: (j['scientific_name'] as List? ?? []).cast<String>(),
-      imageUrl: (j['default_image'] as Map<String, dynamic>?)?['medium_url'] as String?,
+      imageUrl: (j['default_image'] as Map<String, dynamic>?)?['medium_url']
+          as String?,
       cycle: j['cycle'] as String?,
       watering: j['watering'] as String?,
       sunlight: (j['sunlight'] as List? ?? []).cast<String>(),
@@ -140,9 +141,11 @@ class PerenualApi {
   }
 
   /// Bitki ara (isim ile)
-  static Future<List<PerenualPlant>> search(String query, {int page = 1}) async {
+  static Future<List<PerenualPlant>> search(String query,
+      {int page = 1}) async {
     final encoded = Uri.encodeComponent(query);
-    final uri = Uri.parse('$_base/species-list?key=$_key&q=$encoded&page=$page');
+    final uri =
+        Uri.parse('$_base/species-list?key=$_key&q=$encoded&page=$page');
     final resp = await http.get(uri).timeout(_timeout);
     if (resp.statusCode != 200) {
       throw Exception('Perenual search: HTTP ${resp.statusCode}');
@@ -160,12 +163,14 @@ class PerenualApi {
     if (resp.statusCode != 200) {
       throw Exception('Perenual detail: HTTP ${resp.statusCode}');
     }
-    return PerenualPlant.fromJson(jsonDecode(resp.body) as Map<String, dynamic>);
+    return PerenualPlant.fromJson(
+        jsonDecode(resp.body) as Map<String, dynamic>);
   }
 
   /// Bakım rehberi detayları
   static Future<PerenualCareDetail?> careGuide(int plantId) async {
-    final uri = Uri.parse('$_base/species-care-guide-list?key=$_key&species_id=$plantId');
+    final uri = Uri.parse(
+        '$_base/species-care-guide-list?key=$_key&species_id=$plantId');
     final resp = await http.get(uri).timeout(_timeout);
     if (resp.statusCode != 200) return null;
     final body = jsonDecode(resp.body) as Map<String, dynamic>;

@@ -76,10 +76,7 @@ class PlantCacheService {
       // Only store JSON-serializable fields (no Flutter-specific types)
       final clean = Map<String, dynamic>.from(data)
         ..removeWhere((k, v) => v == null);
-      FirebaseFirestore.instance
-          .collection(_firestoreCol)
-          .doc(key)
-          .set({
+      FirebaseFirestore.instance.collection(_firestoreCol).doc(key).set({
         ...clean,
         '_cached_at': FieldValue.serverTimestamp(),
         '_source': 'auto',

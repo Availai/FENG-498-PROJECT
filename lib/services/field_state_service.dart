@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import '../data/activity_types.dart';
 import '../data/supported_crops.dart';
 import '../data/turkiye_crop_guides.dart';
+import 'water_accounting.dart';
 
 class CropFieldState {
   final String cropId;
@@ -60,7 +61,9 @@ class CropFieldState {
     if (lastFertilizerName == null || lastFertilizerName!.isEmpty) {
       return 'Kayıt yok';
     }
-    final qty = lastFertilizerKg == null ? '' : ' ${lastFertilizerKg!.toStringAsFixed(1)} kg';
+    final qty = lastFertilizerKg == null
+        ? ''
+        : ' ${lastFertilizerKg!.toStringAsFixed(1)} kg';
     return '$lastFertilizerName$qty';
   }
 
@@ -122,7 +125,8 @@ class FieldStateService {
           _stringValue(setup, ['irrigation_method']) ?? 'Damla sulama';
 
       DateTime? plantedAt = _parsePlantedDate(crop['planted_date']?.toString());
-      plantedAt ??= _firstActivityDate(activities, cropId, ActivityType.planting);
+      plantedAt ??=
+          _firstActivityDate(activities, cropId, ActivityType.planting);
 
       double weeklyWaterMm = 0;
       double weeklyWaterL = 0;
@@ -148,13 +152,13 @@ class FieldStateService {
         final metadata = _metadata(activity);
 
         if (type == ActivityType.watering) {
-          final impact = _waterImpactMm(
+          final impact = WaterAccounting.calculate(
             metadata: metadata,
             quantity: (metadata['quantity'] as num?)?.toDouble(),
             quantityUnit: metadata['quantity_unit']?.toString(),
             areaSqm: areaSqm,
             plantCount: plantCount,
-            defaultMethod: defaultIrrigationMethod,
+            irrigationMethod: defaultIrrigationMethod,
           );
           seasonalWaterMm += impact.mm;
           seasonalWaterL += impact.liters;
@@ -166,17 +170,20 @@ class FieldStateService {
         } else if (type == ActivityType.fertilizing) {
           if (lastFert == null || date.isAfter(lastFert)) {
             lastFert = date;
-            lastFertName = _stringValue(metadata, ['fertilizer_name', 'material_name', 'note']);
+            lastFertName = _stringValue(
+                metadata, ['fertilizer_name', 'material_name', 'note']);
             lastFertKg = _doubleValue(metadata, ['fertilizer_kg', 'quantity']);
           }
         } else if (type == ActivityType.spraying) {
           if (lastSpray == null || date.isAfter(lastSpray)) {
             lastSpray = date;
-            lastPesticide = _stringValue(metadata, ['pesticide_name', 'material_name', 'note']);
+            lastPesticide = _stringValue(
+                metadata, ['pesticide_name', 'material_name', 'note']);
             lastTarget = _stringValue(metadata, ['target_pest', 'target']);
           }
         } else if (type == ActivityType.harvest) {
-          harvestedKg += _doubleValue(metadata, ['harvest_kg', 'quantity']) ?? 0;
+          harvestedKg +=
+              _doubleValue(metadata, ['harvest_kg', 'quantity']) ?? 0;
         }
       }
 
@@ -215,7 +222,9 @@ class FieldStateService {
 
   static bool _belongsToCrop(Map<String, dynamic> activity, String cropId) {
     final activityCropId = activity['crop_id']?.toString();
-    return activityCropId == null || activityCropId.isEmpty || activityCropId == cropId;
+    return activityCropId == null ||
+        activityCropId.isEmpty ||
+        activityCropId == cropId;
   }
 
   static Map<String, dynamic> _metadata(Map<String, dynamic> activity) {
@@ -284,8 +293,7 @@ class FieldStateService {
     final avgLat =
         points.map((p) => p.lat).reduce((a, b) => a + b) / points.length;
     const metersPerDegLat = 111320.0;
-    final metersPerDegLng =
-        111320.0 * math.cos(avgLat * math.pi / 180.0);
+    final metersPerDegLng = 111320.0 * math.cos(avgLat * math.pi / 180.0);
     double sum = 0;
     for (var i = 0; i < points.length; i++) {
       final a = points[i];
@@ -297,32 +305,6 @@ class FieldStateService {
       sum += ax * by - bx * ay;
     }
     return sum.abs() / 2.0;
-  }
-
-  static _WaterImpact _waterImpactMm({
-    required Map<String, dynamic> metadata,
-    required double? quantity,
-    required String? quantityUnit,
-    required double areaSqm,
-    required int plantCount,
-    required String defaultMethod,
-  }) {
-    final explicitMm = _doubleValue(metadata, ['effective_water_mm', 'water_mm']);
-    if (explicitMm != null) {
-      return _WaterImpact(explicitMm, explicitMm * areaSqm);
-    }
-
-    final liters = _doubleValue(metadata, ['water_liters', 'water_l', 'liters']) ??
-        (quantityUnit == 'L' ? quantity : null);
-    if (liters != null && liters > 0) {
-      return _WaterImpact(liters / areaSqm, liters);
-    }
-
-    final minutes = _doubleValue(metadata, ['duration_minutes']) ??
-        (quantityUnit == 'dk' ? quantity : null);
-    final method = (metadata['irrigation_method'] ?? defaultMethod).toString();
-    final mm = _durationToMm(method, minutes ?? 0, plantCount, areaSqm);
-    return _WaterImpact(mm, mm * areaSqm);
   }
 
   static Map<String, dynamic> _setupMetadata(
@@ -350,28 +332,6 @@ class FieldStateService {
       }
     }
     return selected;
-  }
-
-  static double _durationToMm(
-    String method,
-    double minutes,
-    int plantCount,
-    double areaSqm,
-  ) {
-    if (minutes <= 0) return 0;
-    final hours = minutes / 60.0;
-    final key = SupportedCrops.normalize(method);
-    if (key.contains('damla') || key.contains('drip')) {
-      const dripperLiterPerHour = 1.6;
-      return (plantCount * dripperLiterPerHour * hours) / areaSqm;
-    }
-    if (key.contains('yagmurlama') || key.contains('sprinkler')) {
-      return 7.0 * hours;
-    }
-    if (key.contains('karik') || key.contains('furrow')) {
-      return 10.0 * hours;
-    }
-    return 5.0 * hours;
   }
 
   static DateTime? _parsePlantedDate(String? raw) {
@@ -403,7 +363,8 @@ class FieldStateService {
     return first;
   }
 
-  static String? _stringValue(Map<String, dynamic> metadata, List<String> keys) {
+  static String? _stringValue(
+      Map<String, dynamic> metadata, List<String> keys) {
     for (final key in keys) {
       final value = metadata[key]?.toString().trim();
       if (value != null && value.isNotEmpty) return value;
@@ -411,7 +372,8 @@ class FieldStateService {
     return null;
   }
 
-  static double? _doubleValue(Map<String, dynamic> metadata, List<String> keys) {
+  static double? _doubleValue(
+      Map<String, dynamic> metadata, List<String> keys) {
     for (final key in keys) {
       final value = metadata[key];
       if (value is num) return value.toDouble();
@@ -422,11 +384,4 @@ class FieldStateService {
     }
     return null;
   }
-}
-
-class _WaterImpact {
-  final double mm;
-  final double liters;
-
-  const _WaterImpact(this.mm, this.liters);
 }

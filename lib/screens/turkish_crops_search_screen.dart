@@ -586,7 +586,7 @@ class _CropDetailSheet extends StatelessWidget {
   }
 
   Widget _calendarBar() {
-    const labels = ['O','Ş','M','N','M','H','T','A','E','E','K','A'];
+    const labels = ['O', 'Ş', 'M', 'N', 'M', 'H', 'T', 'A', 'E', 'E', 'K', 'A'];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -646,12 +646,13 @@ class _CropDetailSheet extends StatelessWidget {
         Container(
           width: 10,
           height: 10,
-          decoration: BoxDecoration(color: c, borderRadius: BorderRadius.circular(2)),
+          decoration:
+              BoxDecoration(color: c, borderRadius: BorderRadius.circular(2)),
         ),
         const SizedBox(width: 4),
         Text(label,
-            style: GoogleFonts.inter(
-                fontSize: 11, color: Colors.grey.shade600)),
+            style:
+                GoogleFonts.inter(fontSize: 11, color: Colors.grey.shade600)),
       ],
     );
   }
@@ -662,8 +663,8 @@ class _CropDetailSheet extends StatelessWidget {
         Icon(icon, size: 18, color: AppColors.emeraldDark),
         const SizedBox(width: 6),
         Text(title,
-            style: GoogleFonts.inter(
-                fontSize: 14, fontWeight: FontWeight.w800)),
+            style:
+                GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w800)),
       ],
     );
   }

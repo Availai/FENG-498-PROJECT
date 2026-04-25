@@ -79,12 +79,12 @@ class _Particle {
     required this.offsetY,
   });
 
-  final double x;          // 0..1 normalized
-  final double seed;       // sway phase
-  final double size;       // px
-  final double speed;      // rise multiplier
-  final double opacity;    // 0..1
-  final double offsetY;    // initial offset 0..1
+  final double x; // 0..1 normalized
+  final double seed; // sway phase
+  final double size; // px
+  final double speed; // rise multiplier
+  final double opacity; // 0..1
+  final double offsetY; // initial offset 0..1
 
   factory _Particle.random(Random rand) {
     return _Particle(
@@ -131,5 +131,6 @@ class _ParticlePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _ParticlePainter old) => old.progress != progress;
+  bool shouldRepaint(covariant _ParticlePainter old) =>
+      old.progress != progress;
 }

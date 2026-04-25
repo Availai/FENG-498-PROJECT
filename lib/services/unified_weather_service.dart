@@ -18,7 +18,7 @@ class UnifiedCurrentWeather {
   final double windMs;
   final double rainLast1hMm;
   final String description;
-  final String source;       // 'MGM' veya 'Open-Meteo'
+  final String source; // 'MGM' veya 'Open-Meteo'
   final String stationLabel; // Örn: "Ankara / Etimesgut" veya koordinat
 
   const UnifiedCurrentWeather({
@@ -51,8 +51,7 @@ class UnifiedCurrentWeather {
         rainLast1hMm: o.rainMm1h,
         description: o.description,
         source: 'Open-Meteo',
-        stationLabel:
-            '${lat.toStringAsFixed(2)}, ${lon.toStringAsFixed(2)}',
+        stationLabel: '${lat.toStringAsFixed(2)}, ${lon.toStringAsFixed(2)}',
       );
 }
 

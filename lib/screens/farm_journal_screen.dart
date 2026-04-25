@@ -162,9 +162,7 @@ class _FarmJournalScreenState extends ConsumerState<FarmJournalScreen> {
           color: active ? color.withValues(alpha: 0.2) : AppColors.bg,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
-            color: active
-                ? color.withValues(alpha: 0.5)
-                : AppColors.border,
+            color: active ? color.withValues(alpha: 0.5) : AppColors.border,
           ),
         ),
         child: Row(
@@ -396,8 +394,7 @@ class _FarmJournalScreenState extends ConsumerState<FarmJournalScreen> {
       final repo = ref.read(localDataRepositoryProvider);
       await repo.deleteActivity(entry['id'] as String);
       if (!mounted) return;
-      AppToast.show(context,
-          message: 'Kayıt silindi', type: ToastType.success);
+      AppToast.show(context, message: 'Kayıt silindi', type: ToastType.success);
     }
   }
 
@@ -424,9 +421,11 @@ class _FarmJournalScreenState extends ConsumerState<FarmJournalScreen> {
         groups['BUGÜN']!.add(e);
       } else if (dayStart == yesterday) {
         groups['DÜN']!.add(e);
-      } else if (dayStart.isAfter(weekStart.subtract(const Duration(days: 1)))) {
+      } else if (dayStart
+          .isAfter(weekStart.subtract(const Duration(days: 1)))) {
         groups['BU HAFTA']!.add(e);
-      } else if (dayStart.isAfter(monthStart.subtract(const Duration(days: 1)))) {
+      } else if (dayStart
+          .isAfter(monthStart.subtract(const Duration(days: 1)))) {
         groups['BU AY']!.add(e);
       } else {
         groups['DAHA ESKİ']!.add(e);
@@ -491,8 +490,8 @@ class _FieldPickerSheet extends StatelessWidget {
                 final f = fields[i];
                 final id = f['id'] as String?;
                 return ListTile(
-                  leading:
-                      const Icon(Icons.landscape_rounded, color: AppColors.soil),
+                  leading: const Icon(Icons.landscape_rounded,
+                      color: AppColors.soil),
                   title: Text(f['name'] as String? ?? 'Tarla'),
                   selected: id != null && id == selected,
                   onTap: () => Navigator.pop(context, id),

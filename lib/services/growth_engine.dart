@@ -9,6 +9,7 @@ import '../data/activity_types.dart';
 import '../data/crop_playbooks.dart';
 import '../data/supported_crops.dart';
 import '../models/seed_models.dart';
+import 'water_accounting.dart';
 
 /// 3 vitrin bitki için GDD + aktivite delta → büyüme durumu hesaplayan servis.
 ///
@@ -61,17 +62,105 @@ class GrowthEngine {
 
   // ─── Bölgesel aylık ortalama sıcaklık (°C) — agri_sim_service ile aynı tablo
   static const Map<TurkishRegion, List<double>> _monthlyAvg = {
-    TurkishRegion.trakya:           [3.5, 4.5, 7.5, 13.0, 18.0, 23.0, 26.0, 25.5, 21.0, 15.5, 9.5, 5.0],
-    TurkishRegion.icAnadolu:        [0.0, 1.5, 5.5, 11.5, 16.5, 21.5, 25.0, 24.5, 19.5, 13.0, 6.0, 1.5],
-    TurkishRegion.ege:              [7.5, 8.5, 11.5, 16.5, 21.5, 26.5, 29.5, 29.0, 24.5, 18.5, 13.0, 9.0],
-    TurkishRegion.akdeniz:          [9.0, 10.0, 13.5, 18.0, 23.0, 28.0, 31.0, 31.0, 26.5, 20.5, 15.0, 10.5],
-    TurkishRegion.karadeniz:        [5.0, 5.5, 8.0, 12.5, 17.0, 21.0, 24.0, 24.0, 19.5, 14.5, 10.0, 6.5],
-    TurkishRegion.doguAnadolu:      [-7.0, -5.5, -1.5, 7.0, 12.5, 17.5, 22.0, 21.5, 16.5, 9.5, 2.5, -3.5],
-    TurkishRegion.guneydoguAnadolu: [4.0, 6.0, 10.5, 17.0, 23.0, 29.5, 34.0, 33.5, 28.5, 21.0, 12.5, 6.0],
+    TurkishRegion.trakya: [
+      3.5,
+      4.5,
+      7.5,
+      13.0,
+      18.0,
+      23.0,
+      26.0,
+      25.5,
+      21.0,
+      15.5,
+      9.5,
+      5.0
+    ],
+    TurkishRegion.icAnadolu: [
+      0.0,
+      1.5,
+      5.5,
+      11.5,
+      16.5,
+      21.5,
+      25.0,
+      24.5,
+      19.5,
+      13.0,
+      6.0,
+      1.5
+    ],
+    TurkishRegion.ege: [
+      7.5,
+      8.5,
+      11.5,
+      16.5,
+      21.5,
+      26.5,
+      29.5,
+      29.0,
+      24.5,
+      18.5,
+      13.0,
+      9.0
+    ],
+    TurkishRegion.akdeniz: [
+      9.0,
+      10.0,
+      13.5,
+      18.0,
+      23.0,
+      28.0,
+      31.0,
+      31.0,
+      26.5,
+      20.5,
+      15.0,
+      10.5
+    ],
+    TurkishRegion.karadeniz: [
+      5.0,
+      5.5,
+      8.0,
+      12.5,
+      17.0,
+      21.0,
+      24.0,
+      24.0,
+      19.5,
+      14.5,
+      10.0,
+      6.5
+    ],
+    TurkishRegion.doguAnadolu: [
+      -7.0,
+      -5.5,
+      -1.5,
+      7.0,
+      12.5,
+      17.5,
+      22.0,
+      21.5,
+      16.5,
+      9.5,
+      2.5,
+      -3.5
+    ],
+    TurkishRegion.guneydoguAnadolu: [
+      4.0,
+      6.0,
+      10.5,
+      17.0,
+      23.0,
+      29.5,
+      34.0,
+      33.5,
+      28.5,
+      21.0,
+      12.5,
+      6.0
+    ],
   };
-
-  /// Damla sulama için 1 dakikada düşen ortalama mm — playbook ile aynı ölçek.
-  static const double _mmPerWaterMinute = 0.8;
 
   /// Tek bir ekinin büyüme durumunu sıfırdan yeniden hesaplar ve
   /// `CropGrowthStates` tablosuna upsert eder. Ekin yoksa veya ekim tarihi
@@ -103,6 +192,21 @@ class GrowthEngine {
     final daysSince = t.difference(plantedDate).inDays;
     if (daysSince < 0) return null; // ileri tarihli ekim — henüz başlamadı
 
+    final field = await (_db.select(_db.fields)
+          ..where((tbl) => tbl.id.equals(crop.fieldId))
+          ..limit(1))
+        .getSingleOrNull();
+    final areaSqm = (field?.areaSqm != null && field!.areaSqm! > 0)
+        ? field.areaSqm!
+        : ((field?.areaDekar != null && field!.areaDekar! > 0)
+            ? field.areaDekar! * 1000.0
+            : 1000.0);
+    final plantCount = WaterAccounting.estimatePlantCount(
+      areaSqm: areaSqm,
+      rowSpacingCm: crop.rowSpacingCm,
+      plantSpacingCm: crop.plantSpacingCm,
+    );
+
     // ── Aktiviteleri tek seferde çek (ekim gününden bugüne) ───────────
     final activities = await (_db.select(_db.calendarEvents)
           ..where((tbl) =>
@@ -120,13 +224,31 @@ class GrowthEngine {
       if (di < 0 || di > daysSince + 1) continue;
       final delta = byDay.putIfAbsent(di, () => _DayDelta());
 
-      final qty = ev.quantity ?? _extractLegacyQuantity(ev.metadataJson);
+      final metadata = _metadata(ev.metadataJson);
+      final qty = ev.quantity ?? _extractLegacyQuantity(metadata);
       final rec = ev.recommendedQuantity;
 
       switch (ev.eventType) {
         case ActivityType.watering:
-          if (qty != null) delta.waterMmApplied += qty * _mmPerWaterMinute;
-          if (rec != null) delta.waterMmRecommended += rec * _mmPerWaterMinute;
+          final impact = WaterAccounting.calculate(
+            metadata: metadata,
+            quantity: ev.quantity,
+            quantityUnit: ev.unit,
+            areaSqm: areaSqm,
+            plantCount: plantCount,
+          );
+          delta.waterMmApplied += impact.mm;
+          if (rec != null) {
+            delta.waterMmRecommended += WaterAccounting.calculate(
+              metadata: const {},
+              quantity: rec,
+              quantityUnit:
+                  ev.unit ?? metadata['quantity_unit']?.toString() ?? 'dk',
+              areaSqm: areaSqm,
+              plantCount: plantCount,
+              irrigationMethod: metadata['irrigation_method']?.toString(),
+            ).mm;
+          }
           break;
         case ActivityType.fertilizing:
           if (qty != null && rec != null && rec > 0) {
@@ -146,7 +268,8 @@ class GrowthEngine {
     // ── Günlük döngü: GDD birikimi + stres akümülatörleri ─────────────
     final stageBands = _stages[key]!;
     final tBase = _tBase[key] ?? 10.0;
-    final monthly = _monthlyAvg[region] ?? _monthlyAvg[TurkishRegion.icAnadolu]!;
+    final monthly =
+        _monthlyAvg[region] ?? _monthlyAvg[TurkishRegion.icAnadolu]!;
 
     double accGdd = 0.0;
     double waterDeficit = 0.0;
@@ -164,8 +287,10 @@ class GrowthEngine {
 
       double tmax, tmin;
       if (d < dailyTemps.length) {
-        tmax = (dailyTemps[d]['tmax'] as num?)?.toDouble() ?? monthly[monthIdx] + 6;
-        tmin = (dailyTemps[d]['tmin'] as num?)?.toDouble() ?? monthly[monthIdx] - 6;
+        tmax = (dailyTemps[d]['tmax'] as num?)?.toDouble() ??
+            monthly[monthIdx] + 6;
+        tmin = (dailyTemps[d]['tmin'] as num?)?.toDouble() ??
+            monthly[monthIdx] - 6;
       } else {
         tmax = monthly[monthIdx] + 6;
         tmin = monthly[monthIdx] - 6;
@@ -184,8 +309,10 @@ class GrowthEngine {
 
       // Azot stresi — fertRatios[ortalama] düşükse artar; yüksekse azalır.
       if (delta != null && delta.fertRatios.isNotEmpty) {
-        final avgRatio = delta.fertRatios.reduce((a, b) => a + b) / delta.fertRatios.length;
-        nStress = (nStress - (avgRatio - 0.8).clamp(-0.5, 0.5) * 0.15).clamp(0.0, 1.0);
+        final avgRatio =
+            delta.fertRatios.reduce((a, b) => a + b) / delta.fertRatios.length;
+        nStress = (nStress - (avgRatio - 0.8).clamp(-0.5, 0.5) * 0.15)
+            .clamp(0.0, 1.0);
       } else if (band != null && band.stage.contains('Olgun') == false) {
         // Vejetatif/çiçeklenme gününde gübre yok — çok hafif artış.
         nStress = math.min(1.0, nStress + 0.0015);
@@ -210,7 +337,8 @@ class GrowthEngine {
     for (final b in stageBands) {
       if (accGdd >= b.fromGdd) active = b;
     }
-    final stageSpan = (active.toGdd - active.fromGdd).clamp(1.0, double.infinity);
+    final stageSpan =
+        (active.toGdd - active.fromGdd).clamp(1.0, double.infinity);
     final stageProgress =
         ((accGdd - active.fromGdd) / stageSpan).clamp(0.0, 1.0);
 
@@ -222,10 +350,10 @@ class GrowthEngine {
     final height = _estimateHeight(key, overallProgress) * (1 - disease * 0.3);
 
     // ── Verim çarpanı — tüm streslerin kümülatif etkisi ───────────────
-    final yieldMul = (1.0
-            - 0.03 * math.sqrt(waterDeficit / 10.0)
-            - 0.20 * nStress
-            - 0.30 * disease)
+    final yieldMul = (1.0 -
+            0.03 * math.sqrt(waterDeficit / 10.0) -
+            0.20 * nStress -
+            0.30 * disease)
         .clamp(0.5, 1.15);
 
     final nowUtc = DateTime.now().toUtc();
@@ -248,8 +376,8 @@ class GrowthEngine {
     await _db.into(_db.cropGrowthStates).insertOnConflictUpdate(newState);
 
     return (await (_db.select(_db.cropGrowthStates)
-              ..where((tbl) => tbl.cropId.equals(cropId)))
-            .getSingleOrNull());
+          ..where((tbl) => tbl.cropId.equals(cropId)))
+        .getSingleOrNull());
   }
 
   /// Tüm aktif ekinleri yeniden hesaplar. Batch arka-plan sync için.
@@ -309,12 +437,12 @@ class GrowthEngine {
   /// Türkiye sınırları içinde bölge merkezlerine en yakın olanı seçer.
   static TurkishRegion regionFromLatLng(double lat, double lng) {
     const centers = <TurkishRegion, (double, double)>{
-      TurkishRegion.trakya:           (41.2, 27.0),
-      TurkishRegion.icAnadolu:        (39.0, 33.0),
-      TurkishRegion.ege:              (38.4, 27.8),
-      TurkishRegion.akdeniz:          (36.9, 31.0),
-      TurkishRegion.karadeniz:        (41.0, 36.0),
-      TurkishRegion.doguAnadolu:      (39.7, 41.3),
+      TurkishRegion.trakya: (41.2, 27.0),
+      TurkishRegion.icAnadolu: (39.0, 33.0),
+      TurkishRegion.ege: (38.4, 27.8),
+      TurkishRegion.akdeniz: (36.9, 31.0),
+      TurkishRegion.karadeniz: (41.0, 36.0),
+      TurkishRegion.doguAnadolu: (39.7, 41.3),
       TurkishRegion.guneydoguAnadolu: (37.5, 39.5),
     };
     TurkishRegion best = TurkishRegion.icAnadolu;
@@ -340,22 +468,31 @@ class GrowthEngine {
     if (raw == null || raw.isEmpty) return null;
     final parts = raw.split('.');
     if (parts.length == 3) {
-      final iso = '${parts[2]}-${parts[1].padLeft(2, '0')}-${parts[0].padLeft(2, '0')}';
+      final iso =
+          '${parts[2]}-${parts[1].padLeft(2, '0')}-${parts[0].padLeft(2, '0')}';
       final dt = DateTime.tryParse(iso);
       if (dt != null) return dt;
     }
     return DateTime.tryParse(raw);
   }
 
-  static double? _extractLegacyQuantity(String? metaJson) {
-    if (metaJson == null || metaJson.isEmpty) return null;
+  static Map<String, dynamic> _metadata(String? metaJson) {
+    if (metaJson == null || metaJson.isEmpty) return const <String, dynamic>{};
     try {
       final m = jsonDecode(metaJson);
-      if (m is Map) {
-        final v = m['quantity'] ?? m['water_liters'] ?? m['fertilizer_kg'] ?? m['harvest_kg'];
-        if (v is num) return v.toDouble();
-      }
+      if (m is Map) return Map<String, dynamic>.from(m);
     } catch (_) {}
+    return const <String, dynamic>{};
+  }
+
+  static double? _extractLegacyQuantity(Map<String, dynamic> metadata) {
+    final v = metadata['quantity'] ??
+        metadata['fertilizer_kg'] ??
+        metadata['harvest_kg'];
+    if (v is num) return v.toDouble();
+    if (v is String) {
+      return double.tryParse(v.replaceAll(',', '.'));
+    }
     return null;
   }
 }

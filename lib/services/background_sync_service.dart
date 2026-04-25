@@ -120,7 +120,8 @@ void backgroundDispatcher() {
             final syncService = SyncService(syncRepository: syncRepo);
             final apiClient = SyncApiClient(
               baseUrl: 'http://10.0.2.2:8000', // Emulator localhost
-              authTokenProvider: () async => null, // Background'da token yok — best-effort
+              authTokenProvider: () async =>
+                  null, // Background'da token yok — best-effort
             );
 
             // Token olmadan push başarısız olur ama job'lar pending kalır.
@@ -143,4 +144,3 @@ void backgroundDispatcher() {
     }
   });
 }
-

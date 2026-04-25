@@ -29,7 +29,8 @@ class LocalDataRepository {
     // Bu flag set edildikten sonra user_crops box'ı artık veri kaynağı değil;
     // sadece UI reaktivitesi için aynalama (mirror) amacıyla kullanılır.
     const globalMigrationKey = 'drift_legacy_hive_migrated_v2';
-    final alreadyMigratedGlobally = _settingsBox.get(globalMigrationKey) == true;
+    final alreadyMigratedGlobally =
+        _settingsBox.get(globalMigrationKey) == true;
 
     if (!alreadyMigratedGlobally) {
       // İlk Drift migrasyonu — Hive user_crops'taki pre-existing veriyi
@@ -84,7 +85,8 @@ class LocalDataRepository {
     for (final row in rows) {
       result.add(await _buildLegacyFieldMap(row));
     }
-    result.sort((a, b) => (b['updated_at'] as String).compareTo(a['updated_at'] as String));
+    result.sort((a, b) =>
+        (b['updated_at'] as String).compareTo(a['updated_at'] as String));
     return result;
   }
 
@@ -127,7 +129,8 @@ class LocalDataRepository {
             farmerUid: Value(currentUid),
             name: Value((raw['name'] ?? 'İsimsiz Tarla').toString()),
             crop: Value(raw['crop']?.toString()),
-            date: Value((raw['date'] ?? _formatDate(DateTime.now())).toString()),
+            date:
+                Value((raw['date'] ?? _formatDate(DateTime.now())).toString()),
             latitude: Value(_asDouble(raw['latitude'])),
             longitude: Value(_asDouble(raw['longitude'])),
             areaDekar: Value(_asDouble(raw['area_dekar'])),
@@ -176,8 +179,8 @@ class LocalDataRepository {
     // Silmeden önce ekin kayıtlarını + ilişkili id'leri topla
     // (sync outbox + crop_protocol_state temizliği için gerek var).
     final cropsToClear = await (_db.select(_db.fieldCrops)
-          ..where((tbl) =>
-              tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull()))
+          ..where(
+              (tbl) => tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull()))
         .get();
     final cropIds = cropsToClear.map((c) => c.id).toList();
     final irrigationIds = (await (_db.select(_db.irrigationPlans)
@@ -219,7 +222,8 @@ class LocalDataRepository {
       await (_db.delete(_db.fieldCrops)
             ..where((tbl) => tbl.fieldId.equals(fieldId)))
           .go();
-      await (_db.delete(_db.fields)..where((tbl) => tbl.id.equals(fieldId))).go();
+      await (_db.delete(_db.fields)..where((tbl) => tbl.id.equals(fieldId)))
+          .go();
     });
 
     // Sync outbox — her entity için ayrı delete job
@@ -253,7 +257,11 @@ class LocalDataRepository {
         entityType: 'calendar_events',
         entityId: id,
         operation: 'delete',
-        payload: {'id': id, 'field_id': fieldId, 'deleted_at': now.toIso8601String()},
+        payload: {
+          'id': id,
+          'field_id': fieldId,
+          'deleted_at': now.toIso8601String()
+        },
         updatedAt: now,
       );
     }
@@ -324,7 +332,8 @@ class LocalDataRepository {
 
     // Eski planları tombstone et + her birine delete sync job
     final existing = await (_db.select(_db.irrigationPlans)
-          ..where((tbl) => tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull()))
+          ..where(
+              (tbl) => tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull()))
         .get();
     for (final old in existing) {
       await (_db.update(_db.irrigationPlans)
@@ -386,20 +395,23 @@ class LocalDataRepository {
   }
 
   /// Belirli bir tarlanın sulama planlarını yükler (tarihe göre sıralı).
-  Future<List<Map<String, dynamic>>> loadFieldIrrigationPlans(String fieldId) async {
+  Future<List<Map<String, dynamic>>> loadFieldIrrigationPlans(
+      String fieldId) async {
     final plans = await (_db.select(_db.irrigationPlans)
           ..where((tbl) => tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull())
           ..orderBy([(tbl) => OrderingTerm.asc(tbl.scheduledDate)]))
         .get();
-    return plans.map((p) => <String, dynamic>{
-      'id': p.id,
-      'field_id': p.fieldId,
-      'crop_id': p.cropId,
-      'scheduled_date': p.scheduledDate,
-      'should_irrigate': p.shouldIrrigate,
-      'reason': p.reason,
-      'recommendation': p.recommendation,
-    }).toList();
+    return plans
+        .map((p) => <String, dynamic>{
+              'id': p.id,
+              'field_id': p.fieldId,
+              'crop_id': p.cropId,
+              'scheduled_date': p.scheduledDate,
+              'should_irrigate': p.shouldIrrigate,
+              'reason': p.reason,
+              'recommendation': p.recommendation,
+            })
+        .toList();
   }
 
   Future<void> replaceFieldCrops({
@@ -410,13 +422,19 @@ class LocalDataRepository {
   }) async {
     final now = DateTime.now().toUtc();
 
-    await (_db.update(_db.fieldCrops)..where((tbl) => tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull())).write(
+    await (_db.update(_db.fieldCrops)
+          ..where(
+              (tbl) => tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull()))
+        .write(
       FieldCropsCompanion(
         updatedAt: Value(now),
         deletedAt: Value(now),
       ),
     );
-    await (_db.update(_db.irrigationPlans)..where((tbl) => tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull())).write(
+    await (_db.update(_db.irrigationPlans)
+          ..where(
+              (tbl) => tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull()))
+        .write(
       IrrigationPlansCompanion(
         updatedAt: Value(now),
         deletedAt: Value(now),
@@ -439,7 +457,8 @@ class LocalDataRepository {
               zoneStart: Value(_asDouble(crop['zone_start']) ?? 0.0),
               zoneEnd: Value(_asDouble(crop['zone_end']) ?? 1.0),
               rowSpacingCm: Value(_asDouble(crop['row_spacing_cm']) ?? 50.0),
-              plantSpacingCm: Value(_asDouble(crop['plant_spacing_cm']) ?? 40.0),
+              plantSpacingCm:
+                  Value(_asDouble(crop['plant_spacing_cm']) ?? 40.0),
               colorValue: Value(_asInt(crop['color_value'])),
               plantedDate: Value(plantedDate),
               harvestDays: Value(harvestDays),
@@ -479,7 +498,8 @@ class LocalDataRepository {
           ..orderBy([(tbl) => OrderingTerm.asc(tbl.eventDate)]))
         .get();
     final irrigationPlans = await (_db.select(_db.irrigationPlans)
-          ..where((tbl) => tbl.deletedAt.isNull() & tbl.shouldIrrigate.equals(true))
+          ..where(
+              (tbl) => tbl.deletedAt.isNull() & tbl.shouldIrrigate.equals(true))
           ..orderBy([(tbl) => OrderingTerm.asc(tbl.scheduledDate)]))
         .get();
 
@@ -499,7 +519,8 @@ class LocalDataRepository {
       }
 
       final crops = await (_db.select(_db.fieldCrops)
-            ..where((tbl) => tbl.fieldId.equals(field.id) & tbl.deletedAt.isNull()))
+            ..where(
+                (tbl) => tbl.fieldId.equals(field.id) & tbl.deletedAt.isNull()))
           .get();
       for (final crop in crops) {
         final plantedDate = _parseLegacyDate(crop.plantedDate);
@@ -538,7 +559,8 @@ class LocalDataRepository {
       });
     }
 
-    entries.sort((a, b) => (a['date'] as DateTime).compareTo(b['date'] as DateTime));
+    entries.sort(
+        (a, b) => (a['date'] as DateTime).compareTo(b['date'] as DateTime));
     return entries;
   }
 
@@ -724,8 +746,8 @@ class LocalDataRepository {
     final target = name.trim().toLowerCase();
     if (target.isEmpty) return null;
     final rows = await (_db.select(_db.fieldCrops)
-          ..where((tbl) =>
-              tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull()))
+          ..where(
+              (tbl) => tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull()))
         .get();
     for (final c in rows) {
       if (c.name.trim().toLowerCase() == target) return c;
@@ -805,7 +827,8 @@ class LocalDataRepository {
       updatedAt: now,
     );
 
-    await _regenerateIrrigationPlans(fieldId: existing.fieldId, referenceTime: now);
+    await _regenerateIrrigationPlans(
+        fieldId: existing.fieldId, referenceTime: now);
     await _mirrorActiveFieldsToHive();
   }
 
@@ -905,7 +928,8 @@ class LocalDataRepository {
       switch (ev.eventType) {
         case 'watering':
           wCount++;
-          final liters = (meta['water_liters'] as num?)?.toDouble();
+          final liters = (meta['effective_water_liters'] as num?)?.toDouble() ??
+              (meta['water_liters'] as num?)?.toDouble();
           if (liters != null) wLitersTotal += liters;
           if (wLast == null || date.isAfter(wLast)) {
             wLast = date;
@@ -1036,8 +1060,7 @@ class LocalDataRepository {
     String? fieldId,
   }) {
     final query = _db.select(_db.calendarEvents)
-      ..where((tbl) =>
-          tbl.deletedAt.isNull() & tbl.source.equals('auto_seed'));
+      ..where((tbl) => tbl.deletedAt.isNull() & tbl.source.equals('auto_seed'));
     if (fieldId != null) {
       query.where((tbl) => tbl.fieldId.equals(fieldId));
     }
@@ -1122,7 +1145,8 @@ class LocalDataRepository {
     );
   }
 
-  Future<Map<String, dynamic>?> loadLatestSuitabilityReport(String fieldId) async {
+  Future<Map<String, dynamic>?> loadLatestSuitabilityReport(
+      String fieldId) async {
     final report = await (_db.select(_db.suitabilityReports)
           ..where((tbl) => tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull())
           ..orderBy([(tbl) => OrderingTerm.desc(tbl.updatedAt)])
@@ -1165,20 +1189,24 @@ class LocalDataRepository {
     final dailyPrecipProb = await _fetchDailyPrecipForecast(lat, lng);
 
     final crops = await (_db.select(_db.fieldCrops)
-          ..where((tbl) => tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull()))
+          ..where(
+              (tbl) => tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull()))
         .get();
     final horizon = referenceTime.add(const Duration(days: 60));
 
     for (final crop in crops) {
       final plantedDate = _parseLegacyDate(crop.plantedDate) ?? DateTime.now();
       final waterInterval = crop.waterIntervalDays ?? 7;
-      final harvestDate = plantedDate.add(Duration(days: crop.harvestDays ?? 90));
+      final harvestDate =
+          plantedDate.add(Duration(days: crop.harvestDays ?? 90));
       var current = plantedDate;
 
       while (current.isBefore(harvestDate) && current.isBefore(horizon)) {
-        if (!current.isBefore(referenceTime.toLocal().subtract(const Duration(days: 1)))) {
+        if (!current.isBefore(
+            referenceTime.toLocal().subtract(const Duration(days: 1)))) {
           // Sulama günü için yağış kontrolü
-          final dateKey = '${current.year}-${current.month.toString().padLeft(2, '0')}-${current.day.toString().padLeft(2, '0')}';
+          final dateKey =
+              '${current.year}-${current.month.toString().padLeft(2, '0')}-${current.day.toString().padLeft(2, '0')}';
           final precipProb = dailyPrecipProb[dateKey];
           final rainExpected = precipProb != null && precipProb >= 60;
 
@@ -1349,23 +1377,23 @@ class LocalDataRepository {
     final cropId = _newId('crop');
 
     await _db.into(_db.fieldCrops).insert(
-      FieldCropsCompanion.insert(
-        id: cropId,
-        fieldId: fieldId,
-        name: name,
-        zoneStart: 0.0,
-        zoneEnd: 1.0,
-        rowSpacingCm: rowSpacingCm,
-        plantSpacingCm: plantSpacingCm,
-        colorValue: Value(colorValue),
-        plantedDate: Value(plantedDate),
-        harvestDays: Value(harvestDays),
-        waterIntervalDays: Value(waterIntervalDays),
-        zonePolygonJson: Value(zonePolygonJson),
-        createdAt: now,
-        updatedAt: now,
-      ),
-    );
+          FieldCropsCompanion.insert(
+            id: cropId,
+            fieldId: fieldId,
+            name: name,
+            zoneStart: 0.0,
+            zoneEnd: 1.0,
+            rowSpacingCm: rowSpacingCm,
+            plantSpacingCm: plantSpacingCm,
+            colorValue: Value(colorValue),
+            plantedDate: Value(plantedDate),
+            harvestDays: Value(harvestDays),
+            waterIntervalDays: Value(waterIntervalDays),
+            zonePolygonJson: Value(zonePolygonJson),
+            createdAt: now,
+            updatedAt: now,
+          ),
+        );
 
     await _enqueueSyncJob(
       entityType: 'field_crops',
@@ -1517,7 +1545,8 @@ class LocalDataRepository {
   SimpleSelectStatement<$FieldsTable, Field> _activeFieldsQuery() {
     final uid = currentUid;
     return _db.select(_db.fields)
-      ..where((tbl) => tbl.deletedAt.isNull() &
+      ..where((tbl) =>
+          tbl.deletedAt.isNull() &
           (uid != null ? tbl.farmerUid.equals(uid) : tbl.farmerUid.isNull()))
       ..orderBy([(tbl) => OrderingTerm.asc(tbl.createdAt)]);
   }

@@ -72,7 +72,8 @@ class ZoneDrawingToolbar extends StatelessWidget {
                 child: Text(
                   '$pointCount nokta',
                   style: TextStyle(
-                    color: canComplete ? const Color(0xFF00E676) : Colors.white54,
+                    color:
+                        canComplete ? const Color(0xFF00E676) : Colors.white54,
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
                   ),

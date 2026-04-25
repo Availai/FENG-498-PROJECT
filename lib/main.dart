@@ -177,7 +177,8 @@ class _AuthGateState extends ConsumerState<_AuthGate> {
           if (mounted) {
             AppToast.show(
               context,
-              message: 'Eski veriler aktarılamadı. Uygulama çalışmaya devam ediyor.',
+              message:
+                  'Eski veriler aktarılamadı. Uygulama çalışmaya devam ediyor.',
               type: ToastType.warning,
             );
           }
@@ -228,8 +229,7 @@ class _BootstrapErrorApp extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.error_outline,
-                    color: Colors.white, size: 56),
+                const Icon(Icons.error_outline, color: Colors.white, size: 56),
                 const SizedBox(height: 16),
                 const Text(
                   'Uygulama başlatılamadı',

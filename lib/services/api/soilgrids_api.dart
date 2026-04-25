@@ -68,7 +68,8 @@ class SoilProfile {
   double get clayPct => clayGKg / 10;
   double get sandPct => sandGKg / 10;
   double get siltPct => siltGKg / 10;
-  double get organicMatterPct => organicCarbonGKg * 1.724 / 10; // Van Bemmelen factor
+  double get organicMatterPct =>
+      organicCarbonGKg * 1.724 / 10; // Van Bemmelen factor
 
   String get textureClass {
     if (clayPct >= 40) return 'Ağır Killi';
@@ -92,13 +93,22 @@ class SoilProfile {
   /// Actionable Turkish agronomic assessment
   String get assessment {
     final issues = <String>[];
-    if (phReal < 5.8) issues.add('pH düşük (${phReal.toStringAsFixed(1)}) — dekar başına 200-400 kg kireç uygula');
-    if (phReal > 8.0) issues.add('pH yüksek (${phReal.toStringAsFixed(1)}) — kükürt veya asit gübre kullan');
-    if (organicCarbonGKg < 5) issues.add('Organik madde yetersiz — ahır gübresi veya yeşil gübre önerilir');
+    if (phReal < 5.8)
+      issues.add(
+          'pH düşük (${phReal.toStringAsFixed(1)}) — dekar başına 200-400 kg kireç uygula');
+    if (phReal > 8.0)
+      issues.add(
+          'pH yüksek (${phReal.toStringAsFixed(1)}) — kükürt veya asit gübre kullan');
+    if (organicCarbonGKg < 5)
+      issues.add(
+          'Organik madde yetersiz — ahır gübresi veya yeşil gübre önerilir');
     if (clayPct > 50) issues.add('Ağır kil — drenaj sorununa dikkat');
-    if (sandPct > 75) issues.add('Kumlu toprak — sık sulama ve bölünmüş gübreleme uygula');
-    if (nitrogenGKg < 1) issues.add('Azot yetersiz — ekim öncesi N gübresi planla');
-    if (issues.isEmpty) return 'Toprak özellikleri genel tarım için uygun görünüyor.';
+    if (sandPct > 75)
+      issues.add('Kumlu toprak — sık sulama ve bölünmüş gübreleme uygula');
+    if (nitrogenGKg < 1)
+      issues.add('Azot yetersiz — ekim öncesi N gübresi planla');
+    if (issues.isEmpty)
+      return 'Toprak özellikleri genel tarım için uygun görünüyor.';
     return issues.join('\n');
   }
 }
@@ -120,17 +130,13 @@ class SoilGridsApi {
     }
     return SoilProfile(
       phH2o: (data['ph_h2o'] as num?)?.toDouble() ?? 68.0,
-      organicCarbonGKg:
-          (data['organic_carbon_gkg'] as num?)?.toDouble() ?? 0.0,
+      organicCarbonGKg: (data['organic_carbon_gkg'] as num?)?.toDouble() ?? 0.0,
       clayGKg: (data['clay_gkg'] as num?)?.toDouble() ?? 0.0,
       sandGKg: (data['sand_gkg'] as num?)?.toDouble() ?? 0.0,
       siltGKg: (data['silt_gkg'] as num?)?.toDouble() ?? 0.0,
-      bulkDensityKgM3:
-          (data['bulk_density_kgm3'] as num?)?.toDouble() ?? 0.0,
+      bulkDensityKgM3: (data['bulk_density_kgm3'] as num?)?.toDouble() ?? 0.0,
       cecMmolKg: (data['cec_mmolkg'] as num?)?.toDouble() ?? 0.0,
       nitrogenGKg: (data['nitrogen_gkg'] as num?)?.toDouble() ?? 0.0,
     );
   }
-
-
 }

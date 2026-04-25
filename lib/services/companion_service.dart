@@ -75,8 +75,7 @@ class CropDefaults {
   });
 
   /// Bu bitkinin 1 m² alanında kaç bitki sığar (makul yoğunluk)
-  double get plantsPerM2 =>
-      (100 / rowSpacingCm) * (100 / plantSpacingCm);
+  double get plantsPerM2 => (100 / rowSpacingCm) * (100 / plantSpacingCm);
 }
 
 // ── Kural tabanlı kural motoru ─────────────────────────────────────────────
@@ -90,14 +89,7 @@ class CompanionService {
     'Fasulye': ['Soğan', 'Sarımsak', 'Biber', 'Rezene', 'Pırasa'],
     'Bezelye': ['Soğan', 'Sarımsak', 'Rezene'],
     'Lahana': ['Domates', 'Çilek', 'Rezene', 'Dereotu'],
-    'Rezene': [
-      'Domates',
-      'Lahana',
-      'Fasulye',
-      'Bezelye',
-      'Biber',
-      'Salatalık'
-    ],
+    'Rezene': ['Domates', 'Lahana', 'Fasulye', 'Bezelye', 'Biber', 'Salatalık'],
     'Ayçiçeği': ['Patates', 'Lahana'],
     'Biber': ['Fasulye', 'Rezene'],
     'Kabak': ['Patates', 'Ayçiçeği'],
@@ -126,105 +118,248 @@ class CompanionService {
   // ── Bitki kataloğu ─────────────────────────────────────────────────────
   static final Map<String, CropDefaults> catalog = {
     'Domates': CropDefaults(
-        name: 'Domates', emoji: '🍅',
-        rowSpacingCm: 60, plantSpacingCm: 50, depthCm: 2,
-        color: Colors.red, minTempC: 15, maxTempC: 35, season: 'yaz'),
+        name: 'Domates',
+        emoji: '🍅',
+        rowSpacingCm: 60,
+        plantSpacingCm: 50,
+        depthCm: 2,
+        color: Colors.red,
+        minTempC: 15,
+        maxTempC: 35,
+        season: 'yaz'),
     'Biber': CropDefaults(
-        name: 'Biber', emoji: '🫑',
-        rowSpacingCm: 50, plantSpacingCm: 40, depthCm: 1,
-        color: Colors.orange, minTempC: 15, maxTempC: 33, season: 'yaz'),
+        name: 'Biber',
+        emoji: '🫑',
+        rowSpacingCm: 50,
+        plantSpacingCm: 40,
+        depthCm: 1,
+        color: Colors.orange,
+        minTempC: 15,
+        maxTempC: 33,
+        season: 'yaz'),
     'Patlıcan': CropDefaults(
-        name: 'Patlıcan', emoji: '🍆',
-        rowSpacingCm: 70, plantSpacingCm: 50, depthCm: 1,
-        color: Colors.purple, minTempC: 20, maxTempC: 35, season: 'yaz'),
+        name: 'Patlıcan',
+        emoji: '🍆',
+        rowSpacingCm: 70,
+        plantSpacingCm: 50,
+        depthCm: 1,
+        color: Colors.purple,
+        minTempC: 20,
+        maxTempC: 35,
+        season: 'yaz'),
     'Salatalık': CropDefaults(
-        name: 'Salatalık', emoji: '🥒',
-        rowSpacingCm: 80, plantSpacingCm: 50, depthCm: 2,
-        color: Colors.lightGreen, minTempC: 18, maxTempC: 35, season: 'yaz'),
+        name: 'Salatalık',
+        emoji: '🥒',
+        rowSpacingCm: 80,
+        plantSpacingCm: 50,
+        depthCm: 2,
+        color: Colors.lightGreen,
+        minTempC: 18,
+        maxTempC: 35,
+        season: 'yaz'),
     'Kabak': CropDefaults(
-        name: 'Kabak', emoji: '🎃',
-        rowSpacingCm: 120, plantSpacingCm: 100, depthCm: 3,
-        color: Colors.yellow.shade700, minTempC: 18, maxTempC: 38, season: 'yaz'),
+        name: 'Kabak',
+        emoji: '🎃',
+        rowSpacingCm: 120,
+        plantSpacingCm: 100,
+        depthCm: 3,
+        color: Colors.yellow.shade700,
+        minTempC: 18,
+        maxTempC: 38,
+        season: 'yaz'),
     'Mısır': CropDefaults(
-        name: 'Mısır', emoji: '🌽',
-        rowSpacingCm: 70, plantSpacingCm: 25, depthCm: 5,
-        color: Colors.amber, minTempC: 15, maxTempC: 38, season: 'yaz'),
+        name: 'Mısır',
+        emoji: '🌽',
+        rowSpacingCm: 70,
+        plantSpacingCm: 25,
+        depthCm: 5,
+        color: Colors.amber,
+        minTempC: 15,
+        maxTempC: 38,
+        season: 'yaz'),
     'Patates': CropDefaults(
-        name: 'Patates', emoji: '🥔',
-        rowSpacingCm: 70, plantSpacingCm: 30, depthCm: 10,
-        color: Colors.brown, minTempC: 7, maxTempC: 25, season: 'ilkbahar'),
+        name: 'Patates',
+        emoji: '🥔',
+        rowSpacingCm: 70,
+        plantSpacingCm: 30,
+        depthCm: 10,
+        color: Colors.brown,
+        minTempC: 7,
+        maxTempC: 25,
+        season: 'ilkbahar'),
     'Soğan': CropDefaults(
-        name: 'Soğan', emoji: '🧅',
-        rowSpacingCm: 20, plantSpacingCm: 10, depthCm: 3,
-        color: Colors.deepPurple, minTempC: 5, maxTempC: 28, season: 'ilkbahar'),
+        name: 'Soğan',
+        emoji: '🧅',
+        rowSpacingCm: 20,
+        plantSpacingCm: 10,
+        depthCm: 3,
+        color: Colors.deepPurple,
+        minTempC: 5,
+        maxTempC: 28,
+        season: 'ilkbahar'),
     'Sarımsak': CropDefaults(
-        name: 'Sarımsak', emoji: '🧄',
-        rowSpacingCm: 20, plantSpacingCm: 10, depthCm: 5,
-        color: Colors.white70, minTempC: -5, maxTempC: 25, season: 'kış'),
+        name: 'Sarımsak',
+        emoji: '🧄',
+        rowSpacingCm: 20,
+        plantSpacingCm: 10,
+        depthCm: 5,
+        color: Colors.white70,
+        minTempC: -5,
+        maxTempC: 25,
+        season: 'kış'),
     'Havuç': CropDefaults(
-        name: 'Havuç', emoji: '🥕',
-        rowSpacingCm: 25, plantSpacingCm: 5, depthCm: 1,
-        color: Colors.deepOrange, minTempC: 7, maxTempC: 28, season: 'ilkbahar'),
+        name: 'Havuç',
+        emoji: '🥕',
+        rowSpacingCm: 25,
+        plantSpacingCm: 5,
+        depthCm: 1,
+        color: Colors.deepOrange,
+        minTempC: 7,
+        maxTempC: 28,
+        season: 'ilkbahar'),
     'Lahana': CropDefaults(
-        name: 'Lahana', emoji: '🥬',
-        rowSpacingCm: 60, plantSpacingCm: 50, depthCm: 1,
-        color: Colors.green, minTempC: 5, maxTempC: 25, season: 'ilkbahar'),
+        name: 'Lahana',
+        emoji: '🥬',
+        rowSpacingCm: 60,
+        plantSpacingCm: 50,
+        depthCm: 1,
+        color: Colors.green,
+        minTempC: 5,
+        maxTempC: 25,
+        season: 'ilkbahar'),
     'Buğday': CropDefaults(
-        name: 'Buğday', emoji: '🌾',
-        rowSpacingCm: 15, plantSpacingCm: 5, depthCm: 4,
-        color: Colors.amber.shade800, minTempC: 3, maxTempC: 32, season: 'sonbahar'),
+        name: 'Buğday',
+        emoji: '🌾',
+        rowSpacingCm: 15,
+        plantSpacingCm: 5,
+        depthCm: 4,
+        color: Colors.amber.shade800,
+        minTempC: 3,
+        maxTempC: 32,
+        season: 'sonbahar'),
     'Fasulye': CropDefaults(
-        name: 'Fasulye', emoji: '🫘',
-        rowSpacingCm: 50, plantSpacingCm: 10, depthCm: 4,
-        color: Colors.teal, minTempC: 15, maxTempC: 32, season: 'yaz'),
+        name: 'Fasulye',
+        emoji: '🫘',
+        rowSpacingCm: 50,
+        plantSpacingCm: 10,
+        depthCm: 4,
+        color: Colors.teal,
+        minTempC: 15,
+        maxTempC: 32,
+        season: 'yaz'),
     'Bezelye': CropDefaults(
-        name: 'Bezelye', emoji: '🟢',
-        rowSpacingCm: 40, plantSpacingCm: 5, depthCm: 3,
-        color: Colors.lightGreen.shade700, minTempC: 5, maxTempC: 22, season: 'ilkbahar'),
+        name: 'Bezelye',
+        emoji: '🟢',
+        rowSpacingCm: 40,
+        plantSpacingCm: 5,
+        depthCm: 3,
+        color: Colors.lightGreen.shade700,
+        minTempC: 5,
+        maxTempC: 22,
+        season: 'ilkbahar'),
     'Çilek': CropDefaults(
-        name: 'Çilek', emoji: '🍓',
-        rowSpacingCm: 35, plantSpacingCm: 30, depthCm: 2,
-        color: Colors.pinkAccent, minTempC: 5, maxTempC: 28, season: 'ilkbahar'),
+        name: 'Çilek',
+        emoji: '🍓',
+        rowSpacingCm: 35,
+        plantSpacingCm: 30,
+        depthCm: 2,
+        color: Colors.pinkAccent,
+        minTempC: 5,
+        maxTempC: 28,
+        season: 'ilkbahar'),
     'Kavun': CropDefaults(
-        name: 'Kavun', emoji: '🍈',
-        rowSpacingCm: 150, plantSpacingCm: 100, depthCm: 3,
-        color: Colors.yellow.shade600, minTempC: 20, maxTempC: 40, season: 'yaz'),
+        name: 'Kavun',
+        emoji: '🍈',
+        rowSpacingCm: 150,
+        plantSpacingCm: 100,
+        depthCm: 3,
+        color: Colors.yellow.shade600,
+        minTempC: 20,
+        maxTempC: 40,
+        season: 'yaz'),
     'Karpuz': CropDefaults(
-        name: 'Karpuz', emoji: '🍉',
-        rowSpacingCm: 200, plantSpacingCm: 100, depthCm: 3,
-        color: Colors.green.shade600, minTempC: 22, maxTempC: 42, season: 'yaz'),
+        name: 'Karpuz',
+        emoji: '🍉',
+        rowSpacingCm: 200,
+        plantSpacingCm: 100,
+        depthCm: 3,
+        color: Colors.green.shade600,
+        minTempC: 22,
+        maxTempC: 42,
+        season: 'yaz'),
     'Fesleğen': CropDefaults(
-        name: 'Fesleğen', emoji: '🌿',
-        rowSpacingCm: 30, plantSpacingCm: 20, depthCm: 1,
-        color: Colors.green.shade400, minTempC: 15, maxTempC: 35, season: 'yaz'),
+        name: 'Fesleğen',
+        emoji: '🌿',
+        rowSpacingCm: 30,
+        plantSpacingCm: 20,
+        depthCm: 1,
+        color: Colors.green.shade400,
+        minTempC: 15,
+        maxTempC: 35,
+        season: 'yaz'),
     'Maydanoz': CropDefaults(
-        name: 'Maydanoz', emoji: '🌱',
-        rowSpacingCm: 20, plantSpacingCm: 10, depthCm: 1,
-        color: Colors.lightGreen.shade400, minTempC: 5, maxTempC: 30, season: 'tüm yıl'),
+        name: 'Maydanoz',
+        emoji: '🌱',
+        rowSpacingCm: 20,
+        plantSpacingCm: 10,
+        depthCm: 1,
+        color: Colors.lightGreen.shade400,
+        minTempC: 5,
+        maxTempC: 30,
+        season: 'tüm yıl'),
     'Pırasa': CropDefaults(
-        name: 'Pırasa', emoji: '🪴',
-        rowSpacingCm: 30, plantSpacingCm: 15, depthCm: 3,
-        color: Colors.green.shade700, minTempC: 2, maxTempC: 25, season: 'sonbahar'),
+        name: 'Pırasa',
+        emoji: '🪴',
+        rowSpacingCm: 30,
+        plantSpacingCm: 15,
+        depthCm: 3,
+        color: Colors.green.shade700,
+        minTempC: 2,
+        maxTempC: 25,
+        season: 'sonbahar'),
     'Ispanak': CropDefaults(
-        name: 'Ispanak', emoji: '🥗',
-        rowSpacingCm: 20, plantSpacingCm: 8, depthCm: 2,
-        color: Colors.green.shade500, minTempC: 2, maxTempC: 20, season: 'ilkbahar'),
+        name: 'Ispanak',
+        emoji: '🥗',
+        rowSpacingCm: 20,
+        plantSpacingCm: 8,
+        depthCm: 2,
+        color: Colors.green.shade500,
+        minTempC: 2,
+        maxTempC: 20,
+        season: 'ilkbahar'),
     'Marul': CropDefaults(
-        name: 'Marul', emoji: '🥬',
-        rowSpacingCm: 30, plantSpacingCm: 25, depthCm: 1,
-        color: Colors.lightGreen.shade300, minTempC: 4, maxTempC: 22, season: 'ilkbahar'),
+        name: 'Marul',
+        emoji: '🥬',
+        rowSpacingCm: 30,
+        plantSpacingCm: 25,
+        depthCm: 1,
+        color: Colors.lightGreen.shade300,
+        minTempC: 4,
+        maxTempC: 22,
+        season: 'ilkbahar'),
     'Rezene': CropDefaults(
-        name: 'Rezene', emoji: '🌿',
-        rowSpacingCm: 40, plantSpacingCm: 30, depthCm: 1,
-        color: Colors.teal.shade300, minTempC: 5, maxTempC: 28, season: 'sonbahar'),
+        name: 'Rezene',
+        emoji: '🌿',
+        rowSpacingCm: 40,
+        plantSpacingCm: 30,
+        depthCm: 1,
+        color: Colors.teal.shade300,
+        minTempC: 5,
+        maxTempC: 28,
+        season: 'sonbahar'),
     'Ayçiçeği': CropDefaults(
-        name: 'Ayçiçeği', emoji: '🌻',
-        rowSpacingCm: 60, plantSpacingCm: 40, depthCm: 4,
-        color: Colors.yellow, minTempC: 15, maxTempC: 40, season: 'yaz'),
+        name: 'Ayçiçeği',
+        emoji: '🌻',
+        rowSpacingCm: 60,
+        plantSpacingCm: 40,
+        depthCm: 4,
+        color: Colors.yellow,
+        minTempC: 15,
+        maxTempC: 40,
+        season: 'yaz'),
   };
 
-  static List<String> get cropNames =>
-      catalog.keys.toList()..sort();
+  static List<String> get cropNames => catalog.keys.toList()..sort();
 
   static CropDefaults? getDefaults(String name) => catalog[name];
 
@@ -252,8 +387,7 @@ class CompanionService {
           warnings.add(GardenWarning(
             level: WarnLevel.error,
             title: '$a + $b uyumsuz!',
-            message:
-                '$a ve $b aynı tarlada yetiştirilmemeli. '
+            message: '$a ve $b aynı tarlada yetiştirilmemeli. '
                 'Ortak hastalık, kök rekabeti veya kimyasal inhibisyon '
                 'her iki ürünün verimini ciddi şekilde düşürür.',
             icon: Icons.dangerous,
@@ -370,8 +504,7 @@ class CompanionService {
       warnings.add(GardenWarning(
         level: WarnLevel.info,
         title: 'Tarlanın büyük kısmı boş',
-        message:
-            'Ekim kapsamı tarlanın yalnızca '
+        message: 'Ekim kapsamı tarlanın yalnızca '
             '${(totalCoverage * 100).toStringAsFixed(0)}%. '
             'Boş alanlara mevsime uygun örtü bitkisi veya gübre bitkisi (yonca, fiğ) ekleyebilirsiniz.',
         icon: Icons.space_dashboard,
@@ -383,7 +516,8 @@ class CompanionService {
       final name = crop['name'] as String;
       final defaults = catalog[name];
       if (defaults != null) {
-        final minAreaNeeded = defaults.rowSpacingCm / 100 *
+        final minAreaNeeded = defaults.rowSpacingCm /
+            100 *
             defaults.plantSpacingCm /
             100 *
             4; // 4 bitki minimum
@@ -410,8 +544,7 @@ class CompanionService {
             warnings.add(GardenWarning(
               level: WarnLevel.error,
               title: '$name için hava çok soğuk!',
-              message:
-                  'Anlık sıcaklık ${currentTempC.toStringAsFixed(1)}°C. '
+              message: 'Anlık sıcaklık ${currentTempC.toStringAsFixed(1)}°C. '
                   '$name en az ${defaults.minTempC}°C ister. '
                   'Don riski varsa koruyucu örtü kullanın.',
               icon: Icons.ac_unit,
@@ -420,8 +553,7 @@ class CompanionService {
             warnings.add(GardenWarning(
               level: WarnLevel.warning,
               title: '$name için hava çok sıcak!',
-              message:
-                  'Anlık sıcaklık ${currentTempC.toStringAsFixed(1)}°C. '
+              message: 'Anlık sıcaklık ${currentTempC.toStringAsFixed(1)}°C. '
                   '$name max ${defaults.maxTempC}°C tolere eder. '
                   'Gölgeleme ve bol sulama uygulayın.',
               icon: Icons.thermostat,

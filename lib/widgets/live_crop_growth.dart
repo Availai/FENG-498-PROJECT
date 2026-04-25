@@ -78,8 +78,7 @@ class _LiveCropGrowthState extends ConsumerState<LiveCropGrowth> {
         final overall =
             GrowthEngine.overallProgressFor(key, state.accumulatedGdd);
         // Kombine stres — üç stresin ağırlıklı ortalaması (0..1).
-        final waterStressUnit =
-            (state.waterDeficitMm / 20.0).clamp(0.0, 1.0);
+        final waterStressUnit = (state.waterDeficitMm / 20.0).clamp(0.0, 1.0);
         final stress = (waterStressUnit * 0.35 +
                 state.nStressIdx * 0.35 +
                 state.diseasePressure * 0.30)

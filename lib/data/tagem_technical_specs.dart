@@ -17,11 +17,11 @@ library;
 class TagemTechnicalSpec {
   final String cropTr;
   final String scientificName;
-  final String tagemDocRef;       // Resmi yayın referansı
+  final String tagemDocRef; // Resmi yayın referansı
   final String publishedYear;
 
   // Ekim
-  final String sowingMonths;       // Türkiye için optimum ekim ayları
+  final String sowingMonths; // Türkiye için optimum ekim ayları
   final double sowingDepthCm;
   final double rowSpacingCm;
   final double plantSpacingCm;
@@ -33,19 +33,19 @@ class TagemTechnicalSpec {
   final String soilType;
 
   // Gübreleme (dekar başına kg saf besin)
-  final double nitrogenKgDekar;    // N
-  final double phosphorusKgDekar;  // P₂O₅
-  final double potassiumKgDekar;   // K₂O
+  final double nitrogenKgDekar; // N
+  final double phosphorusKgDekar; // P₂O₅
+  final double potassiumKgDekar; // K₂O
   final String fertilizationNote;
 
   // Sulama
   final int totalIrrigationCount;
-  final double seasonalWaterMm;    // Toplam sezonluk su ihtiyacı
+  final double seasonalWaterMm; // Toplam sezonluk su ihtiyacı
 
   // Hasat
   final String harvestMonths;
   final int daysToHarvest;
-  final double avgYieldKgDekar;    // Türkiye ortalama verim
+  final double avgYieldKgDekar; // Türkiye ortalama verim
 
   const TagemTechnicalSpec({
     required this.cropTr,
@@ -91,7 +91,8 @@ class TagemDatabase {
       nitrogenKgDekar: 12.0,
       phosphorusKgDekar: 6.0,
       potassiumKgDekar: 4.0,
-      fertilizationNote: 'Taban: tüm P + 1/3 N. Üst: kardeşlenmede 1/3 N, sapa kalkmada 1/3 N.',
+      fertilizationNote:
+          'Taban: tüm P + 1/3 N. Üst: kardeşlenmede 1/3 N, sapa kalkmada 1/3 N.',
       totalIrrigationCount: 2,
       seasonalWaterMm: 450,
       harvestMonths: 'Haziran - Temmuz',
@@ -137,7 +138,8 @@ class TagemDatabase {
       nitrogenKgDekar: 25.0,
       phosphorusKgDekar: 10.0,
       potassiumKgDekar: 8.0,
-      fertilizationNote: 'Taban: tüm P,K + 1/3 N. Üst: V6\'da 1/3 N, V12\'de 1/3 N.',
+      fertilizationNote:
+          'Taban: tüm P,K + 1/3 N. Üst: V6\'da 1/3 N, V12\'de 1/3 N.',
       totalIrrigationCount: 8,
       seasonalWaterMm: 700,
       harvestMonths: 'Eylül - Ekim',
@@ -183,7 +185,8 @@ class TagemDatabase {
       nitrogenKgDekar: 15.0,
       phosphorusKgDekar: 8.0,
       potassiumKgDekar: 6.0,
-      fertilizationNote: 'Taban: tüm P,K + 1/3 N. Üst: çiçeklenme öncesi 1/3 N, koza tutumunda 1/3 N.',
+      fertilizationNote:
+          'Taban: tüm P,K + 1/3 N. Üst: çiçeklenme öncesi 1/3 N, koza tutumunda 1/3 N.',
       totalIrrigationCount: 6,
       seasonalWaterMm: 750,
       harvestMonths: 'Eylül - Kasım',
@@ -206,7 +209,8 @@ class TagemDatabase {
       nitrogenKgDekar: 22.0,
       phosphorusKgDekar: 12.0,
       potassiumKgDekar: 25.0,
-      fertilizationNote: 'Taban: tüm P + 1/3 N + 1/3 K. Üst: çiçek + meyve döneminde 2 eşit doz.',
+      fertilizationNote:
+          'Taban: tüm P + 1/3 N + 1/3 K. Üst: çiçek + meyve döneminde 2 eşit doz.',
       totalIrrigationCount: 12,
       seasonalWaterMm: 600,
       harvestMonths: 'Temmuz - Ekim',
@@ -252,7 +256,8 @@ class TagemDatabase {
       nitrogenKgDekar: 18.0,
       phosphorusKgDekar: 10.0,
       potassiumKgDekar: 12.0,
-      fertilizationNote: 'Taban: tüm P,K + 1/2 N. Üst: 4-6 yapraklı dönemde 1/2 N.',
+      fertilizationNote:
+          'Taban: tüm P,K + 1/2 N. Üst: 4-6 yapraklı dönemde 1/2 N.',
       totalIrrigationCount: 8,
       seasonalWaterMm: 700,
       harvestMonths: 'Eylül - Kasım',
@@ -275,7 +280,8 @@ class TagemDatabase {
       nitrogenKgDekar: 3.0,
       phosphorusKgDekar: 6.0,
       potassiumKgDekar: 0.0,
-      fertilizationNote: 'Baklagil olduğu için N az; rhizobium aşılaması önerilir. Tüm P taban.',
+      fertilizationNote:
+          'Baklagil olduğu için N az; rhizobium aşılaması önerilir. Tüm P taban.',
       totalIrrigationCount: 1,
       seasonalWaterMm: 350,
       harvestMonths: 'Temmuz',

@@ -72,7 +72,8 @@ class HarvestOracle {
           alerts.add(WeatherEventAlert(
             event: TurkishWeatherEvent.don,
             detectedAt: h.time,
-            descriptionTr: 'Gece sıcaklığı ${h.tempC.toStringAsFixed(1)}°C — don riski.',
+            descriptionTr:
+                'Gece sıcaklığı ${h.tempC.toStringAsFixed(1)}°C — don riski.',
             actionTr: 'Hassas bitkilerinizi örtün. Sulamayı sabah erken yapın.',
             riskLevel: RiskLevel.critical,
             hoursAhead: hoursAhead,
@@ -87,7 +88,8 @@ class HarvestOracle {
             event: TurkishWeatherEvent.asiriSicaklik,
             detectedAt: h.time,
             descriptionTr: '${h.tempC.toStringAsFixed(1)}°C — aşırı sıcaklık.',
-            actionTr: 'Hasadı serin saatlere (06:00-09:00) alın. Sulama artırın.',
+            actionTr:
+                'Hasadı serin saatlere (06:00-09:00) alın. Sulama artırın.',
             riskLevel: RiskLevel.critical,
             hoursAhead: hoursAhead,
           ));
@@ -102,7 +104,8 @@ class HarvestOracle {
             event: TurkishWeatherEvent.kuvvetliRuzgar,
             detectedAt: h.time,
             descriptionTr: '${h.windSpeedMs.toStringAsFixed(1)} m/s rüzgar.',
-            actionTr: 'Hasat makinesi çalışmasını erteleyin. Hasat döküntüsü artar.',
+            actionTr:
+                'Hasat makinesi çalışmasını erteleyin. Hasat döküntüsü artar.',
             riskLevel: RiskLevel.warning,
             hoursAhead: hoursAhead,
           ));
@@ -115,8 +118,10 @@ class HarvestOracle {
           alerts.add(WeatherEventAlert(
             event: TurkishWeatherEvent.yuksekNem,
             detectedAt: h.time,
-            descriptionTr: 'Nem %${h.humidityPct.round()} — hasat sonrası kurutma maliyeti artar.',
-            actionTr: 'Hasat öncesi 24s bekleyin. Tarlada havalandırma artırın.',
+            descriptionTr:
+                'Nem %${h.humidityPct.round()} — hasat sonrası kurutma maliyeti artar.',
+            actionTr:
+                'Hasat öncesi 24s bekleyin. Tarlada havalandırma artırın.',
             riskLevel: RiskLevel.warning,
             hoursAhead: hoursAhead,
           ));
@@ -145,9 +150,8 @@ class HarvestOracle {
 
     for (final h in forecast) {
       if (h.time.isBefore(now)) continue;
-      final isLodos = h.windDirDeg >= 175 &&
-          h.windDirDeg <= 255 &&
-          h.windSpeedMs >= 6.0;
+      final isLodos =
+          h.windDirDeg >= 175 && h.windDirDeg <= 255 && h.windSpeedMs >= 6.0;
       if (isLodos) {
         consecutiveHours++;
         firstHour ??= h;
@@ -159,7 +163,8 @@ class HarvestOracle {
             detectedAt: firstHour.time,
             descriptionTr: 'Lodos: ${firstHour.windDirDeg.round()}° / '
                 '${maxWind.toStringAsFixed(1)} m/s — Trakya\'ya yaklaşıyor.',
-            actionTr: 'Hasadı ${hoursAhead < 12 ? "acilen" : "2 gün"} öne çekmeyi değerlendirin. '
+            actionTr:
+                'Hasadı ${hoursAhead < 12 ? "acilen" : "2 gün"} öne çekmeyi değerlendirin. '
                 'Seri ürün tablalarda dökülme riski yüksek.',
             riskLevel: maxWind > 10 ? RiskLevel.critical : RiskLevel.warning,
             hoursAhead: hoursAhead,
@@ -189,8 +194,10 @@ class HarvestOracle {
         alerts.add(WeatherEventAlert(
           event: TurkishWeatherEvent.kuvvetliYagis,
           detectedAt: forecast[i].time,
-          descriptionTr: '6 saatte ${sum6h.toStringAsFixed(1)} mm yağış bekleniyor.',
-          actionTr: 'Hasat ertelensin. Tarla araçları çamurda mahsur kalabilir.',
+          descriptionTr:
+              '6 saatte ${sum6h.toStringAsFixed(1)} mm yağış bekleniyor.',
+          actionTr:
+              'Hasat ertelensin. Tarla araçları çamurda mahsur kalabilir.',
           riskLevel: RiskLevel.critical,
           hoursAhead: hoursAhead,
         ));
@@ -220,7 +227,8 @@ class HarvestOracle {
             event: TurkishWeatherEvent.dolu,
             detectedAt: h.time,
             descriptionTr: 'Konvektif koşullar: dolu riski yüksek.',
-            actionTr: 'Hasat makinesini korumaya alın. Açık alanlardaki ürünleri örtün.',
+            actionTr:
+                'Hasat makinesini korumaya alın. Açık alanlardaki ürünleri örtün.',
             riskLevel: RiskLevel.critical,
             hoursAhead: hoursAhead,
           ));
@@ -253,22 +261,22 @@ class HarvestOracle {
         totalRain += h.precipMm;
         totalTemp += h.tempC;
         totalWind += h.windSpeedMs;
-        totalHum  += h.humidityPct;
+        totalHum += h.humidityPct;
       }
       final avgTemp = totalTemp / windowHours;
       final avgWind = totalWind / windowHours;
-      final avgHum  = totalHum  / windowHours;
+      final avgHum = totalHum / windowHours;
 
       // Skor hesabı (0-1)
       double score = 0.70;
-      if (totalRain < 5)    score += 0.15;
-      if (totalRain < 1)    score += 0.05;
+      if (totalRain < 5) score += 0.15;
+      if (totalRain < 1) score += 0.05;
       if (avgTemp >= 18 && avgTemp <= 30) score += 0.08;
-      if (avgWind < 4)      score += 0.05;
-      if (avgHum < 70)      score += 0.05;
-      if (avgHum > 85)      score -= 0.15;
-      if (totalRain > 20)   score -= 0.20;
-      if (avgTemp > 38)     score -= 0.25;
+      if (avgWind < 4) score += 0.05;
+      if (avgHum < 70) score += 0.05;
+      if (avgHum > 85) score -= 0.15;
+      if (totalRain > 20) score -= 0.20;
+      if (avgTemp > 38) score -= 0.25;
       score = score.clamp(0.0, 1.0);
 
       final windowAlerts = detectEvents(
@@ -283,7 +291,8 @@ class HarvestOracle {
       if (score >= 0.80 && windowAlerts.isEmpty) {
         rec = '✅ Mükemmel pencere. $daysLabel gün sonra hasat başlatılabilir.';
       } else if (score >= 0.65 && windowAlerts.isEmpty) {
-        rec = '🟡 İyi pencere. Yağış riski düşük. $daysLabel gün sonra başlayın.';
+        rec =
+            '🟡 İyi pencere. Yağış riski düşük. $daysLabel gün sonra başlayın.';
       } else if (windowAlerts.isNotEmpty) {
         rec = '⚠️ ${windowAlerts.first.actionTr}';
       } else {
@@ -291,14 +300,14 @@ class HarvestOracle {
       }
 
       windows.add(HarvestWindow(
-        windowStart:      slice.first.time,
-        windowEnd:        slice.last.time,
-        confidenceScore:  score,
-        avgTempC:         avgTemp,
-        totalRainMm:      totalRain,
-        avgWindMs:        avgWind,
-        avgHumidityPct:   avgHum,
-        alerts:           windowAlerts,
+        windowStart: slice.first.time,
+        windowEnd: slice.last.time,
+        confidenceScore: score,
+        avgTempC: avgTemp,
+        totalRainMm: totalRain,
+        avgWindMs: avgWind,
+        avgHumidityPct: avgHum,
+        alerts: windowAlerts,
         recommendationTr: rec,
       ));
 
@@ -313,11 +322,12 @@ class HarvestOracle {
   // TAM ANALİZ (tek çağrı)
   // ─────────────────────────────────────────────────────────────────────────
 
-  static Future<({
-    List<WeatherEventAlert> alerts,
-    List<HarvestWindow> windows,
-    List<HourlyForecastRecord> forecast,
-  })> analyze({
+  static Future<
+      ({
+        List<WeatherEventAlert> alerts,
+        List<HarvestWindow> windows,
+        List<HourlyForecastRecord> forecast,
+      })> analyze({
     required double lat,
     required double lon,
     required SeedVariety variety,
@@ -325,7 +335,7 @@ class HarvestOracle {
     TurkishRegion region = TurkishRegion.trakya,
   }) async {
     final forecast = await fetchForecast(lat: lat, lon: lon);
-    final alerts  = detectEvents(forecast: forecast, region: region);
+    final alerts = detectEvents(forecast: forecast, region: region);
     final windows = findOptimalWindows(
       forecast: forecast,
       remainingDays: remainingDays,

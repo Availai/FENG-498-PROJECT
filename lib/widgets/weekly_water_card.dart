@@ -40,8 +40,10 @@ class WeeklyWaterCard extends StatelessWidget {
               children: [
                 const Icon(Icons.calendar_today, color: Colors.blue),
                 const SizedBox(width: 6),
-                const Expanded(child: Text('Haftalık Hava & Sulama Planı',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15))),
+                const Expanded(
+                    child: Text('Haftalık Hava & Sulama Planı',
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 15))),
                 Text(cropEmoji, style: const TextStyle(fontSize: 20)),
               ],
             ),
@@ -76,44 +78,71 @@ class WeeklyWaterCard extends StatelessWidget {
 
               return Container(
                 margin: const EdgeInsets.only(bottom: 4),
-                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+                padding:
+                    const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
                 decoration: BoxDecoration(
-                  color: i.isEven ? Colors.blue.shade50.withValues(alpha: 0.5) : Colors.transparent,
+                  color: i.isEven
+                      ? Colors.blue.shade50.withValues(alpha: 0.5)
+                      : Colors.transparent,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Column(
                   children: [
                     Row(
                       children: [
-                        SizedBox(width: 32, child: Text(dayName,
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13))),
-                        Text(_weatherIcon(code), style: const TextStyle(fontSize: 18)),
+                        SizedBox(
+                            width: 32,
+                            child: Text(dayName,
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13))),
+                        Text(_weatherIcon(code),
+                            style: const TextStyle(fontSize: 18)),
                         const SizedBox(width: 6),
-                        SizedBox(width: 65, child: Text('${tempMin.round()}–${tempMax.round()}°C',
-                            style: const TextStyle(fontSize: 12))),
+                        SizedBox(
+                            width: 65,
+                            child: Text(
+                                '${tempMin.round()}–${tempMax.round()}°C',
+                                style: const TextStyle(fontSize: 12))),
                         if (hasRain) ...[
-                          Icon(Icons.water_drop, size: 14, color: Colors.blue.shade400),
-                          Text('${rainMm.toStringAsFixed(1)}mm ', style: TextStyle(fontSize: 11, color: Colors.blue.shade600)),
+                          Icon(Icons.water_drop,
+                              size: 14, color: Colors.blue.shade400),
+                          Text('${rainMm.toStringAsFixed(1)}mm ',
+                              style: TextStyle(
+                                  fontSize: 11, color: Colors.blue.shade600)),
                         ],
                         const Spacer(),
                         // Sulama miktarı
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
                             color: waterL > 0
-                                ? (hasRain ? Colors.green.shade100 : Colors.blue.shade100)
+                                ? (hasRain
+                                    ? Colors.green.shade100
+                                    : Colors.blue.shade100)
                                 : Colors.grey.shade100,
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.water_drop, size: 13,
-                                  color: waterL > 0 ? Colors.blue.shade700 : Colors.grey),
+                              Icon(Icons.water_drop,
+                                  size: 13,
+                                  color: waterL > 0
+                                      ? Colors.blue.shade700
+                                      : Colors.grey),
                               const SizedBox(width: 3),
-                              Text(waterL > 0 ? '${waterL.toStringAsFixed(1)}L/bitki' : 'Sulama yok',
-                                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold,
-                                      color: waterL > 0 ? Colors.blue.shade800 : Colors.grey.shade600)),
+                              Text(
+                                  waterL > 0
+                                      ? '${waterL.toStringAsFixed(1)}L/bitki'
+                                      : 'Sulama yok',
+                                  style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      color: waterL > 0
+                                          ? Colors.blue.shade800
+                                          : Colors.grey.shade600)),
                             ],
                           ),
                         ),
@@ -122,7 +151,11 @@ class WeeklyWaterCard extends StatelessWidget {
                     if (waterNote.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.only(left: 38, top: 2),
-                        child: Text(waterNote, style: TextStyle(fontSize: 11, color: Colors.grey.shade600, fontStyle: FontStyle.italic)),
+                        child: Text(waterNote,
+                            style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey.shade600,
+                                fontStyle: FontStyle.italic)),
                       ),
                   ],
                 ),
@@ -133,11 +166,16 @@ class WeeklyWaterCard extends StatelessWidget {
             Builder(builder: (_) {
               double totalWater = 0;
               for (final wp in waterPlan) {
-                totalWater += ((wp as Map<String, dynamic>?)?['water_liters'] as num?)?.toDouble() ?? 0;
+                totalWater +=
+                    ((wp as Map<String, dynamic>?)?['water_liters'] as num?)
+                            ?.toDouble() ??
+                        0;
               }
               double totalRain = 0;
               for (final f in forecast) {
-                totalRain += ((f as Map<String, dynamic>)['rain_mm'] as num?)?.toDouble() ?? 0;
+                totalRain += ((f as Map<String, dynamic>)['rain_mm'] as num?)
+                        ?.toDouble() ??
+                    0;
               }
               return Container(
                 padding: const EdgeInsets.all(10),
@@ -149,8 +187,10 @@ class WeeklyWaterCard extends StatelessWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    _summaryItem('💧', 'Haftalık Sulama', '${totalWater.toStringAsFixed(1)}L/bitki'),
-                    _summaryItem('🌧️', 'Beklenen Yağış', '${totalRain.toStringAsFixed(1)}mm'),
+                    _summaryItem('💧', 'Haftalık Sulama',
+                        '${totalWater.toStringAsFixed(1)}L/bitki'),
+                    _summaryItem('🌧️', 'Beklenen Yağış',
+                        '${totalRain.toStringAsFixed(1)}mm'),
                   ],
                 ),
               );
@@ -165,8 +205,10 @@ class WeeklyWaterCard extends StatelessWidget {
     return Column(
       children: [
         Text(emoji, style: const TextStyle(fontSize: 20)),
-        Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-        Text(label, style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
+        Text(value,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+        Text(label,
+            style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
       ],
     );
   }

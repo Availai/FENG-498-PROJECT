@@ -8,41 +8,41 @@ import '../services/offline_rule_engine.dart' show RiskLevel;
 // ─────────────────────────────────────────────────────────────────────────────
 
 enum TurkishWeatherEvent {
-  lodos,            // Trakya'ya özgü — GB rüzgar >6 m/s + sıcaklık artışı
-  don,              // <3°C gece sıcaklığı
-  dolu,             // Konvektif yağış + ani temp düşüşü
-  asiriSicaklik,    // >38°C
-  kuvvetliYagis,    // >30 mm / 6 saat
-  kuvvetliRuzgar,   // >10 m/s
-  sisli,            // Görüş mesafesi <200 m (hasat makinesi çalışamaz)
-  yuksekNem,        // >90% nem — mantar riski + hasat güçlüğü
+  lodos, // Trakya'ya özgü — GB rüzgar >6 m/s + sıcaklık artışı
+  don, // <3°C gece sıcaklığı
+  dolu, // Konvektif yağış + ani temp düşüşü
+  asiriSicaklik, // >38°C
+  kuvvetliYagis, // >30 mm / 6 saat
+  kuvvetliRuzgar, // >10 m/s
+  sisli, // Görüş mesafesi <200 m (hasat makinesi çalışamaz)
+  yuksekNem, // >90% nem — mantar riski + hasat güçlüğü
 }
 
 extension TurkishWeatherEventMeta on TurkishWeatherEvent {
   String get labelTr {
     const m = {
-      TurkishWeatherEvent.lodos:         'Lodos',
-      TurkishWeatherEvent.don:           'Don Riski',
-      TurkishWeatherEvent.dolu:          'Dolu',
+      TurkishWeatherEvent.lodos: 'Lodos',
+      TurkishWeatherEvent.don: 'Don Riski',
+      TurkishWeatherEvent.dolu: 'Dolu',
       TurkishWeatherEvent.asiriSicaklik: 'Aşırı Sıcaklık',
       TurkishWeatherEvent.kuvvetliYagis: 'Kuvvetli Yağış',
-      TurkishWeatherEvent.kuvvetliRuzgar:'Kuvvetli Rüzgar',
-      TurkishWeatherEvent.sisli:         'Sis',
-      TurkishWeatherEvent.yuksekNem:     'Yüksek Nem',
+      TurkishWeatherEvent.kuvvetliRuzgar: 'Kuvvetli Rüzgar',
+      TurkishWeatherEvent.sisli: 'Sis',
+      TurkishWeatherEvent.yuksekNem: 'Yüksek Nem',
     };
     return m[this]!;
   }
 
   String get emoji {
     const m = {
-      TurkishWeatherEvent.lodos:         '🌬️',
-      TurkishWeatherEvent.don:           '❄️',
-      TurkishWeatherEvent.dolu:          '⛈️',
+      TurkishWeatherEvent.lodos: '🌬️',
+      TurkishWeatherEvent.don: '❄️',
+      TurkishWeatherEvent.dolu: '⛈️',
       TurkishWeatherEvent.asiriSicaklik: '🔥',
       TurkishWeatherEvent.kuvvetliYagis: '🌧️',
-      TurkishWeatherEvent.kuvvetliRuzgar:'💨',
-      TurkishWeatherEvent.sisli:         '🌫️',
-      TurkishWeatherEvent.yuksekNem:     '💧',
+      TurkishWeatherEvent.kuvvetliRuzgar: '💨',
+      TurkishWeatherEvent.sisli: '🌫️',
+      TurkishWeatherEvent.yuksekNem: '💧',
     };
     return m[this]!;
   }
@@ -70,11 +70,11 @@ extension TurkishWeatherEventMeta on TurkishWeatherEvent {
 
 class WeatherEventAlert {
   final TurkishWeatherEvent event;
-  final DateTime detectedAt;          // Olayın başlangıç saati (tahmin)
-  final String descriptionTr;         // 'Lodos: 225° / 8.4 m/s, sıcaklık 5°C artıyor'
-  final String actionTr;              // 'Hasadı 2 gün öne çek'
+  final DateTime detectedAt; // Olayın başlangıç saati (tahmin)
+  final String descriptionTr; // 'Lodos: 225° / 8.4 m/s, sıcaklık 5°C artıyor'
+  final String actionTr; // 'Hasadı 2 gün öne çek'
   final RiskLevel riskLevel;
-  final int hoursAhead;               // Kaç saat sonra bekleniyor
+  final int hoursAhead; // Kaç saat sonra bekleniyor
 
   const WeatherEventAlert({
     required this.event,
@@ -86,20 +86,20 @@ class WeatherEventAlert {
   });
 
   String get urgencyLabel {
-    if (hoursAhead <= 6)  return '⚠️ ACİL — ${hoursAhead}s içinde';
+    if (hoursAhead <= 6) return '⚠️ ACİL — ${hoursAhead}s içinde';
     if (hoursAhead <= 24) return '🟡 Bugün — ${hoursAhead}s içinde';
     final days = (hoursAhead / 24).ceil();
     return '🔵 $days gün içinde';
   }
 
   Map<String, dynamic> toMap() => {
-    'event': event.labelTr,
-    'at': detectedAt.toIso8601String(),
-    'description': descriptionTr,
-    'action': actionTr,
-    'risk': riskLevel.name,
-    'hours_ahead': hoursAhead,
-  };
+        'event': event.labelTr,
+        'at': detectedAt.toIso8601String(),
+        'description': descriptionTr,
+        'action': actionTr,
+        'risk': riskLevel.name,
+        'hours_ahead': hoursAhead,
+      };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -109,7 +109,7 @@ class WeatherEventAlert {
 class HarvestWindow {
   final DateTime windowStart;
   final DateTime windowEnd;
-  final double confidenceScore;       // 0.0–1.0
+  final double confidenceScore; // 0.0–1.0
   final double avgTempC;
   final double totalRainMm;
   final double avgWindMs;

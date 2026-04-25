@@ -100,7 +100,8 @@ class _SoilAnalysisScreenState extends State<SoilAnalysisScreen> {
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFF1B5E20)))
+          ? const Center(
+              child: CircularProgressIndicator(color: Color(0xFF1B5E20)))
           : _profile == null
               ? Center(child: Text(_error ?? 'Veri yüklenemedi'))
               : _buildContent(_profile!),
@@ -135,12 +136,14 @@ class _SoilAnalysisScreenState extends State<SoilAnalysisScreen> {
               ),
               child: Row(
                 children: [
-                  Icon(Icons.cloud_off, color: Colors.orange.shade800, size: 18),
+                  Icon(Icons.cloud_off,
+                      color: Colors.orange.shade800, size: 18),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       _error ?? '',
-                      style: TextStyle(fontSize: 12, color: Colors.orange.shade900),
+                      style: TextStyle(
+                          fontSize: 12, color: Colors.orange.shade900),
                     ),
                   ),
                 ],
@@ -156,8 +159,10 @@ class _SoilAnalysisScreenState extends State<SoilAnalysisScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _kvRow('Doku Sınıfı', p.textureClass),
-                _kvRow('pH', '${p.phReal.toStringAsFixed(1)} (${p.phDescription})'),
-                _kvRow('Organik Madde', '%${p.organicMatterPct.toStringAsFixed(1)}'),
+                _kvRow('pH',
+                    '${p.phReal.toStringAsFixed(1)} (${p.phDescription})'),
+                _kvRow('Organik Madde',
+                    '%${p.organicMatterPct.toStringAsFixed(1)}'),
                 _kvRow('Kil', '%${p.clayPct.toStringAsFixed(0)}'),
                 _kvRow('Kum', '%${p.sandPct.toStringAsFixed(0)}'),
                 _kvRow('Silt', '%${p.siltPct.toStringAsFixed(0)}'),
@@ -196,8 +201,8 @@ class _SoilAnalysisScreenState extends State<SoilAnalysisScreen> {
             title: 'NPK Düzeyi (kg/dekar — tahmini)',
             child: Column(
               children: [
-                _npkBar('Azot (N)', npk.nitrogenKgDekar, 6.0,
-                    npk.nLabel, npk.nLevel),
+                _npkBar('Azot (N)', npk.nitrogenKgDekar, 6.0, npk.nLabel,
+                    npk.nLevel),
                 _npkBar('Fosfor (P₂O₅)', npk.phosphorusKgDekar, 18.0,
                     npk.pLabel, npk.pLevel),
                 _npkBar('Potasyum (K₂O)', npk.potassiumKgDekar, 30.0,
@@ -295,8 +300,7 @@ class _SoilAnalysisScreenState extends State<SoilAnalysisScreen> {
                               child: Text(
                                 amendment.materialName,
                                 style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 14),
+                                    fontWeight: FontWeight.bold, fontSize: 14),
                               ),
                             ),
                             Text(
@@ -428,14 +432,13 @@ class _SoilAnalysisScreenState extends State<SoilAnalysisScreen> {
           Expanded(
             flex: 2,
             child: Text(key,
-                style:
-                    const TextStyle(fontSize: 12, color: Colors.black54)),
+                style: const TextStyle(fontSize: 12, color: Colors.black54)),
           ),
           Expanded(
             flex: 3,
             child: Text(value,
-                style: const TextStyle(
-                    fontSize: 13, fontWeight: FontWeight.w600)),
+                style:
+                    const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
           ),
         ],
       ),
@@ -465,8 +468,7 @@ class _SoilAnalysisScreenState extends State<SoilAnalysisScreen> {
                   style: const TextStyle(fontSize: 12)),
               const SizedBox(width: 8),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
                   color: color.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(6),

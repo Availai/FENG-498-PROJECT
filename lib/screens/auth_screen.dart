@@ -74,12 +74,15 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
     HapticService.instance.light();
-    setState(() { _loading = true; _error = null; });
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       await ref.read(authRepositoryProvider).signInWithEmailAndPassword(
-        email: _emailCtrl.text.trim(),
-        password: _passCtrl.text,
-      );
+            email: _emailCtrl.text.trim(),
+            password: _passCtrl.text,
+          );
       HapticService.instance.success();
     } on FirebaseAuthException catch (e) {
       HapticService.instance.heavy();
@@ -92,13 +95,16 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
   Future<void> _register() async {
     if (!_formKey.currentState!.validate()) return;
     HapticService.instance.light();
-    setState(() { _loading = true; _error = null; });
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       await ref.read(authRepositoryProvider).registerWithEmailAndPassword(
-        email: _emailCtrl.text.trim(),
-        password: _passCtrl.text,
-        displayName: _nameCtrl.text,
-      );
+            email: _emailCtrl.text.trim(),
+            password: _passCtrl.text,
+            displayName: _nameCtrl.text,
+          );
       HapticService.instance.success();
     } on FirebaseAuthException catch (e) {
       HapticService.instance.heavy();
@@ -149,7 +155,11 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [Color(0xFF0D3B15), Color(0xFF1B5E20), Color(0xFF2E7D32)],
+                  colors: [
+                    Color(0xFF0D3B15),
+                    Color(0xFF1B5E20),
+                    Color(0xFF2E7D32)
+                  ],
                 ),
               ),
             ),
@@ -333,7 +343,8 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                               offset: const Offset(0, 16),
                             ),
                             BoxShadow(
-                              color: const Color(0xFF1B5E20).withValues(alpha: 0.15),
+                              color: const Color(0xFF1B5E20)
+                                  .withValues(alpha: 0.15),
                               blurRadius: 20,
                               offset: const Offset(0, 4),
                             ),
@@ -352,12 +363,16 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                                 controller: _tabCtrl,
                                 indicator: BoxDecoration(
                                   gradient: const LinearGradient(
-                                    colors: [Color(0xFF43A047), Color(0xFF1B5E20)],
+                                    colors: [
+                                      Color(0xFF43A047),
+                                      Color(0xFF1B5E20)
+                                    ],
                                   ),
                                   borderRadius: BorderRadius.circular(18),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: const Color(0xFF1B5E20).withValues(alpha: 0.35),
+                                      color: const Color(0xFF1B5E20)
+                                          .withValues(alpha: 0.35),
                                       blurRadius: 10,
                                       offset: const Offset(0, 4),
                                     ),
@@ -378,22 +393,26 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                             ),
 
                             Padding(
-                              padding: const EdgeInsets.fromLTRB(22, 18, 22, 22),
+                              padding:
+                                  const EdgeInsets.fromLTRB(22, 18, 22, 22),
                               child: Form(
                                 key: _formKey,
                                 child: AnimatedSize(
                                   duration: const Duration(milliseconds: 320),
                                   curve: Curves.easeOutCubic,
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
                                     children: [
                                       if (_tabCtrl.index == 1) ...[
                                         _field(
                                           controller: _nameCtrl,
                                           label: 'Ad Soyad',
                                           icon: Icons.person_outline_rounded,
-                                          validator: (v) => (v == null || v.trim().isEmpty)
-                                              ? 'Ad soyad gerekli' : null,
+                                          validator: (v) =>
+                                              (v == null || v.trim().isEmpty)
+                                                  ? 'Ad soyad gerekli'
+                                                  : null,
                                         ),
                                         const SizedBox(height: 12),
                                       ],
@@ -403,8 +422,10 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                                         icon: Icons.email_outlined,
                                         type: TextInputType.emailAddress,
                                         validator: (v) {
-                                          if (v == null || v.isEmpty) return 'E-posta gerekli';
-                                          if (!v.contains('@')) return 'Geçerli bir e-posta girin';
+                                          if (v == null || v.isEmpty)
+                                            return 'E-posta gerekli';
+                                          if (!v.contains('@'))
+                                            return 'Geçerli bir e-posta girin';
                                           return null;
                                         },
                                       ),
@@ -414,31 +435,39 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                                         obscureText: _obscurePass,
                                         decoration: InputDecoration(
                                           labelText: 'Şifre',
-                                          prefixIcon: const Icon(Icons.lock_outline_rounded,
+                                          prefixIcon: const Icon(
+                                              Icons.lock_outline_rounded,
                                               color: Color(0xFF2E7D32)),
                                           suffixIcon: IconButton(
-                                            icon: Icon(_obscurePass
-                                                ? Icons.visibility_off_outlined
-                                                : Icons.visibility_outlined,
+                                            icon: Icon(
+                                                _obscurePass
+                                                    ? Icons
+                                                        .visibility_off_outlined
+                                                    : Icons.visibility_outlined,
                                                 color: Colors.grey.shade600),
-                                            onPressed: () =>
-                                                setState(() => _obscurePass = !_obscurePass),
+                                            onPressed: () => setState(() =>
+                                                _obscurePass = !_obscurePass),
                                           ),
                                           border: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(14),
+                                            borderRadius:
+                                                BorderRadius.circular(14),
                                             borderSide: BorderSide.none,
                                           ),
                                           filled: true,
                                           fillColor: Colors.grey.shade50,
                                           focusedBorder: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(14),
+                                            borderRadius:
+                                                BorderRadius.circular(14),
                                             borderSide: const BorderSide(
-                                                color: Color(0xFF2E7D32), width: 1.5),
+                                                color: Color(0xFF2E7D32),
+                                                width: 1.5),
                                           ),
                                         ),
                                         validator: (v) {
-                                          if (v == null || v.isEmpty) return 'Şifre gerekli';
-                                          if (v.length < 6) return 'En az 6 karakter';
+                                          if (v == null || v.isEmpty)
+                                            return 'Şifre gerekli';
+                                          if (v.length < 6)
+                                            return 'En az 6 karakter';
                                           return null;
                                         },
                                       ),
@@ -449,19 +478,23 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                                           padding: const EdgeInsets.all(10),
                                           decoration: BoxDecoration(
                                             color: Colors.red.shade50,
-                                            borderRadius: BorderRadius.circular(10),
-                                            border: Border.all(color: Colors.red.shade200),
+                                            borderRadius:
+                                                BorderRadius.circular(10),
+                                            border: Border.all(
+                                                color: Colors.red.shade200),
                                           ),
                                           child: Row(
                                             children: [
                                               Icon(Icons.error_outline,
-                                                  size: 18, color: Colors.red.shade700),
+                                                  size: 18,
+                                                  color: Colors.red.shade700),
                                               const SizedBox(width: 8),
                                               Expanded(
                                                 child: Text(_error!,
                                                     style: TextStyle(
                                                         fontSize: 13,
-                                                        color: Colors.red.shade700)),
+                                                        color: Colors
+                                                            .red.shade700)),
                                               ),
                                             ],
                                           ),
@@ -472,18 +505,26 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
 
                                       // Primary action — gradient & glow
                                       AnimatedContainer(
-                                        duration: const Duration(milliseconds: 200),
+                                        duration:
+                                            const Duration(milliseconds: 200),
                                         height: 54,
                                         decoration: BoxDecoration(
                                           gradient: const LinearGradient(
-                                            colors: [Color(0xFF43A047), Color(0xFF1B5E20)],
+                                            colors: [
+                                              Color(0xFF43A047),
+                                              Color(0xFF1B5E20)
+                                            ],
                                           ),
-                                          borderRadius: BorderRadius.circular(14),
+                                          borderRadius:
+                                              BorderRadius.circular(14),
                                           boxShadow: _loading
                                               ? []
                                               : [
                                                   BoxShadow(
-                                                    color: const Color(0xFF1B5E20).withValues(alpha: 0.4),
+                                                    color:
+                                                        const Color(0xFF1B5E20)
+                                                            .withValues(
+                                                                alpha: 0.4),
                                                     blurRadius: 16,
                                                     offset: const Offset(0, 6),
                                                   ),
@@ -492,37 +533,47 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                                         child: Material(
                                           color: Colors.transparent,
                                           child: InkWell(
-                                            borderRadius: BorderRadius.circular(14),
+                                            borderRadius:
+                                                BorderRadius.circular(14),
                                             onTap: _loading
                                                 ? null
-                                                : (_tabCtrl.index == 0 ? _login : _register),
+                                                : (_tabCtrl.index == 0
+                                                    ? _login
+                                                    : _register),
                                             child: Center(
                                               child: _loading
                                                   ? const SizedBox(
                                                       width: 22,
                                                       height: 22,
-                                                      child: CircularProgressIndicator(
+                                                      child:
+                                                          CircularProgressIndicator(
                                                         color: Colors.white,
                                                         strokeWidth: 2.5,
                                                       ),
                                                     )
                                                   : Row(
-                                                      mainAxisAlignment: MainAxisAlignment.center,
+                                                      mainAxisAlignment:
+                                                          MainAxisAlignment
+                                                              .center,
                                                       children: [
                                                         Text(
                                                           _tabCtrl.index == 0
                                                               ? 'Giriş Yap'
                                                               : 'Hesap Oluştur',
-                                                          style: const TextStyle(
+                                                          style:
+                                                              const TextStyle(
                                                             fontSize: 15,
-                                                            fontWeight: FontWeight.w700,
+                                                            fontWeight:
+                                                                FontWeight.w700,
                                                             color: Colors.white,
                                                             letterSpacing: 0.4,
                                                           ),
                                                         ),
-                                                        const SizedBox(width: 8),
+                                                        const SizedBox(
+                                                            width: 8),
                                                         const Icon(
-                                                          Icons.arrow_forward_rounded,
+                                                          Icons
+                                                              .arrow_forward_rounded,
                                                           color: Colors.white,
                                                           size: 18,
                                                         ),
@@ -552,7 +603,8 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(Icons.shield_outlined,
-                            size: 14, color: Colors.white.withValues(alpha: 0.7)),
+                            size: 14,
+                            color: Colors.white.withValues(alpha: 0.7)),
                         const SizedBox(width: 6),
                         Text(
                           'Verileriniz güvende, çevrimdışı çalışır',

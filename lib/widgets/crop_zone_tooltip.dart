@@ -94,9 +94,11 @@ class CropZoneTooltip extends StatelessWidget {
 
           // Bilgi satırları
           if (planted != null)
-            _infoRow('📅 Ekim Tarihi', DateFormat('dd.MM.yyyy').format(planted)),
+            _infoRow(
+                '📅 Ekim Tarihi', DateFormat('dd.MM.yyyy').format(planted)),
           if (harvestDate != null)
-            _infoRow('🗓️ Tah. Hasat', DateFormat('dd.MM.yyyy').format(harvestDate)),
+            _infoRow(
+                '🗓️ Tah. Hasat', DateFormat('dd.MM.yyyy').format(harvestDate)),
           if (remaining != null)
             _infoRow(
               '⏳ Kalan',
@@ -107,7 +109,8 @@ class CropZoneTooltip extends StatelessWidget {
           const SizedBox(height: 10),
           Row(
             children: [
-              const Text('🌱 Olgunluk', style: TextStyle(color: Colors.white54, fontSize: 11)),
+              const Text('🌱 Olgunluk',
+                  style: TextStyle(color: Colors.white54, fontSize: 11)),
               const Spacer(),
               Text(
                 '%${maturityPercent.toStringAsFixed(0)}',
@@ -180,7 +183,8 @@ class CropZoneTooltip extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 4),
       child: Row(
         children: [
-          Text(label, style: const TextStyle(color: Colors.white54, fontSize: 11)),
+          Text(label,
+              style: const TextStyle(color: Colors.white54, fontSize: 11)),
           const Spacer(),
           Text(
             value,

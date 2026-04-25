@@ -14,7 +14,8 @@ class CropFieldMatchScreen extends ConsumerStatefulWidget {
   const CropFieldMatchScreen({super.key});
 
   @override
-  ConsumerState<CropFieldMatchScreen> createState() => _CropFieldMatchScreenState();
+  ConsumerState<CropFieldMatchScreen> createState() =>
+      _CropFieldMatchScreenState();
 }
 
 class _CropFieldMatchScreenState extends ConsumerState<CropFieldMatchScreen>
@@ -65,7 +66,8 @@ class _CropFieldMatchScreenState extends ConsumerState<CropFieldMatchScreen>
     if (canonical == null) {
       AppToast.show(
         context,
-        message: 'Bu prototipte yalnız Ayçiçeği, Mısır ve Domates destekleniyor.',
+        message:
+            'Bu prototipte yalnız Ayçiçeği, Mısır ve Domates destekleniyor.',
         type: ToastType.warning,
       );
       return;
@@ -95,9 +97,9 @@ class _CropFieldMatchScreenState extends ConsumerState<CropFieldMatchScreen>
       // Her tarla için paralel çevre verisi çek
       final fieldEnvList = await Future.wait(
         fields.map((f) => _fetchEnvData(
-          (f['latitude'] as num).toDouble(),
-          (f['longitude'] as num).toDouble(),
-        )),
+              (f['latitude'] as num).toDouble(),
+              (f['longitude'] as num).toDouble(),
+            )),
       );
 
       // Tek bir Gemini çağrısıyla tüm tarlaları değerlendir
@@ -259,7 +261,8 @@ class _CropFieldMatchScreenState extends ConsumerState<CropFieldMatchScreen>
                       icon: const Icon(Icons.send, color: Colors.green),
                       onPressed: () => _analyze(_cropController.text),
                     ),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12)),
                     filled: true,
                     fillColor: Colors.white,
                   ),
@@ -273,7 +276,8 @@ class _CropFieldMatchScreenState extends ConsumerState<CropFieldMatchScreen>
                         .map((c) => Padding(
                               padding: const EdgeInsets.only(right: 6),
                               child: ActionChip(
-                                label: Text(c, style: const TextStyle(fontSize: 13)),
+                                label: Text(c,
+                                    style: const TextStyle(fontSize: 13)),
                                 onPressed: () {
                                   _cropController.text = c;
                                   _analyze(c);
@@ -307,7 +311,8 @@ class _CropFieldMatchScreenState extends ConsumerState<CropFieldMatchScreen>
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.eco, size: 64, color: Colors.green.shade200),
+                              Icon(Icons.eco,
+                                  size: 64, color: Colors.green.shade200),
                               const SizedBox(height: 12),
                               const Text(
                                 'Bir ürün seçerek kayıtlı tarlalarınıza\nuygunluk analizi başlatın.',
@@ -329,9 +334,11 @@ class _CropFieldMatchScreenState extends ConsumerState<CropFieldMatchScreen>
                             end: Offset.zero,
                           ).animate(CurvedAnimation(
                             parent: _staggerController,
-                            curve: Interval(start, end, curve: Curves.easeOutCubic),
+                            curve: Interval(start, end,
+                                curve: Curves.easeOutCubic),
                           ));
-                          final fadeAnim = Tween<double>(begin: 0, end: 1).animate(
+                          final fadeAnim =
+                              Tween<double>(begin: 0, end: 1).animate(
                             CurvedAnimation(
                               parent: _staggerController,
                               curve: Interval(start, end, curve: Curves.easeIn),
@@ -435,9 +442,11 @@ class _MatchCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(match.fieldName,
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 16)),
                       Text('${match.areaDekar.toStringAsFixed(1)} Dekar',
-                          style: TextStyle(fontSize: 13, color: Colors.grey.shade600)),
+                          style: TextStyle(
+                              fontSize: 13, color: Colors.grey.shade600)),
                     ],
                   ),
                 ),
@@ -489,7 +498,8 @@ class _MatchCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Text(match.reason,
-                  style: TextStyle(fontSize: 14, color: Colors.grey.shade800, height: 1.4)),
+                  style: TextStyle(
+                      fontSize: 14, color: Colors.grey.shade800, height: 1.4)),
             ),
 
             // Öneri
@@ -499,11 +509,15 @@ class _MatchCard extends StatelessWidget {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(Icons.lightbulb, size: 18, color: Colors.amber.shade700),
+                    Icon(Icons.lightbulb,
+                        size: 18, color: Colors.amber.shade700),
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(match.suggestion,
-                          style: TextStyle(fontSize: 13, color: Colors.amber.shade900, fontStyle: FontStyle.italic)),
+                          style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.amber.shade900,
+                              fontStyle: FontStyle.italic)),
                     ),
                   ],
                 ),
@@ -525,7 +539,11 @@ class _StatBox extends StatelessWidget {
   final IconData icon;
   final String label, value;
   final Color color;
-  const _StatBox({required this.icon, required this.label, required this.value, required this.color});
+  const _StatBox(
+      {required this.icon,
+      required this.label,
+      required this.value,
+      required this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -542,7 +560,8 @@ class _StatBox extends StatelessWidget {
             Icon(icon, size: 20, color: color),
             const SizedBox(height: 4),
             Text(value,
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: color),
+                style: TextStyle(
+                    fontWeight: FontWeight.bold, fontSize: 14, color: color),
                 textAlign: TextAlign.center),
             Text(label,
                 style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
@@ -588,7 +607,8 @@ class _AnimatedGauge extends StatelessWidget {
             child: Center(
               child: Text(
                 '%${(anim.value * 100).toInt()}',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: color),
+                style: TextStyle(
+                    fontWeight: FontWeight.bold, fontSize: 14, color: color),
               ),
             ),
           ),

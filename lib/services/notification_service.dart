@@ -98,14 +98,14 @@ class NotificationService {
   // ── Weather-Triggered Smart Alerts ───────────────────────────────────────
 
   // ─── Profesyonel uyarı eşikleri (yukarıdaki kaynak listesine bakınız) ──────
-  static const double frostCriticalC = 0.0;   // FAO/WMO
-  static const double frostWarningC  = 2.0;
-  static const double heatCriticalC  = 40.0;  // FAO I&D Paper 66
-  static const double heatWarningC   = 35.0;
-  static const double windCriticalMs = 17.2;  // Beaufort 8 (fırtına)
-  static const double windWarningMs  = 10.8;  // Beaufort 6
-  static const double rainCriticalMm = 50.0;  // MGM şiddetli yağış / 24h
-  static const double rainWarningMm  = 20.0;  // MGM kuvvetli yağış / 24h
+  static const double frostCriticalC = 0.0; // FAO/WMO
+  static const double frostWarningC = 2.0;
+  static const double heatCriticalC = 40.0; // FAO I&D Paper 66
+  static const double heatWarningC = 35.0;
+  static const double windCriticalMs = 17.2; // Beaufort 8 (fırtına)
+  static const double windWarningMs = 10.8; // Beaufort 6
+  static const double rainCriticalMm = 50.0; // MGM şiddetli yağış / 24h
+  static const double rainWarningMm = 20.0; // MGM kuvvetli yağış / 24h
 
   /// Fetches forecast for the given coordinates and sends local notifications
   /// if any agricultural thresholds are breached. [fieldName] uyarı metninde

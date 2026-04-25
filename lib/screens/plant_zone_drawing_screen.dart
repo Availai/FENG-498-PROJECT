@@ -78,7 +78,8 @@ class _PlantZoneDrawingScreenState extends State<PlantZoneDrawingScreen>
 
   /// Kalan boş alan (m²) = tarla toplam - ekili - aktif çizim
   double get _remainingAreaSqm {
-    return (_fieldAreaSqm - _usedAreaSqm - _zoneAreaSqm).clamp(0, double.infinity);
+    return (_fieldAreaSqm - _usedAreaSqm - _zoneAreaSqm)
+        .clamp(0, double.infinity);
   }
 
   late final AnimationController _pulseCtrl;
@@ -168,7 +169,9 @@ class _PlantZoneDrawingScreenState extends State<PlantZoneDrawingScreen>
   void _suggestByDekar() {
     final targetDekar =
         double.tryParse(_targetDekarCtrl.text.trim().replaceAll(',', '.'));
-    if (targetDekar == null || targetDekar <= 0 || widget.fieldPolygon.length < 3) {
+    if (targetDekar == null ||
+        targetDekar <= 0 ||
+        widget.fieldPolygon.length < 3) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Geçerli bir dekar değeri girin.')),
       );
@@ -176,7 +179,8 @@ class _PlantZoneDrawingScreenState extends State<PlantZoneDrawingScreen>
     }
 
     final targetSqm = targetDekar * 1000.0;
-    final availableSqm = (_fieldAreaSqm - _usedAreaSqm).clamp(0.0, double.infinity);
+    final availableSqm =
+        (_fieldAreaSqm - _usedAreaSqm).clamp(0.0, double.infinity);
     if (targetSqm > availableSqm + 1) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -208,9 +212,7 @@ class _PlantZoneDrawingScreenState extends State<PlantZoneDrawingScreen>
   void _complete() {
     if (_zonePoints.length < 3) return;
     final json = jsonEncode(
-      _zonePoints
-          .map((p) => {'lat': p.latitude, 'lng': p.longitude})
-          .toList(),
+      _zonePoints.map((p) => {'lat': p.latitude, 'lng': p.longitude}).toList(),
     );
     Navigator.of(context).pop(json);
   }
@@ -421,8 +423,8 @@ class _PlantZoneDrawingScreenState extends State<PlantZoneDrawingScreen>
             right: 16,
             child: Center(
               child: Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 14, vertical: 10),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 decoration: BoxDecoration(
                   color: Colors.black.withValues(alpha: 0.8),
                   borderRadius: BorderRadius.circular(16),
@@ -454,7 +456,8 @@ class _PlantZoneDrawingScreenState extends State<PlantZoneDrawingScreen>
                               hintText: 'Dekar',
                               hintStyle: const TextStyle(color: Colors.white54),
                               suffixText: 'da',
-                              suffixStyle: const TextStyle(color: Colors.white70),
+                              suffixStyle:
+                                  const TextStyle(color: Colors.white70),
                               contentPadding: const EdgeInsets.symmetric(
                                 horizontal: 10,
                                 vertical: 8,
@@ -480,7 +483,8 @@ class _PlantZoneDrawingScreenState extends State<PlantZoneDrawingScreen>
                         FilledButton.icon(
                           key: const Key('zone_auto_suggest_button'),
                           onPressed: _suggestByDekar,
-                          icon: const Icon(Icons.auto_fix_high_rounded, size: 15),
+                          icon:
+                              const Icon(Icons.auto_fix_high_rounded, size: 15),
                           label: const Text('Öner'),
                           style: FilledButton.styleFrom(
                             backgroundColor: widget.plantColor,
@@ -528,7 +532,8 @@ class _PlantZoneDrawingScreenState extends State<PlantZoneDrawingScreen>
                         ),
                       ),
                     // Alan özeti — ekili + kalan
-                    if (widget.existingZones.isNotEmpty || _zonePoints.length >= 3)
+                    if (widget.existingZones.isNotEmpty ||
+                        _zonePoints.length >= 3)
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -590,8 +595,8 @@ class _PlantZoneDrawingScreenState extends State<PlantZoneDrawingScreen>
             IgnorePointer(
               child: Center(
                 child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 18, vertical: 12),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
                   decoration: BoxDecoration(
                     color: Colors.black.withValues(alpha: 0.55),
                     borderRadius: AppRadius.lg,

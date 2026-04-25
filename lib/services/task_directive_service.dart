@@ -5,6 +5,7 @@ import '../data/crop_playbooks.dart';
 import '../data/crop_protocols.dart';
 import '../data/turkiye_crop_guides.dart';
 import 'field_state_service.dart';
+import 'water_accounting.dart';
 
 /// `GrowthEngine` tarafından üretilen bir ekinin stres/verim özeti. Saf POD —
 /// Drift tipine bağlanmamak için bu dosyada tanımlı. Çağıran katman
@@ -13,16 +14,22 @@ class GrowthSnapshot {
   /// Aktif fenoloji anahtarı: 'cimlenme' | 'vejetatif' | 'ciceklenme' |
   /// 'meyve_dolumu' | 'olgunlasma'.
   final String stageKey;
+
   /// 0..1 — aktif evre içi ilerleme.
   final double stageProgress;
+
   /// Ekimden bu yana biriken GDD.
   final double accumulatedGdd;
+
   /// Sulama açığı (mm). 0 = ideal.
   final double waterDeficitMm;
+
   /// Azot stres indeksi 0..1.
   final double nStressIdx;
+
   /// Hastalık baskısı 0..1.
   final double diseasePressure;
+
   /// Verim çarpanı (0.5..1.15). 1'in altı = verim kaybı.
   final double yieldMultiplier;
 
@@ -116,6 +123,7 @@ class TaskDirectiveService {
     double? soilMoisture,
     Map<String, GrowthSnapshot>? growthStates,
     Map<String, CropFieldState>? fieldStates,
+
     /// Takvime otomatik yazılmış (auto_seed) sulama/gübre/ilaç planları —
     /// `CropScheduleSeeder.seedForCrop` çıktısı. Tarihi geçmiş ve log ile
     /// eşleşmemiş kayıtlar "yapılmadı" senaryosu olarak üstte gösterilir.
@@ -149,7 +157,8 @@ class TaskDirectiveService {
       out.add(const FieldDirective(
         urgency: 1,
         headline: 'TARLAYA BİTKİ EKLE',
-        reason: 'Henüz ekili bitki yok. "Tarlayı Tara" ile uygun çeşitleri gör.',
+        reason:
+            'Henüz ekili bitki yok. "Tarlayı Tara" ile uygun çeşitleri gör.',
         kind: 'empty',
       ));
       return out;
@@ -160,7 +169,8 @@ class TaskDirectiveService {
       out.add(FieldDirective(
         urgency: 2,
         headline: 'DON UYARISI — YARIN',
-        reason: 'Yarın gece ${tomorrowMin.toStringAsFixed(0)}°C. Hassas fideleri ört, sulamayı sabaha bırak.',
+        reason:
+            'Yarın gece ${tomorrowMin.toStringAsFixed(0)}°C. Hassas fideleri ört, sulamayı sabaha bırak.',
         kind: 'frost',
       ));
     }
@@ -168,7 +178,8 @@ class TaskDirectiveService {
       out.add(FieldDirective(
         urgency: 1,
         headline: 'YARIN AŞIRI SICAK',
-        reason: 'Yarın en yüksek ${tomorrowMax.toStringAsFixed(0)}°C. Sulamayı 06:00-08:00 arasına al.',
+        reason:
+            'Yarın en yüksek ${tomorrowMax.toStringAsFixed(0)}°C. Sulamayı 06:00-08:00 arasına al.',
         kind: 'heat',
       ));
     }
@@ -187,7 +198,8 @@ class TaskDirectiveService {
       }).toList();
 
       final lastWater = _lastActivity(activitiesForCrop, ActivityType.watering);
-      final lastFert = _lastActivity(activitiesForCrop, ActivityType.fertilizing);
+      final lastFert =
+          _lastActivity(activitiesForCrop, ActivityType.fertilizing);
       final lastSpray = _lastActivity(activitiesForCrop, ActivityType.spraying);
       final growth = cropId == null ? null : growthStates?[cropId];
       final fieldState = cropId == null ? null : fieldStates?[cropId];
@@ -223,7 +235,8 @@ class TaskDirectiveService {
           out.add(FieldDirective(
             urgency: 2,
             headline: '$cropName: HASAT ZAMANI',
-            reason: 'Ekimden $elapsed gün geçti (hedef $harvestDays gün). Verim düşmeden topla.',
+            reason:
+                'Ekimden $elapsed gün geçti (hedef $harvestDays gün). Verim düşmeden topla.',
             kind: 'harvest',
             actionType: ActivityType.harvest,
             steps: _harvestSteps(fieldState),
@@ -239,7 +252,9 @@ class TaskDirectiveService {
 
       // Sulama mantığı — yağmur varsa ertele, aralık dolduysa emir ver
       final daysSinceWater = lastWater == null
-          ? (plantedDate != null ? t.difference(plantedDate).inDays : waterInterval)
+          ? (plantedDate != null
+              ? t.difference(plantedDate).inDays
+              : waterInterval)
           : t.difference(lastWater).inDays;
 
       if (rainNext48h >= 8) {
@@ -248,7 +263,8 @@ class TaskDirectiveService {
           out.add(FieldDirective(
             urgency: 0,
             headline: '$cropName: SULAMA ERTELENDİ',
-            reason: '2 gün içinde ${rainNext48h.toStringAsFixed(0)} mm yağış bekleniyor. Boşa su harcama.',
+            reason:
+                '2 gün içinde ${rainNext48h.toStringAsFixed(0)} mm yağış bekleniyor. Boşa su harcama.',
             kind: 'rain_wait',
             cropId: cropId,
             cropName: cropName,
@@ -286,7 +302,8 @@ class TaskDirectiveService {
         out.add(FieldDirective(
           urgency: 1,
           headline: '$cropName: YARIN SULA',
-          reason: 'Son sulama $daysSinceWater gün önce. Yarın sabah erken saatlere planla.',
+          reason:
+              'Son sulama $daysSinceWater gün önce. Yarın sabah erken saatlere planla.',
           kind: 'water_soon',
           steps: _fieldScaleSteps(fieldState),
           sourceRefs: sourceRefs,
@@ -299,14 +316,14 @@ class TaskDirectiveService {
 
       // Yağmur sonrası mantar riski — 10mm+ yağış olduysa 7 gündür ilaçlama yoksa
       if (rainLast24h >= 10) {
-        final daysSinceSpray = lastSpray == null
-            ? 999
-            : t.difference(lastSpray).inDays;
+        final daysSinceSpray =
+            lastSpray == null ? 999 : t.difference(lastSpray).inDays;
         if (daysSinceSpray >= 7) {
           out.add(FieldDirective(
             urgency: 1,
             headline: '$cropName: MANTAR RİSKİ — İLAÇLA',
-            reason: 'Son 24 saatte ${rainLast24h.toStringAsFixed(0)} mm yağdı. Fungisit uygulaması öneriliyor.',
+            reason:
+                'Son 24 saatte ${rainLast24h.toStringAsFixed(0)} mm yağdı. Fungisit uygulaması öneriliyor.',
             kind: 'spray',
             actionType: ActivityType.spraying,
             steps: _spraySteps(cropName, fieldState),
@@ -322,9 +339,8 @@ class TaskDirectiveService {
       // Gübreleme — ekimden sonra aralıklı, 30+ gün geçmişse
       if (plantedDate != null) {
         final elapsed = t.difference(plantedDate).inDays;
-        final daysSinceFert = lastFert == null
-            ? elapsed
-            : t.difference(lastFert).inDays;
+        final daysSinceFert =
+            lastFert == null ? elapsed : t.difference(lastFert).inDays;
         if (elapsed > 20 && daysSinceFert >= 30 && elapsed < harvestDays - 10) {
           final baseReason = lastFert == null
               ? 'Ekimden $elapsed gün geçti, henüz gübre kaydı yok.'
@@ -410,8 +426,7 @@ class TaskDirectiveService {
       final key = '$cropId::$type';
       final prev = byKey[key];
       final prevDate = prev?['date'];
-      if (prev == null ||
-          (prevDate is DateTime && evDate.isBefore(prevDate))) {
+      if (prev == null || (prevDate is DateTime && evDate.isBefore(prevDate))) {
         byKey[key] = ev;
       }
     }
@@ -569,8 +584,8 @@ class TaskDirectiveService {
         }
         isDone = nextOffset != null && daysSince >= nextOffset;
       } else {
-        isDone = activitiesForCrop.any((a) =>
-            a['type']?.toString() == step.expectedActivity);
+        isDone = activitiesForCrop
+            .any((a) => a['type']?.toString() == step.expectedActivity);
       }
       if (isDone) {
         completed++;
@@ -589,7 +604,8 @@ class TaskDirectiveService {
       urgency: urgency,
       headline:
           '${protocol.emoji} $cropName: Adım ${active.order}/${protocol.steps.length} — ${active.title}',
-      reason: '${active.description}\n\nİlerleme: $completed/${protocol.steps.length} adım tamam.',
+      reason:
+          '${active.description}\n\nİlerleme: $completed/${protocol.steps.length} adım tamam.',
       kind: 'protocol_step',
       actionType: active.expectedActivity,
       steps: _protocolSteps(active, fieldState),
@@ -662,13 +678,20 @@ class TaskDirectiveService {
     final minutes =
         (liters / (fieldState.estimatedPlantCount * dripperLiterPerHour) * 60)
             .clamp(5.0, 480.0);
+    final impact = WaterAccounting.calculate(
+      metadata: const {'irrigation_method': 'Damla sulama'},
+      quantity: minutes,
+      quantityUnit: 'dk',
+      areaSqm: fieldState.areaSqm,
+      plantCount: fieldState.estimatedPlantCount,
+    );
 
     return _QuantityPlan(
       quantity: minutes.roundToDouble(),
       unit: 'dk',
       steps: [
         '${fieldState.areaDekar.toStringAsFixed(2)} da alanda ${fieldState.estimatedPlantCount} bitki hesaba katıldı.',
-        'Hedef su: ${totalMm.toStringAsFixed(1)} mm, yaklaşık ${liters.round()} L.',
+        'Hedef su: ${impact.mm.toStringAsFixed(1)} mm, yaklaşık ${impact.liters.round()} L.',
         'Damla sulama varsayımı ile ${minutes.round()} dk uygula; karıkta toprak tava gelince kes.',
       ],
     );
@@ -716,7 +739,8 @@ class TaskDirectiveService {
 
   static List<String> _spraySteps(String cropName, CropFieldState? fieldState) {
     final pb = CropPlaybooks.resolveByName(cropName);
-    final pesticide = pb?.pesticides.isNotEmpty == true ? pb!.pesticides.first : null;
+    final pesticide =
+        pb?.pesticides.isNotEmpty == true ? pb!.pesticides.first : null;
     return [
       ..._fieldScaleSteps(fieldState),
       if (pesticide != null)
@@ -734,7 +758,8 @@ class TaskDirectiveService {
     ];
   }
 
-  static List<String> _protocolSteps(ProtocolStep step, CropFieldState? fieldState) {
+  static List<String> _protocolSteps(
+      ProtocolStep step, CropFieldState? fieldState) {
     return [
       ..._fieldScaleSteps(fieldState),
       if (step.fertilizerSpec != null) step.fertilizerSpec!,
@@ -762,7 +787,8 @@ class TaskDirectiveService {
     if (raw == null || raw.isEmpty) return null;
     final parts = raw.split('.');
     if (parts.length == 3) {
-      final iso = '${parts[2]}-${parts[1].padLeft(2, '0')}-${parts[0].padLeft(2, '0')}';
+      final iso =
+          '${parts[2]}-${parts[1].padLeft(2, '0')}-${parts[0].padLeft(2, '0')}';
       final dt = DateTime.tryParse(iso);
       if (dt != null) return dt;
     }
@@ -796,7 +822,8 @@ class TaskDirectiveService {
     return out;
   }
 
-  static double _sumRain(List<_ForecastDay> f, int fromIdx, int toIdxInclusive) {
+  static double _sumRain(
+      List<_ForecastDay> f, int fromIdx, int toIdxInclusive) {
     double s = 0;
     for (var i = fromIdx; i <= toIdxInclusive && i < f.length; i++) {
       s += f[i].rain;
@@ -818,7 +845,8 @@ class TaskDirectiveService {
     for (final crop in crops) {
       final interval = (crop['water_interval_days'] as num?)?.toInt() ?? 7;
       final lastWater = _lastActivity(activities, ActivityType.watering);
-      final days = lastWater == null ? interval : t.difference(lastWater).inDays;
+      final days =
+          lastWater == null ? interval : t.difference(lastWater).inDays;
       final remaining = interval - days;
       if (remaining > 0 && (minDays == null || remaining < minDays)) {
         minDays = remaining;
@@ -833,7 +861,8 @@ class _ForecastDay {
   final double max;
   final double min;
   final double rain;
-  const _ForecastDay({required this.max, required this.min, required this.rain});
+  const _ForecastDay(
+      {required this.max, required this.min, required this.rain});
 }
 
 class _QuantityPlan {

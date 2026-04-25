@@ -26,22 +26,31 @@ double _getScaleMultiplier(GrowthPhase phase) {
 
 String _getAssetPath(String cropName) {
   final name = cropName.toLowerCase();
-  if (name.contains('buğday') || name.contains('arpa') || name.contains('yulaf')) return 'assets/crops/wheat.png';
+  if (name.contains('buğday') ||
+      name.contains('arpa') ||
+      name.contains('yulaf')) return 'assets/crops/wheat.png';
   if (name.contains('mısır')) return 'assets/crops/corn.png';
-  if (name.contains('ayçiçek') || name.contains('ayçiçeği')) return 'assets/crops/sunflower.png';
+  if (name.contains('ayçiçek') || name.contains('ayçiçeği'))
+    return 'assets/crops/sunflower.png';
   if (name.contains('pamuk')) return 'assets/crops/cotton.png';
-  if (name.contains('çeltik') || name.contains('pirinç')) return 'assets/crops/rice.png';
+  if (name.contains('çeltik') || name.contains('pirinç'))
+    return 'assets/crops/rice.png';
   if (name.contains('domates')) return 'assets/crops/tomato.png';
   if (name.contains('biber')) return 'assets/crops/pepper.png';
   if (name.contains('patlıcan')) return 'assets/crops/eggplant.png';
   if (name.contains('üzüm')) return 'assets/crops/grape.png';
   if (name.contains('elma')) return 'assets/crops/apple_tree.png';
-  if (name.contains('karpuz') || name.contains('kavun')) return 'assets/crops/watermelon.png';
-  if (name.contains('marul') || name.contains('lahana') || name.contains('kolza')) return 'assets/crops/cabbage.png';
+  if (name.contains('karpuz') || name.contains('kavun'))
+    return 'assets/crops/watermelon.png';
+  if (name.contains('marul') ||
+      name.contains('lahana') ||
+      name.contains('kolza')) return 'assets/crops/cabbage.png';
   if (name.contains('havuç')) return 'assets/crops/carrot.png';
   if (name.contains('soğan')) return 'assets/crops/onion.png';
   if (name.contains('zeytin')) return 'assets/crops/olive_tree.png';
-  if (name.contains('nohut') || name.contains('mercimek') || name.contains('patates')) return 'assets/crops/potato.png';
+  if (name.contains('nohut') ||
+      name.contains('mercimek') ||
+      name.contains('patates')) return 'assets/crops/potato.png';
   return 'assets/crops/wheat.png';
 }
 
@@ -64,17 +73,19 @@ Widget buildCropMarkerWidget({
     builder: (context) {
       final camera = MapCamera.maybeOf(context);
       final currentZoom = camera?.zoom ?? 18.0;
-      
+
       // Harita zoom seviyesine göre büyüme çarpanı
       // zoom 18 referans alınarak (2^(zoom-18)), crop'lar harita büyüklüğüne kitlenir.
       double zoomScale = math.pow(2.0, currentZoom - 18.0).toDouble();
-      zoomScale = zoomScale.clamp(0.2, 2.5); // Maximum scale sınırlandırıldı ki aşırı abartı durmasın
+      zoomScale = zoomScale.clamp(
+          0.2, 2.5); // Maximum scale sınırlandırıldı ki aşırı abartı durmasın
 
       final phase = getGrowthPhase(maturityPercent);
       final phaseScale = _getScaleMultiplier(phase);
       final assetPath = _getAssetPath(cropName);
 
-      const double baseWidth = 42;  // Görselde çok devasa durduğu için yarıya indirdim
+      const double baseWidth =
+          42; // Görselde çok devasa durduğu için yarıya indirdim
       const double baseHeight = 48;
 
       final double spriteW = baseWidth * phaseScale * zoomScale;
@@ -93,9 +104,8 @@ Widget buildCropMarkerWidget({
       final double shadowW = spriteW * 0.7;
       final double shadowH = spriteH * 0.12;
       // Gölgeleri çok yumuşattık çünkü overlap olunca kapkara oluyorlardı.
-      final double shadowAlpha = phase == GrowthPhase.harvest
-          ? 0.18 + (harvestPulse * 0.05)
-          : 0.12;
+      final double shadowAlpha =
+          phase == GrowthPhase.harvest ? 0.18 + (harvestPulse * 0.05) : 0.12;
 
       final groundShadow = Container(
         width: shadowW,
@@ -129,14 +139,17 @@ Widget buildCropMarkerWidget({
       );
 
       final marker = Transform(
-        transform: Matrix4.identity()..rotateX(0.95), // Doğru 3D pop-up perspektifi
-        alignment: Alignment.center, // Harita koordinatı olan merkeze kilitli dön!
+        transform: Matrix4.identity()
+          ..rotateX(0.95), // Doğru 3D pop-up perspektifi
+        alignment:
+            Alignment.center, // Harita koordinatı olan merkeze kilitli dön!
         child: SizedBox(
           width: 240,
           height: 240,
           child: Stack(
             clipBehavior: Clip.none,
-            alignment: Alignment.center, // Bütün objelerin tam ortası LatLng koordinatına oturur!
+            alignment: Alignment
+                .center, // Bütün objelerin tam ortası LatLng koordinatına oturur!
             children: [
               // 1. Toprak dairesi — koordinatın merkezinde, ekim izlenimini verir
               currentZoom < 16.5 ? const SizedBox.shrink() : soilDisc,
@@ -147,7 +160,8 @@ Widget buildCropMarkerWidget({
               // tam boyunun yarısı kadar (spriteH / 2) yukarı (eksi Y ekseni) kaydırarak
               // bitkinin tam KÖKÜNÜ koordinata/gölgeye oturtuyoruz!
               Transform.translate(
-                offset: Offset(0, -(spriteH / 2) + 4), // 4 pixel küçük bir gölge/kök payı
+                offset: Offset(
+                    0, -(spriteH / 2) + 4), // 4 pixel küçük bir gölge/kök payı
                 child: sprite,
               ),
             ],
@@ -166,4 +180,3 @@ Widget buildCropMarkerWidget({
     },
   );
 }
-

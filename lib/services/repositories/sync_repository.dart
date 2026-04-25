@@ -18,7 +18,6 @@ class SyncRepository {
     return query.get();
   }
 
-
   Future<Map<String, int>> getQueueStats() async {
     final rows = await _db.select(_db.syncJobs).get();
     var pending = 0;
