@@ -172,141 +172,14 @@ class LocalDataRepository {
   /// bulutta da aynı temizlik yayılır.
   Future<void> deleteField(String fieldId) async {
     final now = DateTime.now().toUtc();
-<<<<<<< HEAD
-    final cropsToClear = <FieldCrop>[];
 
-    await _db.transaction(() async {
-      final activeCrops = await (_db.select(_db.fieldCrops)
-            ..where((tbl) =>
-                tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull()))
-          .get();
-      final activePlans = await (_db.select(_db.irrigationPlans)
-            ..where((tbl) =>
-                tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull()))
-          .get();
-      final activeEvents = await (_db.select(_db.calendarEvents)
-            ..where((tbl) =>
-                tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull()))
-          .get();
-      final activeReports = await (_db.select(_db.suitabilityReports)
-            ..where((tbl) =>
-                tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull()))
-          .get();
-      cropsToClear.addAll(activeCrops);
-
-      await (_db.update(_db.fields)..where((tbl) => tbl.id.equals(fieldId)))
-          .write(
-        FieldsCompanion(
-          updatedAt: Value(now),
-          deletedAt: Value(now),
-        ),
-      );
-      await (_db.update(_db.fieldCrops)
-            ..where((tbl) =>
-                tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull()))
-          .write(
-        FieldCropsCompanion(
-          updatedAt: Value(now),
-          deletedAt: Value(now),
-        ),
-      );
-      await (_db.update(_db.irrigationPlans)
-            ..where((tbl) =>
-                tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull()))
-          .write(
-        IrrigationPlansCompanion(
-          updatedAt: Value(now),
-          deletedAt: Value(now),
-        ),
-      );
-      await (_db.update(_db.calendarEvents)
-            ..where((tbl) =>
-                tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull()))
-          .write(
-        CalendarEventsCompanion(
-          updatedAt: Value(now),
-          deletedAt: Value(now),
-        ),
-      );
-      await (_db.update(_db.suitabilityReports)
-            ..where((tbl) =>
-                tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull()))
-          .write(
-        SuitabilityReportsCompanion(
-          updatedAt: Value(now),
-          deletedAt: Value(now),
-        ),
-      );
-      await (_db.delete(_db.cropGrowthStates)
-            ..where((tbl) => tbl.fieldId.equals(fieldId)))
-          .go();
-
-      for (final crop in activeCrops) {
-        await _enqueueSyncJob(
-          entityType: 'field_crops',
-          entityId: crop.id,
-          operation: 'delete',
-          payload: {'id': crop.id, 'field_id': fieldId},
-          updatedAt: now,
-        );
-      }
-      for (final plan in activePlans) {
-        await _enqueueSyncJob(
-          entityType: 'irrigation_plans',
-          entityId: plan.id,
-          operation: 'delete',
-          payload: {'id': plan.id, 'field_id': fieldId},
-          updatedAt: now,
-        );
-      }
-      for (final event in activeEvents) {
-        await _enqueueSyncJob(
-          entityType: 'calendar_events',
-          entityId: event.id,
-          operation: 'delete',
-          payload: {'id': event.id, 'field_id': fieldId},
-          updatedAt: now,
-        );
-      }
-      for (final report in activeReports) {
-        await _enqueueSyncJob(
-          entityType: 'suitability_reports',
-          entityId: report.id,
-          operation: 'delete',
-          payload: {'id': report.id, 'field_id': fieldId},
-          updatedAt: now,
-        );
-      }
-      await _enqueueSyncJob(
-        entityType: 'fields',
-        entityId: fieldId,
-        operation: 'delete',
-        payload: {'id': fieldId},
-        updatedAt: now,
-      );
-    });
-
-    for (final crop in cropsToClear) {
-      await CropProtocolService.clearStateFor(
-        fieldId: fieldId,
-        cropId: crop.id,
-        cropName: crop.name,
-      );
-    }
-
-    // Tarlaya bağlı tüm Hive kayıtlarını da temizle — uygulamanın hiçbir
-    // köşesinde silinmiş tarlaya ait artık veri kalmasın.
-    await _purgeFieldFromHiveBoxes(fieldId);
-
-=======
-
-    // Silinmeden önce id'leri topla — her kayıt için ayrı sync job gerek.
-    final cropIds = (await (_db.select(_db.fieldCrops)
-              ..where((tbl) =>
-                  tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull()))
-            .get())
-        .map((c) => c.id)
-        .toList();
+    // Silmeden önce ekin kayıtlarını + ilişkili id'leri topla
+    // (sync outbox + crop_protocol_state temizliği için gerek var).
+    final cropsToClear = await (_db.select(_db.fieldCrops)
+          ..where((tbl) =>
+              tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull()))
+        .get();
+    final cropIds = cropsToClear.map((c) => c.id).toList();
     final irrigationIds = (await (_db.select(_db.irrigationPlans)
               ..where((tbl) =>
                   tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull()))
@@ -338,12 +211,10 @@ class LocalDataRepository {
             ..where((tbl) => tbl.fieldId.equals(fieldId)))
           .go();
 
-      // CropGrowthStates — FK'siz, her ekin için 1 satır.
-      if (cropIds.isNotEmpty) {
-        await (_db.delete(_db.cropGrowthStates)
-              ..where((tbl) => tbl.cropId.isIn(cropIds)))
-            .go();
-      }
+      // CropGrowthStates — fieldId ile bağlı satırları temizle.
+      await (_db.delete(_db.cropGrowthStates)
+            ..where((tbl) => tbl.fieldId.equals(fieldId)))
+          .go();
 
       await (_db.delete(_db.fieldCrops)
             ..where((tbl) => tbl.fieldId.equals(fieldId)))
@@ -364,7 +235,7 @@ class LocalDataRepository {
         entityType: 'field_crops',
         entityId: id,
         operation: 'delete',
-        payload: {'id': id},
+        payload: {'id': id, 'field_id': fieldId},
         updatedAt: now,
       );
     }
@@ -373,7 +244,7 @@ class LocalDataRepository {
         entityType: 'irrigation_plans',
         entityId: id,
         operation: 'delete',
-        payload: {'id': id},
+        payload: {'id': id, 'field_id': fieldId},
         updatedAt: now,
       );
     }
@@ -382,7 +253,7 @@ class LocalDataRepository {
         entityType: 'calendar_events',
         entityId: id,
         operation: 'delete',
-        payload: {'id': id, 'deleted_at': now.toIso8601String()},
+        payload: {'id': id, 'field_id': fieldId, 'deleted_at': now.toIso8601String()},
         updatedAt: now,
       );
     }
@@ -391,12 +262,24 @@ class LocalDataRepository {
         entityType: 'suitability_reports',
         entityId: id,
         operation: 'delete',
-        payload: {'id': id},
+        payload: {'id': id, 'field_id': fieldId},
         updatedAt: now,
       );
     }
 
->>>>>>> bfa38d7d23bc8c0bec06f2054cc027bacd3b42cd
+    // Crop protocol state'lerini de temizle — her ekin için ayrı kayıt.
+    for (final crop in cropsToClear) {
+      await CropProtocolService.clearStateFor(
+        fieldId: fieldId,
+        cropId: crop.id,
+        cropName: crop.name,
+      );
+    }
+
+    // Tarlaya bağlı tüm Hive kayıtlarını da temizle — uygulamanın hiçbir
+    // köşesinde silinmiş tarlaya ait artık veri kalmasın.
+    await _purgeFieldFromHiveBoxes(fieldId);
+
     await _mirrorActiveFieldsToHive();
   }
 
