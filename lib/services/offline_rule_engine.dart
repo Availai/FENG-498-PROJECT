@@ -1,10 +1,12 @@
-/// Kural Tabanlı Karar Motoru (Rule-Based Decision Engine)
+/// Offline Rule Engine — Çevrimdışı Kural Motoru
 ///
-/// Gemini LLM'nin yerini alan, tamamen deterministik algoritmik sistem.
-/// Girdi: PlantNet tür verisi + Weather API + AgroMonitoring NDVI/Nem + SoilGrids pH
-/// Çıktı: Risk uyarıları, sulama kararları, gübre önerileri, mevsim uyumu
+/// **MİMARİ NOT:** Bu dosya backend'deki `rule_engine.py`'nin **çevrimdışı
+/// aynasıdır**. İş kurallarının kanonik sahibi backend'dir; istemci öncelikle
+/// `BackendService` üzerinden `/api/analyze/*` endpointlerini çağırmalıdır.
+/// Bu motor yalnızca ağ erişiminin mümkün olmadığı durumlarda fallback
+/// olarak çalışır (CLAUDE.md: "Çevrimdışı-öncelikli, indefinite loading yasak").
 ///
-/// FastAPI backend (/backend/rule_engine.py) ile birebir aynı mantık.
+/// Kural değişikliklerinde backend `rule_engine.py` ile birebir parite şart.
 library;
 
 enum RiskLevel {
@@ -77,7 +79,7 @@ class RuleResult {
 // ANA MOTOR
 // ─────────────────────────────────────────────────────────────────────────────
 
-class RuleEngine {
+class OfflineRuleEngine {
   /// Tam analiz — tüm kategorileri çalıştırır.
   static List<RuleResult> analyze({
     String commonName = '',           // Türkçe bitki adı (Domates, Buğday…)

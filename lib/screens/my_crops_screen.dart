@@ -213,7 +213,25 @@ class MyCropsScreen extends ConsumerWidget {
                             onPressed: () async {
                               final id = item['id']?.toString();
                               if (id == null) return;
-                              await ref.read(fieldRepositoryProvider).deleteField(id);
+                              final fieldName =
+                                  (item['name']?.toString().trim().isNotEmpty ?? false)
+                                      ? item['name'].toString()
+                                      : 'Bu tarla';
+                              final confirmed = await _confirmDeleteField(
+                                context,
+                                fieldName,
+                              );
+                              if (confirmed != true) return;
+                              await ref
+                                  .read(fieldRepositoryProvider)
+                                  .deleteField(id);
+                              if (context.mounted) {
+                                AppToast.show(
+                                  context,
+                                  message: '$fieldName ve tüm kayıtları silindi.',
+                                  type: ToastType.success,
+                                );
+                              }
                             },
                           ),
                         ],
@@ -225,6 +243,126 @@ class MyCropsScreen extends ConsumerWidget {
             },
           );
         },
+      ),
+    );
+  }
+
+  Future<bool?> _confirmDeleteField(BuildContext context, String fieldName) {
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        icon: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: AppColors.error.withValues(alpha: 0.1),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(Icons.warning_amber_rounded,
+              color: AppColors.error, size: 32),
+        ),
+        title: Text(
+          'Tarlayı Silmek İstediğinize Emin misiniz?',
+          style: AppText.h2(context),
+          textAlign: TextAlign.center,
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '"$fieldName" ve aşağıdaki tüm kayıtları kalıcı olarak silinecek:',
+              style: AppText.body(context),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.errorBg,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                    color: AppColors.error.withValues(alpha: 0.2)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _bulletRow('Ekili bitkiler ve bölgeler'),
+                  _bulletRow('Sulama planları'),
+                  _bulletRow('Takvim olayları (sulama, gübreleme, hasat)'),
+                  _bulletRow('Uygunluk raporları'),
+                  _bulletRow('Maliyet defteri kayıtları'),
+                  _bulletRow('Büyüme protokolü durumu'),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Bu işlem geri alınamaz.',
+              style: AppText.sm(context).copyWith(
+                color: AppColors.error,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        actions: [
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => Navigator.of(ctx).pop(false),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(46),
+                    foregroundColor: AppColors.textSecondary,
+                    side: BorderSide(color: AppColors.border),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text('Vazgeç'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: () => Navigator.of(ctx).pop(true),
+                  icon: const Icon(Icons.delete_forever_rounded, size: 18),
+                  label: const Text('Sil'),
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(46),
+                    backgroundColor: AppColors.error,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _bulletRow(String text) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.close_rounded, size: 14, color: AppColors.error),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(
+                fontSize: 12.5,
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

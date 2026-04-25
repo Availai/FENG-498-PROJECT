@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from typing import List, Optional, Any
 from pathlib import Path
 import asyncpg
+import json
 import os
 
 try:
@@ -19,6 +20,13 @@ except ImportError:
     from rule_engine import analyze, AnalyzeRequest, RuleCategory, RiskLevel
 
 app = FastAPI(title="Smart Agri Backend API", version="1.0")
+
+# Proxy/analiz endpointleri (paralı 3rd-party API anahtarları sadece burada)
+try:
+    from .proxy_endpoints import router as proxy_router
+except ImportError:
+    from proxy_endpoints import router as proxy_router
+app.include_router(proxy_router)
 
 
 # âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
@@ -76,6 +84,52 @@ class SyncPushRequest(BaseModel):
 
 
 _sync_store: dict[str, dict[str, dict[str, dict[str, Any]]]] = {}
+_sync_schema_ready = False
+
+
+def _sync_db_enabled() -> bool:
+    return os.getenv("SYNC_STORE", "postgres").lower() not in ("memory", "inmemory", "off")
+
+
+async def _open_sync_conn():
+    if not _sync_db_enabled():
+        return None
+    try:
+        conn = await asyncpg.connect(DATABASE_URL)
+        await _ensure_sync_schema(conn)
+        return conn
+    except Exception as e:
+        # Test/dev ortamında Postgres yoksa uygulama çalışmaya devam eder.
+        # Üretimde DATABASE_URL doğru yapılandırıldığında tüm kayıtlar kalıcı DB'ye gider.
+        print(f"[sync] PostgreSQL kullanılamıyor, bellek fallback aktif: {e}")
+        return None
+
+
+async def _ensure_sync_schema(conn) -> None:
+    global _sync_schema_ready
+    if _sync_schema_ready:
+        return
+    await conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS sync_records (
+            user_key TEXT NOT NULL,
+            entity_type TEXT NOT NULL,
+            entity_id TEXT NOT NULL,
+            operation TEXT NOT NULL,
+            payload JSONB NOT NULL DEFAULT '{}'::jsonb,
+            updated_at TIMESTAMPTZ NOT NULL,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            PRIMARY KEY (user_key, entity_type, entity_id)
+        );
+        """
+    )
+    await conn.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_sync_records_user_updated
+        ON sync_records (user_key, updated_at);
+        """
+    )
+    _sync_schema_ready = True
 
 
 def _upsert_sync_record(user_key: str, item: SyncPushItem) -> bool:
@@ -99,6 +153,197 @@ def _upsert_sync_record(user_key: str, item: SyncPushItem) -> bool:
     return True
 
 
+async def _upsert_sync_record_db(conn, user_key: str, item: SyncPushItem) -> bool:
+    incoming_updated_at = item.updated_at.astimezone(timezone.utc)
+    existing_updated_at = await conn.fetchval(
+        """
+        SELECT updated_at
+        FROM sync_records
+        WHERE user_key = $1 AND entity_type = $2 AND entity_id = $3
+        """,
+        user_key,
+        item.entity_type,
+        item.entity_id,
+    )
+    if existing_updated_at is not None and incoming_updated_at <= existing_updated_at:
+        return False
+
+    await conn.execute(
+        """
+        INSERT INTO sync_records
+            (user_key, entity_type, entity_id, operation, payload, updated_at)
+        VALUES ($1, $2, $3, $4, $5::jsonb, $6)
+        ON CONFLICT (user_key, entity_type, entity_id)
+        DO UPDATE SET
+            operation = EXCLUDED.operation,
+            payload = EXCLUDED.payload,
+            updated_at = EXCLUDED.updated_at
+        WHERE sync_records.updated_at < EXCLUDED.updated_at
+        """,
+        user_key,
+        item.entity_type,
+        item.entity_id,
+        item.operation,
+        json.dumps(item.payload, ensure_ascii=False, default=str),
+        incoming_updated_at,
+    )
+    return True
+
+
+async def _fetch_sync_records_db(
+    conn,
+    user_key: str,
+    since_dt: Optional[datetime],
+) -> List[dict[str, Any]]:
+    params: list[Any] = [user_key]
+    where = "user_key = $1"
+    if since_dt is not None:
+        params.append(since_dt)
+        where += " AND updated_at > $2"
+    rows = await conn.fetch(
+        f"""
+        SELECT entity_type, entity_id, operation, payload::text AS payload, updated_at
+        FROM sync_records
+        WHERE {where}
+        ORDER BY updated_at ASC
+        """,
+        *params,
+    )
+    out: List[dict[str, Any]] = []
+    for row in rows:
+        raw_payload = row["payload"]
+        try:
+            payload = json.loads(raw_payload) if isinstance(raw_payload, str) else dict(raw_payload)
+        except Exception:
+            payload = {}
+        out.append({
+            "entity_type": row["entity_type"],
+            "entity_id": row["entity_id"],
+            "operation": row["operation"],
+            "payload": payload,
+            "updated_at": row["updated_at"].astimezone(timezone.utc).isoformat(),
+        })
+    return out
+
+
+def _fetch_sync_records_memory(
+    user_key: str,
+    since_dt: Optional[datetime],
+) -> List[dict[str, Any]]:
+    user_bucket = _sync_store.get(user_key, {})
+    out: List[dict[str, Any]] = []
+    for entities in user_bucket.values():
+        for rec in entities.values():
+            updated_at = rec["updated_at"]
+            if since_dt is not None and updated_at <= since_dt:
+                continue
+            out.append({
+                "entity_type": rec["entity_type"],
+                "entity_id": rec["entity_id"],
+                "operation": rec["operation"],
+                "payload": rec["payload"],
+                "updated_at": updated_at.isoformat(),
+            })
+    out.sort(key=lambda x: x["updated_at"])
+    return out
+
+
+async def _write_admin_sync_record(
+    entity_type: str,
+    entity_id: str,
+    payload: dict[str, Any],
+    updated_at: datetime,
+    operation: str = "upsert",
+) -> None:
+    item = SyncPushItem(
+        id=0,
+        entity_type=entity_type,
+        entity_id=entity_id,
+        operation=operation,
+        payload=payload,
+        updated_at=updated_at,
+    )
+    conn = await _open_sync_conn()
+    try:
+        if conn is not None:
+            await _upsert_sync_record_db(conn, "__admin_content__", item)
+        else:
+            _upsert_sync_record("__admin_content__", item)
+    finally:
+        if conn is not None:
+            await conn.close()
+
+
+async def _list_sync_users() -> List[dict[str, Any]]:
+    conn = await _open_sync_conn()
+    try:
+        if conn is None:
+            return _list_sync_users_memory()
+        rows = await conn.fetch(
+            """
+            SELECT user_key, entity_type, updated_at
+            FROM sync_records
+            WHERE user_key <> '__admin_content__'
+            ORDER BY user_key ASC
+            """
+        )
+    finally:
+        if conn is not None:
+            await conn.close()
+
+    by_user: dict[str, dict[str, Any]] = {}
+    for row in rows:
+        user = by_user.setdefault(row["user_key"], {
+            "user_key": row["user_key"],
+            "total_synced_records": 0,
+            "entity_counts": {},
+            "last_activity": None,
+            "status": "active",
+        })
+        user["total_synced_records"] += 1
+        entity_counts = user["entity_counts"]
+        entity_counts[row["entity_type"]] = entity_counts.get(row["entity_type"], 0) + 1
+        updated = row["updated_at"]
+        latest = user["last_activity"]
+        if latest is None or updated > latest:
+            user["last_activity"] = updated
+
+    users = list(by_user.values())
+    for user in users:
+        latest = user["last_activity"]
+        user["last_activity"] = latest.isoformat() if latest else None
+    return users
+
+
+def _list_sync_users_memory() -> List[dict[str, Any]]:
+    users = []
+    for user_key, entities in _sync_store.items():
+        if user_key == "__admin_content__":
+            continue
+        total_records = 0
+        entity_counts = {}
+        latest_update = None
+
+        for entity_type, records in entities.items():
+            count = len(records)
+            entity_counts[entity_type] = count
+            total_records += count
+
+            for rec in records.values():
+                updated = rec.get("updated_at")
+                if updated and (latest_update is None or updated > latest_update):
+                    latest_update = updated
+
+        users.append({
+            "user_key": user_key,
+            "total_synced_records": total_records,
+            "entity_counts": entity_counts,
+            "last_activity": latest_update.isoformat() if latest_update else None,
+            "status": "active",
+        })
+    return users
+
+
 @app.post("/api/sync/push", summary="Outbox batch push (LWW)")
 async def sync_push(req: SyncPushRequest, authorization: Optional[str] = Header(default=None)):
     user_key = _require_bearer_user(authorization)
@@ -107,14 +352,19 @@ async def sync_push(req: SyncPushRequest, authorization: Optional[str] = Header(
     failed_by_id: dict[str, str] = {}
 
     stale_ids: List[int] = []
-    for item in req.items:
-        accepted = _upsert_sync_record(user_key, item)
-        if accepted:
-            completed_ids.append(item.id)
-        else:
+    conn = await _open_sync_conn()
+    try:
+        for item in req.items:
+            accepted = await _upsert_sync_record_db(conn, user_key, item) if conn is not None else _upsert_sync_record(user_key, item)
+            if accepted:
+                completed_ids.append(item.id)
+            else:
             # Stale update — istemci sunucu verisini pull etmeli, retry anlamsiz.
-            failed_by_id[str(item.id)] = "stale_update"
-            stale_ids.append(item.id)
+                failed_by_id[str(item.id)] = "stale_update"
+                stale_ids.append(item.id)
+    finally:
+        if conn is not None:
+            await conn.close()
 
     return {
         "success": True,
@@ -149,21 +399,22 @@ async def sync_pull(since: Optional[str] = None, authorization: Optional[str] = 
         except Exception:
             raise HTTPException(status_code=400, detail="since parametresi ISO-8601 olmalidir.")
 
-    user_bucket = _sync_store.get(user_key, {})
-    out: List[dict[str, Any]] = []
-    for entities in user_bucket.values():
-        for rec in entities.values():
-            updated_at = rec["updated_at"]
-            if since_dt is not None and updated_at <= since_dt:
-                continue
-            out.append({
-                "entity_type": rec["entity_type"],
-                "entity_id": rec["entity_id"],
-                "operation": rec["operation"],
-                "payload": rec["payload"],
-                "updated_at": updated_at.isoformat(),
-            })
+    conn = await _open_sync_conn()
+    try:
+        if conn is not None:
+            out = await _fetch_sync_records_db(conn, user_key, since_dt)
+            admin_records = await _fetch_sync_records_db(conn, "__admin_content__", since_dt)
+        else:
+            out = _fetch_sync_records_memory(user_key, since_dt)
+            admin_records = _fetch_sync_records_memory("__admin_content__", since_dt)
+    finally:
+        if conn is not None:
+            await conn.close()
 
+    for rec in admin_records:
+        target = rec.get("payload", {}).get("target")
+        if target in (None, "", "all", user_key):
+            out.append(rec)
     out.sort(key=lambda x: x["updated_at"])
 
     return {
@@ -657,29 +908,7 @@ async def admin_list_users(x_admin_key: Optional[str] = Header(default=None)):
     """
     _require_admin(x_admin_key)
 
-    users = []
-    for user_key, entities in _sync_store.items():
-        total_records = 0
-        entity_counts = {}
-        latest_update = None
-
-        for entity_type, records in entities.items():
-            count = len(records)
-            entity_counts[entity_type] = count
-            total_records += count
-
-            for rec in records.values():
-                updated = rec.get("updated_at")
-                if updated and (latest_update is None or updated > latest_update):
-                    latest_update = updated
-
-        users.append({
-            "user_key": user_key,
-            "total_synced_records": total_records,
-            "entity_counts": entity_counts,
-            "last_activity": latest_update.isoformat() if latest_update else None,
-            "status": "active",
-        })
+    users = await _list_sync_users()
 
     return {
         "success": True,
@@ -749,15 +978,12 @@ async def admin_update_content(
     now = datetime.now(timezone.utc)
 
     # Ozel 'admin' bucket'ina kaydet — tum kullanicilar pull ederken bu kayitlari alir
-    admin_bucket = _sync_store.setdefault("__admin_content__", {})
-    entity_bucket = admin_bucket.setdefault(req.entity_type, {})
-    entity_bucket[req.entity_id] = {
-        "entity_type": req.entity_type,
-        "entity_id": req.entity_id,
-        "operation": "upsert",
-        "payload": req.payload,
-        "updated_at": now,
-    }
+    await _write_admin_sync_record(
+        entity_type=req.entity_type,
+        entity_id=req.entity_id,
+        payload=req.payload,
+        updated_at=now,
+    )
 
     return {
         "success": True,
@@ -796,13 +1022,10 @@ async def admin_broadcast(
     now = datetime.now(timezone.utc)
     notif_id = f"broadcast_{int(now.timestamp() * 1000)}"
 
-    admin_bucket = _sync_store.setdefault("__admin_content__", {})
-    notif_bucket = admin_bucket.setdefault("notifications", {})
-    notif_bucket[notif_id] = {
-        "entity_type": "notifications",
-        "entity_id": notif_id,
-        "operation": "upsert",
-        "payload": {
+    await _write_admin_sync_record(
+        entity_type="notifications",
+        entity_id=notif_id,
+        payload={
             "id": notif_id,
             "title": req.title,
             "body": req.body,
@@ -810,8 +1033,8 @@ async def admin_broadcast(
             "target": req.target,
             "sent_at": now.isoformat(),
         },
-        "updated_at": now,
-    }
+        updated_at=now,
+    )
 
     return {
         "success": True,

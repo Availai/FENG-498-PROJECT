@@ -22,8 +22,7 @@
 /// `fetchProfileWithFallback` tüm zinciri sırayla dener.
 library;
 
-import 'dart:convert';
-import 'package:http/http.dart' as http;
+import '../backend_service.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MODELLER
@@ -109,48 +108,29 @@ class SoilProfile {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class SoilGridsApi {
-  static const _base = 'https://rest.isric.org/soilgrids/v2.0/properties/query';
-  static const _timeout = Duration(seconds: 15);
-
-  static const _props = [
-    'phh2o', 'ocd', 'clay', 'sand', 'silt', 'bdod', 'cec', 'nitrogen',
-  ];
-
   /// Fetch top-soil profile (mean of 0-5 cm and 5-15 cm layers)
   static Future<SoilProfile> fetchProfile({
     required double lat,
     required double lon,
   }) async {
-    final propParam = _props.map((p) => 'property=$p').join('&');
-    final uri = Uri.parse('$_base?lon=$lon&lat=$lat&$propParam&depth=0-5cm&depth=5-15cm&value=mean');
-    final resp = await http.get(uri).timeout(_timeout);
-    if (resp.statusCode != 200) {
-      throw Exception('SoilGrids: HTTP ${resp.statusCode}');
+    final response = await BackendService.soilProfile(lat: lat, lng: lon);
+    final data = response?['data'];
+    if (data is! Map) {
+      throw Exception('Toprak profili backend üzerinden alınamadı.');
     }
-    return _parse(jsonDecode(resp.body) as Map<String, dynamic>);
-  }
-
-  static SoilProfile _parse(Map<String, dynamic> body) {
-    final layers = (body['properties']['layers'] as List).cast<Map<String, dynamic>>();
-
-    double mean(String name) {
-      final layer = layers.firstWhere((l) => l['name'] == name, orElse: () => <String, dynamic>{});
-      if (layer.isEmpty) return 0;
-      final depths = (layer['depths'] as List).cast<Map<String, dynamic>>();
-      final vals = depths.map((d) => (d['values']['mean'] as num?)?.toDouble() ?? 0).toList();
-      if (vals.isEmpty) return 0;
-      return vals.reduce((a, b) => a + b) / vals.length;
-    }
-
     return SoilProfile(
-      phH2o: mean('phh2o'),
-      organicCarbonGKg: mean('ocd'),
-      clayGKg: mean('clay'),
-      sandGKg: mean('sand'),
-      siltGKg: mean('silt'),
-      bulkDensityKgM3: mean('bdod'),
-      cecMmolKg: mean('cec'),
-      nitrogenGKg: mean('nitrogen'),
+      phH2o: (data['ph_h2o'] as num?)?.toDouble() ?? 68.0,
+      organicCarbonGKg:
+          (data['organic_carbon_gkg'] as num?)?.toDouble() ?? 0.0,
+      clayGKg: (data['clay_gkg'] as num?)?.toDouble() ?? 0.0,
+      sandGKg: (data['sand_gkg'] as num?)?.toDouble() ?? 0.0,
+      siltGKg: (data['silt_gkg'] as num?)?.toDouble() ?? 0.0,
+      bulkDensityKgM3:
+          (data['bulk_density_kgm3'] as num?)?.toDouble() ?? 0.0,
+      cecMmolKg: (data['cec_mmolkg'] as num?)?.toDouble() ?? 0.0,
+      nitrogenGKg: (data['nitrogen_gkg'] as num?)?.toDouble() ?? 0.0,
     );
   }
+
+
 }

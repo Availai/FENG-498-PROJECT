@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import 'backend_service.dart';
+
 class CropRules {
   /// Deterministik ürün öneri motoru — Gemini kaldırıldı.
   /// Çevresel koşullara göre en uygun 5 ürünü sıralar.
@@ -11,6 +13,19 @@ class CropRules {
     double soilMoisture = 0.0,
     double soilTempC = 0.0,
   }) async {
+    final backendRecommendations = await BackendService.cropRecommendations({
+      'temp': currentTemp,
+      'ph': ph,
+      'avg_weekly_temp': avgWeeklyTemp,
+      'total_weekly_rain': totalWeeklyRain,
+      'soil_moisture': soilMoisture,
+      'soil_temp_c': soilTempC,
+    });
+    if (backendRecommendations != null && backendRecommendations.isNotEmpty) {
+      debugPrint('CropRules: backend önerileri kullanılıyor');
+      return backendRecommendations;
+    }
+
     debugPrint('CropRules: deterministik öneri hesaplanıyor');
 
     // Tüm aday bitkiler: [ad, minTemp, maxTemp, minPh, maxPh, minRain, maxRain, mevsim]

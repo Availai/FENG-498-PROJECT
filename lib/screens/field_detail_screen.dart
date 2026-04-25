@@ -16,6 +16,7 @@ import '../data/activity_types.dart';
 import '../data/app_database.dart';
 import '../data/crop_protocols.dart';
 import '../data/supported_crops.dart';
+import '../data/turkiye_crop_guides.dart';
 import '../data/verified_agri_database.dart';
 import '../data/turkish_crops_repository.dart';
 import '../widgets/activity_quick_log.dart';
@@ -43,6 +44,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
   Map<String, dynamic>? _latestSuitabilityReport;
   List<Map<String, dynamic>> _fieldCrops = [];
   List<Map<String, dynamic>> _irrigationPlans = [];
+  bool _fieldCropsLoaded = false;
   bool _isLoading = true;
   bool _isRefreshingSuitability = false;
   String? _error;
@@ -95,7 +97,10 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
     final crops =
         await ref.read(localDataRepositoryProvider).loadFieldCrops(fieldId);
     if (!mounted) return;
-    setState(() => _fieldCrops = crops);
+    setState(() {
+      _fieldCrops = crops;
+      _fieldCropsLoaded = true;
+    });
     for (final crop in crops) {
       final cropId = crop['id']?.toString();
       if (cropId != null && cropId.isNotEmpty) {
@@ -987,7 +992,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
               Icons.account_balance_wallet_rounded, 'Cüzdan', _openCostLedger,
               color: const Color(0xFFB388FF)),
           _buildNavBtn(
-              Icons.checklist_rtl_rounded, 'Görevler', _showDetailModal,
+              Icons.assignment_turned_in_rounded, 'Yapılacaklar', _showDetailModal,
               color: const Color(0xFF64B5F6)),
         ],
       ),
@@ -1504,7 +1509,15 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
 
   Future<void> _deleteCropZone(Map<String, dynamic> crop) async {
     final cropId = crop['id']?.toString();
-    if (cropId == null) return;
+    if (cropId == null || cropId.isEmpty) {
+      _closeTooltip();
+      AppToast.show(
+        context,
+        message: 'Bu bitkinin yerel kaydı bulunamadı. Liste yenilendiğinde tekrar deneyin.',
+        type: ToastType.warning,
+      );
+      return;
+    }
 
     final confirmed = await showDialog<bool>(
       context: context,
@@ -1526,15 +1539,32 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
     );
 
     if (confirmed == true) {
-      await ref.read(localDataRepositoryProvider).deleteSingleCrop(cropId);
-      _closeTooltip();
-      await _loadFieldCrops();
-      if (!mounted) return;
-      AppToast.show(
-        context,
-        message: '${crop['name']} bölgesi silindi.',
-        type: ToastType.info,
-      );
+      try {
+        await ref.read(localDataRepositoryProvider).deleteSingleCrop(cropId);
+        if (!mounted) return;
+        setState(() {
+          _selectedCropForTooltip = null;
+          _fieldCropsLoaded = true;
+          _fieldCrops = _fieldCrops
+              .where((item) => item['id']?.toString() != cropId)
+              .toList();
+        });
+        await _loadFieldCrops();
+        await _loadIrrigationPlans();
+        if (!mounted) return;
+        AppToast.show(
+          context,
+          message: '${crop['name']} bölgesi silindi.',
+          type: ToastType.info,
+        );
+      } catch (_) {
+        if (!mounted) return;
+        AppToast.show(
+          context,
+          message: 'Bitki silinemedi. Lütfen tekrar deneyin.',
+          type: ToastType.error,
+        );
+      }
     }
   }
 
@@ -1622,7 +1652,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
   }
 
   List<Map<String, dynamic>> _plantedCrops(Map<String, dynamic> d) {
-    if (_fieldCrops.isNotEmpty) return _fieldCrops;
+    if (_fieldCropsLoaded) return _fieldCrops;
     final raw = d['planted_crops'];
     if (raw is List) {
       return raw
@@ -2007,6 +2037,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
           widget.fieldData as Map<dynamic, dynamic>,
         ),
         analysis: _analysis,
+        latestSuitabilityReport: _latestSuitabilityReport,
         fieldCrops: _fieldCrops,
         fieldAreaDekar:
             (widget.fieldData['area_dekar'] as num?)?.toDouble() ?? 1.0,
@@ -2263,6 +2294,7 @@ class _DirectivesModalContent extends ConsumerWidget {
     required this.fieldId,
     required this.fieldData,
     required this.analysis,
+    required this.latestSuitabilityReport,
     required this.fieldCrops,
     required this.fieldAreaDekar,
   });
@@ -2270,6 +2302,7 @@ class _DirectivesModalContent extends ConsumerWidget {
   final String fieldId;
   final Map<String, dynamic> fieldData;
   final Map<String, dynamic>? analysis;
+  final Map<String, dynamic>? latestSuitabilityReport;
   final List<Map<String, dynamic>> fieldCrops;
   final double fieldAreaDekar;
 
@@ -2283,6 +2316,171 @@ class _DirectivesModalContent extends ConsumerWidget {
       if (dt != null) return dt;
     }
     return DateTime.tryParse(raw);
+  }
+
+  ({double? ph, double? temp, double? weeklyRain}) _setupEnv() {
+    final report = latestSuitabilityReport?['report'];
+    final reportMap = report is Map ? Map<String, dynamic>.from(report) : null;
+    final soil = reportMap?['soil_snapshot'];
+    final soilMap = soil is Map ? Map<String, dynamic>.from(soil) : null;
+    final weather = reportMap?['weather_snapshot'];
+    final weatherMap =
+        weather is Map ? Map<String, dynamic>.from(weather) : null;
+
+    return (
+      ph: (analysis?['ph'] as num?)?.toDouble() ??
+          (soilMap?['ph'] as num?)?.toDouble(),
+      temp: (analysis?['avg_weekly_temp'] as num?)?.toDouble() ??
+          (analysis?['temp'] as num?)?.toDouble() ??
+          (weatherMap?['avg_weekly_temp'] as num?)?.toDouble() ??
+          (weatherMap?['temp'] as num?)?.toDouble(),
+      weeklyRain: (analysis?['total_weekly_rain'] as num?)?.toDouble() ??
+          (weatherMap?['total_weekly_rain'] as num?)?.toDouble(),
+    );
+  }
+
+  List<_SetupCropCandidate> _setupCropCandidates() {
+    final out = <_SetupCropCandidate>[];
+
+    void addCandidates(Object? raw) {
+      if (raw is! List) return;
+      for (final item in raw) {
+        if (item is! Map) continue;
+        final map = Map<String, dynamic>.from(item);
+        final name = map['name']?.toString().trim();
+        if (name == null || name.isEmpty) continue;
+        final score = (map['uygunluk'] as num?)?.toDouble() ??
+            (map['score'] as num?)?.toDouble();
+        out.add(_SetupCropCandidate(name: name, score: score));
+      }
+    }
+
+    final report = latestSuitabilityReport?['report'];
+    if (report is Map) {
+      addCandidates(report['top_recommendations']);
+    }
+    addCandidates(analysis?['crops']);
+
+    if (out.isEmpty) {
+      final env = _setupEnv();
+      final ph = env.ph ?? 6.8;
+      final temp = env.temp ?? 20.0;
+      final annualRain = (env.weeklyRain ?? 10.0) * 52;
+      for (final plant in VerifiedAgriDatabase.plants) {
+        out.add(_SetupCropCandidate(
+          name: plant.nameTr,
+          score: plant.evaluateSuitability(ph, temp, annualRain).toDouble(),
+        ));
+      }
+    }
+
+    final byName = <String, _SetupCropCandidate>{};
+    for (final item in out) {
+      final key = item.name.toLowerCase();
+      final current = byName[key];
+      if (current == null || (item.score ?? 0) > (current.score ?? 0)) {
+        byName[key] = item;
+      }
+    }
+    final list = byName.values.toList()
+      ..sort((a, b) => (b.score ?? -1).compareTo(a.score ?? -1));
+    return list.take(3).toList();
+  }
+
+  List<_SetupAction> _setupActions() {
+    final env = _setupEnv();
+    final topCrops = _setupCropCandidates();
+    final firstCrop = topCrops.isNotEmpty ? topCrops.first.name : null;
+    final guide = firstCrop == null ? null : TurkiyeCropGuides.lookup(firstCrop);
+    AgriPlant? verified;
+    if (firstCrop != null) {
+      final normalized = firstCrop.toLowerCase();
+      for (final plant in VerifiedAgriDatabase.plants) {
+        final plantName = plant.nameTr.toLowerCase();
+        if (plantName == normalized ||
+            plantName.contains(normalized) ||
+            normalized.contains(plantName)) {
+          verified = plant;
+          break;
+        }
+      }
+    }
+    final rawPolygon = fieldData['polygon'];
+    final hasBoundary = rawPolygon is List && rawPolygon.length >= 3;
+    final area = fieldAreaDekar > 0
+        ? fieldAreaDekar
+        : (fieldData['area_dekar'] as num?)?.toDouble();
+    final areaText = area == null ? 'alan bilinmiyor' : '${area.toStringAsFixed(1)} da';
+    final ph = env.ph;
+    final weeklyRain = env.weeklyRain;
+    final cropLine = topCrops.isEmpty
+        ? 'Uygun ürün listesi oluşmadı; önce toprak ve hava verisini yenile.'
+        : topCrops
+            .map((c) => c.score == null
+                ? c.name
+                : '${c.name} %${c.score!.round()}')
+            .join(', ');
+    final cropCalendar = guide != null
+        ? '${guide.cropName}: ekim ${guide.sowingWindow}, hasat ${guide.harvestWindow}. ${guide.regionNote}'
+        : verified != null
+            ? '${verified.nameTr}: pH ${verified.minPh}-${verified.maxPh}, yaklaşık ${verified.daysToHarvest} gün.'
+            : 'Ekim zamanı için yerel ürün rehberindeki bölge takvimini esas al.';
+    final phLine = ph == null
+        ? 'pH yok. İl/ilçe tarım ya da laboratuvar analizi girilmeden gübre ve kireç kararını kesinleştirme.'
+        : guide != null && (ph < guide.idealPhMin || ph > guide.idealPhMax)
+            ? 'pH ${ph.toStringAsFixed(1)}. $firstCrop için hedef ${guide.idealPhMin}-${guide.idealPhMax}; düzeltmeyi analiz sonucuna göre planla.'
+            : verified != null && (ph < verified.minPh || ph > verified.maxPh)
+                ? 'pH ${ph.toStringAsFixed(1)}. $firstCrop için uygun aralık ${verified.minPh}-${verified.maxPh}; ekimden önce toprak düzenlemesi gerekebilir.'
+                : 'pH ${ph.toStringAsFixed(1)}. Seçilecek ürün için sorun görünmüyorsa taban gübreyi yine analiz sonucuna göre ver.';
+    final waterLine = weeklyRain == null
+        ? 'Yağış tahmini yok. İlk sulama planını toprak nemine bakarak kısa aralıklarla kontrol et.'
+        : weeklyRain >= 20
+            ? 'Bu hafta ${weeklyRain.toStringAsFixed(0)} mm yağış görünüyor. Ağır tavlı toprağa ekipman sokma; sıkışma yapar.'
+            : weeklyRain < 8
+                ? 'Bu hafta yağış ${weeklyRain.toStringAsFixed(0)} mm. Ekimden sonra can suyu ve damla/yağmurlama planı hazır olsun.'
+                : 'Bu hafta ${weeklyRain.toStringAsFixed(0)} mm yağış var. Sulamayı sabah erken saate al, yağıştan sonra toprağı kontrol et.';
+
+    return [
+      _SetupAction(
+        icon: hasBoundary ? Icons.task_alt_rounded : Icons.polyline_rounded,
+        color: hasBoundary ? const Color(0xFF00E676) : const Color(0xFFFFB74D),
+        label: hasBoundary ? 'Sınır hazır' : 'Öncelik',
+        title: hasBoundary ? 'Sınırı ve alanı son kez kontrol et' : 'Tarla sınırını tamamla',
+        body: hasBoundary
+            ? '$areaText üzerinden tohum, fide, su ve gübre hesabı yapılacak. Köşe noktası hatalıysa bütün hesap sapar.'
+            : 'Haritada en az 3 köşe ile tarlayı kapat. Alan netleşmeden ekim ve sulama hesabına geçme.',
+      ),
+      _SetupAction(
+        icon: Icons.agriculture_rounded,
+        color: const Color(0xFF64B5F6),
+        label: 'Ürün seçimi',
+        title: 'Türkiye takvimine göre ürünü seç',
+        body: '$cropLine. $cropCalendar',
+      ),
+      _SetupAction(
+        icon: Icons.science_rounded,
+        color: const Color(0xFFCE93D8),
+        label: 'Toprak',
+        title: 'Toprak kararını pH ve analizle ver',
+        body: phLine,
+      ),
+      _SetupAction(
+        icon: Icons.water_drop_rounded,
+        color: const Color(0xFF4DD0E1),
+        label: 'Sulama',
+        title: 'İlk su planını yağışa göre kur',
+        body: waterLine,
+      ),
+      _SetupAction(
+        icon: Icons.grid_on_rounded,
+        color: const Color(0xFFAED581),
+        label: 'Yerleşim',
+        title: 'Ekim bölgesini tarlanın üstüne çiz',
+        body: guide != null
+            ? 'Sıra arası ${guide.rowSpacingCm.toStringAsFixed(0)} cm, bitki arası ${guide.plantSpacingCm.toStringAsFixed(0)} cm rehber değeridir. Bölgeyi çizince kayıtlar bu plana bağlanır.'
+            : 'Tarlayı Tara ile ürünü seç, bölgeyi çiz ve sıra aralığını kaydet. Böylece sulama, günlük ve hasat uyarıları aynı bitkiye bağlanır.',
+      ),
+    ];
   }
 
   @override
@@ -2416,15 +2614,27 @@ class _DirectivesModalContent extends ConsumerWidget {
                   }
                 }
 
+                final setupEnv = _setupEnv();
+                final setupCard = _FieldSetupPlanCard(
+                  actions: _setupActions(),
+                  hasCrops: fieldCrops.isNotEmpty,
+                  ph: setupEnv.ph,
+                  temp: setupEnv.temp,
+                  weeklyRain: setupEnv.weeklyRain,
+                );
                 final totalCount =
-                    summaryCards.length + roadmaps.length + directives.length;
+                    1 + summaryCards.length + roadmaps.length + directives.length;
                 return ListView.separated(
                   padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
                   itemCount: totalCount,
                   separatorBuilder: (_, __) => const SizedBox(height: 10),
                   itemBuilder: (_, i) {
-                    if (i < summaryCards.length) return summaryCards[i];
-                    final j = i - summaryCards.length;
+                    if (i == 0) return setupCard;
+                    final setupOffset = i - 1;
+                    if (setupOffset < summaryCards.length) {
+                      return summaryCards[setupOffset];
+                    }
+                    final j = setupOffset - summaryCards.length;
                     if (j < roadmaps.length) return roadmaps[j];
                     return _DirectiveCard(
                       directive: directives[j - roadmaps.length],
@@ -2437,6 +2647,252 @@ class _DirectivesModalContent extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _SetupCropCandidate {
+  const _SetupCropCandidate({required this.name, this.score});
+
+  final String name;
+  final double? score;
+}
+
+class _SetupAction {
+  const _SetupAction({
+    required this.icon,
+    required this.color,
+    required this.label,
+    required this.title,
+    required this.body,
+  });
+
+  final IconData icon;
+  final Color color;
+  final String label;
+  final String title;
+  final String body;
+}
+
+class _FieldSetupPlanCard extends StatelessWidget {
+  const _FieldSetupPlanCard({
+    required this.actions,
+    required this.hasCrops,
+    required this.ph,
+    required this.temp,
+    required this.weeklyRain,
+  });
+
+  final List<_SetupAction> actions;
+  final bool hasCrops;
+  final double? ph;
+  final double? temp;
+  final double? weeklyRain;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF183523), Color(0xFF102016)],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF00E676).withValues(alpha: 0.28)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x66000000),
+            blurRadius: 18,
+            offset: Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF00E676).withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: const Color(0xFF00E676).withValues(alpha: 0.35),
+                  ),
+                ),
+                child: const Icon(
+                  Icons.assignment_turned_in_rounded,
+                  color: Color(0xFF00E676),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      hasCrops
+                          ? 'Tarla Takip Planı'
+                          : 'Tarla Kurulum Planı',
+                      style: GoogleFonts.outfit(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      hasCrops
+                          ? 'Kayıtlı bitkilere göre sulama, bakım ve hasat işleri burada sıraya girer.'
+                          : 'Yeni tarlada önce bu işleri bitir; sonra ekim ve bakım kayıtları düzgün çalışır.',
+                      style: const TextStyle(color: Colors.white70, fontSize: 12.5),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _SetupMetricChip(
+                icon: Icons.science_rounded,
+                text: ph == null ? 'pH yok' : 'pH ${ph!.toStringAsFixed(1)}',
+              ),
+              _SetupMetricChip(
+                icon: Icons.thermostat_rounded,
+                text: temp == null
+                    ? 'Sıcaklık yok'
+                    : '${temp!.toStringAsFixed(0)}°C',
+              ),
+              _SetupMetricChip(
+                icon: Icons.water_drop_rounded,
+                text: weeklyRain == null
+                    ? 'Yağış yok'
+                    : '${weeklyRain!.toStringAsFixed(0)} mm/hafta',
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          for (int i = 0; i < actions.length; i++) ...[
+            _SetupActionRow(number: i + 1, action: actions[i]),
+            if (i != actions.length - 1)
+              Divider(
+                color: Colors.white.withValues(alpha: 0.08),
+                height: 16,
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _SetupMetricChip extends StatelessWidget {
+  const _SetupMetricChip({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: Colors.white70, size: 14),
+          const SizedBox(width: 5),
+          Text(
+            text,
+            style: const TextStyle(color: Colors.white, fontSize: 12),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SetupActionRow extends StatelessWidget {
+  const _SetupActionRow({required this.number, required this.action});
+
+  final int number;
+  final _SetupAction action;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 32,
+          height: 32,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: action.color.withValues(alpha: 0.16),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: action.color.withValues(alpha: 0.38)),
+          ),
+          child: Icon(action.icon, color: action.color, size: 18),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      '$number. ${action.title}',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      action.label,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: action.color,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                action.body,
+                style: const TextStyle(
+                  color: Colors.white70,
+                  fontSize: 12.2,
+                  height: 1.35,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

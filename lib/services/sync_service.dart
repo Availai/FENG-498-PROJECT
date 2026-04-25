@@ -187,12 +187,15 @@ class SyncService {
     }
 
     if (item.operation == 'delete') {
-      await (db.update(db.fields)
-            ..where((tbl) => tbl.id.equals(item.entityId)))
-          .write(FieldsCompanion(
-        updatedAt: Value(item.updatedAt),
-        deletedAt: Value(item.updatedAt),
-      ));
+      await db.transaction(() async {
+        await (db.update(db.fields)
+              ..where((tbl) => tbl.id.equals(item.entityId)))
+            .write(FieldsCompanion(
+          updatedAt: Value(item.updatedAt),
+          deletedAt: Value(item.updatedAt),
+        ));
+        await _cascadeFieldDelete(db, item.entityId, item.updatedAt);
+      });
       return true;
     }
 
@@ -226,12 +229,15 @@ class SyncService {
     }
 
     if (item.operation == 'delete') {
-      await (db.update(db.fieldCrops)
-            ..where((tbl) => tbl.id.equals(item.entityId)))
-          .write(FieldCropsCompanion(
-        updatedAt: Value(item.updatedAt),
-        deletedAt: Value(item.updatedAt),
-      ));
+      await db.transaction(() async {
+        await (db.update(db.fieldCrops)
+              ..where((tbl) => tbl.id.equals(item.entityId)))
+            .write(FieldCropsCompanion(
+          updatedAt: Value(item.updatedAt),
+          deletedAt: Value(item.updatedAt),
+        ));
+        await _cascadeCropDelete(db, item.entityId, item.updatedAt);
+      });
       return true;
     }
 
@@ -373,6 +379,62 @@ class SyncService {
       deletedAt: const Value(null),
     ));
     return true;
+  }
+
+  Future<void> _cascadeFieldDelete(
+    AppDatabase db,
+    String fieldId,
+    DateTime deletedAt,
+  ) async {
+    await (db.update(db.fieldCrops)
+          ..where((tbl) => tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull()))
+        .write(FieldCropsCompanion(
+      updatedAt: Value(deletedAt),
+      deletedAt: Value(deletedAt),
+    ));
+    await (db.update(db.irrigationPlans)
+          ..where((tbl) => tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull()))
+        .write(IrrigationPlansCompanion(
+      updatedAt: Value(deletedAt),
+      deletedAt: Value(deletedAt),
+    ));
+    await (db.update(db.calendarEvents)
+          ..where((tbl) => tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull()))
+        .write(CalendarEventsCompanion(
+      updatedAt: Value(deletedAt),
+      deletedAt: Value(deletedAt),
+    ));
+    await (db.update(db.suitabilityReports)
+          ..where((tbl) => tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull()))
+        .write(SuitabilityReportsCompanion(
+      updatedAt: Value(deletedAt),
+      deletedAt: Value(deletedAt),
+    ));
+    await (db.delete(db.cropGrowthStates)
+          ..where((tbl) => tbl.fieldId.equals(fieldId)))
+        .go();
+  }
+
+  Future<void> _cascadeCropDelete(
+    AppDatabase db,
+    String cropId,
+    DateTime deletedAt,
+  ) async {
+    await (db.update(db.irrigationPlans)
+          ..where((tbl) => tbl.cropId.equals(cropId) & tbl.deletedAt.isNull()))
+        .write(IrrigationPlansCompanion(
+      updatedAt: Value(deletedAt),
+      deletedAt: Value(deletedAt),
+    ));
+    await (db.update(db.calendarEvents)
+          ..where((tbl) => tbl.cropId.equals(cropId) & tbl.deletedAt.isNull()))
+        .write(CalendarEventsCompanion(
+      updatedAt: Value(deletedAt),
+      deletedAt: Value(deletedAt),
+    ));
+    await (db.delete(db.cropGrowthStates)
+          ..where((tbl) => tbl.cropId.equals(cropId)))
+        .go();
   }
 
   // ── Yardımcılar ────────────────────────────────────────────────────────

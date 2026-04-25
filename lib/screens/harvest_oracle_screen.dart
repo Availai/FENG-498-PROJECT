@@ -6,7 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../models/harvest_oracle_models.dart';
 import '../models/seed_models.dart';
 import '../services/harvest_oracle.dart';
-import '../services/rule_engine.dart' show RiskLevel;
+import '../services/offline_rule_engine.dart' show RiskLevel;
 import '../theme/app_theme.dart';
 import '../widgets/glass_panel.dart';
 

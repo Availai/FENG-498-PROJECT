@@ -234,7 +234,7 @@ class TurkishCrop {
   ///
   /// NaN/Inf/null değerler sessizce ignore edilir ve [SuitabilityScore.confidence]
   /// alanı 'medium' veya 'low' olarak döner — UI bunu kullanıcıya rozet olarak
-  /// göstermelidir (sensör arızası veya eksik API cevabı sinyali).
+  /// göstermelidir (eksik veya hatalı API cevabı sinyali).
   SuitabilityScore scoreFor({
     double? temperature,
     double? soilPh,

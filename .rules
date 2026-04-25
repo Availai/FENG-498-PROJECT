@@ -1,0 +1,16 @@
+## Flutter and Dart Command Execution
+
+In this Windows setup, `flutter` and `dart` commands should be run outside the sandbox.
+
+Reason:
+
+- the Flutter SDK lives outside the workspace under `C:\path\to\user\.flutter\flutter`
+- Flutter startup needs access to SDK Git metadata and writes to the SDK cache under `bin\cache`
+- sandboxed runs may hang or fail because that location is not fully accessible/writable inside the sandbox
+
+Policy:
+
+- do not tell the user to run routine `flutter` or `dart` commands manually just because they are outside the sandbox
+- request an approval to run them outside the sandbox and execute them directly once approved
+- when possible, use a persistent prefix approval for `flutter` and `dart`
+- if permission has not yet been granted, trigger an approval request instead of stopping at instructions only

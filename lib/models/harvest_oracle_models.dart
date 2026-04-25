@@ -1,7 +1,7 @@
 /// Agri-Matrix — Hasat Zamanlayıcı Modelleri
 library;
 
-import '../services/rule_engine.dart' show RiskLevel;
+import '../services/offline_rule_engine.dart' show RiskLevel;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TÜRK HAVA OLAYLARI

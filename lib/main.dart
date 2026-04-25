@@ -85,7 +85,6 @@ Future<AppDatabase> _bootstrap() async {
     'fieldsBox',
     'settingsBox',
     'sim_results_cache',
-    'sensor_data',
     'cost_ledger',
     'crop_history',
     'fuel_cache',

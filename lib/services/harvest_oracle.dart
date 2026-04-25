@@ -10,16 +10,12 @@
 ///   • AşırıSıcaklık, KuvvetliYağış, KuvvetliRüzgar, Sis, YüksekNem
 library;
 
-import 'dart:convert';
-import 'package:http/http.dart' as http;
 import '../models/harvest_oracle_models.dart';
 import '../models/seed_models.dart';
-import '../services/rule_engine.dart' show RiskLevel;
-import 'api/openweather_api.dart';
+import 'offline_rule_engine.dart' show RiskLevel;
+import 'backend_service.dart';
 
 class HarvestOracle {
-  static const String _base = 'https://api.open-meteo.com/v1/forecast';
-
   // ─────────────────────────────────────────────────────────────────────────
   // VERİ ÇEKME — OpenWeather önce, Open-Meteo fallback
   // ─────────────────────────────────────────────────────────────────────────
@@ -28,64 +24,25 @@ class HarvestOracle {
     required double lat,
     required double lon,
   }) async {
-    // Try OpenWeather first (requires key in .env)
-    try {
-      final pts = await OpenWeatherApi.forecast5Day(lat: lat, lon: lon);
-      return pts.map((p) => HourlyForecastRecord(
-        time: p.time,
-        tempC: p.tempC,
-        precipMm: p.precipMm,
-        windSpeedMs: p.windSpeedMs,
-        windDirDeg: p.windDirDeg,
-        precipProbPct: p.precipProbPct.toDouble(),
-        humidityPct: p.humidityPct,
-      )).toList();
-    } catch (_) {
-      // Fall through to Open-Meteo (free, no key needed)
-    }
-    return _fetchOpenMeteo(lat: lat, lon: lon);
+    return _fetchBackendForecast(lat: lat, lon: lon);
   }
 
-  static Future<List<HourlyForecastRecord>> _fetchOpenMeteo({
+  static Future<List<HourlyForecastRecord>> _fetchBackendForecast({
     required double lat,
     required double lon,
   }) async {
-    final uri = Uri.parse(
-      '$_base?latitude=$lat&longitude=$lon'
-      '&hourly=temperature_2m,precipitation,wind_speed_10m,'
-      'wind_direction_10m,precipitation_probability,'
-      'relative_humidity_2m,weather_code'
-      '&forecast_days=7&timezone=auto',
-    );
-
-    final res = await http.get(uri).timeout(const Duration(seconds: 10));
-    if (res.statusCode != 200) {
-      throw Exception('Open-Meteo HTTP ${res.statusCode}');
-    }
-
-    final body = jsonDecode(res.body) as Map<String, dynamic>;
-    final hourly = body['hourly'] as Map<String, dynamic>;
-    final times   = hourly['time']                       as List;
-    final temps   = hourly['temperature_2m']             as List;
-    final precip  = hourly['precipitation']              as List;
-    final winds   = hourly['wind_speed_10m']             as List;
-    final dirs    = hourly['wind_direction_10m']         as List;
-    final probs   = hourly['precipitation_probability']  as List;
-    final hums    = hourly['relative_humidity_2m']       as List;
-
-    final records = <HourlyForecastRecord>[];
-    for (int i = 0; i < times.length; i++) {
-      records.add(HourlyForecastRecord(
-        time:          DateTime.parse(times[i] as String),
-        tempC:         (temps[i] as num).toDouble(),
-        precipMm:      (precip[i] as num).toDouble(),
-        windSpeedMs:   (winds[i] as num).toDouble(),
-        windDirDeg:    (dirs[i] as num).toDouble(),
-        precipProbPct: (probs[i] as num).toDouble(),
-        humidityPct:   (hums[i] as num).toDouble(),
-      ));
-    }
-    return records;
+    final hours = await BackendService.hourlyWeather(lat: lat, lng: lon);
+    return hours.map((h) {
+      return HourlyForecastRecord(
+        time: DateTime.tryParse(h['time']?.toString() ?? '') ?? DateTime.now(),
+        tempC: (h['temp'] as num?)?.toDouble() ?? 0.0,
+        precipMm: (h['precip_mm'] as num?)?.toDouble() ?? 0.0,
+        windSpeedMs: (h['wind'] as num?)?.toDouble() ?? 0.0,
+        windDirDeg: (h['wind_dir'] as num?)?.toDouble() ?? 0.0,
+        precipProbPct: (h['precip_prob'] as num?)?.toDouble() ?? 0.0,
+        humidityPct: (h['humidity'] as num?)?.toDouble() ?? 0.0,
+      );
+    }).toList();
   }
 
   // ─────────────────────────────────────────────────────────────────────────

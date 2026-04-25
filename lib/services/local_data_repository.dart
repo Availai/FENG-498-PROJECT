@@ -6,6 +6,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:http/http.dart' as http;
 
 import '../data/app_database.dart';
+import 'crop_protocol_service.dart';
 
 class LocalDataRepository {
   LocalDataRepository({
@@ -159,33 +160,153 @@ class LocalDataRepository {
 
   Future<void> deleteField(String fieldId) async {
     final now = DateTime.now().toUtc();
-    await (_db.update(_db.fields)..where((tbl) => tbl.id.equals(fieldId))).write(
-      FieldsCompanion(
-        updatedAt: Value(now),
-        deletedAt: Value(now),
-      ),
-    );
-    await (_db.update(_db.fieldCrops)..where((tbl) => tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull())).write(
-      FieldCropsCompanion(
-        updatedAt: Value(now),
-        deletedAt: Value(now),
-      ),
-    );
-    await (_db.update(_db.irrigationPlans)..where((tbl) => tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull())).write(
-      IrrigationPlansCompanion(
-        updatedAt: Value(now),
-        deletedAt: Value(now),
-      ),
-    );
+    final cropsToClear = <FieldCrop>[];
 
-    await _enqueueSyncJob(
-      entityType: 'fields',
-      entityId: fieldId,
-      operation: 'delete',
-      payload: {'id': fieldId},
-      updatedAt: now,
-    );
+    await _db.transaction(() async {
+      final activeCrops = await (_db.select(_db.fieldCrops)
+            ..where((tbl) =>
+                tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull()))
+          .get();
+      final activePlans = await (_db.select(_db.irrigationPlans)
+            ..where((tbl) =>
+                tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull()))
+          .get();
+      final activeEvents = await (_db.select(_db.calendarEvents)
+            ..where((tbl) =>
+                tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull()))
+          .get();
+      final activeReports = await (_db.select(_db.suitabilityReports)
+            ..where((tbl) =>
+                tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull()))
+          .get();
+      cropsToClear.addAll(activeCrops);
+
+      await (_db.update(_db.fields)..where((tbl) => tbl.id.equals(fieldId)))
+          .write(
+        FieldsCompanion(
+          updatedAt: Value(now),
+          deletedAt: Value(now),
+        ),
+      );
+      await (_db.update(_db.fieldCrops)
+            ..where((tbl) =>
+                tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull()))
+          .write(
+        FieldCropsCompanion(
+          updatedAt: Value(now),
+          deletedAt: Value(now),
+        ),
+      );
+      await (_db.update(_db.irrigationPlans)
+            ..where((tbl) =>
+                tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull()))
+          .write(
+        IrrigationPlansCompanion(
+          updatedAt: Value(now),
+          deletedAt: Value(now),
+        ),
+      );
+      await (_db.update(_db.calendarEvents)
+            ..where((tbl) =>
+                tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull()))
+          .write(
+        CalendarEventsCompanion(
+          updatedAt: Value(now),
+          deletedAt: Value(now),
+        ),
+      );
+      await (_db.update(_db.suitabilityReports)
+            ..where((tbl) =>
+                tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull()))
+          .write(
+        SuitabilityReportsCompanion(
+          updatedAt: Value(now),
+          deletedAt: Value(now),
+        ),
+      );
+      await (_db.delete(_db.cropGrowthStates)
+            ..where((tbl) => tbl.fieldId.equals(fieldId)))
+          .go();
+
+      for (final crop in activeCrops) {
+        await _enqueueSyncJob(
+          entityType: 'field_crops',
+          entityId: crop.id,
+          operation: 'delete',
+          payload: {'id': crop.id, 'field_id': fieldId},
+          updatedAt: now,
+        );
+      }
+      for (final plan in activePlans) {
+        await _enqueueSyncJob(
+          entityType: 'irrigation_plans',
+          entityId: plan.id,
+          operation: 'delete',
+          payload: {'id': plan.id, 'field_id': fieldId},
+          updatedAt: now,
+        );
+      }
+      for (final event in activeEvents) {
+        await _enqueueSyncJob(
+          entityType: 'calendar_events',
+          entityId: event.id,
+          operation: 'delete',
+          payload: {'id': event.id, 'field_id': fieldId},
+          updatedAt: now,
+        );
+      }
+      for (final report in activeReports) {
+        await _enqueueSyncJob(
+          entityType: 'suitability_reports',
+          entityId: report.id,
+          operation: 'delete',
+          payload: {'id': report.id, 'field_id': fieldId},
+          updatedAt: now,
+        );
+      }
+      await _enqueueSyncJob(
+        entityType: 'fields',
+        entityId: fieldId,
+        operation: 'delete',
+        payload: {'id': fieldId},
+        updatedAt: now,
+      );
+    });
+
+    for (final crop in cropsToClear) {
+      await CropProtocolService.clearStateFor(
+        fieldId: fieldId,
+        cropId: crop.id,
+        cropName: crop.name,
+      );
+    }
+
+    // Tarlaya bağlı tüm Hive kayıtlarını da temizle — uygulamanın hiçbir
+    // köşesinde silinmiş tarlaya ait artık veri kalmasın.
+    await _purgeFieldFromHiveBoxes(fieldId);
+
     await _mirrorActiveFieldsToHive();
+  }
+
+  /// Silinen tarlanın Hive box'lardaki tüm izlerini siler.
+  /// - cost_ledger : 'field_id' eşleşen tüm maliyet kayıtları
+  Future<void> _purgeFieldFromHiveBoxes(String fieldId) async {
+    Future<void> purge(String boxName, String key) async {
+      if (!Hive.isBoxOpen(boxName)) return;
+      final box = Hive.box(boxName);
+      final keysToDelete = <dynamic>[];
+      for (final k in box.keys) {
+        final raw = box.get(k);
+        if (raw is Map && raw[key] == fieldId) {
+          keysToDelete.add(k);
+        }
+      }
+      if (keysToDelete.isNotEmpty) {
+        await box.deleteAll(keysToDelete);
+      }
+    }
+
+    await purge('cost_ledger', 'field_id');
   }
 
   Future<List<Map<String, dynamic>>> loadFieldCrops(String fieldId) async {
@@ -1062,32 +1183,79 @@ class LocalDataRepository {
   /// Tek bir bitkiyi soft-delete eder.
   Future<void> deleteSingleCrop(String cropId) async {
     final now = DateTime.now().toUtc();
+    FieldCrop? crop;
 
-    final crop = await (_db.select(_db.fieldCrops)
-          ..where((tbl) => tbl.id.equals(cropId)))
-        .getSingleOrNull();
+    await _db.transaction(() async {
+      crop = await (_db.select(_db.fieldCrops)
+            ..where((tbl) => tbl.id.equals(cropId)))
+          .getSingleOrNull();
+      if (crop == null) return;
+
+      final relatedPlans = await (_db.select(_db.irrigationPlans)
+            ..where(
+                (tbl) => tbl.cropId.equals(cropId) & tbl.deletedAt.isNull()))
+          .get();
+      final relatedEvents = await (_db.select(_db.calendarEvents)
+            ..where(
+                (tbl) => tbl.cropId.equals(cropId) & tbl.deletedAt.isNull()))
+          .get();
+
+      await (_db.update(_db.fieldCrops)..where((tbl) => tbl.id.equals(cropId)))
+          .write(FieldCropsCompanion(
+        updatedAt: Value(now),
+        deletedAt: Value(now),
+      ));
+
+      await (_db.update(_db.irrigationPlans)
+            ..where(
+                (tbl) => tbl.cropId.equals(cropId) & tbl.deletedAt.isNull()))
+          .write(IrrigationPlansCompanion(
+        updatedAt: Value(now),
+        deletedAt: Value(now),
+      ));
+      await (_db.update(_db.calendarEvents)
+            ..where(
+                (tbl) => tbl.cropId.equals(cropId) & tbl.deletedAt.isNull()))
+          .write(CalendarEventsCompanion(
+        updatedAt: Value(now),
+        deletedAt: Value(now),
+      ));
+      await (_db.delete(_db.cropGrowthStates)
+            ..where((tbl) => tbl.cropId.equals(cropId)))
+          .go();
+
+      for (final plan in relatedPlans) {
+        await _enqueueSyncJob(
+          entityType: 'irrigation_plans',
+          entityId: plan.id,
+          operation: 'delete',
+          payload: {'id': plan.id, 'crop_id': cropId},
+          updatedAt: now,
+        );
+      }
+      for (final event in relatedEvents) {
+        await _enqueueSyncJob(
+          entityType: 'calendar_events',
+          entityId: event.id,
+          operation: 'delete',
+          payload: {'id': event.id, 'crop_id': cropId},
+          updatedAt: now,
+        );
+      }
+      await _enqueueSyncJob(
+        entityType: 'field_crops',
+        entityId: cropId,
+        operation: 'delete',
+        payload: {'id': cropId, 'field_id': crop!.fieldId},
+        updatedAt: now,
+      );
+    });
+
     if (crop == null) return;
-
-    await (_db.update(_db.fieldCrops)..where((tbl) => tbl.id.equals(cropId)))
-        .write(FieldCropsCompanion(
-      updatedAt: Value(now),
-      deletedAt: Value(now),
-    ));
-
-    // İlgili sulama planlarını da sil
-    await (_db.update(_db.irrigationPlans)
-          ..where((tbl) => tbl.cropId.equals(cropId) & tbl.deletedAt.isNull()))
-        .write(IrrigationPlansCompanion(
-      updatedAt: Value(now),
-      deletedAt: Value(now),
-    ));
-
-    await _enqueueSyncJob(
-      entityType: 'field_crops',
-      entityId: cropId,
-      operation: 'delete',
-      payload: {'id': cropId},
-      updatedAt: now,
+    await CropProtocolService.clearStateFor(
+      fieldId: crop!.fieldId,
+      cropId: cropId,
+      cropName: crop!.name,
     );
 
     await _mirrorActiveFieldsToHive();

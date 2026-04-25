@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/turkish_crops_repository.dart';
 import '../data/supported_crops.dart';
 import '../services/app_providers.dart';
-import '../services/rule_engine.dart';
+import '../services/offline_rule_engine.dart';
 import '../services/offline_encyclopedia.dart';
 import '../services/weather_soil_service.dart';
 import '../widgets/floating_toast.dart';
@@ -172,8 +172,8 @@ class _CropFieldMatchScreenState extends ConsumerState<CropFieldMatchScreen>
         reasons.addAll(s.reasons);
       }
 
-      // Eski kural motoru ek risk tespiti
-      final ruleResults = RuleEngine.analyze(
+      // Çevrimdışı-öncelikli: lokal mirror; backend ile parite garanti edilir.
+      final ruleResults = OfflineRuleEngine.analyze(
         commonName: crop,
         plantDetails: plantDetails,
         temperature: temp,
@@ -184,7 +184,7 @@ class _CropFieldMatchScreenState extends ConsumerState<CropFieldMatchScreen>
         month: month,
       );
       if (tcrop == null) {
-        // TurkishCrop yoksa skor tamamen RuleEngine'den gelir.
+        // TurkishCrop yoksa skor tamamen OfflineRuleEngine'den gelir.
         for (final r in ruleResults) {
           if (r.level == RiskLevel.critical) score -= 20;
           if (r.level == RiskLevel.warning) score -= 8;

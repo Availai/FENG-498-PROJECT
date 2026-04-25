@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:intl/intl.dart';
 import '../services/app_providers.dart';
 import '../services/notification_service.dart';
 import '../services/frost_alarm_service.dart';
@@ -10,11 +9,9 @@ import '../services/weather_soil_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/location_utils.dart';
 import '../widgets/animated_route.dart';
-import '../widgets/floating_toast.dart';
 import '../widgets/tap_scale.dart';
 import 'farm_journal_screen.dart';
 import 'field_detail_screen.dart';
-import 'sensor_data_screen.dart';
 
 class AgriDashboard extends ConsumerStatefulWidget {
   const AgriDashboard({super.key});
@@ -28,7 +25,6 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
   String _temp = '--',
       _humidity = '--',
       _wind = '--',
-      _ph = '--',
       _location = 'Konum aranıyor...',
       _weatherDesc = '';
   bool _isLoading = false;
@@ -53,8 +49,6 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
     _animController.dispose();
     super.dispose();
   }
-
-  // HD tarım alanı arka plan görseli — çevrimdışı öncelikli, sabit asset.
 
   Widget _fallbackGradient() {
     return Container(
@@ -84,7 +78,6 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
     return 'sunny';
   }
 
-  // Weather icon based on condition
   IconData get _weatherIcon {
     switch (_weatherCondition) {
       case 'rainy':
@@ -103,9 +96,7 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
       await ensureLocationPermission();
       final pos = await getCurrentPosition();
 
-      // ── Proaktif hava uyarısı: max 3 saatte 1 kez ──
       _triggerWeatherAlertIfDue(pos.latitude, pos.longitude);
-
 
       String detailedAddress = 'Adres çözümleniyor...';
       try {
@@ -143,7 +134,6 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
               ? desc[0].toUpperCase() + desc.substring(1)
               : '';
           _weatherCondition = _mapWeatherCondition(desc);
-          _ph = cond.phH2O.toStringAsFixed(1);
         });
         _animController.forward();
       }
@@ -153,7 +143,6 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
           _location = 'Konum veya internet hatası';
           _temp = '--';
           _humidity = '--';
-          _ph = '--';
         });
         _animController.forward();
       }
@@ -162,8 +151,6 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
     }
   }
 
-  /// Proaktif hava uyarısını tetikler — max 3 saatte 1 kez.
-  /// Fire-and-forget: sonucu beklemeyiz, UI'ı bloklamaz.
   void _triggerWeatherAlertIfDue(double lat, double lng) {
     final settingsBox = Hive.box('settingsBox');
     final lastCheckStr = settingsBox.get('last_weather_check_at') as String?;
@@ -172,13 +159,11 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
         : null;
     final now = DateTime.now().toUtc();
 
-    // Son kontrolden 3 saatten az geçmişse atla
     if (lastCheck != null &&
         now.difference(lastCheck).inHours < 3) {
       return;
     }
 
-    // Fire-and-forget — arka planda çalışır, hata sessizce yutulur
     () async {
       try {
         await NotificationService.checkWeatherAndAlert(lat, lng);
@@ -187,16 +172,9 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
           'last_weather_check_at',
           now.toIso8601String(),
         );
-      } catch (_) {
-        // Bildirim hatası uygulamayı etkilememeli
-      }
+      } catch (_) {}
     }();
   }
-
-  // Drift / Hive stats
-  int get _fieldCount =>
-      ref.watch(fieldMapsProvider).asData?.value.length ?? 0;
-  int get _analysisCount => Hive.box('agri_history').length;
 
   @override
   Widget build(BuildContext context) {
@@ -211,53 +189,44 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
             ),
           ),
           Positioned.fill(
-            child: Container(color: Colors.black.withValues(alpha: 0.45)),
+            child: Container(color: Colors.black.withValues(alpha: 0.5)),
           ),
           RefreshIndicator(
             onRefresh: _refreshData,
-            color: Colors.green,
+            color: AppColors.emerald,
             child: CustomScrollView(
               slivers: [
                 _buildHeroSliverAppBar(),
-            SliverToBoxAdapter(
-              child: FadeTransition(
-                opacity: _fadeAnim,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 20, 16, 120),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildSectionHeader('Hava Durumu', Icons.wb_sunny),
-                      const SizedBox(height: 12),
-                      _buildWeatherGrid(),
-                      const SizedBox(height: 24),
-                      _buildSectionHeader(
-                          'Bugün Yapılacaklar', Icons.checklist_rtl_rounded),
-                      const SizedBox(height: 12),
-                      _buildTasksSummarySection(),
-                      const SizedBox(height: 24),
-                      _buildSectionHeader('Tarlalarım', Icons.grass_rounded),
-                      const SizedBox(height: 12),
-                      _buildMyFieldsSection(),
-                      const SizedBox(height: 24),
-                      _buildSectionHeader('Tarla İstatistikleri', Icons.bar_chart),
-                      const SizedBox(height: 12),
-                      _buildStatsRow(),
-                      const SizedBox(height: 24),
-                      _buildSectionHeader('Toprak Analizi', Icons.terrain),
-                      const SizedBox(height: 12),
-                      _buildSoilCard(),
-                      const SizedBox(height: 24),
-                      _buildSensorButton(),
-                      const SizedBox(height: 12),
-                      _buildJournalButton(),
-                      const SizedBox(height: 12),
-                      _buildArchiveButton(),
-                    ],
+                SliverToBoxAdapter(
+                  child: FadeTransition(
+                    opacity: _fadeAnim,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 20, 16, 120),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildFieldOverview(),
+                          const SizedBox(height: 24),
+                          _buildSectionHeader(
+                              'Bugün Yapılacaklar', Icons.checklist_rtl_rounded),
+                          const SizedBox(height: 12),
+                          _buildTasksSummarySection(),
+                          const SizedBox(height: 24),
+                          _buildSectionHeader('Tarlalarım', Icons.grass_rounded),
+                          const SizedBox(height: 12),
+                          _buildMyFieldsSection(),
+                          const SizedBox(height: 24),
+                          _buildSectionHeader(
+                              'Hava Durumu', Icons.wb_sunny_rounded),
+                          const SizedBox(height: 12),
+                          _buildWeatherStrip(),
+                          const SizedBox(height: 24),
+                          _buildJournalButton(),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ),
               ],
             ),
           ),
@@ -268,7 +237,7 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
 
   Widget _buildHeroSliverAppBar() {
     return SliverAppBar(
-      expandedHeight: 260,
+      expandedHeight: 240,
       pinned: true,
       stretch: true,
       backgroundColor: const Color(0xFF1B5E20),
@@ -284,23 +253,18 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
         background: Stack(
           fit: StackFit.expand,
           children: [
-            // Gradient overlay (dashboard HD bg lives behind Scaffold body)
             Container(
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [
-                    Color(0x22000000),
-                    Color(0x88000000),
-                  ],
+                  colors: [Color(0x22000000), Color(0x99000000)],
                 ),
               ),
             ),
-            // Hero weather content
             if (!_isLoading)
               Positioned(
-                bottom: 24,
+                bottom: 22,
                 left: 20,
                 right: 20,
                 child: Column(
@@ -406,216 +370,49 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
     );
   }
 
-  Widget _buildWeatherGrid() {
-    return Row(
-      children: [
-        Expanded(
-          child: _buildMetricCard(
-            icon: Icons.thermostat_rounded,
-            label: 'Sıcaklık',
-            value: _temp != '--' ? '$_temp°C' : '--',
-            unit: '',
-            gradientColors: [const Color(0xFFFF7043), const Color(0xFFE64A19)],
-            iconBg: const Color(0xFFFFCDD2),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _buildMetricCard(
-            icon: Icons.water_drop_rounded,
-            label: 'Nem',
-            value: _humidity,
-            unit: '%',
-            gradientColors: [const Color(0xFF29B6F6), const Color(0xFF0277BD)],
-            iconBg: const Color(0xFFB3E5FC),
-          ),
-        ),
-      ],
-    );
-  }
+  // ───────────────────────────────────────────────────────────────────────────
+  // FIELD OVERVIEW — Tarla takibinin nabzı: 3 kritik metrik tek bakışta
+  // ───────────────────────────────────────────────────────────────────────────
+  Widget _buildFieldOverview() {
+    final fieldsAsync = ref.watch(fieldMapsProvider);
+    final fields = fieldsAsync.asData?.value ?? const <Map<String, dynamic>>[];
 
-  Widget _buildMetricCard({
-    required IconData icon,
-    required String label,
-    required String value,
-    required String unit,
-    required List<Color> gradientColors,
-    required Color iconBg,
-  }) {
+    final totalFields = fields.length;
+    double totalDekar = 0;
+    int needsIrrigation = 0;
+    int healthy = 0;
+
+    for (final f in fields) {
+      final area = (f['area_dekar'] as num?)?.toDouble();
+      if (area != null) totalDekar += area;
+      final analysis = f['analysis'];
+      final moisture = analysis is Map
+          ? (analysis['soil_moisture'] as num?)?.toDouble()
+          : null;
+      if (moisture != null) {
+        if (moisture < 0.3) {
+          needsIrrigation++;
+        } else if (moisture >= 0.45) {
+          healthy++;
+        }
+      }
+    }
+
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
+        gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: gradientColors,
+          colors: [Color(0xFFFBF7EC), Colors.white],
         ),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.6), width: 1.5),
         boxShadow: [
           BoxShadow(
-            color: gradientColors.last.withValues(alpha: 0.35),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.25),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon, color: Colors.white, size: 20),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            label,
-            style: const TextStyle(
-              color: Colors.white70,
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 2),
-          RichText(
-            text: TextSpan(
-              text: value,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 28,
-                fontWeight: FontWeight.w700,
-                height: 1.1,
-              ),
-              children: unit.isNotEmpty
-                  ? [
-                      TextSpan(
-                        text: unit,
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w400),
-                      ),
-                    ]
-                  : [],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatsRow() {
-    return Row(
-      children: [
-        Expanded(
-          child: _buildStatCard(
-            icon: Icons.crop_square_rounded,
-            label: 'Kayıtlı Tarla',
-            value: '$_fieldCount',
-            color: Colors.green.shade700,
-            bg: Colors.green.shade50,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _buildStatCard(
-            icon: Icons.history_rounded,
-            label: 'Arşiv Kaydı',
-            value: '$_analysisCount',
-            color: Colors.purple.shade700,
-            bg: Colors.purple.shade50,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _buildStatCard(
-            icon: Icons.air_rounded,
-            label: 'Rüzgar',
-            value: _wind != '--' ? '$_wind m/s' : '--',
-            color: Colors.blueGrey.shade700,
-            bg: Colors.blueGrey.shade50,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildStatCard({
-    required IconData icon,
-    required String label,
-    required String value,
-    required Color color,
-    required Color bg,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade100),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(color: bg, shape: BoxShape.circle),
-            child: Icon(icon, color: color, size: 18),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
-              color: color,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 10,
-              color: Colors.grey.shade500,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSoilCard() {
-    final phVal = double.tryParse(_ph.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 7.0;
-    final phColor = phVal < 6.0
-        ? Colors.orange.shade700
-        : phVal > 7.5
-            ? Colors.purple.shade700
-            : Colors.green.shade700;
-    final phLabel = phVal < 6.0
-        ? 'Asidik'
-        : phVal > 7.5
-            ? 'Alkali'
-            : 'Nötr (İdeal)';
-
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.grey.shade100),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 14,
-            offset: const Offset(0, 5),
+            color: Colors.black.withValues(alpha: 0.18),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
@@ -625,120 +422,211 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(10),
+                padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.teal.shade50,
-                  borderRadius: BorderRadius.circular(12),
+                  gradient: AppGradients.emeraldCard,
+                  borderRadius: BorderRadius.circular(10),
+                  boxShadow: AppShadows.emeraldGlow,
                 ),
-                child: Icon(Icons.eco_rounded, color: Colors.teal.shade700, size: 22),
+                child: const Icon(Icons.dashboard_rounded,
+                    size: 16, color: Colors.white),
               ),
-              const SizedBox(width: 14),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Toprak pH Değeri',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.grey,
-                      fontWeight: FontWeight.w500,
+              const SizedBox(width: 10),
+              Text(
+                'Tarla Genel Durumu',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textSecondary,
+                  letterSpacing: 0.3,
+                ),
+              ),
+              const Spacer(),
+              if (needsIrrigation > 0)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.error.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: AppColors.error.withValues(alpha: 0.3),
                     ),
                   ),
-                  Row(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
+                      Icon(Icons.warning_amber_rounded,
+                          size: 12, color: AppColors.error),
+                      const SizedBox(width: 4),
                       Text(
-                        _ph,
+                        '$needsIrrigation acil',
                         style: TextStyle(
-                          fontSize: 26,
+                          fontSize: 10,
                           fontWeight: FontWeight.w800,
-                          color: phColor,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Container(
-                        padding:
-                            const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: phColor.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          phLabel,
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: phColor,
-                            fontWeight: FontWeight.w700,
-                          ),
+                          color: AppColors.error,
+                          letterSpacing: 0.4,
                         ),
                       ),
                     ],
                   ),
-                ],
-              ),
+                ),
             ],
           ),
           const SizedBox(height: 16),
-          // pH bar
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: Container(
-              height: 8,
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    Color(0xFFFF7043),
-                    Color(0xFFFFEB3B),
-                    Color(0xFF4CAF50),
-                    Color(0xFF29B6F6),
-                    Color(0xFF7B1FA2),
-                  ],
+          Row(
+            children: [
+              Expanded(
+                child: _overviewMetric(
+                  icon: Icons.crop_square_rounded,
+                  value: '$totalFields',
+                  label: 'Tarla',
+                  color: AppColors.emeraldDark,
                 ),
               ),
-            ),
-          ),
-          const SizedBox(height: 6),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('Asidik (0)', style: TextStyle(fontSize: 10, color: Colors.grey.shade400)),
-              Text('Nötr (7)', style: TextStyle(fontSize: 10, color: Colors.grey.shade400)),
-              Text('Alkali (14)', style: TextStyle(fontSize: 10, color: Colors.grey.shade400)),
+              _verticalDivider(),
+              Expanded(
+                child: _overviewMetric(
+                  icon: Icons.straighten_rounded,
+                  value: totalDekar > 0
+                      ? totalDekar.toStringAsFixed(1)
+                      : '0',
+                  label: 'Dekar',
+                  color: AppColors.soil,
+                ),
+              ),
+              _verticalDivider(),
+              Expanded(
+                child: _overviewMetric(
+                  icon: Icons.eco_rounded,
+                  value: '$healthy',
+                  label: 'Sağlıklı',
+                  color: AppColors.success,
+                ),
+              ),
             ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'SoilGrids ISRIC verisi · 0–5 cm derinlik',
-            style: TextStyle(fontSize: 10.5, color: Colors.grey.shade400),
           ),
         ],
       ),
     );
   }
 
+  Widget _verticalDivider() => Container(
+        width: 1,
+        height: 44,
+        color: AppColors.border,
+      );
 
-  Widget _buildSensorButton() {
-    return TapScale(
-      scale: 0.97,
-      onTap: () {
-        Navigator.of(context).push(
-          AnimatedRoute.slideX(const SensorDataScreen()),
-        );
-      },
-      child: OutlinedButton.icon(
-        onPressed: () {
-          Navigator.of(context).push(
-            AnimatedRoute.slideX(const SensorDataScreen()),
-          );
-        },
-        icon: const Icon(Icons.sensors_rounded),
-        label: const Text('CANLI SENSÖR PANELİ'),
-        style: OutlinedButton.styleFrom(
-          minimumSize: const Size.fromHeight(48),
-          foregroundColor: Colors.teal.shade700,
-          side: BorderSide(color: Colors.teal.shade300),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+  Widget _overviewMetric({
+    required IconData icon,
+    required String value,
+    required String label,
+    required Color color,
+  }) {
+    return Column(
+      children: [
+        Icon(icon, color: color, size: 22),
+        const SizedBox(height: 6),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.w900,
+            color: color,
+            height: 1.0,
+          ),
         ),
+        const SizedBox(height: 2),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textTertiary,
+            letterSpacing: 0.3,
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // WEATHER STRIP — Kompakt, opsiyonel detay
+  // ───────────────────────────────────────────────────────────────────────────
+  Widget _buildWeatherStrip() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.95),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.6)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.12),
+            blurRadius: 14,
+            offset: const Offset(0, 5),
+          ),
+        ],
       ),
+      child: Row(
+        children: [
+          Expanded(
+            child: _weatherChip(
+              icon: Icons.thermostat_rounded,
+              value: _temp != '--' ? '$_temp°' : '--',
+              label: 'Sıcaklık',
+              color: const Color(0xFFE64A19),
+            ),
+          ),
+          _verticalDivider(),
+          Expanded(
+            child: _weatherChip(
+              icon: Icons.water_drop_rounded,
+              value: _humidity != '--' ? '%$_humidity' : '--',
+              label: 'Nem',
+              color: const Color(0xFF0277BD),
+            ),
+          ),
+          _verticalDivider(),
+          Expanded(
+            child: _weatherChip(
+              icon: Icons.air_rounded,
+              value: _wind != '--' ? _wind : '--',
+              label: 'm/s',
+              color: AppColors.textSecondary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _weatherChip({
+    required IconData icon,
+    required String value,
+    required String label,
+    required Color color,
+  }) {
+    return Column(
+      children: [
+        Icon(icon, color: color, size: 20),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.w800,
+            color: color,
+          ),
+        ),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 10,
+            color: AppColors.textTertiary,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
     );
   }
 
@@ -760,77 +648,17 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
         label: const Text('TARLAM GÜNLÜĞÜ'),
         style: OutlinedButton.styleFrom(
           minimumSize: const Size.fromHeight(48),
-          foregroundColor: AppColors.emeraldDark,
-          side: BorderSide(color: AppColors.emerald.withValues(alpha: 0.5)),
+          foregroundColor: Colors.white,
+          backgroundColor: Colors.white.withValues(alpha: 0.1),
+          side: const BorderSide(color: Colors.white54),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         ),
       ),
     );
   }
 
-  Widget _buildArchiveButton() {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.green.shade600, Colors.green.shade800],
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-        ),
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.green.shade700.withValues(alpha: 0.4),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(18),
-          onTap: () async {
-            final box = Hive.box('agri_history');
-            await box.add({
-              'date': DateFormat('dd.MM.yyyy HH:mm').format(DateTime.now()),
-              'temp': _temp != '--' ? '$_temp°C' : '--',
-              'ph': _ph,
-              'location': _location.split('\n').first,
-            });
-            if (mounted) {
-              AppToast.show(
-                context,
-                message: 'Veriler arşive kaydedildi!',
-                type: ToastType.success,
-              );
-            }
-          },
-          child: const Padding(
-            padding: EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.save_rounded, color: Colors.white, size: 22),
-                SizedBox(width: 10),
-                Text(
-                  'BU ANALİZİ ARŞİVLE',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                    letterSpacing: 1.0,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   // ───────────────────────────────────────────────────────────────────────────
-  // ÇOKLU TARLA KARTLARI — Dashboard'da birden fazla tarlanın özeti tek bakışta
+  // ÇOKLU TARLA KARTLARI — zenginleştirilmiş tasarım
   // ───────────────────────────────────────────────────────────────────────────
   Widget _buildMyFieldsSection() {
     final fieldsAsync = ref.watch(fieldMapsProvider);
@@ -838,21 +666,38 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
 
     if (fields.isEmpty) {
       return Container(
-        padding: const EdgeInsets.all(18),
+        padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: AppRadius.md,
-          border: Border.all(color: AppColors.border),
+          color: Colors.white.withValues(alpha: 0.95),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.6)),
         ),
         child: Row(
           children: [
-            Icon(Icons.grass_rounded,
-                color: AppColors.emeraldLight, size: 26),
-            const SizedBox(width: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.mint,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(Icons.add_location_alt_rounded,
+                  color: AppColors.emeraldDark, size: 28),
+            ),
+            const SizedBox(width: 14),
             Expanded(
-              child: Text(
-                'Henüz tarla eklemediniz.\nHaritadan ilk tarlanızı çizerek başlayın.',
-                style: AppText.body(context),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Henüz tarla yok',
+                    style: AppText.h3(context),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Haritadan ilk tarlanızı çizerek başlayın.',
+                    style: AppText.sm(context),
+                  ),
+                ],
               ),
             ),
           ],
@@ -860,9 +705,8 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
       );
     }
 
-    // Yatay kaydırılabilir liste — çiftçi tek bakışta birkaç tarlayı görür.
     return SizedBox(
-      height: 168,
+      height: 192,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: fields.length,
@@ -892,7 +736,6 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
         ? (analysis['soil_moisture'] as num?)?.toDouble()
         : null;
 
-    // Sağlık rozeti — toprak nemi eşiklerine göre
     Color healthColor;
     String healthLabel;
     IconData healthIcon;
@@ -914,7 +757,6 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
       healthIcon = Icons.check_circle_outline_rounded;
     }
 
-    // Sıradaki sulama tahmini — basit heuristik
     final nextIrrigation = soilMoisture == null
         ? 'Önce analiz yapın'
         : soilMoisture < 0.3
@@ -922,6 +764,8 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
             : soilMoisture < 0.5
                 ? '2-3 gün içinde'
                 : '4+ gün sonra';
+
+    final moisturePct = soilMoisture != null ? (soilMoisture * 100).round() : null;
 
     return TapScale(
       scale: 0.96,
@@ -931,18 +775,34 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
         );
       },
       child: Container(
-        width: 240,
-        padding: const EdgeInsets.all(14),
+        width: 248,
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: AppRadius.md,
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
           border: Border.all(color: AppColors.border),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.18),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
+            ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: healthColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(healthIcon, color: healthColor, size: 16),
+                ),
+                const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     name,
@@ -951,59 +811,133 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                Icon(healthIcon, color: healthColor, size: 20),
               ],
             ),
-            const SizedBox(height: 4),
-            Text(
-              area != null
-                  ? '${area.toStringAsFixed(1)} dekar · $cropLabel'
-                  : cropLabel,
-              style: AppText.sm(context),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const Spacer(),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(
-                color: healthColor.withValues(alpha: 0.12),
-                borderRadius: AppRadius.full,
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color: healthColor,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    healthLabel,
-                    style: AppText.xs(context).copyWith(color: healthColor),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             Row(
               children: [
-                Icon(Icons.water_drop_rounded,
-                    size: 14, color: AppColors.info),
+                Icon(Icons.spa_rounded, size: 12, color: AppColors.emeraldDark),
                 const SizedBox(width: 4),
                 Expanded(
                   child: Text(
-                    'Sulama: $nextIrrigation',
+                    area != null
+                        ? '${area.toStringAsFixed(1)} dk · $cropLabel'
+                        : cropLabel,
                     style: AppText.sm(context),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
+            ),
+            const SizedBox(height: 12),
+            // Toprak nemi bar
+            if (moisturePct != null) ...[
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Toprak Nemi',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textTertiary,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                  Text(
+                    '%$moisturePct',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      color: healthColor,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: Stack(
+                  children: [
+                    Container(
+                      height: 6,
+                      color: AppColors.border,
+                    ),
+                    FractionallySizedBox(
+                      widthFactor: soilMoisture!.clamp(0.0, 1.0),
+                      child: Container(
+                        height: 6,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [healthColor.withValues(alpha: 0.6), healthColor],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ] else ...[
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.border.withValues(alpha: 0.4),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.science_outlined,
+                        size: 12, color: AppColors.textTertiary),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Analiz bekleniyor',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: AppColors.textTertiary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            const Spacer(),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: healthColor.withValues(alpha: 0.1),
+                borderRadius: AppRadius.full,
+                border: Border.all(color: healthColor.withValues(alpha: 0.25)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.water_drop_rounded, size: 12, color: healthColor),
+                  const SizedBox(width: 5),
+                  Flexible(
+                    child: Text(
+                      nextIrrigation,
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w700,
+                        color: healthColor,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    healthLabel,
+                    style: TextStyle(
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.w500,
+                      color: healthColor.withValues(alpha: 0.8),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -1012,7 +946,7 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
   }
 
   // ───────────────────────────────────────────────────────────────────────────
-  // GÜNLÜK YÖNERGE ÖZETİ — tüm tarlaların acil işlerini tek bakışta gösterir
+  // GÜNLÜK YÖNERGE ÖZETİ
   // ───────────────────────────────────────────────────────────────────────────
   Widget _buildTasksSummarySection() {
     final fieldsAsync = ref.watch(fieldMapsProvider);
@@ -1021,9 +955,9 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
       return Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: AppRadius.md,
-          border: Border.all(color: AppColors.border),
+          color: Colors.white.withValues(alpha: 0.95),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.6)),
         ),
         child: Row(
           children: [
@@ -1052,8 +986,7 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
   }
 }
 
-/// Tek tarla için 1-3 acil/yaklaşan yönergeyi özetler. Bastıkça tarla
-/// detayına gider — oradaki Görevler butonu tüm yönergeleri + CTA'ları açar.
+/// Tek tarla için 1-3 acil/yaklaşan yönergeyi özetler.
 class _FieldDirectivesStrip extends ConsumerWidget {
   const _FieldDirectivesStrip({required this.field});
 
@@ -1076,7 +1009,6 @@ class _FieldDirectivesStrip extends ConsumerWidget {
             'Yönerge hesaplanamadı', null),
       ]),
       data: (directives) {
-        // urgency >= 1 olanlardan en fazla 3 tanesini göster
         final top = directives
             .where((d) => d.urgency >= 1)
             .take(3)
@@ -1134,10 +1066,16 @@ class _FieldDirectivesStrip extends ConsumerWidget {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: AppRadius.md,
-          border: Border.all(color: AppColors.border),
-          boxShadow: AppShadows.sm,
+          color: Colors.white.withValues(alpha: 0.96),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.6)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.12),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

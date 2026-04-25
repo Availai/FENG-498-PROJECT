@@ -18,6 +18,7 @@ import 'task_directive_service.dart';
 import 'field_state_service.dart';
 import 'growth_engine.dart';
 import 'weather_soil_service.dart';
+import 'backend_service.dart';
 import 'api/sync_api_client.dart';
 
 final appDatabaseProvider = Provider<AppDatabase>((ref) {
@@ -46,7 +47,9 @@ final firebaseAuthProvider = Provider<FirebaseAuth>((ref) {
 });
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
-  return AuthRepository(firebaseAuth: ref.watch(firebaseAuthProvider));
+  final repository = AuthRepository(firebaseAuth: ref.watch(firebaseAuthProvider));
+  BackendService.configure(authTokenProvider: repository.getIdToken);
+  return repository;
 });
 
 final authStateChangesProvider = StreamProvider<User?>((ref) {

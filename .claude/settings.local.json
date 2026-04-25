@@ -13,7 +13,12 @@
       "Bash(awk 'NR<1936 || NR>2287' \"C:/FENG 498/feng_498/lib/screens/field_detail_screen.dart\")",
       "Bash(adb *)",
       "Bash(grep -E \"\\\\.\\(dart\\)$\")",
-      "Bash(where python *)"
+      "Bash(where python *)",
+      "Bash(python -c \"from main import app; print\\('OK', len\\(app.routes\\), 'routes'\\)\")",
+      "Bash(venv/Scripts/python.exe -c \"import sys; sys.path.insert\\(0, '.'\\); from main import app; print\\('OK', len\\(app.routes\\), 'routes'\\)\")",
+      "Bash(venv/Scripts/python.exe -m pip install -q httpx)",
+      "Bash(venv/Scripts/python.exe -c \"import sys; sys.path.insert\\(0, '.'\\); from main import app; print\\('OK,', len\\(app.routes\\), 'routes'\\)\")",
+      "Bash(venv/Scripts/python.exe -m pip install -q python-multipart)"
     ]
   }
 }

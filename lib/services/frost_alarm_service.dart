@@ -1,12 +1,4 @@
-/// MGM tarzı Zirai Don Alarmı (yerel).
-///
-/// Open-Meteo 3 günlük min sıcaklık tahminini çeker; Türkiye'nin geç ilkbahar
-/// ve erken sonbahar don dönemlerinde (Nis-May + Eki-Kas) eşik altına iniş
-/// varsa bildirim tetikler. Key gerektirmez.
-library;
-
-import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'backend_service.dart';
 import 'notification_service.dart';
 
 class FrostAlarmResult {
@@ -24,9 +16,6 @@ class FrostAlarmResult {
 }
 
 class FrostAlarmService {
-  /// Verilen koordinat için 3 günlük min sıcaklığı kontrol eder.
-  /// Türkiye'nin hassas aylarında (4,5,10,11) düşük sıcaklık yakalanırsa
-  /// uyarı döner. Dışarıdan takvime bağımlılık yok; testlenebilir.
   static Future<FrostAlarmResult> check({
     required double lat,
     required double lon,
@@ -34,25 +23,8 @@ class FrostAlarmService {
   }) async {
     final when = now ?? DateTime.now();
     final month = when.month;
-
-    double min3Day = 99;
-    try {
-      final uri = Uri.parse(
-        'https://api.open-meteo.com/v1/forecast?latitude=$lat&longitude=$lon'
-        '&daily=temperature_2m_min&forecast_days=3&timezone=auto',
-      );
-      final resp = await http.get(uri).timeout(const Duration(seconds: 8));
-      if (resp.statusCode == 200) {
-        final mins = jsonDecode(resp.body)['daily']?['temperature_2m_min'];
-        if (mins is List) {
-          for (final v in mins) {
-            if (v is num && v.toDouble() < min3Day) {
-              min3Day = v.toDouble();
-            }
-          }
-        }
-      }
-    } catch (_) {
+    final env = await BackendService.fieldEnvironment(lat: lat, lng: lon);
+    if (env == null) {
       return const FrostAlarmResult(
         shouldAlert: false,
         min3DayC: 99,
@@ -60,19 +32,23 @@ class FrostAlarmService {
       );
     }
 
-    final isSpringLate = month == 4 || month == 5;
-    final isAutumnEarly = month == 10 || month == 11;
-    final isSensitiveSeason = isSpringLate || isAutumnEarly;
+    double min3Day = 99;
+    final days = (env['daily_forecast'] as List?) ?? const [];
+    for (final day in days.take(3)) {
+      if (day is Map && day['min'] is num) {
+        final value = (day['min'] as num).toDouble();
+        if (value < min3Day) min3Day = value;
+      }
+    }
 
-    // MGM eşikleri: ≤0 don olayı, 0–2 don riski
+    final isSensitiveSeason =
+        month == 4 || month == 5 || month == 10 || month == 11;
     if (min3Day <= 0 && isSensitiveSeason) {
       return FrostAlarmResult(
         shouldAlert: true,
         min3DayC: min3Day,
         message:
-            '3 gün içinde ${min3Day.toStringAsFixed(1)}°C don olayı bekleniyor. '
-            '${isSpringLate ? "İlkbahar geç donu" : "Sonbahar erken donu"} — '
-            'hassas bitkiler tehlikede.',
+            '3 gün içinde ${min3Day.toStringAsFixed(1)}°C don olayı bekleniyor.',
         actionHint:
             'Meyve ağaçlarında yağmurlama sulama, sera ısıtma ve örtü bezi hazırlayın.',
       );
@@ -82,10 +58,9 @@ class FrostAlarmService {
         shouldAlert: true,
         min3DayC: min3Day,
         message:
-            '3 gün içinde ${min3Day.toStringAsFixed(1)}°C — MGM don riski eşiği (0-2°C).',
+            '3 gün içinde ${min3Day.toStringAsFixed(1)}°C MGM don riski eşiği görüldü.',
         actionHint:
-            'Gece sabahına doğru 04:00-06:00 radyasyon donu gelebilir. '
-            'Hassas ürünleri örtü altına alın.',
+            'Gece sabahına doğru hassas ürünleri örtü altına alın.',
       );
     }
 
@@ -96,22 +71,21 @@ class FrostAlarmService {
     );
   }
 
-  /// Bildirim göndererek uyarıyı çiftçiye iletir (fire-and-forget).
   static Future<void> checkAndNotify({
     required double lat,
     required double lon,
     String? fieldName,
   }) async {
-    final r = await check(lat: lat, lon: lon);
-    if (!r.shouldAlert) return;
-    final title = fieldName != null
-        ? 'Zirai Don Alarmı — $fieldName'
-        : 'Zirai Don Alarmı';
+    final result = await check(lat: lat, lon: lon);
+    if (!result.shouldAlert) return;
+    final title =
+        fieldName != null ? 'Zirai Don Alarmı - $fieldName' : 'Zirai Don Alarmı';
     try {
       await NotificationService.show(
         id: 3001,
         title: title,
-        body: r.message + (r.actionHint != null ? ' ${r.actionHint}' : ''),
+        body: result.message +
+            (result.actionHint != null ? ' ${result.actionHint}' : ''),
       );
     } catch (_) {}
   }

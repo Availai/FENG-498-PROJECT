@@ -259,7 +259,7 @@ const _aycicegi = CropProtocol(
             'Volkanik toprakta çimlenme 2–3 gün gecikebilir; panikle yedek ekim yapma.',
       },
       irrigationNotes: {
-        'drip': 'Toprak nem sensörü %50–60 bandı tutmalı. Altına düşmüş ise 1 L/bitki/gün ekle.',
+        'drip': 'Toprak nemini %50–60 bandında tut. Altına düşmüş ise 1 L/bitki/gün ekle.',
         'hand': 'Çimlenmeyen yerler varsa etkilenen tohumun yanına (5 cm) yavaşça 300 mL su damla.',
       },
       estimatedCostPerDekar: 0,
