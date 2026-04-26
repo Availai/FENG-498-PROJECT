@@ -170,8 +170,11 @@ class IpmDecisionService {
         rule: rule,
         status: IpmDecisionStatus.criticalNoChemical,
         headline: 'Mildiyö kritik seviyede',
+        // Mesaj çiftçiye somut adres veriyor (il/ilçe müdürlüğü, uzman) ama
+        // başlangıçta "resmi teknik destek" anahtar kavramı geçiyor — hem
+        // konseptin altını çiziyor hem de test bunu doğruluyor.
         message:
-            'Hastalık oranı %${_fmt(pct)}. Bu durumda uygulama içi ilaç kapısı açılmaz; il/ilçe müdürlüğü veya yetkili uzmanla görüş ve ağır bulaşık alanda sürüm kararını değerlendir.',
+            'Hastalık oranı %${_fmt(pct)}. Bu seviye için resmi teknik destek şart: il/ilçe tarım müdürlüğü veya yetkili uzmanla görüş; uygulama içi ilaç kapısı açılmaz, ağır bulaşık alanda sürüm kararını birlikte değerlendir.',
         nextSteps: [
           'Hastalıklı bitkileri ve hasat sonrası artıkları imha et.',
           'Ağır bulaşık alanda uzun münavebe ve tolerant çeşit planla.',

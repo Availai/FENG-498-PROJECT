@@ -16,7 +16,10 @@ class GrowingGuideScreen extends StatefulWidget {
 
 class _GrowingGuideScreenState extends State<GrowingGuideScreen> {
   final TextEditingController _searchCtrl = TextEditingController();
-  String _scale = 'Hobi Bahçesi';
+  // Eskiden Hobi/Profesyonel toggle vardı; çiftçi için anlamı belirsizdi
+  // (tarla zaten profesyonel ölçek). UI'dan kaldırıldı, backend uyumu için
+  // sabit 'Profesyonel' kalıyor.
+  static const String _scale = 'Profesyonel';
   bool _isLoading = false;
   Map<String, dynamic>? _result;
   String _currentCrop = '';
@@ -138,31 +141,6 @@ class _GrowingGuideScreenState extends State<GrowingGuideScreen> {
                   onSubmitted: (_) => _getGuide(),
                 ),
                 const SizedBox(height: 12),
-                Row(
-                  children: [
-                    const Text('Ölçek: ',
-                        style: TextStyle(
-                            color: Colors.white70,
-                            fontWeight: FontWeight.bold)),
-                    const SizedBox(width: 8),
-                    ChoiceChip(
-                      label: const Text('Hobi Bahçesi'),
-                      selected: _scale == 'Hobi Bahçesi',
-                      onSelected: (v) {
-                        if (v) setState(() => _scale = 'Hobi Bahçesi');
-                      },
-                    ),
-                    const SizedBox(width: 8),
-                    ChoiceChip(
-                      label: const Text('Profesyonel'),
-                      selected: _scale == 'Profesyonel',
-                      onSelected: (v) {
-                        if (v) setState(() => _scale = 'Profesyonel');
-                      },
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
@@ -201,25 +179,7 @@ class _GrowingGuideScreenState extends State<GrowingGuideScreen> {
                         textAlign: TextAlign.center),
                   ]))
                 : _result == null
-                    ? Center(
-                        child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                            Icon(Icons.eco,
-                                size: 80, color: Colors.grey.shade300),
-                            const SizedBox(height: 16),
-                            Text(
-                                'Bir bitki adı yazarak konumunuza özel\nyetiştiricilik rehberi oluşturun.',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                    color: Colors.grey.shade600, fontSize: 16)),
-                            if (_error != null) ...[
-                              const SizedBox(height: 12),
-                              Text('Hata: $_error',
-                                  style: const TextStyle(
-                                      color: Colors.red, fontSize: 13)),
-                            ],
-                          ]))
+                    ? _buildEmptyState()
                     : _buildGuideContent(),
           ),
         ],
@@ -274,21 +234,28 @@ class _GrowingGuideScreenState extends State<GrowingGuideScreen> {
                       Text(_cropEmoji, style: const TextStyle(fontSize: 42)),
                       const SizedBox(width: 14),
                       Expanded(
-                          child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(_currentCrop.toUpperCase(),
-                              style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.bold)),
-                          Text(crop['scientific']?.toString() ?? '',
-                              style: TextStyle(
-                                  color: Colors.white.withValues(alpha: 0.8),
-                                  fontSize: 13,
-                                  fontStyle: FontStyle.italic)),
-                        ],
-                      )),
+                        // Eskiden Latince ad (Solanum lycopersicum vb.) ikinci
+                        // satırda gösteriliyordu — çiftçiye katma değer yoktu,
+                        // kaldırıldı. Bunun yerine "tarlana ne kadar uygun?"
+                        // sözel etiketi başlığın altında daha öne çıkarıldı.
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(_currentCrop.toUpperCase(),
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.bold)),
+                            const SizedBox(height: 2),
+                            Text(_uygunlukSozel(uygunluk),
+                                style: TextStyle(
+                                    color:
+                                        Colors.white.withValues(alpha: 0.92),
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600)),
+                          ],
+                        ),
+                      ),
                       // Uygunluk rozeti
                       Container(
                         width: 56,
@@ -326,8 +293,8 @@ class _GrowingGuideScreenState extends State<GrowingGuideScreen> {
                       _infoBadge(Icons.wb_sunny,
                           '${crop['sunlight_hours'] ?? 8}sa güneş'),
                       _infoBadge(Icons.spa, crop['care']?.toString() ?? 'Orta'),
-                      if (crop['indoor'] == true)
-                        _infoBadge(Icons.home, 'İç mekan uygun'),
+                      // "İç mekan uygun" badge'i kaldırıldı: tarla bağlamında
+                      // saç-mas, çiftçi için yararsız bilgiydi.
                       if (crop['drought'] == true)
                         _infoBadge(
                             Icons.water_drop_outlined, 'Kuraklığa dayanıklı'),
@@ -705,6 +672,116 @@ class _GrowingGuideScreenState extends State<GrowingGuideScreen> {
     );
   }
 
+  /// Boş ekran — kullanıcı henüz arama yapmadıysa. Eskiden sade gri ikon ve
+  /// "bitki adı yaz" satırı vardı; çiftçi için soğuk ve nereye tıklayacağı
+  /// belirsizdi. Artık 3 vitrin bitki (ayçiçeği, mısır, domates) için tek
+  /// dokunuşluk hızlı seçim butonları + sıcak bir karşılama metni var.
+  Widget _buildEmptyState() {
+    final quickPicks = <Map<String, String>>[
+      {'name': 'Ayçiçeği', 'emoji': '🌻'},
+      {'name': 'Mısır', 'emoji': '🌽'},
+      {'name': 'Domates', 'emoji': '🍅'},
+    ];
+
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('🌱', style: TextStyle(fontSize: 56)),
+            const SizedBox(height: 12),
+            Text(
+              'Hangi bitkiyi yetiştireceksin?',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: Colors.grey.shade800,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Tarlana göre ekim, sulama ve hasat planını çıkaralım.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+            ),
+            const SizedBox(height: 22),
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              alignment: WrapAlignment.center,
+              children: quickPicks.map((p) {
+                return InkWell(
+                  borderRadius: BorderRadius.circular(14),
+                  onTap: () {
+                    _searchCtrl.text = p['name']!;
+                    _getGuide();
+                  },
+                  child: Container(
+                    width: 100,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 14),
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade50,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: Colors.green.shade200),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(p['emoji']!, style: const TextStyle(fontSize: 32)),
+                        const SizedBox(height: 4),
+                        Text(
+                          p['name']!,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.green.shade900,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 18),
+            Text(
+              'veya yukarıdaki kutuya bitki adı yaz',
+              style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+            ),
+            if (_error != null) ...[
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  'Hata: $_error',
+                  style: TextStyle(color: Colors.red.shade800, fontSize: 12),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Uygunluk yüzdesini çiftçi diline çevirir.
+  /// Eskiden ham "%67" rakamı sözeldi, çiftçi için anlamsızdı; renk kodlu
+  /// metin ("Tarlana çok uygun") karar vermeyi kolaylaştırıyor.
+  String _uygunlukSozel(double pct) {
+    if (pct >= 80) return '✅ Tarlana çok uygun';
+    if (pct >= 60) return '🟢 Tarlana uygun';
+    if (pct >= 40) return '🟡 Sınırda — dikkatli git';
+    return '🔴 Tarlana zor — başka çeşit dene';
+  }
+
   Widget _infoBadge(IconData icon, String text) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -984,25 +1061,27 @@ class _GrowingGuideScreenState extends State<GrowingGuideScreen> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Belirti: ${pest['symptoms']}',
+                          '🔍 Belirti: ${pest['symptoms']}',
                           style: const TextStyle(fontSize: 12),
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          'Kontrol: ${pest['monitoring']}',
+                          '👀 Nasıl izlenir: ${pest['monitoring']}',
                           style: const TextStyle(fontSize: 12),
                         ),
                         if (pest['samplingMethod'] != null) ...[
                           const SizedBox(height: 2),
                           Text(
-                            'Gözlem yöntemi: ${pest['samplingMethod']}',
+                            '🌾 Tarlada bakma şekli: ${pest['samplingMethod']}',
                             style: const TextStyle(fontSize: 12),
                           ),
                         ],
                         if (pest['economicThreshold'] != null) ...[
                           const SizedBox(height: 2),
+                          // Akademikte "ekonomik eşik" denir; çiftçi için
+                          // "bu sayıdan sonra zarar başlar" daha anlaşılır.
                           Text(
-                            'Eşik: ${pest['economicThreshold']}',
+                            '⚠️ Sınır (bunu geçince zarar başlar): ${pest['economicThreshold']}',
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
@@ -1012,7 +1091,7 @@ class _GrowingGuideScreenState extends State<GrowingGuideScreen> {
                         ],
                         const SizedBox(height: 2),
                         Text(
-                          'Önlem: ${pest['integratedControl']}',
+                          '🛡️ İlk önlem: ${pest['integratedControl']}',
                           style: TextStyle(
                             fontSize: 12,
                             color: Colors.green.shade900,
@@ -1020,8 +1099,9 @@ class _GrowingGuideScreenState extends State<GrowingGuideScreen> {
                         ),
                         if (pest['chemicalGate'] != null) ...[
                           const SizedBox(height: 2),
+                          // Eskiden "Kimyasal kapı" — agronomik jargon.
                           Text(
-                            'Kimyasal kapı: ${pest['chemicalGate']}',
+                            '🚪 İlaç ne zaman gerekli: ${pest['chemicalGate']}',
                             style: TextStyle(
                               fontSize: 12,
                               color: Colors.orange.shade900,
@@ -1029,8 +1109,9 @@ class _GrowingGuideScreenState extends State<GrowingGuideScreen> {
                           ),
                         ],
                         const SizedBox(height: 2),
+                        // Eskiden "Kimyasal karar".
                         Text(
-                          'Kimyasal karar: ${pest['escalation']}',
+                          '💊 İlaç seçeneği: ${pest['escalation']}',
                           style: TextStyle(
                             fontSize: 12,
                             color: Colors.orange.shade900,
@@ -1091,7 +1172,7 @@ class _GrowingGuideScreenState extends State<GrowingGuideScreen> {
                   ListTile(
                     dense: true,
                     title: const Text(
-                      'Münavebe',
+                      'Münavebe (sonraki sezon ne ekilmeli?)',
                       style:
                           TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
                     ),
@@ -1158,13 +1239,40 @@ class _GrowingGuideScreenState extends State<GrowingGuideScreen> {
   }
 
   // ─────────────────────────────────────────────────────────────────────
-  // Modül 4 — Ansiklopedi Derinleştirme
+  // Çiftçi İpuçları — sadeleştirilmiş ansiklopedi
+  //
+  // Eskiden 6 ayrı ExpansionTile vardı. 3'ü Türkiye Teknik Rehberi kartıyla
+  // birebir çakışıyordu (Adım Adım Yetiştirme, Bölgesel Ekim Takvimi,
+  // Hastalık & Zararlı Tanıma) — silindi. Kalan 3'ü (Toprak İyileştirme,
+  // Organik Tarım, Geleneksel Anadolu Bilgisi) bitkiye özel değil; tek
+  // "Çiftçi İpuçları" başlığı altında konsolide edildi.
   // ─────────────────────────────────────────────────────────────────────
   Widget _buildEncyclopediaDeepCard() {
-    final stages = EncyclopediaExtensions.stagesFor(_currentCrop);
-    final pests = EncyclopediaExtensions.pestsFor(_currentCrop);
-    final regionalCalendar =
-        EncyclopediaExtensions.regionalCalendarFor(_currentCrop);
+    final tips = <Map<String, String>>[
+      ...EncyclopediaExtensions.soilImprovement.map(
+        (item) => {
+          'kategori': '🌍 Toprak',
+          'baslik': item['baslik'] ?? '',
+          'aciklama': item['oneri'] ?? '',
+        },
+      ),
+      ...EncyclopediaExtensions.organicMethods.map(
+        (item) => {
+          'kategori': '🌿 Doğal yöntem',
+          'baslik': item['baslik'] ?? '',
+          'aciklama': item['aciklama'] ?? '',
+        },
+      ),
+      ...EncyclopediaExtensions.traditionalKnowledge.map(
+        (item) => {
+          'kategori': '👴 Anadolu bilgeliği',
+          'baslik': item['baslik'] ?? '',
+          'aciklama': item['aciklama'] ?? '',
+        },
+      ),
+    ];
+
+    if (tips.isEmpty) return const SizedBox.shrink();
 
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -1175,215 +1283,48 @@ class _GrowingGuideScreenState extends State<GrowingGuideScreen> {
           children: [
             const Row(
               children: [
-                Icon(Icons.menu_book_rounded, color: Colors.teal),
+                Icon(Icons.tips_and_updates_rounded, color: Colors.teal),
                 SizedBox(width: 6),
-                Text('Ansiklopedi — Derinlemesine',
+                Text('Çiftçi İpuçları',
                     style:
                         TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
               ],
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 4),
             Text(
-              'İnternet olmadan da çalışan kapsamlı rehber.',
+              'Toprak, doğal yöntem ve Anadolu bilgeliğinden seçme notlar.',
               style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
             ),
-            const SizedBox(height: 8),
-
-            // 1. Adım adım büyüme
-            ExpansionTile(
-              tilePadding: const EdgeInsets.symmetric(horizontal: 4),
-              leading:
-                  const Icon(Icons.timeline, color: Colors.green, size: 20),
-              title: const Text('Adım Adım Yetiştirme',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-              children: stages.map((s) {
-                return ListTile(
-                  dense: true,
-                  leading: CircleAvatar(
-                    radius: 14,
-                    backgroundColor: Colors.green.shade100,
-                    child: Text('${stages.indexOf(s) + 1}',
-                        style: TextStyle(
-                            color: Colors.green.shade800,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 13)),
-                  ),
-                  title: Text('${s.label} — ${s.durationDays}',
-                      style: const TextStyle(
-                          fontSize: 13, fontWeight: FontWeight.w600)),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(s.description, style: const TextStyle(fontSize: 12)),
-                      const SizedBox(height: 2),
-                      Text('💡 ${s.careTip}',
-                          style: TextStyle(
-                              fontSize: 12, color: Colors.amber.shade900)),
-                    ],
-                  ),
-                );
-              }).toList(),
-            ),
-
-            // 2. Bölgesel ekim takvimi
-            ExpansionTile(
-              tilePadding: const EdgeInsets.symmetric(horizontal: 4),
-              leading:
-                  const Icon(Icons.map_outlined, color: Colors.blue, size: 20),
-              title: const Text('Bölgesel Ekim Takvimi',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-              children: regionalCalendar.isEmpty
-                  ? [
-                      const ListTile(
-                        dense: true,
-                        title: Text(
-                          'Bu bitki için bölgesel takvim kaydı bulunamadı.',
-                          style: TextStyle(fontSize: 12),
-                        ),
-                      ),
-                    ]
-                  : regionalCalendar.entries.map((region) {
-                      final iklim = region.value['iklim'] ?? '';
-                      final crops = Map<String, String>.from(region.value)
-                        ..remove('iklim');
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 6),
-                        child: Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: Colors.blue.shade50,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(region.key,
-                                  style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.blue.shade900)),
-                              Text(iklim,
-                                  style: TextStyle(
-                                      fontSize: 11,
-                                      fontStyle: FontStyle.italic,
-                                      color: Colors.blue.shade700)),
-                              const SizedBox(height: 4),
-                              ...crops.entries.map((e) => Padding(
-                                    padding: const EdgeInsets.only(top: 2),
-                                    child: Text('• ${e.key}: ${e.value}',
-                                        style: const TextStyle(fontSize: 12)),
-                                  )),
-                            ],
-                          ),
-                        ),
-                      );
-                    }).toList(),
-            ),
-
-            // 3. Hastalık & zararlı tanıma
-            ExpansionTile(
-              tilePadding: const EdgeInsets.symmetric(horizontal: 4),
-              leading:
-                  const Icon(Icons.bug_report, color: Colors.red, size: 20),
-              title: const Text('Hastalık & Zararlı Tanıma',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-              children: pests.map((p) {
-                return Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            const SizedBox(height: 10),
+            ...tips.map((t) => Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
                   child: Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: Colors.red.shade50,
+                      color: Colors.teal.shade50,
                       borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.teal.shade100),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(p.name,
-                            style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.red.shade900)),
+                        Text(
+                          '${t['kategori']}  •  ${t['baslik']}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.teal.shade900,
+                          ),
+                        ),
                         const SizedBox(height: 4),
-                        Text('🔍 Belirtiler: ${p.symptoms}',
-                            style: const TextStyle(fontSize: 12)),
-                        const SizedBox(height: 4),
-                        Text('🌿 Organik: ${p.organicTreatment}',
-                            style: TextStyle(
-                                fontSize: 12, color: Colors.green.shade900)),
-                        const SizedBox(height: 2),
-                        Text('🧪 Kimyasal: ${p.chemicalTreatment}',
-                            style: TextStyle(
-                                fontSize: 12, color: Colors.orange.shade900)),
+                        Text(
+                          t['aciklama'] ?? '',
+                          style: const TextStyle(fontSize: 12, height: 1.35),
+                        ),
                       ],
                     ),
                   ),
-                );
-              }).toList(),
-            ),
-
-            // 4. Toprak iyileştirme
-            ExpansionTile(
-              tilePadding: const EdgeInsets.symmetric(horizontal: 4),
-              leading: const Icon(Icons.terrain, color: Colors.brown, size: 20),
-              title: const Text('Toprak İyileştirme',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-              children: EncyclopediaExtensions.soilImprovement.map((item) {
-                return ListTile(
-                  dense: true,
-                  leading:
-                      Icon(Icons.eco, color: Colors.brown.shade400, size: 18),
-                  title: Text(item['baslik'] ?? '',
-                      style: const TextStyle(
-                          fontSize: 13, fontWeight: FontWeight.w600)),
-                  subtitle: Text(item['oneri'] ?? '',
-                      style: const TextStyle(fontSize: 12)),
-                );
-              }).toList(),
-            ),
-
-            // 5. Organik tarım yöntemleri
-            ExpansionTile(
-              tilePadding: const EdgeInsets.symmetric(horizontal: 4),
-              leading: const Icon(Icons.spa, color: Colors.green, size: 20),
-              title: const Text('Organik Tarım Yöntemleri',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-              children: EncyclopediaExtensions.organicMethods.map((item) {
-                return ListTile(
-                  dense: true,
-                  leading: Icon(Icons.check_circle,
-                      color: Colors.green.shade400, size: 18),
-                  title: Text(item['baslik'] ?? '',
-                      style: const TextStyle(
-                          fontSize: 13, fontWeight: FontWeight.w600)),
-                  subtitle: Text(item['aciklama'] ?? '',
-                      style: const TextStyle(fontSize: 12)),
-                );
-              }).toList(),
-            ),
-
-            // 6. Geleneksel Anadolu bilgileri
-            ExpansionTile(
-              tilePadding: const EdgeInsets.symmetric(horizontal: 4),
-              leading: const Icon(Icons.auto_stories,
-                  color: Colors.deepOrange, size: 20),
-              title: const Text('Geleneksel Anadolu Bilgisi',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-              children: EncyclopediaExtensions.traditionalKnowledge.map((item) {
-                return ListTile(
-                  dense: true,
-                  leading: Icon(Icons.history_edu,
-                      color: Colors.deepOrange.shade400, size: 18),
-                  title: Text(item['baslik'] ?? '',
-                      style: const TextStyle(
-                          fontSize: 13, fontWeight: FontWeight.w600)),
-                  subtitle: Text(item['aciklama'] ?? '',
-                      style: const TextStyle(fontSize: 12)),
-                );
-              }).toList(),
-            ),
+                )),
           ],
         ),
       ),
@@ -1466,7 +1407,7 @@ class _GrowingGuideScreenState extends State<GrowingGuideScreen> {
                 Icon(Icons.timeline_rounded, color: Colors.teal),
                 SizedBox(width: 6),
                 Expanded(
-                  child: Text('Sıfırdan Hasada Yolculuk',
+                  child: Text('Bitkin nasıl büyüyecek?',
                       style:
                           TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                 ),
@@ -1474,8 +1415,8 @@ class _GrowingGuideScreenState extends State<GrowingGuideScreen> {
             ),
             const SizedBox(height: 4),
             Text(
-              'Ekim gününden hasada kadar tüm aşamalar — ekimi yapar yapmaz '
-              'her adımın tahmini tarihi bu plana göre ilerler.',
+              'Ekim gününden hasada kadar her aşamanın ne zaman geleceğini '
+              'gösteren takvim. Ekim yaptığın gün bu plan otomatik başlar.',
               style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
             ),
             const SizedBox(height: 10),

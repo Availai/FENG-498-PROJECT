@@ -449,8 +449,15 @@ class CropScheduleSeeder {
         );
   }
 
+  /// Auto-seed kayıtları için tekil ID. Eskiden yalnız mikrosaniye timestamp
+  /// kullanılıyordu; aynı tick içinde art arda gelen `insert`'lerde
+  /// `UNIQUE constraint failed: calendar_events.id` oluşuyordu (sezon boyunca
+  /// onlarca etkinlik tek seeder çağrısında yazılıyor). Process-içi monotonik
+  /// counter eklendi — aynı tick olsa bile her ID farklı.
+  static int _idCounter = 0;
   static String _newEventId() {
     final ts = DateTime.now().microsecondsSinceEpoch.toRadixString(36);
-    return 'seed_$ts';
+    final c = (_idCounter++).toRadixString(36);
+    return 'seed_${ts}_$c';
   }
 }
