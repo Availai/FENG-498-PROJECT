@@ -9,6 +9,7 @@ class ActivityType {
   static const watering = 'watering';
   static const fertilizing = 'fertilizing';
   static const spraying = 'spraying';
+  static const scouting = 'scouting';
   static const harvest = 'harvest';
   static const planting = 'planting';
   static const other = 'other';
@@ -17,6 +18,7 @@ class ActivityType {
   static const quickLogOrder = <String>[
     watering,
     fertilizing,
+    scouting,
     spraying,
     harvest,
   ];
@@ -29,6 +31,8 @@ class ActivityType {
         return 'Gübreleme';
       case spraying:
         return 'İlaçlama';
+      case scouting:
+        return 'Gözlem';
       case harvest:
         return 'Hasat';
       case planting:
@@ -47,6 +51,8 @@ class ActivityType {
         return 'Gübreledim';
       case spraying:
         return 'İlaçladım';
+      case scouting:
+        return 'Gözlemledim';
       case harvest:
         return 'Hasat';
       case planting:
@@ -64,6 +70,8 @@ class ActivityType {
         return Icons.grass_rounded;
       case spraying:
         return Icons.science_rounded;
+      case scouting:
+        return Icons.manage_search_rounded;
       case harvest:
         return Icons.agriculture_rounded;
       case planting:
@@ -81,6 +89,8 @@ class ActivityType {
         return AppColors.emeraldDark;
       case spraying:
         return AppColors.warning;
+      case scouting:
+        return AppColors.emerald;
       case harvest:
         return AppColors.wheat;
       case planting:

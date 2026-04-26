@@ -19,9 +19,12 @@ enum SoilType {
 }
 
 enum IrrigationMethod {
-  drip('Damla Sulama', 'Kök bölgesine hassas, su tasarrufu %40', Icons.water_damage_rounded),
-  furrow('Karık Sulama', 'Geleneksel, sıra aralarına su verilir', Icons.waves_rounded),
-  sprinkler('Yağmurlama', 'Üstten yağış simülasyonu, geniş alana uygun', Icons.shower_rounded),
+  drip('Damla Sulama', 'Kök bölgesine hassas, su tasarrufu %40',
+      Icons.water_damage_rounded),
+  furrow('Karık Sulama', 'Geleneksel, sıra aralarına su verilir',
+      Icons.waves_rounded),
+  sprinkler('Yağmurlama', 'Üstten yağış simülasyonu, geniş alana uygun',
+      Icons.shower_rounded),
   hand('El ile Sulama', 'Küçük parsel ve bahçe tipi', Icons.pan_tool_rounded);
 
   final String label;
@@ -39,8 +42,8 @@ class CropConfig {
   final SoilType soilType;
   final IrrigationMethod irrigationMethod;
   final double areaDekar;
-  final double rowSpacingCm;    // sıra arası (cm)
-  final double plantSpacingCm;  // bitki arası (cm)
+  final double rowSpacingCm; // sıra arası (cm)
+  final double plantSpacingCm; // bitki arası (cm)
 
   const CropConfig({
     required this.soilType,
@@ -192,43 +195,37 @@ const _aycicegi = CropProtocol(
           'Dekara 2–2.5 kg sertifikalı hibrit tohum kullan (Sanbro, P64LE99, ES Bella).',
       expectedActivity: ActivityType.planting,
       soilNotes: {
-        'clay':
-            'Drenaj kritik: sıra aralarına 30 cm derinliğinde sığ hendek aç. '
+        'clay': 'Drenaj kritik: sıra aralarına 30 cm derinliğinde sığ hendek aç. '
             'Ekim öncesi 3 ton/da çiftlik gübresi karıştır — toprağı gevşetir.',
         'sandy':
             'Ekim öncesi 3–4 ton/da kompost veya yanmış ahır gübresi işle. '
-            'Tohum derinliğini 4 cm\'de tut — nem daha hızlı uçar.',
+                'Tohum derinliğini 4 cm\'de tut — nem daha hızlı uçar.',
         'loamy':
             'İdeal toprak. Ekim yatağını diskaro ile 15 cm işle, clod (topak) bırakma.',
         'volcanic':
             'pH 6.0–7.0 aralığında olmalı. Yüksekse ekimden 3 hafta önce '
-            'dekara 15 kg tarımsal kireç serp ve diskaro ile karıştır.',
+                'dekara 15 kg tarımsal kireç serp ve diskaro ile karıştır.',
       },
       irrigationNotes: {
-        'drip':
-            'Lateralleri döşe (sıra üstü), her bitkiye 1 adet damlatıcı. '
+        'drip': 'Lateralleri döşe (sıra üstü), her bitkiye 1 adet damlatıcı. '
             'Çimlenme için 2 L/bitki can suyu ver.',
-        'furrow':
-            'Ekimden önce sıra aralarına hafif karık aç; '
+        'furrow': 'Ekimden önce sıra aralarına hafif karık aç; '
             'ekim sonrası %60 debi ile 20 dk kısa sulama yap.',
         'sprinkler':
             'Ekim sonrası 15 mm üniform sulama. Toprağı su basmadan ıslat.',
         'hand':
             'Her sıra uzunluğuna yavaşça 8–10 L su ver, toprak suyu emene kadar bekle.',
       },
-      fertilizerSpec:
-          'Taban gübre (ekimle birlikte, tohumla temas ettirme):\n'
+      fertilizerSpec: 'Taban gübre (ekimle birlikte, tohumla temas ettirme):\n'
           '• 15 kg/da DAP (18-46-0) — fosfor ihtiyacı\n'
           '• 5 kg/da K₂SO₄ — potasyum temel doz\n'
           'Uygulama: tohum sıralarının 5 cm yanına ve 5 cm altına.',
-      pesticideSpec:
-          'Tohumluk ilaçlama (tohumlar satın alınmamışsa):\n'
+      pesticideSpec: 'Tohumluk ilaçlama (tohumlar satın alınmamışsa):\n'
           '• Thiram + Carbathiin karışımı — 200 g / 100 kg tohum\n'
           '• İmidakloprid (tel kurdu için) — 100 g / 100 kg tohum\n'
           'Fabrika ilaçlı tohumda gerek yok.',
       estimatedCostPerDekar: 480,
-      criticalWarning:
-          'Ekim derinliği KESİNLİKLE 5 cm olmalı! '
+      criticalWarning: 'Ekim derinliği KESİNLİKLE 5 cm olmalı! '
           'Daha sığ → kuşlar yer, daha derin → çimlenme %30 düşer. '
           'Ekim mibzerini her 50 m\'de bir kontrol et.',
       farmerTip:
@@ -238,80 +235,76 @@ const _aycicegi = CropProtocol(
           'Taban gübre ile tohum aynı çiziye atılırsa gübre tuzları kök yakar. '
           'Kesinlikle yan-alta uygulaması yap.',
     ),
-
     ProtocolStep(
       order: 2,
       dayOffset: 8,
       stageEmoji: '🔍',
       title: 'Çimlenme Kontrolü',
-      description:
-          'Tohumlar 7–12 günde toprak yüzeyini kırar. '
+      description: 'Tohumlar 7–12 günde toprak yüzeyini kırar. '
           'Sıra boyunca say: 10 tohum başına kaç tanesi çimlenmiş? '
           '%70 üstünde ise normal, altındaysa 3. güne kadar bekle sonra yedek ekim yap.',
       soilNotes: {
         'clay':
             'Yüzey kabuklaşmıştı? Hafif tırmık veya çapa ile 2 cm sığ çek — '
-            'fideler yüzeyi daha kolay kırar.',
+                'fideler yüzeyi daha kolay kırar.',
         'sandy':
             'Toprak hızlı kurudu mu kontrol et. 5 cm derinliğe parmak sok — '
-            'serinlik yoksa hafif can suyu gerekiyor.',
+                'serinlik yoksa hafif can suyu gerekiyor.',
         'volcanic':
             'Volkanik toprakta çimlenme 2–3 gün gecikebilir; panikle yedek ekim yapma.',
       },
       irrigationNotes: {
-        'drip': 'Toprak nemini %50–60 bandında tut. Altına düşmüş ise 1 L/bitki/gün ekle.',
-        'hand': 'Çimlenmeyen yerler varsa etkilenen tohumun yanına (5 cm) yavaşça 300 mL su damla.',
+        'drip':
+            'Toprak nemini %50–60 bandında tut. Altına düşmüş ise 1 L/bitki/gün ekle.',
+        'hand':
+            'Çimlenmeyen yerler varsa etkilenen tohumun yanına (5 cm) yavaşça 300 mL su damla.',
       },
       estimatedCostPerDekar: 0,
-      criticalWarning:
-          'Çimlenme %60 altındaysa gün 12\'ye kadar bekle, sonra '
+      criticalWarning: 'Çimlenme %60 altındaysa gün 12\'ye kadar bekle, sonra '
           'boş yerlere yedek tohum ek. 12. güne kadar tohumun kendisi kazanabilir.',
-      farmerTip:
-          'Gece sıcaklığı 8°C altına düştüyse don stresi olabilir. '
+      farmerTip: 'Gece sıcaklığı 8°C altına düştüyse don stresi olabilir. '
           'Sabah erkenden tarlaya gir — fideler sararmış veya bükülmüşse koruyucu kapak (agril) ört.',
       commonMistake:
           '10. günden önce yedek ekim yapmak — iki mahsul birbirine karışır, '
           'seyreltme güçleşir ve tarla düzensizleşir.',
     ),
-
     ProtocolStep(
       order: 3,
       dayOffset: 14,
       stageEmoji: '✂️',
       title: 'Seyreltme — Bitki Sıklığını Ayarla',
-      description:
-          'Fideler 2–4 yapraklı (kotiledon hariç) dönemde seyrelt. '
+      description: 'Fideler 2–4 yapraklı (kotiledon hariç) dönemde seyrelt. '
           'Her ocakta en güçlü 1 fideyi bırak, diğerlerini dibinden kopar (çekme). '
           'Hedef bitki sıklığı: sıra arası × bitki arası mesafene göre '
           'dekarda 5.000–6.000 bitki (dar aralıklarda daha az).',
       soilNotes: {
-        'clay': 'Seyreltme sonrası kök boğazını toprağa hafif gömülü bırak — rüzgar devirmez.',
-        'sandy': 'Sökülen fideler organik madde sağlar; çukura göm ve üstünü toprakla kapat.',
+        'clay':
+            'Seyreltme sonrası kök boğazını toprağa hafif gömülü bırak — rüzgar devirmez.',
+        'sandy':
+            'Sökülen fideler organik madde sağlar; çukura göm ve üstünü toprakla kapat.',
       },
       irrigationNotes: {
-        'drip': 'Seyreltme günü sulama yapma — ıslak toprak köklerin birlikte gelmesine neden olur.',
-        'furrow': 'Seyreltmeden 2 gün önce sulama yaptıysan zemin hâlâ ıslak; 1 gün bekle.',
+        'drip':
+            'Seyreltme günü sulama yapma — ıslak toprak köklerin birlikte gelmesine neden olur.',
+        'furrow':
+            'Seyreltmeden 2 gün önce sulama yaptıysan zemin hâlâ ıslak; 1 gün bekle.',
       },
       estimatedCostPerDekar: 90,
-      farmerTip:
-          'Sağlıklı seyreltme fidelerini küçük ayrı bir parsele şaşırt. '
+      farmerTip: 'Sağlıklı seyreltme fidelerini küçük ayrı bir parsele şaşırt. '
           'Tarlada doldurmak zorunda kalırsan hazır fide olur.',
       commonMistake:
           '4 yapraktan büyük fidelerin seyreltilmesi kök hasarı yaratır ve '
           'bırakılan bitkiyi de etkiler. Zamanında yap!',
     ),
-
     ProtocolStep(
       order: 4,
       dayOffset: 20,
       stageEmoji: '🌿',
       title: 'Herbisit Uygulaması — Yabancı Ot',
-      description:
-          'Yabancı otlar besin rekabeti yaratır; bu dönem kritik. '
+      description: 'Yabancı otlar besin rekabeti yaratır; bu dönem kritik. '
           'İlaçlamadan önce tarladaki yabancı ot türünü belirle: '
           'dar yapraklı mı (ayrık otu, yulaf) yoksa geniş yapraklı mı (sirken, horoz ibiği)?',
-      pesticideSpec:
-          'Dar yapraklı yabancı ota karşı:\n'
+      pesticideSpec: 'Dar yapraklı yabancı ota karşı:\n'
           '• Fluazifop-P-butyl (ör. Fusilade Forte) — 100–125 mL/da, 200 L su\n\n'
           'Geniş yapraklı yabancı ota karşı:\n'
           '• Imazethapyr (ör. Scepter O.T.) — 50 mL/da, 200 L su\n\n'
@@ -328,70 +321,73 @@ const _aycicegi = CropProtocol(
           'Aynı herbisit etken maddesini 3 yıl üst üste kullanmak direnç geliştiriyor. '
           'Her sezon farklı etken madde grubuna geç (rotasyon).',
     ),
-
     ProtocolStep(
       order: 5,
       dayOffset: 25,
       stageEmoji: '🏺',
       title: 'İlk Çapa + Birinci Üst Gübre (Üre)',
-      description:
-          'Mekanik yabancı ot temizliği + azot desteği. '
+      description: 'Mekanik yabancı ot temizliği + azot desteği. '
           'Çapa ile sıra aralarını işle, toprağı havalandır. '
           'Üreyi sıra kenarlarına (bitkiden 10–15 cm uzak) serp ve hemen toprakla karıştır.',
       soilNotes: {
-        'clay': 'Çapa derinliği max 8 cm — daha derin kök hasarı. Topak yüzey kırılmasını sağla.',
-        'sandy': 'Çapa sonrası saman veya bitkisel artık ile mulçla — nemini tutsun.',
-        'loamy': '10 cm çapa yapılabilir. Toprak ufalanmış ve havalanmış kalmalı.',
-        'volcanic': 'Çapa sonrası toprak parçalanabilir; hafifçe bastır, erozyon önle.',
+        'clay':
+            'Çapa derinliği max 8 cm — daha derin kök hasarı. Topak yüzey kırılmasını sağla.',
+        'sandy':
+            'Çapa sonrası saman veya bitkisel artık ile mulçla — nemini tutsun.',
+        'loamy':
+            '10 cm çapa yapılabilir. Toprak ufalanmış ve havalanmış kalmalı.',
+        'volcanic':
+            'Çapa sonrası toprak parçalanabilir; hafifçe bastır, erozyon önle.',
       },
       irrigationNotes: {
-        'drip': 'Üreyi fertigasyonla ver: 10 kg/da üreyi 200 L suda eri, damla sisteme bas.',
+        'drip':
+            'Üreyi fertigasyonla ver: 10 kg/da üreyi 200 L suda eri, damla sisteme bas.',
         'furrow':
             'Üreyi ekimden önce sıra kenarına serp, HEMEN arkasından karık aç ve sula. '
-            'Azot gazlaşma kayıp oranı %30\'a çıkabilir — gübreleme ve sulama arasında 2 saatten fazla bekleme.',
-        'sprinkler': 'Üre serpildikten hemen sonra yağmurlama yap, nem taşınsın.',
-        'hand': 'Üreyi toprağa karıştırdıktan sonra bitkinin kökünü ıslatacak şekilde su ver.',
+                'Azot gazlaşma kayıp oranı %30\'a çıkabilir — gübreleme ve sulama arasında 2 saatten fazla bekleme.',
+        'sprinkler':
+            'Üre serpildikten hemen sonra yağmurlama yap, nem taşınsın.',
+        'hand':
+            'Üreyi toprağa karıştırdıktan sonra bitkinin kökünü ıslatacak şekilde su ver.',
       },
-      fertilizerSpec:
-          'Birinci üst gübre:\n'
+      fertilizerSpec: 'Birinci üst gübre:\n'
           '• Üre (%46 N): Tınlı/Killi toprak → 12 kg/da | Kumlu toprak → 10 kg/da (bölünmüş doz)\n'
           'Not: Gübre kuru toprağa uygulanırsa amonyak olarak uçar — sulama şart.',
       estimatedCostPerDekar: 220,
       criticalWarning:
           'Gübre uygulandıktan sonra 6 saat içinde sulama yapılmazsa '
           'azotun %20–30\'u amonyak olarak havaya karışır. Gübreleme günü mutlaka sula!',
-      farmerTip:
-          'Gübreyi bitkinin hemen dibine değil 10 cm uzağa serp — '
+      farmerTip: 'Gübreyi bitkinin hemen dibine değil 10 cm uzağa serp — '
           'tuz konsantrasyonu kök yakabilir.',
       commonMistake:
           'Rüzgarlı havada üre serpmek — gübre komşunun tarlasına gider. '
           'Sakin, nem oranı yüksek sabah saatlerinde uygula.',
     ),
-
     ProtocolStep(
       order: 6,
       dayOffset: 45,
       stageEmoji: '💧',
       title: 'Vejetatif Büyüme — Sulama ve Fungusit',
-      description:
-          'Bitki hızlı büyüme döneminde; kök sistemi derinleşiyor. '
+      description: 'Bitki hızlı büyüme döneminde; kök sistemi derinleşiyor. '
           'Bu dönemde su stresi bitki boyunu ve tabla büyüklüğünü doğrudan etkiler. '
           'Sulama aralığına dikkat et — toprak tipine göre farklılık var.',
       soilNotes: {
-        'clay': '15–18 günde bir sula. Tava sulama YAPMA; kök çürüklüğü riski yüksek. Karık tercih et.',
+        'clay':
+            '15–18 günde bir sula. Tava sulama YAPMA; kök çürüklüğü riski yüksek. Karık tercih et.',
         'sandy': '8–10 günde bir sula. Toprak nem tutmuyor, sık kontrol et.',
         'loamy': '12–14 günde bir sula. İdeal sulama periyodu.',
-        'volcanic': '10–12 günde bir sula. Toprak ısınma hızı yüksek; sabah sulama kritik.',
+        'volcanic':
+            '10–12 günde bir sula. Toprak ısınma hızı yüksek; sabah sulama kritik.',
       },
       irrigationNotes: {
         'drip': '2 L/bitki/gün. Yavaş ve sürekli; 6–8 saatlik fraksiyonlar.',
         'furrow': '35–45 dakika karık sulaması. Sabah 06:00–09:00 arası.',
-        'sprinkler': '40 mm/seans. Sabah erken uygula — yapraklar akşama kurumuş olsun.',
+        'sprinkler':
+            '40 mm/seans. Sabah erken uygula — yapraklar akşama kurumuş olsun.',
         'hand': '10–15 L/bitki. Öğlen sıcağında YAPMA — yaprak yanığı.',
       },
       waterSpec: 'Toplam su ihtiyacı bu dönemde: 50–60 mm/hafta.',
-      pesticideSpec:
-          'İhtiyati fungusit (mildiyöye karşı):\n'
+      pesticideSpec: 'İhtiyati fungusit (mildiyöye karşı):\n'
           '• Tebuconazole %25 SC — 60–80 mL/da, 200 L su\n'
           '• Bitki 30–40 cm boyunda uygula\n'
           '• Yağmur sonrası 48 saat içinde tekrarla',
@@ -399,26 +395,25 @@ const _aycicegi = CropProtocol(
       criticalWarning:
           'Öğlen 13:00–16:00 arası sulama yapma — yaprak yanığı oluşur. '
           'Sulama fiyatının yüksek olduğu bölgelerde sabah 06:00\'ı tercih et.',
-      farmerTip:
-          'Sıcaklık 30°C üstüne çıktığında sulama miktarını %20 artır. '
+      farmerTip: 'Sıcaklık 30°C üstüne çıktığında sulama miktarını %20 artır. '
           'Buharlaşma kayıpları bu dönemde zirvede — güneş öncesi veya sonrası sul.',
       commonMistake:
           'Sulama sırasında yaprakları ıslatmak ve akşama kadar ıslak bırakmak '
           'fungal enfeksiyon için zemin hazırlar. Sabah erken sula, gün içinde kurur.',
     ),
-
     ProtocolStep(
       order: 7,
       dayOffset: 60,
       stageEmoji: '🌼',
       title: 'Tabla Oluşumu — Fosfat + İkinci Fungusit',
-      description:
-          'R1 fenolojik dönem: tabla tomurcuğu görünür. '
+      description: 'R1 fenolojik dönem: tabla tomurcuğu görünür. '
           'Bu dönem fosforsuz geçirilirse tabla küçük kalır, tane dolumu zayıflar. '
           'Bitki boyu 60–90 cm arasında olmalı — gelişim düşükse gübrelemeyi artır.',
       soilNotes: {
-        'clay': 'Fosforu toprağın kilden salınması yavaş; fertigasyon veya üst gübre olarak ver.',
-        'sandy': 'Fosfor yıkanabilir; bölünmüş doz ver (yarısı şimdi, yarısı 10 gün sonra).',
+        'clay':
+            'Fosforu toprağın kilden salınması yavaş; fertigasyon veya üst gübre olarak ver.',
+        'sandy':
+            'Fosfor yıkanabilir; bölünmüş doz ver (yarısı şimdi, yarısı 10 gün sonra).',
       },
       irrigationNotes: {
         'drip': '2.5 L/bitki/gün\'e çıkar. Bu dönem su ihtiyacı %25 artar.',
@@ -426,71 +421,65 @@ const _aycicegi = CropProtocol(
         'sprinkler': '50 mm/seans.',
         'hand': '15–20 L/bitki. 10 günde bir.',
       },
-      fertilizerSpec:
-          'İkinci üst gübre:\n'
+      fertilizerSpec: 'İkinci üst gübre:\n'
           '• DAP (18-46-0): 8 kg/da VEYA MAP (12-61-0): 6 kg/da\n'
           '• Potasyum eksikliği belirtisi varsa (yaprak kenarları kahverengi): 5 kg/da K₂SO₄ ekle\n'
           '• Uygulama: sıra kenarına serp + sulama',
-      pesticideSpec:
-          'Kurşuni küf ve tabla çürüklüğüne karşı:\n'
+      pesticideSpec: 'Kurşuni küf ve tabla çürüklüğüne karşı:\n'
           '• Propiconazole %25 EC — 50–60 mL/da, 200 L su\n'
           '• 7–10 günde bir tekrarla (tabla kahverengi noktalar alınca ilaçlama kritik)',
       estimatedCostPerDekar: 340,
-      criticalWarning:
-          'Tabla büyüklüğünün %70\'i bu dönemde belirlenir. '
+      criticalWarning: 'Tabla büyüklüğünün %70\'i bu dönemde belirlenir. '
           'Su veya besin stresi şimdi yaşanırsa hasat sonu %40\'a kadar verim kaybı olabilir.',
       farmerTip:
           'Tabla görününce sahaya gir, kurumuş yaprak veya gri/pembe renkli tabla ara — '
           'Botrytis (kurşuni küf) işareti. Görürsen hemen Iprodione ile ilaçla.',
-      commonMistake:
-          'Fosfatı çok geç vermek (tablo oluştuktan sonra). '
+      commonMistake: 'Fosfatı çok geç vermek (tablo oluştuktan sonra). '
           'Bu gübrenin etkisi toprağa alımdan 7–10 gün sonra bitki tarafından kullanılır.',
     ),
-
     ProtocolStep(
       order: 8,
       dayOffset: 75,
       stageEmoji: '🌻',
       title: 'Çiçeklenme — KRİTİK Sulama Dönemi',
-      description:
-          'Sarı taç yapraklar açıldı — en hassas fenolojik dönem. '
+      description: 'Sarı taç yapraklar açıldı — en hassas fenolojik dönem. '
           'Bu dönemde tek günlük su stresi bile dane dolumunu %15–20 düşürebilir. '
           'Arı pollinasyonu akşam 08:00–12:00 arasında gerçekleşir — sulama saatine DİKKAT.',
       soilNotes: {
-        'clay': 'Sulama sonrası toprak yüzeyinde çatlak varsa sulama azalmış demek. Aralığı kıs.',
-        'sandy': 'Bu dönem günlük sulama gerekebilir. 5 cm derinlikte nem kontrolü yap.',
+        'clay':
+            'Sulama sonrası toprak yüzeyinde çatlak varsa sulama azalmış demek. Aralığı kıs.',
+        'sandy':
+            'Bu dönem günlük sulama gerekebilir. 5 cm derinlikte nem kontrolü yap.',
       },
       irrigationNotes: {
-        'drip': '3 L/bitki/gün. Sabah 06:00–10:00 arasında ver, çiçeklenme saatine denk getirme.',
-        'furrow': '50–60 dakika. 7–8 günde bir. Karıkların başlarını kontrol et — tıkanmış olabilir.',
-        'sprinkler': '60 mm/seans. Sabah 10:00–12:00 arası KESİNLİKLE YAPMA — arı aktivitesine zarar.',
-        'hand': '20–25 L/bitki. Sabah 06:00–08:00 arası. Tablaya doğrudan su değdirme.',
+        'drip':
+            '3 L/bitki/gün. Sabah 06:00–10:00 arasında ver, çiçeklenme saatine denk getirme.',
+        'furrow':
+            '50–60 dakika. 7–8 günde bir. Karıkların başlarını kontrol et — tıkanmış olabilir.',
+        'sprinkler':
+            '60 mm/seans. Sabah 10:00–12:00 arası KESİNLİKLE YAPMA — arı aktivitesine zarar.',
+        'hand':
+            '20–25 L/bitki. Sabah 06:00–08:00 arası. Tablaya doğrudan su değdirme.',
       },
-      pesticideSpec:
-          'Botrytis (tabla çürüklüğü) için:\n'
+      pesticideSpec: 'Botrytis (tabla çürüklüğü) için:\n'
           '• Iprodione %50 WP — 100–150 g/da, 200 L su\n'
           '• 10 günde bir uygula, tablayı da ıslat\n'
           '• Yağmur bekleniyorsa 24 saat içinde uygula',
       estimatedCostPerDekar: 260,
-      criticalWarning:
-          '⚠️ SABAH 10:00–12:00 ARASI SULAMA YAPMA! '
+      criticalWarning: '⚠️ SABAH 10:00–12:00 ARASI SULAMA YAPMA! '
           'Arılar bu saatte çiçeği tozlar. Yağmurlama veya elle sulama çiçek tozunu '
           'yıkar, pollinasyon engellenir → tane bağlama %40 düşer.',
-      farmerTip:
-          'Yakınına kovan yerleştirme teklifi için arıcıyla anlaş. '
+      farmerTip: 'Yakınına kovan yerleştirme teklifi için arıcıyla anlaş. '
           'Yeterli pollinasyon tabla başına 1.000–1.200 dane garanti eder.',
-      commonMistake:
-          'Su kesintisi ya da aşırı sulama bu dönemde eşit zararlı. '
+      commonMistake: 'Su kesintisi ya da aşırı sulama bu dönemde eşit zararlı. '
           'Nem fazlası da tabla çürüklüğünü tetikler — denge şart.',
     ),
-
     ProtocolStep(
       order: 9,
       dayOffset: 100,
       stageEmoji: '🍂',
       title: 'Olgunlaşma — Suyu Kes',
-      description:
-          'Tablalar eğilmeye başladı, sarı-kahverengi renge dönüyor. '
+      description: 'Tablalar eğilmeye başladı, sarı-kahverengi renge dönüyor. '
           'Bu dönem fazla nem tanelerin küflenmesine yol açar. '
           'Tane nemi %15\'in altına indi mi? Parmakla test et: tırnakla sert mi?',
       soilNotes: {
@@ -508,22 +497,19 @@ const _aycicegi = CropProtocol(
           'Erken hasat: tane nemi %20 üstündeyken harmanlarsanız depolama çürümesi kaçınılmaz. '
           'Tarlada 3–5 gün daha beklemeye değer.',
     ),
-
     ProtocolStep(
       order: 10,
       dayOffset: 115,
       stageEmoji: '🌾',
       title: 'Hasat — Tabla Sert, Dane Hazır',
-      description:
-          'Tabla arka yüzü sarı-kahverengi, taneler sert ve parlak. '
+      description: 'Tabla arka yüzü sarı-kahverengi, taneler sert ve parlak. '
           'Hasatı makine ile yapıyorsan tabla nem ölçümü %12–14 olmalı. '
           'Elle hasatta: tablaları orakla kes, 3–5 gün açık havada kurutucu örtü altında kuruye bırak, sonra harmanla.',
       pesticideSpec:
           'Preharvest interval: Son ilaçlamadan bu yana en az 14 gün geçmiş olmalı. '
           'Hasat öncesi pestisit uygulaması YAPMA.',
       estimatedCostPerDekar: 350,
-      criticalWarning:
-          'Tablalar olgunlaşınca kuş hasarı hızlanır. '
+      criticalWarning: 'Tablalar olgunlaşınca kuş hasarı hızlanır. '
           'Ağ gererek veya tablaları kâğıt torbaya sararak koruma altına al.',
       farmerTip:
           'Hasat edilen tablalar nemli ortamda bırakılırsa 48 saat içinde küf başlar. '
@@ -547,7 +533,8 @@ const _domates = CropProtocol(
   totalDays: 95,
   defaultRowSpacingCm: 80,
   defaultPlantSpacingCm: 50,
-  sowingSeasonTR: 'Fide: Şubat–Mart (sıcaklık 20°C+) / Tarlaya: Nisan–Mayıs don riski geçince',
+  sowingSeasonTR:
+      'Fide: Şubat–Mart (sıcaklık 20°C+) / Tarlaya: Nisan–Mayıs don riski geçince',
   idealRegionsTR: 'Akdeniz, Ege, Marmara, İç Anadolu\'nun ılıman kesimleri',
   steps: [
     ProtocolStep(
@@ -564,29 +551,27 @@ const _domates = CropProtocol(
       soilNotes: {
         'clay':
             'Diken alanına kaba kum + perlit karıştır (hacmin %20\'si) — drene edemezse kök çürür. '
-            'Sıralar arası yüzeyi hafif tümsek bırak, su birikmez.',
-        'sandy':
-            'Her dikim çukuruna bir avuç kompost veya yanmış gübre koy. '
+                'Sıralar arası yüzeyi hafif tümsek bırak, su birikmez.',
+        'sandy': 'Her dikim çukuruna bir avuç kompost veya yanmış gübre koy. '
             'İlk hafta günlük sulama — toprak nemi tutmuyor.',
-        'loamy': 'İdeal toprak. Çukuru 15 cm derinliğe kaz, bitkiyi yerleştir, sıkıştır.',
-        'volcanic':
-            'Domates pH 6.0–6.8 ister. Önce toprak testi yaptır; '
+        'loamy':
+            'İdeal toprak. Çukuru 15 cm derinliğe kaz, bitkiyi yerleştir, sıkıştır.',
+        'volcanic': 'Domates pH 6.0–6.8 ister. Önce toprak testi yaptır; '
             'pH yüksekse kükürt (S) uygula ve dolomit kireç kullan.',
       },
       irrigationNotes: {
         'drip':
             'Her bitkiye 1 adet 2 L/saat damlatıcı. Lateral üzerinden sıra ortasına konumlandır. '
-            'Can suyu: 2 L/bitki, 2 saat süre.',
-        'furrow': 'Dikimden 2 saat sonra kısa (15 dk) can suyu karığı aç. Gölge yap çıkışa kadar.',
+                'Can suyu: 2 L/bitki, 2 saat süre.',
+        'furrow':
+            'Dikimden 2 saat sonra kısa (15 dk) can suyu karığı aç. Gölge yap çıkışa kadar.',
         'sprinkler': '10 mm can suyu. Sabah erken.',
         'hand': 'Dikimlerin hepsine sırayla bitki başına 1.5–2 L can suyu ver.',
       },
-      fertilizerSpec:
-          'Dikim gübresi (çukura, kökle TEMAS ETTİRME):\n'
+      fertilizerSpec: 'Dikim gübresi (çukura, kökle TEMAS ETTİRME):\n'
           '• 20 kg/da yanmış ahır gübresi (dikim öncesi toprağa karıştır)\n'
           '• 10 kg/da 15-15-15 kompoze gübre (çukurun 5 cm altına)',
-      pesticideSpec:
-          'Fide ilaçlaması (söküm sırasında):\n'
+      pesticideSpec: 'Fide ilaçlaması (söküm sırasında):\n'
           '• Kök hastalıklarına: Metalaxyl — 100 g/100 L sulama suyu, dikim sonrası drench\n'
           '• Sera fideleri ise önce thrips ve yaprak biti kontrolü yap',
       estimatedCostPerDekar: 520,
@@ -597,11 +582,9 @@ const _domates = CropProtocol(
       farmerTip:
           'Öğleden sonra saat 16:00 sonrasında dik — güneşin şiddetinden yeni fideler stres almaz. '
           'İlk 3 gün öğlen gölgeleme örtüsü (agril) koy.',
-      commonMistake:
-          'Fideyi çok sığ dikmek (sadece kök toprağını bırakmak). '
+      commonMistake: 'Fideyi çok sığ dikmek (sadece kök toprağını bırakmak). '
           'Gövdeyi toprağa gömmezsen ek kök çıkmaz, bitki zayıf kalır.',
     ),
-
     ProtocolStep(
       order: 2,
       dayOffset: 2,
@@ -615,30 +598,30 @@ const _domates = CropProtocol(
         'drip': 'Damla sistemi 2 saat aç: 2 L/bitki can suyu. Yavaş emilsin.',
         'furrow': 'Kısa karık (10 dk). Su brikip durunca kes — göl yaratma.',
         'sprinkler': '8 mm. Köklerin yerleşmesine yardımcı olur.',
-        'hand': 'Bitki başına 1.5 L. Yaprakları ISLATMA. Kök bölgesine damlatarak ver.',
+        'hand':
+            'Bitki başına 1.5 L. Yaprakları ISLATMA. Kök bölgesine damlatarak ver.',
       },
       estimatedCostPerDekar: 0,
-      farmerTip:
-          'Sıcaklık 28°C üstünde ise fideler günde iki kez kontrol et. '
+      farmerTip: 'Sıcaklık 28°C üstünde ise fideler günde iki kez kontrol et. '
           'Yapraklar solar gibi olunca hemen su ver.',
       commonMistake:
           'Aşırı sulama ilk günlerde kök çürüklüğü (Pythium) başlatır. '
           'Toprak ıslak kalmasın, sadece nemli olsun.',
     ),
-
     ProtocolStep(
       order: 3,
       dayOffset: 14,
       stageEmoji: '🏗️',
       title: 'Herek Dik veya İp Çek',
-      description:
-          'Bitki 25–35 cm boya geldiğinde destek zorunlu. '
+      description: 'Bitki 25–35 cm boya geldiğinde destek zorunlu. '
           'Seçenek 1: Her bitkinin yanına 1.5–2 m ahşap herek çak, 8 şekli ile bağla. '
           'Seçenek 2: Sıra üstüne telden geçir, bitkiyi iplik ile sardır (Hollanda sistemi). '
           'Bağlamayı gövde yumuşak dokuya bastırmadan yap.',
       soilNotes: {
-        'clay': 'Killi toprakta herek çakmak zorsa önce demir çubukla delik aç.',
-        'sandy': 'Kumlu toprakta hereği daha derin çak (en az 40 cm) — rüzgar devirir.',
+        'clay':
+            'Killi toprakta herek çakmak zorsa önce demir çubukla delik aç.',
+        'sandy':
+            'Kumlu toprakta hereği daha derin çak (en az 40 cm) — rüzgar devirir.',
       },
       estimatedCostPerDekar: 120,
       farmerTip:
@@ -648,30 +631,31 @@ const _domates = CropProtocol(
           'Bağlamayı gövdeye sıkı yapmak boğma yaratır, su ve besin iletimi durur. '
           '8 şekli bırak — hem bitkiye hem hereğe destek verir.',
     ),
-
     ProtocolStep(
       order: 4,
       dayOffset: 21,
       stageEmoji: '🏺',
       title: 'İlk Çapa + Kompoze Gübre',
-      description:
-          'Yabancı ot temizliği + besin desteği. '
+      description: 'Yabancı ot temizliği + besin desteği. '
           '5–8 cm derinliğinde çapa yap, kök bölgesine zarar verme. '
           'Gübreyi bitkinin kök boğazından 10 cm uzağa serp, toprağa karıştır.',
       soilNotes: {
-        'clay': 'Çapadan sonra toprak oluşan tabakayı kır — yüzey çatlağı suyu yönteme sokuyor.',
-        'sandy': '15-15-15\'i bölünmüş doz ver (yarısı şimdi, yarısı 2 hafta sonra).',
+        'clay':
+            'Çapadan sonra toprak oluşan tabakayı kır — yüzey çatlağı suyu yönteme sokuyor.',
+        'sandy':
+            '15-15-15\'i bölünmüş doz ver (yarısı şimdi, yarısı 2 hafta sonra).',
         'loamy': 'Normal doz yeterli. Çapa 8 cm derinlikte.',
-        'volcanic': 'Kompoze gübre eğer pH\'ı daha da yükseltirse sülfatlı gübre tercih et.',
+        'volcanic':
+            'Kompoze gübre eğer pH\'ı daha da yükseltirse sülfatlı gübre tercih et.',
       },
       irrigationNotes: {
         'drip': '15-15-15\'i 200 L suda eritip fertigasyon olarak ver.',
-        'furrow': 'Gübre serpildikten hemen sonra karık sulaması (20 dk) — nem taşısın.',
+        'furrow':
+            'Gübre serpildikten hemen sonra karık sulaması (20 dk) — nem taşısın.',
         'sprinkler': 'Gübre sonrası yağmurlama yap.',
         'hand': 'Gübreyi toprağa karıştırdıktan sonra kök bölgesini ıslat.',
       },
-      fertilizerSpec:
-          'Birinci üst gübre:\n'
+      fertilizerSpec: 'Birinci üst gübre:\n'
           '• 15-15-15 Kompoze: 25–30 g/bitki (≈ 15 kg/da)\n'
           '• Mikronütrien eksikliği varsa (yaprak sararma): 1 kg/da Zn-Fe karışımı sprey',
       estimatedCostPerDekar: 185,
@@ -684,7 +668,6 @@ const _domates = CropProtocol(
       commonMistake:
           'Çapa sırasında köklere zarar vermek — domates yüzeysel kök atar, çok derine çapayı götürme.',
     ),
-
     ProtocolStep(
       order: 5,
       dayOffset: 35,
@@ -698,43 +681,42 @@ const _domates = CropProtocol(
       criticalWarning:
           'Kesim yapılan alet kirli ise Tomato Mosaic Virus (ToMV) tüm tarlaya yayılır. '
           'Her bitkiden sonra makası %70 alkol veya çamaşır suyuyla sil.',
-      farmerTip:
-          'Koltuk almayı yağmurlu veya nemli günlerde YAPMA — '
+      farmerTip: 'Koltuk almayı yağmurlu veya nemli günlerde YAPMA — '
           'yara yerleri hızlı enfekte olur. Kuru, güneşli sabah saatlerini seç.',
       commonMistake:
           'Çok büyüdükten sonra sürgün kesmek büyük yara açar ve bitki enerji kaybeder. '
           '5–8 cm uzadığında koparılacak.',
     ),
-
     ProtocolStep(
       order: 6,
       dayOffset: 45,
       stageEmoji: '🌸',
       title: 'Çiçeklenme — Kalsiyum + Düzenli Sulama',
-      description:
-          'Sarı çiçekler açıldı. Bu dönem kalsiyum eksikliğinde '
+      description: 'Sarı çiçekler açıldı. Bu dönem kalsiyum eksikliğinde '
           '"çiçek burnu çürüklüğü" (blossom end rot) kaçınılmaz. '
           'Meyve bağlamak için çiçek silkme yapabilirsin (domateste öz pollinasyon; elle salla).',
       soilNotes: {
-        'clay': 'Kalsiyum killi topraklarda yavaş alınır — yaprak spreyini tercih et.',
-        'sandy': 'Kalsiyum kumlu topraktan yıkanır. Haftada bir yaprağa sprey yap.',
+        'clay':
+            'Kalsiyum killi topraklarda yavaş alınır — yaprak spreyini tercih et.',
+        'sandy':
+            'Kalsiyum kumlu topraktan yıkanır. Haftada bir yaprağa sprey yap.',
         'volcanic':
             'Volkanik toprakta yüksek Magnezyum, Kalsiyum alımını bloke edebilir. '
-            'Kalsiyum nitrat damla sulamayla ver.',
+                'Kalsiyum nitrat damla sulamayla ver.',
       },
       irrigationNotes: {
-        'drip': '2 L/bitki/gün. Düzenli aralık şart — sulama tutarsızlığı çatlamaya neden olur.',
+        'drip':
+            '2 L/bitki/gün. Düzenli aralık şart — sulama tutarsızlığı çatlamaya neden olur.',
         'furrow': '20–25 dakika, 7–8 günde bir. Düzenli ol.',
-        'sprinkler': '30 mm/seans. Yaprakların akşama kadar kuruyacağı saatte uygula.',
+        'sprinkler':
+            '30 mm/seans. Yaprakların akşama kadar kuruyacağı saatte uygula.',
         'hand': '10–12 L/bitki, günde bir. Kök bölgesine.',
       },
-      fertilizerSpec:
-          'Kalsiyum takviyesi:\n'
+      fertilizerSpec: 'Kalsiyum takviyesi:\n'
           '• Kalsiyum nitrat [Ca(NO₃)₂]: 150–200 g / 100 L sulama suyu (damla)\n'
           '  VEYA yaprak spreyı: %0.3 Ca(NO₃)₂ çözeltisi, hafta 1–2 kez\n'
           '• Potasyum nitrat (KNO₃): 100 g/100 L — meyve kalitesi için',
-      pesticideSpec:
-          'Erken külleme önlemi:\n'
+      pesticideSpec: 'Erken külleme önlemi:\n'
           '• Azoxystrobin %25 SC — 80 mL/da, 10 günde bir\n'
           '• Kırmızı örümcek varsa: Abamectin %1.8 EC — 75 mL/da',
       estimatedCostPerDekar: 220,
@@ -745,11 +727,9 @@ const _domates = CropProtocol(
       farmerTip:
           'Çiçek silkme için sabah 10:00–12:00 arası bitki gövdesine hafifçe vur. '
           'Çiçekler kendiliğinden tozlaşır, meyve tutumu artar.',
-      commonMistake:
-          'Kalsiyum gübre tek seferlik uygulamak yetersiz kalır. '
+      commonMistake: 'Kalsiyum gübre tek seferlik uygulamak yetersiz kalır. '
           'Haftada bir yaprağa spray + damla sisteme karıştır — ikisi birlikte daha etkili.',
     ),
-
     ProtocolStep(
       order: 7,
       dayOffset: 55,
@@ -760,16 +740,19 @@ const _domates = CropProtocol(
           'Mildiyö (Phytophthora infestans) yağmurlu dönemde patlamadan önce ilaçla. '
           'Haftada bir tarla içini gez, yaprak altına bak.',
       soilNotes: {
-        'clay': 'Nem killi toprakta uzun kalır; Phytophthora riski yüksek. Önlemli ilaçla.',
-        'sandy': 'Kırmızı örümcek kuru ve sıcak topraklarda hızlı çoğalır; alt yapraklara dikkat.',
+        'clay':
+            'Nem killi toprakta uzun kalır; Phytophthora riski yüksek. Önlemli ilaçla.',
+        'sandy':
+            'Kırmızı örümcek kuru ve sıcak topraklarda hızlı çoğalır; alt yapraklara dikkat.',
       },
       irrigationNotes: {
-        'drip': 'Yapraklar ıslak olmaz — fungal baskı düşer. Yine de koruyucu ilaç at.',
-        'sprinkler': 'Yapraklar sık ıslanır — her ilaçlama arasını 7 güne indir.',
+        'drip':
+            'Yapraklar ıslak olmaz — fungal baskı düşer. Yine de koruyucu ilaç at.',
+        'sprinkler':
+            'Yapraklar sık ıslanır — her ilaçlama arasını 7 güne indir.',
         'hand': 'Su yaprak üstüne değiyorsa akşamüstü değil sabah sula.',
       },
-      pesticideSpec:
-          'Mildiyöye karşı (koruyucu):\n'
+      pesticideSpec: 'Mildiyöye karşı (koruyucu):\n'
           '• Bakır oksiklorür %50 WP — 250–300 g/da, 7–10 günde bir\n'
           '  VEYA Mankozeb + Metalaxyl — 200–250 g/da\n\n'
           'Kırmızı örümcek için:\n'
@@ -787,14 +770,12 @@ const _domates = CropProtocol(
           'Aynı etken maddeyi her seferinde uygulamak direnç yaratır. '
           'Farklı kimyasal grupları dönüşümlü kullan.',
     ),
-
     ProtocolStep(
       order: 8,
       dayOffset: 70,
       stageEmoji: '🔴',
       title: 'Meyve Olgunlaşması — Sulamayı Azalt',
-      description:
-          'Meyveler renk almaya başladı. '
+      description: 'Meyveler renk almaya başladı. '
           'Aşırı sulama bu dönemde meyveyi sulandırır (Brix değeri düşer), çatlatır. '
           'Sulama aralığını artır ama kesme — nem stresi tat arttırır ama aşırı düşünce meyve küçülür.',
       irrigationNotes: {
@@ -804,15 +785,12 @@ const _domates = CropProtocol(
         'hand': '8 L/bitki, 10 günde bir.',
       },
       estimatedCostPerDekar: 0,
-      farmerTip:
-          'Meyve üretimi için ideal Brix değeri 5–6. '
+      farmerTip: 'Meyve üretimi için ideal Brix değeri 5–6. '
           'Küçük refraktometre ile meyve suyunu ölç. '
           '4\'ün altındaysa sulamayı biraz kıs.',
-      commonMistake:
-          'Renk almış meyveler için sulamayı tamamen kesmek '
+      commonMistake: 'Renk almış meyveler için sulamayı tamamen kesmek '
           'meyve dökülmesine ve şok olgunlaşmaya neden olur.',
     ),
-
     ProtocolStep(
       order: 9,
       dayOffset: 85,
@@ -822,7 +800,8 @@ const _domates = CropProtocol(
           'Meyveler tam kırmızı (veya çeşide göre sarı/pembe) olunca hafifçe çevirerek sap üstünden topla. '
           '3–4 günde bir hasat yap — bitkide kalırsa aşırı olgunlaşır ve sap altındaki meyvelerin büyümesi durur. '
           'Toplanmayan meyveler bütün bitkiyi "yıkmaya" başlar.',
-      pesticideSpec: 'Son ilaçlamadan bu yana 14+ gün geçmiş olmalı. Meyve kalıntı kontrolü.',
+      pesticideSpec:
+          'Son ilaçlamadan bu yana 14+ gün geçmiş olmalı. Meyve kalıntı kontrolü.',
       estimatedCostPerDekar: 400,
       criticalWarning:
           'Piyasaya götürmeden önce bekleteceğin meyveler yeşil-pembe dönemde topla, '
@@ -849,16 +828,17 @@ const _misir = CropProtocol(
   totalDays: 110,
   defaultRowSpacingCm: 70,
   defaultPlantSpacingCm: 20,
-  sowingSeasonTR: 'Nisan sonu – Mayıs (toprak sıcaklığı 12°C üstü, don riski bitmiş)',
-  idealRegionsTR: 'Akdeniz (2. ürün), Karadeniz (1. ürün), Çukurova, İç Anadolu',
+  sowingSeasonTR:
+      'Nisan sonu – Mayıs (toprak sıcaklığı 12°C üstü, don riski bitmiş)',
+  idealRegionsTR:
+      'Akdeniz (2. ürün), Karadeniz (1. ürün), Çukurova, İç Anadolu',
   steps: [
     ProtocolStep(
       order: 1,
       dayOffset: 0,
       stageEmoji: '🌱',
       title: 'Ekim — Sıra ve Derinlik Hassasiyeti',
-      description:
-          'Mısır toprağı ısındıktan (12°C) sonra ekilir; '
+      description: 'Mısır toprağı ısındıktan (12°C) sonra ekilir; '
           'soğuk toprak çimlenmeyi geciktirir ve çökerten hastalığını tetikler. '
           'Sıra arası 70 cm, bitki arası 20 cm → dekarda 7.000–7.500 bitki. '
           'Dane mısır için 60 cm × 20 cm tercih edilebilir.',
@@ -866,11 +846,12 @@ const _misir = CropProtocol(
       soilNotes: {
         'clay':
             'Ekim öncesi mutlaka ara sürüm veya diskaro yap — kabuklanmış killi toprak '
-            'çimlenmeyi engeller. Drenaj kanalı açmayı unutma.',
+                'çimlenmeyi engeller. Drenaj kanalı açmayı unutma.',
         'sandy':
             'Ekim derinliği 5 cm\'de tut. Nem tutamayan kumlu toprakta 6 cm derin ekim '
-            'tohumun neme ulaşmasını sağlar.',
-        'loamy': 'İdeal. Pulluktan sonra diskaro, ardından ekim. 5 cm derinlik standart.',
+                'tohumun neme ulaşmasını sağlar.',
+        'loamy':
+            'İdeal. Pulluktan sonra diskaro, ardından ekim. 5 cm derinlik standart.',
         'volcanic':
             'pH kontrolü: 5.8–7.0 arası mısır için ideal. Dışarı çıkıyorsa kireç uygula.',
       },
@@ -880,13 +861,11 @@ const _misir = CropProtocol(
         'sprinkler': '15 mm. Toprağı suyla gömmeden ıslat.',
         'hand': 'Sıra başına 10 L, yavaşça ver. Su birikmeden emilsin.',
       },
-      fertilizerSpec:
-          'Taban gübre (ekimle aynı sıraya DEĞIL, 5 cm yan/alt):\n'
+      fertilizerSpec: 'Taban gübre (ekimle aynı sıraya DEĞIL, 5 cm yan/alt):\n'
           '• DAP (18-46-0): 20 kg/da — fosfor + azot temeli\n'
           '• K₂SO₄: 8 kg/da — potasyum\n'
           '• Çinko sülfat (ZnSO₄): 2 kg/da — mısır çinkoya hassas',
-      pesticideSpec:
-          'Tohum ilaçlaması (fabrika işlenmemişse):\n'
+      pesticideSpec: 'Tohum ilaçlaması (fabrika işlenmemişse):\n'
           '• Tel kurdu: Imidacloprid 600 FS — 6 mL/kg tohum\n'
           '• Çökerten (Pythium/Fusarium): Thiram + Metalaxyl — 3 g/kg tohum',
       estimatedCostPerDekar: 430,
@@ -900,60 +879,55 @@ const _misir = CropProtocol(
           'Çok erken ekim: toprak soğuk, çimlenme yavaş, toprak kaynaklı hastalıklar saldırır. '
           'Hava güzel görünse de toprak sıcaklığı asıl kriter.',
     ),
-
     ProtocolStep(
       order: 2,
       dayOffset: 10,
       stageEmoji: '🔍',
       title: 'Çimlenme Kontrolü — Boşlukları Doldur',
-      description:
-          'Tohumlar 7–12 günde çıkar. Sıra boyu say: '
+      description: 'Tohumlar 7–12 günde çıkar. Sıra boyu say: '
           '10 bitkiden 8\'i çıkmışsa (%80) normal. '
           'Boş kalan yerlere aynı mısır çeşidinden yedek tohum at. '
           '3. günden sonra ekilen yedek bitkiler özgün bitkiler kadar verim vermez ama boşluk kapar.',
       soilNotes: {
-        'clay': 'Kabuklanma varsa yüzeyi hafif tırmıkla — fidelerin çıkışını kolaylaştır.',
-        'sandy':
-            'Toprak hızlı kuruyorsa nem eksikliğinden çimlenme yavaş. '
+        'clay':
+            'Kabuklanma varsa yüzeyi hafif tırmıkla — fidelerin çıkışını kolaylaştır.',
+        'sandy': 'Toprak hızlı kuruyorsa nem eksikliğinden çimlenme yavaş. '
             'Hafif can suyu ver, suya gömme.',
         'volcanic': 'Volkanik toprakta çimlenme 2 gün geç olabilir; sabret.',
       },
       estimatedCostPerDekar: 0,
-      criticalWarning:
-          'Karga/güvercin hasarı bu dönemde çok ciddi. '
+      criticalWarning: 'Karga/güvercin hasarı bu dönemde çok ciddi. '
           'Çıkmayan yerlere bakmadan önce tarlayı baştan tara — kuşlar tohumu söküp yemişse '
           'acil tedbir (korkuluk, ses cihazı, ağ) al.',
-      farmerTip:
-          'İlk 3 yapraklı dönem (V3) bitkinin en hassas zamanı. '
+      farmerTip: 'İlk 3 yapraklı dönem (V3) bitkinin en hassas zamanı. '
           'Herbisit, gübre, her türlü stres bu dönemde zarar verir.',
     ),
-
     ProtocolStep(
       order: 3,
       dayOffset: 20,
       stageEmoji: '🏺',
       title: 'İlk Çapa + Amonyum Sülfat',
-      description:
-          'V3–V5 dönemi (3–5 yapraklı bitki). '
+      description: 'V3–V5 dönemi (3–5 yapraklı bitki). '
           'Sıra aralarını çapala, yabancı ot temizle. '
           'Amonyum sülfat bitki dibine serp ve toprağa karıştır. '
           'Bu dönem mısırın tüm vejetatif büyümesi için azot kritik.',
       soilNotes: {
-        'clay': 'Amonyum sülfat nem çekici; çapa sonrası toprağa karışmazsa yüzeyde kalır ve kaybolur.',
-        'sandy':
-            'Kumlu toprakta azot hızla yıkanır. Bölünmüş doz ver: '
+        'clay':
+            'Amonyum sülfat nem çekici; çapa sonrası toprağa karışmazsa yüzeyde kalır ve kaybolur.',
+        'sandy': 'Kumlu toprakta azot hızla yıkanır. Bölünmüş doz ver: '
             'yarısı şimdi, yarısı 10 gün sonra.',
         'loamy': 'Standart doz. Gübre serpip toprakla karıştır.',
-        'volcanic': 'pH\'a bağlı azot uygunluğunu kontrol et. Yüksek pH\'ta üre daha iyi çözünür.',
+        'volcanic':
+            'pH\'a bağlı azot uygunluğunu kontrol et. Yüksek pH\'ta üre daha iyi çözünür.',
       },
       irrigationNotes: {
-        'drip': 'Amonyum sülfatı eritip fertigasyon olarak ver — daha hızlı alım.',
+        'drip':
+            'Amonyum sülfatı eritip fertigasyon olarak ver — daha hızlı alım.',
         'furrow': 'Gübre serpildikten sonra hemen karık aç ve sula.',
         'sprinkler': 'Gübre sonrası yağmurlama (10 mm) — taşıma için.',
         'hand': 'Gübre toprakla karıştıktan sonra kök bölgesini ıslat.',
       },
-      fertilizerSpec:
-          'Birinci üst gübre:\n'
+      fertilizerSpec: 'Birinci üst gübre:\n'
           '• Amonyum sülfat (%21 N): 25 kg/da\n'
           '  VEYA Üre (%46 N): 12 kg/da (eşdeğer azot)\n'
           'Not: V3\'te aşırı doz vurursanız yaprak yanığı olur.',
@@ -961,39 +935,40 @@ const _misir = CropProtocol(
           'Dar yapraklı yabancı ot: Nicosulfuron (ör. Milagro) — 125 mL/da (V2–V6 arası)\n'
           'Geniş yapraklı: Atrazine 500 SC — 300 mL/da (post-emergence, V1–V3)',
       estimatedCostPerDekar: 210,
-      criticalWarning:
-          'V3\'ten önce herbisit atmak fideciklere zarar verir. '
+      criticalWarning: 'V3\'ten önce herbisit atmak fideciklere zarar verir. '
           'V6\'dan sonra Nicosulfuron mısırda büyük verim kaybı yaratır. '
           'Zamanlama çok kritik!',
-      farmerTip:
-          'Mısır büyüdükçe sıra aralarına girmek zorlaşır. '
+      farmerTip: 'Mısır büyüdükçe sıra aralarına girmek zorlaşır. '
           'Bu son gübre ve çapa fırsatın; sonraki gübreyi traktörle yapman gerekecek.',
       commonMistake:
           'Amonyum sülfatı nemli toprakta bırakmak ve sulamayı ertelemek — '
           'yüzeyde kristal oluşur, azot buharlaşır.',
     ),
-
     ProtocolStep(
       order: 4,
       dayOffset: 35,
       stageEmoji: '⛏️',
       title: 'Boğaz Doldurma + İlk Sulama',
-      description:
-          'V8–V10 dönemi: bitki bel hizasına geldi. '
+      description: 'V8–V10 dönemi: bitki bel hizasına geldi. '
           'Traktörle sıra aralarını işle, kök boğazına toprak çek (boğaz doldurma). '
           'Bu işlem kök gelişimini hızlandırır ve bitki devrilmesini önler. '
           'Ardından ilk karık sulama — 10–12 gün arayla sürdür.',
       soilNotes: {
-        'clay': 'Boğaz doldurma sırasında nem varsa traktör çıkmazsa bekle — sıkışmış kil kök çürütür.',
-        'sandy': 'Boğaz doldurmayı bol toprağı yüksek tut — kumlu toprak çabuk kayar.',
+        'clay':
+            'Boğaz doldurma sırasında nem varsa traktör çıkmazsa bekle — sıkışmış kil kök çürütür.',
+        'sandy':
+            'Boğaz doldurmayı bol toprağı yüksek tut — kumlu toprak çabuk kayar.',
         'loamy': 'İdeal. Boğaz yüksekliği 10–15 cm.',
-        'volcanic': 'Serbest yapılı volkanik toprakta boğaz kolay yıkılır; sıkıştırarak çek.',
+        'volcanic':
+            'Serbest yapılı volkanik toprakta boğaz kolay yıkılır; sıkıştırarak çek.',
       },
       irrigationNotes: {
-        'drip': 'İlk uzun sulama: 4–5 L/bitki/gün, 3 gün üst üste. Sonra 2 günde bir 3 L.',
+        'drip':
+            'İlk uzun sulama: 4–5 L/bitki/gün, 3 gün üst üste. Sonra 2 günde bir 3 L.',
         'furrow': '40–45 dakika karık sulaması. 10–12 günde bir.',
         'sprinkler': '50 mm/seans. Sabah erken.',
-        'hand': '15 L/bitki. Karık usulü değilse bitkinin etrafına yavaşça dök.',
+        'hand':
+            '15 L/bitki. Karık usulü değilse bitkinin etrafına yavaşça dök.',
       },
       estimatedCostPerDekar: 150,
       farmerTip:
@@ -1003,30 +978,29 @@ const _misir = CropProtocol(
           'Sulamayı ya da boğaz doldurmayı geç bırakmak bitki toprağa tutunamamış demek — '
           'fırtına veya rüzgarda devrilme riski yüksek.',
     ),
-
     ProtocolStep(
       order: 5,
       dayOffset: 50,
       stageEmoji: '🌾',
       title: 'Tepe Püskülü Öncesi — Üre Takviyesi',
-      description:
-          'V14–V16 dönemi: tepe kısmı görünüyor ama püskül çıkmadı. '
+      description: 'V14–V16 dönemi: tepe kısmı görünüyor ama püskül çıkmadı. '
           'Bu mısır bitkisinin azota en yüksek ihtiyaç duyduğu dönem. '
           'Üst gübre ver; traktörle sıra arası değil, sıra üstünden serp.',
       soilNotes: {
         'clay': 'Üreyi toprağa karıştır, serbest bırakma.',
-        'sandy': 'Üre yerine CAN (Kalsiyum Amonyum Nitrat) kullan — yıkanmaya karşı dirençli.',
+        'sandy':
+            'Üre yerine CAN (Kalsiyum Amonyum Nitrat) kullan — yıkanmaya karşı dirençli.',
         'loamy': 'Standart üre. Sulama öncesi ver.',
         'volcanic': 'Sulama anındaki fertigasyon en etkili yöntem.',
       },
       irrigationNotes: {
-        'drip': 'Üreyi damla sistemine vermen bu dönemin en verimli gübreleme şekli.',
+        'drip':
+            'Üreyi damla sistemine vermen bu dönemin en verimli gübreleme şekli.',
         'furrow': 'Gübre serp, hemen sulama — 48 saat bekletme.',
         'sprinkler': 'Gübre + yağmurlama kombinasyonu ideal.',
         'hand': '20 L/bitki. Gübre toprakla karışmadan önce su verme.',
       },
-      fertilizerSpec:
-          'İkinci üst gübre:\n'
+      fertilizerSpec: 'İkinci üst gübre:\n'
           '• Üre (%46 N): 15 kg/da\n'
           '  VEYA CAN (%26 N): 25 kg/da\n'
           'Bu dönemde azot eksikliği koçan büyüklüğünü ve dane sayısını DOĞRUDAN düşürür.',
@@ -1037,23 +1011,22 @@ const _misir = CropProtocol(
       farmerTip:
           'Bu dönemde toprak analizi yaptırırsan bir sonraki sezonu planlaman kolaylaşır. '
           'Tarım İl Müdürlüğü ücretsiz analiz yapıyor.',
-      commonMistake:
-          'Gübreyi püskül çıkışından sonra vermek çok geç kalır — '
+      commonMistake: 'Gübreyi püskül çıkışından sonra vermek çok geç kalır — '
           'azot koçana değil yapraklara gider.',
     ),
-
     ProtocolStep(
       order: 6,
       dayOffset: 65,
       stageEmoji: '🌽',
       title: 'Tepe Püskülü Çıkışı — KRİTİK Sulama',
-      description:
-          'Sarı tepe püskülü göründü — mısırın en hassas dönemi. '
+      description: 'Sarı tepe püskülü göründü — mısırın en hassas dönemi. '
           'Püskül poleni saçtığında koçan ipekleri tam açık olmalı. '
           'Bu dönemde tek günlük su stresi koçanda 200–300 dane azalmasına neden olabilir.',
       soilNotes: {
-        'clay': 'Sulama arttı — yüzey su yansımasına dikkat et, drenaj açık olsun.',
-        'sandy': 'Bu dönem günlük sulama gerekebilir. Toprak nemini her sabah kontrol et.',
+        'clay':
+            'Sulama arttı — yüzey su yansımasına dikkat et, drenaj açık olsun.',
+        'sandy':
+            'Bu dönem günlük sulama gerekebilir. Toprak nemini her sabah kontrol et.',
       },
       irrigationNotes: {
         'drip': '4 L/bitki/gün. En yoğun sulama dönemi.',
@@ -1071,19 +1044,18 @@ const _misir = CropProtocol(
       commonMistake:
           'Rüzgarlı günlerde ilaçlama yapmak — hem bitki zarar görür hem de pollen dağılımı bozulur.',
     ),
-
     ProtocolStep(
       order: 7,
       dayOffset: 80,
       stageEmoji: '🥛',
       title: 'Süt Olum — Sulamayı Sürdür',
-      description:
-          'Koçan ipekleri kahverengileşti, taneler süt kıvamında. '
+      description: 'Koçan ipekleri kahverengileşti, taneler süt kıvamında. '
           'Bitkinin besin ve su ihtiyacı hâlâ yüksek. '
           'Danelerin dolması için sulamayı düzenli tut. '
           'Kuraklık şimdi tane boyutunu kalıcı olarak küçültür.',
       soilNotes: {
-        'clay': 'Su uzun süre tutulduğu için aralığı 12–15 güne çıkarabilirsin.',
+        'clay':
+            'Su uzun süre tutulduğu için aralığı 12–15 güne çıkarabilirsin.',
         'sandy': 'Aralık 8–10 gün. Hız kesme.',
       },
       irrigationNotes: {
@@ -1096,29 +1068,26 @@ const _misir = CropProtocol(
       farmerTip:
           'Bu dönemde bazı bölgelerde mısır kurdu (Ostrinia nubilalis) koçan içine girer. '
           'Koçan ipeklerinin dibinde siyah dışkı görürsen hemen müdahale et.',
-      commonMistake:
-          'Sulamayı bu dönem kesmek dane ağırlığını %20–30 düşürür. '
+      commonMistake: 'Sulamayı bu dönem kesmek dane ağırlığını %20–30 düşürür. '
           '"Zaten doldu" sanıyorsun ama olgunlaşma tamamlanmadı.',
     ),
-
     ProtocolStep(
       order: 8,
       dayOffset: 105,
       stageEmoji: '🌾',
       title: 'Hasat — Koçan Kabukları Kuruyunca',
-      description:
-          'Koçan kabukları tamamen sarı-kahverengi ve kuru. '
+      description: 'Koçan kabukları tamamen sarı-kahverengi ve kuru. '
           'Tane tırnakla bastırıldığında iz kalmıyor → hasat zamanı. '
           'Makine hasadı için tane nemi %25\'in altında olmalı; '
           'elle hasatta %30\'a kadar yapılabilir, sonra güneşte kurut.',
-      pesticideSpec: 'Son ilaçlamadan 21 gün geçmeli (preharvest interval). Hasat öncesi ürün ilaçlama YOK.',
+      pesticideSpec:
+          'Son ilaçlamadan 21 gün geçmeli (preharvest interval). Hasat öncesi ürün ilaçlama YOK.',
       estimatedCostPerDekar: 380,
       criticalWarning:
           'Yüksek nemde depolanan mısırda Aflatoksin (zehirli küf) riski var. '
           'Nem %14\'ün altına inmeden çuvala koyma — '
           'birkaç yüz kg mısır kolayca imha edilir.',
-      farmerTip:
-          'Hasattan sonra koçanları kırıp yerde bırakma — '
+      farmerTip: 'Hasattan sonra koçanları kırıp yerde bırakma — '
           'mısır kurdu ve fare yuva yapar. Tarlayı sonbaharda sür, artıkları gömülsün.',
       commonMistake:
           'Makine hasadında ayar hatalı ise koçanlar kırılır ve taneler ezilir. '

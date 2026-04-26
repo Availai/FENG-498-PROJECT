@@ -42,8 +42,7 @@ class HarvestShiftEstimator {
         factors.add(HarvestShiftFactor(
           icon: '💧',
           label: 'Haftalık yağış eksik',
-          detail:
-              'Bu hafta ${weeklyRainMm.toStringAsFixed(0)} mm yağış — '
+          detail: 'Bu hafta ${weeklyRainMm.toStringAsFixed(0)} mm yağış — '
               'bitkinin ihtiyacı ~${idealWeeklyRainMm.toStringAsFixed(0)} mm. '
               'Sulamayı arttırmazsan olgunlaşma ~${extra.toStringAsFixed(0)} gün gecikir.',
           deltaDays: extra.round(),
@@ -162,6 +161,7 @@ class HarvestShiftEstimator {
 class HarvestShiftEstimate {
   final DateTime baseHarvestDate;
   final DateTime estimatedHarvestDate;
+
   /// Pozitif → gecikme; negatif → erken hasat.
   final int daysShift;
   final String summary;

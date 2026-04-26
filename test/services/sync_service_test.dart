@@ -77,7 +77,8 @@ void main() {
     expect(failedRows.first.lastError, isNotNull);
   });
 
-  test('runPushCycle marks all picked jobs failed on handler exception', () async {
+  test('runPushCycle marks all picked jobs failed on handler exception',
+      () async {
     await seedPending('f-1');
 
     final report = await service.runPushCycle(
@@ -120,8 +121,8 @@ void main() {
       authTokenProvider: () async => 'user-token',
       httpClient: MockClient((request) async {
         expect(request.url.path, '/api/sync/pull');
-        return http.Response(
-          jsonEncode({
+        return http.Response.bytes(
+          utf8.encode(jsonEncode({
             'items': [
               {
                 'entity_type': 'field_crops',
@@ -144,8 +145,9 @@ void main() {
                 },
               },
             ],
-            'server_time': now.add(const Duration(minutes: 1)).toIso8601String(),
-          }),
+            'server_time':
+                now.add(const Duration(minutes: 1)).toIso8601String(),
+          })),
           200,
         );
       }),

@@ -61,10 +61,12 @@ class _HarvestOracleScreenState extends State<HarvestOracleScreen> {
           _forecast = result.forecast;
         });
       } else {
-        final forecast = await HarvestOracle.fetchForecast(lat: widget.lat, lon: widget.lon);
+        final forecast =
+            await HarvestOracle.fetchForecast(lat: widget.lat, lon: widget.lon);
         setState(() {
           _forecast = forecast;
-          _alerts = HarvestOracle.detectEvents(forecast: forecast, region: widget.region);
+          _alerts = HarvestOracle.detectEvents(
+              forecast: forecast, region: widget.region);
         });
       }
     } catch (e) {
@@ -114,7 +116,8 @@ class _LoadingView extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const CircularProgressIndicator(color: AppColors.emerald, strokeWidth: 2),
+          const CircularProgressIndicator(
+              color: AppColors.emerald, strokeWidth: 2),
           const SizedBox(height: 16),
           Text('Hava verileri alınıyor…', style: AppText.sm(context)),
         ],
@@ -137,14 +140,19 @@ class _ErrorView extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 72, height: 72,
-              decoration: BoxDecoration(color: AppColors.errorBg, borderRadius: AppRadius.lg),
-              child: const Center(child: Icon(Icons.cloud_off_rounded, color: AppColors.error, size: 36)),
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                  color: AppColors.errorBg, borderRadius: AppRadius.lg),
+              child: const Center(
+                  child: Icon(Icons.cloud_off_rounded,
+                      color: AppColors.error, size: 36)),
             ),
             const SizedBox(height: 16),
             Text('Hava verisi alınamadı', style: AppText.h3(context)),
             const SizedBox(height: 6),
-            Text(error, style: AppText.sm(context), textAlign: TextAlign.center),
+            Text(error,
+                style: AppText.sm(context), textAlign: TextAlign.center),
             const SizedBox(height: 20),
             ElevatedButton.icon(
               onPressed: onRetry,
@@ -165,7 +173,8 @@ class _Body extends StatelessWidget {
   final List<HarvestWindow> windows;
   final List<HourlyForecastRecord> forecast;
 
-  const _Body({required this.alerts, required this.windows, required this.forecast});
+  const _Body(
+      {required this.alerts, required this.windows, required this.forecast});
 
   @override
   Widget build(BuildContext context) {
@@ -177,13 +186,17 @@ class _Body extends StatelessWidget {
           const SizedBox(height: 20),
         ],
         if (alerts.isNotEmpty) ...[
-          AppSectionHeader(title: 'Hava Uyarıları', subtitle: '${alerts.length} aktif uyarı'),
+          AppSectionHeader(
+              title: 'Hava Uyarıları',
+              subtitle: '${alerts.length} aktif uyarı'),
           const SizedBox(height: 10),
           ...alerts.map((a) => _AlertCard(alert: a)),
           const SizedBox(height: 20),
         ],
         if (windows.isNotEmpty) ...[
-          AppSectionHeader(title: 'Hasat Pencereleri', subtitle: 'Önümüzdeki 7 gün için optimal aralıklar'),
+          AppSectionHeader(
+              title: 'Hasat Pencereleri',
+              subtitle: 'Önümüzdeki 7 gün için optimal aralıklar'),
           const SizedBox(height: 10),
           ...windows.map((w) => _WindowCard(window: w)),
         ],
@@ -195,7 +208,8 @@ class _Body extends StatelessWidget {
               const SizedBox(height: 12),
               Text('Aktif uyarı yok', style: AppText.h3(context)),
               const SizedBox(height: 6),
-              Text('Hava koşulları normal seyrediyor.', style: AppText.sm(context)),
+              Text('Hava koşulları normal seyrediyor.',
+                  style: AppText.sm(context)),
             ]),
           ),
         ],
@@ -236,7 +250,8 @@ class _ForecastStrip extends StatelessWidget {
             scrollDirection: Axis.horizontal,
             itemCount: days.length,
             separatorBuilder: (_, __) => const SizedBox(width: 8),
-            itemBuilder: (_, i) => _DayCell(record: days[i], dayName: _dayNames[days[i].time.weekday - 1]),
+            itemBuilder: (_, i) => _DayCell(
+                record: days[i], dayName: _dayNames[days[i].time.weekday - 1]),
           ),
         ),
       ],
@@ -260,7 +275,8 @@ class _DayCell extends StatelessWidget {
       decoration: BoxDecoration(
         color: isToday ? AppColors.emerald : AppColors.surface,
         borderRadius: AppRadius.md,
-        border: Border.all(color: isToday ? AppColors.emerald : AppColors.border),
+        border:
+            Border.all(color: isToday ? AppColors.emerald : AppColors.border),
         boxShadow: isToday ? AppShadows.md : AppShadows.sm,
       ),
       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
@@ -270,7 +286,8 @@ class _DayCell extends StatelessWidget {
           Text(
             dayName,
             style: GoogleFonts.inter(
-              fontSize: 10, fontWeight: FontWeight.w600,
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
               color: isToday ? Colors.white : AppColors.textSecondary,
             ),
           ),
@@ -281,7 +298,8 @@ class _DayCell extends StatelessWidget {
           Text(
             '${t.toStringAsFixed(0)}°',
             style: GoogleFonts.outfit(
-              fontSize: 16, fontWeight: FontWeight.w700,
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
               color: isToday ? Colors.white : _tempColor(t),
             ),
           ),
@@ -326,13 +344,15 @@ class _AlertCard extends StatefulWidget {
   State<_AlertCard> createState() => _AlertCardState();
 }
 
-class _AlertCardState extends State<_AlertCard> with SingleTickerProviderStateMixin {
+class _AlertCardState extends State<_AlertCard>
+    with SingleTickerProviderStateMixin {
   late AnimationController _pulse;
 
   @override
   void initState() {
     super.initState();
-    _pulse = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200));
+    _pulse = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 1200));
     if (widget.alert.riskLevel == RiskLevel.critical) {
       _pulse.repeat(reverse: true);
     }
@@ -346,19 +366,27 @@ class _AlertCardState extends State<_AlertCard> with SingleTickerProviderStateMi
 
   Color get _levelColor {
     switch (widget.alert.riskLevel) {
-      case RiskLevel.critical: return AppColors.error;
-      case RiskLevel.warning:  return AppColors.warning;
-      case RiskLevel.info:     return AppColors.info;
-      case RiskLevel.ok:       return AppColors.success;
+      case RiskLevel.critical:
+        return AppColors.error;
+      case RiskLevel.warning:
+        return AppColors.warning;
+      case RiskLevel.info:
+        return AppColors.info;
+      case RiskLevel.ok:
+        return AppColors.success;
     }
   }
 
   Color get _levelBg {
     switch (widget.alert.riskLevel) {
-      case RiskLevel.critical: return AppColors.errorBg;
-      case RiskLevel.warning:  return AppColors.warningBg;
-      case RiskLevel.info:     return AppColors.infoBg;
-      case RiskLevel.ok:       return AppColors.successBg;
+      case RiskLevel.critical:
+        return AppColors.errorBg;
+      case RiskLevel.warning:
+        return AppColors.warningBg;
+      case RiskLevel.info:
+        return AppColors.infoBg;
+      case RiskLevel.ok:
+        return AppColors.successBg;
     }
   }
 
@@ -382,32 +410,43 @@ class _AlertCardState extends State<_AlertCard> with SingleTickerProviderStateMi
         children: [
           Row(children: [
             Container(
-              width: 44, height: 44,
-              decoration: BoxDecoration(color: _levelBg, borderRadius: AppRadius.sm),
-              child: Center(child: Text(widget.alert.event.emoji, style: const TextStyle(fontSize: 22))),
+              width: 44,
+              height: 44,
+              decoration:
+                  BoxDecoration(color: _levelBg, borderRadius: AppRadius.sm),
+              child: Center(
+                  child: Text(widget.alert.event.emoji,
+                      style: const TextStyle(fontSize: 22))),
             ),
             const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(widget.alert.event.labelTr, style: AppText.h3(context).copyWith(color: _levelColor)),
-                  Text(widget.alert.urgencyLabel, style: AppText.xs(context).copyWith(color: _levelColor)),
+                  Text(widget.alert.event.labelTr,
+                      style: AppText.h3(context).copyWith(color: _levelColor)),
+                  Text(widget.alert.urgencyLabel,
+                      style: AppText.xs(context).copyWith(color: _levelColor)),
                 ],
               ),
             ),
-            AppTag(widget.alert.urgencyLabel, color: _levelColor, bgColor: _levelBg),
+            AppTag(widget.alert.urgencyLabel,
+                color: _levelColor, bgColor: _levelBg),
           ]),
           const SizedBox(height: 12),
           Text(widget.alert.descriptionTr, style: AppText.body(context)),
           const SizedBox(height: 10),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(color: _levelBg, borderRadius: AppRadius.sm),
+            decoration:
+                BoxDecoration(color: _levelBg, borderRadius: AppRadius.sm),
             child: Row(children: [
-              Icon(Icons.arrow_forward_ios_rounded, size: 12, color: _levelColor),
+              Icon(Icons.arrow_forward_ios_rounded,
+                  size: 12, color: _levelColor),
               const SizedBox(width: 10),
-              Expanded(child: Text(widget.alert.actionTr, style: AppText.sm(context).copyWith(color: _levelColor))),
+              Expanded(
+                  child: Text(widget.alert.actionTr,
+                      style: AppText.sm(context).copyWith(color: _levelColor))),
             ]),
           ),
         ],
@@ -426,7 +465,11 @@ class _WindowCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final score = window.confidenceScore;
     final isGood = window.isOptimal;
-    final color = isGood ? AppColors.success : window.hasRisk ? AppColors.error : AppColors.warning;
+    final color = isGood
+        ? AppColors.success
+        : window.hasRisk
+            ? AppColors.error
+            : AppColors.warning;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -437,7 +480,8 @@ class _WindowCard extends StatelessWidget {
           children: [
             // Confidence ring
             SizedBox(
-              width: 56, height: 56,
+              width: 56,
+              height: 56,
               child: Stack(
                 alignment: Alignment.center,
                 children: [
@@ -450,7 +494,10 @@ class _WindowCard extends StatelessWidget {
                     children: [
                       Text(
                         '%${(score * 100).round()}',
-                        style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.bold, color: color),
+                        style: GoogleFonts.outfit(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: color),
                       ),
                     ],
                   ),
@@ -463,18 +510,28 @@ class _WindowCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(children: [
-                    Expanded(child: Text(window.daysLabel, style: AppText.h3(context).copyWith(color: color))),
-                    AppTag(window.confidenceLabel, color: color, bgColor: color.withValues(alpha: 0.1)),
+                    Expanded(
+                        child: Text(window.daysLabel,
+                            style: AppText.h3(context).copyWith(color: color))),
+                    AppTag(window.confidenceLabel,
+                        color: color, bgColor: color.withValues(alpha: 0.1)),
                   ]),
                   const SizedBox(height: 6),
                   Wrap(spacing: 12, children: [
-                    _WBit(Icons.thermostat_outlined, '${window.avgTempC.toStringAsFixed(0)}°C'),
-                    _WBit(Icons.water_drop_outlined, '${window.totalRainMm.toStringAsFixed(0)} mm'),
-                    _WBit(Icons.air_outlined, '${window.avgWindMs.toStringAsFixed(1)} m/s'),
-                    _WBit(Icons.opacity_outlined, '%${window.avgHumidityPct.round()}'),
+                    _WBit(Icons.thermostat_outlined,
+                        '${window.avgTempC.toStringAsFixed(0)}°C'),
+                    _WBit(Icons.water_drop_outlined,
+                        '${window.totalRainMm.toStringAsFixed(0)} mm'),
+                    _WBit(Icons.air_outlined,
+                        '${window.avgWindMs.toStringAsFixed(1)} m/s'),
+                    _WBit(Icons.opacity_outlined,
+                        '%${window.avgHumidityPct.round()}'),
                   ]),
                   const SizedBox(height: 8),
-                  Text(window.recommendationTr, style: AppText.body(context).copyWith(fontSize: 13), maxLines: 2, overflow: TextOverflow.ellipsis),
+                  Text(window.recommendationTr,
+                      style: AppText.body(context).copyWith(fontSize: 13),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis),
                 ],
               ),
             ),
@@ -510,11 +567,23 @@ class _RingPainter extends CustomPainter {
     final cx = size.width / 2;
     final cy = size.height / 2;
     final r = size.width / 2 - 4;
-    canvas.drawCircle(Offset(cx, cy), r, Paint()..color = AppColors.border..style = PaintingStyle.stroke..strokeWidth = 5);
+    canvas.drawCircle(
+        Offset(cx, cy),
+        r,
+        Paint()
+          ..color = AppColors.border
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 5);
     canvas.drawArc(
       Rect.fromCircle(center: Offset(cx, cy), radius: r),
-      -1.5707963, score * 6.2831853, false,
-      Paint()..color = color..style = PaintingStyle.stroke..strokeWidth = 5..strokeCap = StrokeCap.round,
+      -1.5707963,
+      score * 6.2831853,
+      false,
+      Paint()
+        ..color = color
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 5
+        ..strokeCap = StrokeCap.round,
     );
   }
 

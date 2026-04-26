@@ -63,13 +63,15 @@ class TopDownFieldView extends StatelessWidget {
                           left: constraints.maxWidth * layer.startPercent,
                           top: 0,
                           width: constraints.maxWidth *
-                              (layer.endPercent - layer.startPercent).clamp(0.0, 1.0),
+                              (layer.endPercent - layer.startPercent)
+                                  .clamp(0.0, 1.0),
                           height: constraints.maxHeight,
                           child: Container(
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
                               color: layer.color.withValues(alpha: 0.75),
-                              border: Border.all(color: Colors.white.withValues(alpha: 0.5)),
+                              border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.5)),
                             ),
                             child: Align(
                               alignment: Alignment.topLeft,

@@ -83,7 +83,8 @@ class _IrrigationScheduleScreenState
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = 'Plan oluşturulamadı: $e\n\nİnternet bağlantınızı kontrol edin.';
+        _error =
+            'Plan oluşturulamadı: $e\n\nİnternet bağlantınızı kontrol edin.';
         _loading = false;
       });
     }
@@ -144,7 +145,8 @@ class _IrrigationScheduleScreenState
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.cloud_off, size: 64, color: Colors.grey),
+                        const Icon(Icons.cloud_off,
+                            size: 64, color: Colors.grey),
                         const SizedBox(height: 16),
                         Text(_error!,
                             textAlign: TextAlign.center,
@@ -186,7 +188,8 @@ class _IrrigationScheduleScreenState
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     _stat('Sulama Günü', '${s.irrigationDays}'),
-                    _stat('Toplam Su', '${s.totalWaterMm.toStringAsFixed(0)} mm'),
+                    _stat(
+                        'Toplam Su', '${s.totalWaterMm.toStringAsFixed(0)} mm'),
                     _stat(
                       'Toplam ETc',
                       '${s.totalCropDemandMm.toStringAsFixed(0)} mm',
@@ -249,8 +252,7 @@ class _IrrigationScheduleScreenState
                                   color: _levelColor(p.level),
                                   fontWeight: FontWeight.w600)),
                           const SizedBox(height: 4),
-                          Text(p.reason,
-                              style: const TextStyle(fontSize: 13)),
+                          Text(p.reason, style: const TextStyle(fontSize: 13)),
                           const SizedBox(height: 4),
                           Text('💧 ${p.recommendation}',
                               style: const TextStyle(
@@ -280,7 +282,8 @@ class _IrrigationScheduleScreenState
         Text(value,
             style: const TextStyle(
                 fontSize: 18, fontWeight: FontWeight.bold, color: Colors.teal)),
-        Text(label, style: const TextStyle(fontSize: 12, color: Colors.black54)),
+        Text(label,
+            style: const TextStyle(fontSize: 12, color: Colors.black54)),
       ],
     );
   }

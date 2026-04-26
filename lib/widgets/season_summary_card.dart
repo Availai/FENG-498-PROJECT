@@ -21,7 +21,10 @@ Map<String, dynamic> computeSeasonSummary({
 
   for (final a in activities) {
     final aCrop = a['crop_id']?.toString();
-    if (cropId != null && aCrop != null && aCrop.isNotEmpty && aCrop != cropId) {
+    if (cropId != null &&
+        aCrop != null &&
+        aCrop.isNotEmpty &&
+        aCrop != cropId) {
       continue;
     }
     final date = a['date'];
@@ -33,7 +36,8 @@ Map<String, dynamic> computeSeasonSummary({
     switch (type) {
       case 'watering':
         wCount++;
-        final liters = (meta['water_liters'] as num?)?.toDouble();
+        final liters = (meta['effective_water_liters'] as num?)?.toDouble() ??
+            (meta['water_liters'] as num?)?.toDouble();
         if (liters != null) wLitersTotal += liters;
         if (wLast == null || date.isAfter(wLast)) {
           wLast = date;
@@ -127,13 +131,11 @@ class SeasonSummaryCard extends StatelessWidget {
     final wCount = summary['watering_count'] as int? ?? 0;
     final wLast = summary['watering_last_at'] as DateTime?;
     final wTotalL = (summary['watering_total_liters'] as num?)?.toDouble() ?? 0;
-    final wRecMm =
-        summary['watering_last_recommended_weekly_mm'] as int?;
+    final wRecMm = summary['watering_last_recommended_weekly_mm'] as int?;
 
     final fCount = summary['fertilizing_count'] as int? ?? 0;
     final fLast = summary['fertilizing_last_at'] as DateTime?;
-    final fTotalKg =
-        (summary['fertilizing_total_kg'] as num?)?.toDouble() ?? 0;
+    final fTotalKg = (summary['fertilizing_total_kg'] as num?)?.toDouble() ?? 0;
     final fLastName = summary['fertilizing_last_name'] as String?;
 
     final sCount = summary['spraying_count'] as int? ?? 0;
@@ -167,9 +169,7 @@ class SeasonSummaryCard extends StatelessWidget {
                   icon: Icons.water_drop_rounded,
                   color: AppColors.frost,
                   label: 'Sulama',
-                  primary: wCount == 0
-                      ? 'Henüz yok'
-                      : '$wCount kez',
+                  primary: wCount == 0 ? 'Henüz yok' : '$wCount kez',
                   secondary: wTotalL > 0
                       ? '${_fmtLitre(wTotalL)} verildi'
                       : (wRecMm != null ? 'Öneri: $wRecMm mm/hafta' : '—'),
@@ -182,11 +182,9 @@ class SeasonSummaryCard extends StatelessWidget {
                   icon: Icons.grass_rounded,
                   color: AppColors.emeraldLight,
                   label: 'Gübreleme',
-                  primary:
-                      fCount == 0 ? 'Henüz yok' : '$fCount kez',
-                  secondary: fTotalKg > 0
-                      ? '${_fmtNum(fTotalKg)} kg toplam'
-                      : '—',
+                  primary: fCount == 0 ? 'Henüz yok' : '$fCount kez',
+                  secondary:
+                      fTotalKg > 0 ? '${_fmtNum(fTotalKg)} kg toplam' : '—',
                   tertiary: fLastName ?? _ago(fLast),
                 ),
               ),
@@ -216,8 +214,7 @@ class SeasonSummaryCard extends StatelessWidget {
                           ? '$daysToHarvest gün kaldı'
                           : '—')
                       : '$hCount parti',
-                  secondary:
-                      hTotalKg > 0 ? '${_fmtNum(hTotalKg)} kg' : '—',
+                  secondary: hTotalKg > 0 ? '${_fmtNum(hTotalKg)} kg' : '—',
                   tertiary: '${areaDekar.toStringAsFixed(1)} dekar',
                 ),
               ),
@@ -259,8 +256,7 @@ class SeasonSummaryCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: AppColors.emerald.withValues(alpha: 0.18),
             borderRadius: BorderRadius.circular(8),
-            border:
-                Border.all(color: AppColors.emerald.withValues(alpha: 0.4)),
+            border: Border.all(color: AppColors.emerald.withValues(alpha: 0.4)),
           ),
           child: Text(
             (pb?.displayName ?? cropName).toUpperCase(),

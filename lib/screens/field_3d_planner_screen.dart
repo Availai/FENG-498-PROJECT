@@ -24,7 +24,8 @@ class Field3DPlannerScreen extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<Field3DPlannerScreen> createState() => _Field3DPlannerScreenState();
+  ConsumerState<Field3DPlannerScreen> createState() =>
+      _Field3DPlannerScreenState();
 }
 
 class _Field3DPlannerScreenState extends ConsumerState<Field3DPlannerScreen> {
@@ -35,7 +36,8 @@ class _Field3DPlannerScreenState extends ConsumerState<Field3DPlannerScreen> {
   @override
   void initState() {
     super.initState();
-    if (widget.existingField != null && widget.existingField!['polygon'] != null) {
+    if (widget.existingField != null &&
+        widget.existingField!['polygon'] != null) {
       _points = (widget.existingField!['polygon'] as List)
           .map((e) => LatLng(e['lat'], e['lng']))
           .toList();
@@ -51,10 +53,10 @@ class _Field3DPlannerScreenState extends ConsumerState<Field3DPlannerScreen> {
   }
 
   void _calculateArea() {
-    final toolkitPts = _points
-        .map((p) => toolkit.LatLng(p.latitude, p.longitude))
-        .toList();
-    _calculatedAreaSqm = toolkit.SphericalUtil.computeArea(toolkitPts).toDouble();
+    final toolkitPts =
+        _points.map((p) => toolkit.LatLng(p.latitude, p.longitude)).toList();
+    _calculatedAreaSqm =
+        toolkit.SphericalUtil.computeArea(toolkitPts).toDouble();
     setState(() {});
   }
 
@@ -113,7 +115,8 @@ class _Field3DPlannerScreenState extends ConsumerState<Field3DPlannerScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text('İptal', style: TextStyle(color: AppColors.textSecondary)),
+            child:
+                Text('İptal', style: TextStyle(color: AppColors.textSecondary)),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -126,11 +129,16 @@ class _Field3DPlannerScreenState extends ConsumerState<Field3DPlannerScreen> {
                   'longitude': centerLng,
                   'area_dekar': dekar,
                   'area_sqm': _calculatedAreaSqm,
-                  'polygon': _points.map((p) => {'lat': p.latitude, 'lng': p.longitude}).toList(),
-                  'planted_crops': widget.existingField?['planted_crops'] ?? const [],
+                  'polygon': _points
+                      .map((p) => {'lat': p.latitude, 'lng': p.longitude})
+                      .toList(),
+                  'planted_crops':
+                      widget.existingField?['planted_crops'] ?? const [],
                 };
 
-                await ref.read(localDataRepositoryProvider).upsertFieldFromLegacyMap(data);
+                await ref
+                    .read(localDataRepositoryProvider)
+                    .upsertFieldFromLegacyMap(data);
 
                 if (!ctx.mounted) return;
                 Navigator.pop(ctx);
@@ -183,15 +191,20 @@ class _Field3DPlannerScreenState extends ConsumerState<Field3DPlannerScreen> {
     if (_points.length < 3) return [];
     // Calculate centroid
     double clat = 0, clng = 0;
-    for (var p in _points) { clat += p.latitude; clng += p.longitude; }
+    for (var p in _points) {
+      clat += p.latitude;
+      clng += p.longitude;
+    }
     clat /= _points.length;
     clng /= _points.length;
-    
+
     // Scale towards center by 5%
-    return _points.map((p) => LatLng(
-      p.latitude + (clat - p.latitude) * 0.05,
-      p.longitude + (clng - p.longitude) * 0.05,
-    )).toList();
+    return _points
+        .map((p) => LatLng(
+              p.latitude + (clat - p.latitude) * 0.05,
+              p.longitude + (clng - p.longitude) * 0.05,
+            ))
+        .toList();
   }
 
   @override
@@ -211,7 +224,8 @@ class _Field3DPlannerScreenState extends ConsumerState<Field3DPlannerScreen> {
         title: Text('3D Tarla Yerleşimi', style: AppText.h3Dark(context)),
         actions: [
           IconButton(icon: const Icon(Icons.undo), onPressed: _undoLastPoint),
-          IconButton(icon: const Icon(Icons.cleaning_services), onPressed: _clearMap),
+          IconButton(
+              icon: const Icon(Icons.cleaning_services), onPressed: _clearMap),
         ],
       ),
       body: Stack(
@@ -226,7 +240,8 @@ class _Field3DPlannerScreenState extends ConsumerState<Field3DPlannerScreen> {
             ),
             children: [
               TileLayer(
-                urlTemplate: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+                urlTemplate:
+                    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
                 userAgentPackageName: 'com.example.feng_498',
                 maxZoom: 21,
               ),
@@ -235,20 +250,29 @@ class _Field3DPlannerScreenState extends ConsumerState<Field3DPlannerScreen> {
               if (_points.isNotEmpty)
                 PolylineLayer<Object>(polylines: [
                   Polyline(
-                    points: _points.length >= 3 ? [..._points, _points.first] : [..._points],
+                    points: _points.length >= 3
+                        ? [..._points, _points.first]
+                        : [..._points],
                     color: Colors.white,
                     strokeWidth: 2.0,
                   ),
                 ]),
-              MarkerLayer(markers: _points.map((p) => Marker(
-                point: p,
-                width: 12,
-                height: 12,
-                child: Container(decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle, boxShadow: AppShadows.md)),
-              )).toList()),
+              MarkerLayer(
+                  markers: _points
+                      .map((p) => Marker(
+                            point: p,
+                            width: 12,
+                            height: 12,
+                            child: Container(
+                                decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    shape: BoxShape.circle,
+                                    boxShadow: AppShadows.md)),
+                          ))
+                      .toList()),
             ],
           ),
-          
+
           // BOTTOM GLASS PANELS (Stats & Save)
           Positioned(
             bottom: 30,
@@ -263,9 +287,12 @@ class _Field3DPlannerScreenState extends ConsumerState<Field3DPlannerScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
-                        _buildStatBox('Alan', dekar.toStringAsFixed(2), 'Dekar'),
-                        Container(width: 1, height: 40, color: AppColors.border),
-                        _buildStatBox('Köşe', _points.length.toString(), 'Nokta'),
+                        _buildStatBox(
+                            'Alan', dekar.toStringAsFixed(2), 'Dekar'),
+                        Container(
+                            width: 1, height: 40, color: AppColors.border),
+                        _buildStatBox(
+                            'Köşe', _points.length.toString(), 'Nokta'),
                       ],
                     ),
                   ),
@@ -277,7 +304,9 @@ class _Field3DPlannerScreenState extends ConsumerState<Field3DPlannerScreen> {
                     onPressed: _points.length >= 3 ? _saveField : null,
                     icon: const Icon(Icons.check_circle_outline),
                     label: Text(
-                      _points.length >= 3 ? 'EKİM PLANINI KAYDET' : 'KÖŞELERİ İŞARETLEYİN',
+                      _points.length >= 3
+                          ? 'EKİM PLANINI KAYDET'
+                          : 'KÖŞELERİ İŞARETLEYİN',
                       style: const TextStyle(letterSpacing: 1.2),
                     ),
                     style: ElevatedButton.styleFrom(
@@ -298,10 +327,20 @@ class _Field3DPlannerScreenState extends ConsumerState<Field3DPlannerScreen> {
   Widget _buildStatBox(String label, String value, String unit) {
     return Column(
       children: [
-        Text(label, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+        Text(label,
+            style:
+                const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
         const SizedBox(height: 4),
-        Text(value, style: TextStyle(color: AppColors.textPrimary, fontSize: 20, fontWeight: FontWeight.bold)),
-        Text(unit, style: const TextStyle(color: AppColors.emerald, fontSize: 11, fontWeight: FontWeight.w600)),
+        Text(value,
+            style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 20,
+                fontWeight: FontWeight.bold)),
+        Text(unit,
+            style: const TextStyle(
+                color: AppColors.emerald,
+                fontSize: 11,
+                fontWeight: FontWeight.w600)),
       ],
     );
   }

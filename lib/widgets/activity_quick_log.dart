@@ -2,13 +2,87 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/activity_types.dart';
+import '../data/crop_ipm_rules.dart';
 import '../data/crop_playbooks.dart';
 import '../data/supported_crops.dart';
 import '../services/app_providers.dart';
 import '../services/haptic_service.dart';
+import '../services/ipm_decision_service.dart';
+import '../services/water_accounting.dart';
 import '../theme/app_theme.dart';
 import 'floating_toast.dart';
 import 'tap_scale.dart';
+
+Future<bool> showActivityQuickLogSheet({
+  required BuildContext context,
+  required WidgetRef ref,
+  required String fieldId,
+  required String type,
+  String? cropId,
+  List<Map<String, dynamic>> fieldCrops = const [],
+  double fieldAreaDekar = 1.0,
+  double? recommendedQuantity,
+  String? quantityUnit,
+  String? note,
+}) async {
+  HapticService.instance.light();
+  final detail = await showModalBottomSheet<_QuickLogDetail>(
+    context: context,
+    backgroundColor: Colors.transparent,
+    isScrollControlled: true,
+    builder: (_) => _QuickLogSheet(
+      type: type,
+      crops: fieldCrops
+          .where((crop) => SupportedCrops.isSupported(crop['name']?.toString()))
+          .toList(growable: false),
+      initialCropId: cropId,
+      fieldAreaDekar: fieldAreaDekar,
+      initialQuantity: recommendedQuantity,
+      recommendedQuantity: recommendedQuantity,
+      quantityUnit: quantityUnit,
+      initialNote: note,
+    ),
+  );
+  if (detail == null) return false;
+
+  final repo = ref.read(localDataRepositoryProvider);
+  try {
+    await repo.logActivity(
+      fieldId: fieldId,
+      type: type,
+      cropId: detail.cropId ?? cropId,
+      note: detail.note,
+      quantity: detail.quantity,
+      quantityUnit: detail.quantityUnit ??
+          quantityUnit ??
+          ActivityType.quantityUnit(type),
+      recommendedQuantity: detail.recommendedQuantity,
+      metadata: detail.metadata,
+    );
+    final loggedCropId = detail.cropId ?? cropId;
+    if (loggedCropId != null && loggedCropId.isNotEmpty) {
+      await ref.read(growthEngineProvider).recompute(cropId: loggedCropId);
+    }
+    if (context.mounted) {
+      HapticService.instance.success();
+      AppToast.show(
+        context,
+        message: '${ActivityType.actionLabel(type)} kaydedildi',
+        type: ToastType.success,
+      );
+    }
+    return true;
+  } catch (e) {
+    if (context.mounted) {
+      AppToast.show(
+        context,
+        message: 'Kayıt başarısız: $e',
+        type: ToastType.error,
+      );
+    }
+    return false;
+  }
+}
 
 /// Çiftçinin tarlada yaptığı günlük işleri tek tap ile kaydettiği chip satırı.
 /// Field detail ekranında HUD'un üstüne yerleşir.
@@ -89,51 +163,17 @@ class _ActivityQuickLogState extends ConsumerState<ActivityQuickLog> {
   }
 
   Future<void> _onChipTap(String type) async {
-    HapticService.instance.light();
-    final detail = await showModalBottomSheet<_QuickLogDetail>(
+    final ok = await showActivityQuickLogSheet(
       context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (_) => _QuickLogSheet(
-        type: type,
-        crops: widget.fieldCrops
-            .where((crop) => SupportedCrops.isSupported(crop['name']?.toString()))
-            .toList(growable: false),
-        initialCropId: widget.cropId,
-        fieldAreaDekar: widget.fieldAreaDekar,
-      ),
+      ref: ref,
+      fieldId: widget.fieldId,
+      type: type,
+      cropId: widget.cropId,
+      fieldCrops: widget.fieldCrops,
+      fieldAreaDekar: widget.fieldAreaDekar,
     );
-    if (detail == null) return;
-    final repo = ref.read(localDataRepositoryProvider);
-    try {
-      await repo.logActivity(
-        fieldId: widget.fieldId,
-        type: type,
-        cropId: detail.cropId ?? widget.cropId,
-        note: detail.note,
-        quantity: detail.quantity,
-        quantityUnit: ActivityType.quantityUnit(type),
-        metadata: detail.metadata,
-      );
-      final loggedCropId = detail.cropId ?? widget.cropId;
-      if (loggedCropId != null && loggedCropId.isNotEmpty) {
-        await ref.read(growthEngineProvider).recompute(cropId: loggedCropId);
-      }
-      if (!mounted) return;
-      HapticService.instance.success();
-      AppToast.show(
-        context,
-        message: '${ActivityType.actionLabel(type)} kaydedildi',
-        type: ToastType.success,
-      );
+    if (ok) {
       widget.onLogged?.call();
-    } catch (e) {
-      if (!mounted) return;
-      AppToast.show(
-        context,
-        message: 'Kayıt başarısız: $e',
-        type: ToastType.error,
-      );
     }
   }
 }
@@ -181,12 +221,16 @@ class _QuickLogDetail {
     this.cropId,
     this.note,
     this.quantity,
+    this.quantityUnit,
+    this.recommendedQuantity,
     this.metadata = const {},
   });
 
   final String? cropId;
   final String? note;
   final double? quantity;
+  final String? quantityUnit;
+  final double? recommendedQuantity;
   final Map<String, dynamic> metadata;
 }
 
@@ -196,12 +240,20 @@ class _QuickLogSheet extends StatefulWidget {
     required this.crops,
     this.initialCropId,
     this.fieldAreaDekar = 1.0,
+    this.initialQuantity,
+    this.recommendedQuantity,
+    this.quantityUnit,
+    this.initialNote,
   });
 
   final String type;
   final List<Map<String, dynamic>> crops;
   final String? initialCropId;
   final double fieldAreaDekar;
+  final double? initialQuantity;
+  final double? recommendedQuantity;
+  final String? quantityUnit;
+  final String? initialNote;
 
   @override
   State<_QuickLogSheet> createState() => _QuickLogSheetState();
@@ -214,7 +266,13 @@ class _QuickLogSheetState extends State<_QuickLogSheet> {
   final _materialCtrl = TextEditingController();
   final _activeCtrl = TextEditingController();
   final _targetCtrl = TextEditingController();
+  final _sampledPlantsCtrl = TextEditingController();
+  final _affectedPlantsCtrl = TextEditingController();
+  final _larvaePerSqmCtrl = TextEditingController();
+  final _trapAverageCtrl = TextEditingController();
+  final _diseasePercentCtrl = TextEditingController();
   String? _selectedCropId;
+  String? _ipmPestKey;
   String _method = 'Damla sulama';
 
   // Playbook'tan seçilen ürün (null → serbest metin modu).
@@ -223,8 +281,9 @@ class _QuickLogSheetState extends State<_QuickLogSheet> {
   PesticideCategory? _pesticideCategoryFilter;
 
   /// Seçili bitkinin playbook'u (Ayçiçeği/Mısır/Domates) — yoksa null.
-  CropPlaybook? get _playbook =>
-      CropPlaybooks.resolveByName(_selectedCropName);
+  CropPlaybook? get _playbook => CropPlaybooks.resolveByName(_selectedCropName);
+
+  bool get _hasIpmRules => IpmDecisionService.supports(_selectedCropName);
 
   List<Map<String, dynamic>> get _selectableCrops => widget.crops
       .where((crop) => (crop['id']?.toString().isNotEmpty ?? false))
@@ -232,12 +291,24 @@ class _QuickLogSheetState extends State<_QuickLogSheet> {
 
   @override
   void dispose() {
+    _qtyCtrl.removeListener(_refreshWaterPreview);
+    _extraQtyCtrl.removeListener(_refreshWaterPreview);
+    _sampledPlantsCtrl.removeListener(_refreshIpmPreview);
+    _affectedPlantsCtrl.removeListener(_refreshIpmPreview);
+    _larvaePerSqmCtrl.removeListener(_refreshIpmPreview);
+    _trapAverageCtrl.removeListener(_refreshIpmPreview);
+    _diseasePercentCtrl.removeListener(_refreshIpmPreview);
     _noteCtrl.dispose();
     _qtyCtrl.dispose();
     _extraQtyCtrl.dispose();
     _materialCtrl.dispose();
     _activeCtrl.dispose();
     _targetCtrl.dispose();
+    _sampledPlantsCtrl.dispose();
+    _affectedPlantsCtrl.dispose();
+    _larvaePerSqmCtrl.dispose();
+    _trapAverageCtrl.dispose();
+    _diseasePercentCtrl.dispose();
     super.dispose();
   }
 
@@ -245,7 +316,8 @@ class _QuickLogSheetState extends State<_QuickLogSheet> {
   void initState() {
     super.initState();
     final hasInitial = widget.initialCropId != null &&
-        widget.crops.any((crop) => crop['id']?.toString() == widget.initialCropId);
+        widget.crops
+            .any((crop) => crop['id']?.toString() == widget.initialCropId);
     _selectedCropId = hasInitial
         ? widget.initialCropId
         : (_selectableCrops.length == 1
@@ -257,6 +329,34 @@ class _QuickLogSheetState extends State<_QuickLogSheet> {
       _method = 'Pülverizatör';
     } else if (widget.type == ActivityType.harvest) {
       _method = 'Kasa';
+    }
+    if (widget.initialQuantity != null) {
+      _qtyCtrl.text = _formatNum(widget.initialQuantity!);
+    }
+    if (widget.initialNote != null && widget.initialNote!.trim().isNotEmpty) {
+      _noteCtrl.text = widget.initialNote!.trim();
+    }
+    _syncIpmRuleForSelectedCrop();
+    _qtyCtrl.addListener(_refreshWaterPreview);
+    _extraQtyCtrl.addListener(_refreshWaterPreview);
+    _sampledPlantsCtrl.addListener(_refreshIpmPreview);
+    _affectedPlantsCtrl.addListener(_refreshIpmPreview);
+    _larvaePerSqmCtrl.addListener(_refreshIpmPreview);
+    _trapAverageCtrl.addListener(_refreshIpmPreview);
+    _diseasePercentCtrl.addListener(_refreshIpmPreview);
+  }
+
+  void _refreshWaterPreview() {
+    if (widget.type == ActivityType.watering && mounted) {
+      setState(() {});
+    }
+  }
+
+  void _refreshIpmPreview() {
+    if ((widget.type == ActivityType.scouting ||
+            widget.type == ActivityType.spraying) &&
+        mounted) {
+      setState(() {});
     }
   }
 
@@ -279,81 +379,112 @@ class _QuickLogSheetState extends State<_QuickLogSheet> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: AppColors.border,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
                   decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.15),
-                    shape: BoxShape.circle,
+                    color: AppColors.border,
+                    borderRadius: BorderRadius.circular(2),
                   ),
-                  child: Icon(ActivityType.icon(type), color: color, size: 22),
                 ),
-                const SizedBox(width: 10),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: 0.15),
+                      shape: BoxShape.circle,
+                    ),
+                    child:
+                        Icon(ActivityType.icon(type), color: color, size: 22),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    ActivityType.label(type),
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+              if (_selectableCrops.isNotEmpty &&
+                  widget.initialCropId == null) ...[
                 Text(
-                  ActivityType.label(type),
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
+                  'Hedef ürün',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
+                const SizedBox(height: 6),
+                DropdownButtonFormField<String>(
+                  key: ValueKey(_selectedCropId),
+                  initialValue: _selectedCropId,
+                  items: _selectableCrops.map((crop) {
+                    final id = crop['id']!.toString();
+                    final name = crop['name']?.toString() ?? 'Ürün';
+                    return DropdownMenuItem<String>(
+                      value: id,
+                      child: Text(name),
+                    );
+                  }).toList(),
+                  onChanged: (value) => setState(() {
+                    _selectedCropId = value;
+                    // Bitki değişti → playbook seçimleri sıfırla.
+                    _pickedFertilizer = null;
+                    _pickedPesticide = null;
+                    _pesticideCategoryFilter = null;
+                    _syncIpmRuleForSelectedCrop();
+                  }),
+                  decoration: InputDecoration(
+                    hintText: 'Ürün seç',
+                    filled: true,
+                    fillColor: AppColors.surface,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: AppColors.border),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
               ],
-            ),
-            const SizedBox(height: 18),
-            if (_selectableCrops.isNotEmpty && widget.initialCropId == null) ...[
-              Text(
-                'Hedef ürün',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: AppColors.textSecondary,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 6),
-              DropdownButtonFormField<String>(
-                value: _selectedCropId,
-                items: _selectableCrops.map((crop) {
-                  final id = crop['id']!.toString();
-                  final name = crop['name']?.toString() ?? 'Ürün';
-                  return DropdownMenuItem<String>(
-                    value: id,
-                    child: Text(name),
-                  );
-                }).toList(),
-                onChanged: (value) => setState(() {
-                  _selectedCropId = value;
-                  // Bitki değişti → playbook seçimleri sıfırla.
-                  _pickedFertilizer = null;
-                  _pickedPesticide = null;
-                  _pesticideCategoryFilter = null;
-                }),
-                decoration: InputDecoration(
-                  hintText: 'Ürün seç',
-                  filled: true,
-                  fillColor: AppColors.surface,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: AppColors.border),
+              if (unit != null) ...[
+                Text(
+                  _quantityLabel(type),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
-              ),
-              const SizedBox(height: 14),
-            ],
-            if (unit != null) ...[
+                const SizedBox(height: 6),
+                TextField(
+                  controller: _qtyCtrl,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  decoration: InputDecoration(
+                    hintText: '0',
+                    suffixText: _quantityUnitLabel(type, unit),
+                    filled: true,
+                    fillColor: AppColors.surface,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: AppColors.border),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+              ],
+              ..._typeSpecificFields(type),
               Text(
-                _quantityLabel(type),
+                'Not (isteğe bağlı)',
                 style: TextStyle(
                   fontSize: 12,
                   color: AppColors.textSecondary,
@@ -362,12 +493,10 @@ class _QuickLogSheetState extends State<_QuickLogSheet> {
               ),
               const SizedBox(height: 6),
               TextField(
-                controller: _qtyCtrl,
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
+                controller: _noteCtrl,
+                maxLines: 2,
                 decoration: InputDecoration(
-                  hintText: '0',
-                  suffixText: _quantityUnitLabel(type, unit),
+                  hintText: 'Örn. sabah 07:00, damla sulama',
                   filled: true,
                   fillColor: AppColors.surface,
                   border: OutlineInputBorder(
@@ -376,68 +505,43 @@ class _QuickLogSheetState extends State<_QuickLogSheet> {
                   ),
                 ),
               ),
-              const SizedBox(height: 14),
-            ],
-            ..._typeSpecificFields(type),
-            Text(
-              'Not (isteğe bağlı)',
-              style: TextStyle(
-                fontSize: 12,
-                color: AppColors.textSecondary,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 6),
-            TextField(
-              controller: _noteCtrl,
-              maxLines: 2,
-              decoration: InputDecoration(
-                hintText: 'Örn. sabah 07:00, damla sulama',
-                filled: true,
-                fillColor: AppColors.surface,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: AppColors.border),
-                ),
-              ),
-            ),
-            const SizedBox(height: 18),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      side: BorderSide(color: AppColors.border),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        side: BorderSide(color: AppColors.border),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
-                    ),
-                    child: const Text('Vazgeç'),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  flex: 2,
-                  child: ElevatedButton(
-                    onPressed: _save,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: color,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: Text(
-                      ActivityType.actionLabel(type),
-                      style: const TextStyle(fontWeight: FontWeight.w700),
+                      child: const Text('Vazgeç'),
                     ),
                   ),
-                ),
-              ],
-            ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    flex: 2,
+                    child: ElevatedButton(
+                      onPressed: _save,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: color,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: Text(
+                        ActivityType.actionLabel(type),
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ],
           ),
         ),
@@ -448,6 +552,27 @@ class _QuickLogSheetState extends State<_QuickLogSheet> {
   void _save() {
     final qty = double.tryParse(_qtyCtrl.text.replaceAll(',', '.'));
     final extraQty = double.tryParse(_extraQtyCtrl.text.replaceAll(',', '.'));
+    final ipmDecision = _currentIpmDecision();
+    if (widget.type == ActivityType.scouting &&
+        _hasIpmRules &&
+        ipmDecision == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Gözlem için hedef zararlı seçin.')),
+      );
+      return;
+    }
+    if (widget.type == ActivityType.spraying &&
+        _hasIpmRules &&
+        ipmDecision?.allowsChemical != true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Eşik aşılmadan ayçiçeğinde ilaç kaydı açılamaz. Önce gözlem kaydı oluşturun.',
+          ),
+        ),
+      );
+      return;
+    }
     if (widget.type == ActivityType.spraying &&
         _materialCtrl.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -464,6 +589,12 @@ class _QuickLogSheetState extends State<_QuickLogSheet> {
       metadata['irrigation_method'] = _method;
       if (qty != null) metadata['duration_minutes'] = qty;
       if (extraQty != null) metadata['water_liters'] = extraQty;
+      final impact = _waterImpact(qty: qty, liters: extraQty);
+      if (impact.hasWater) {
+        metadata['effective_water_mm'] = impact.mm;
+        metadata['effective_water_liters'] = impact.liters;
+        metadata['water_impact_source'] = impact.source;
+      }
       // Playbook'tan haftalık önerilen mm — gerçek/öneri karşılaştırması için.
       final crop = _selectedCropMap();
       final pb = _playbook;
@@ -512,6 +643,23 @@ class _QuickLogSheetState extends State<_QuickLogSheet> {
         metadata['preharvest_interval_days'] = p.preharvestIntervalDays;
         metadata['source'] = 'playbook';
       }
+      if (ipmDecision != null) {
+        metadata['ipm_gate'] = ipmDecision.toJson();
+        metadata['ipm_observation'] = _ipmObservationInput()?.toJson();
+        metadata['chemical_gate_reason'] = ipmDecision.message;
+      }
+    } else if (widget.type == ActivityType.scouting) {
+      final input = _ipmObservationInput();
+      if (input != null && ipmDecision != null) {
+        metadata['source'] = 'ipm';
+        metadata['ipm_observation'] = input.toJson();
+        metadata['ipm_decision'] = ipmDecision.toJson();
+        metadata['target_pest'] = ipmDecision.rule.pestName;
+        metadata['threshold_status'] = ipmDecision.status.name;
+        metadata['allows_chemical'] = ipmDecision.allowsChemical;
+      } else if (_targetCtrl.text.trim().isNotEmpty) {
+        metadata['scouting_target'] = _targetCtrl.text.trim();
+      }
     } else if (widget.type == ActivityType.harvest) {
       if (qty != null) metadata['harvest_kg'] = qty;
       if (_targetCtrl.text.trim().isNotEmpty) {
@@ -522,6 +670,9 @@ class _QuickLogSheetState extends State<_QuickLogSheet> {
       cropId: _selectedCropId,
       note: _noteCtrl.text.isEmpty ? null : _noteCtrl.text,
       quantity: qty,
+      quantityUnit:
+          widget.quantityUnit ?? ActivityType.quantityUnit(widget.type),
+      recommendedQuantity: widget.recommendedQuantity,
       metadata: metadata,
     ));
   }
@@ -575,7 +726,12 @@ class _QuickLogSheetState extends State<_QuickLogSheet> {
           ],
           _methodDropdown(
             label: 'Sulama yöntemi',
-            values: const ['Damla sulama', 'Karık sulama', 'Yağmurlama', 'Elle sulama'],
+            values: const [
+              'Damla sulama',
+              'Karık sulama',
+              'Yağmurlama',
+              'Elle sulama'
+            ],
           ),
           const SizedBox(height: 14),
           _textField(
@@ -585,6 +741,8 @@ class _QuickLogSheetState extends State<_QuickLogSheet> {
             suffix: 'L',
             number: true,
           ),
+          const SizedBox(height: 10),
+          _wateringEffectPreview(),
           const SizedBox(height: 14),
         ];
       case ActivityType.fertilizing:
@@ -612,11 +770,22 @@ class _QuickLogSheetState extends State<_QuickLogSheet> {
           const SizedBox(height: 14),
         ];
       case ActivityType.spraying:
+        final chemicalGateOpen =
+            !_hasIpmRules || (_currentIpmDecision()?.allowsChemical ?? false);
         return [
-          if (_playbook != null) ...[
+          if (_hasIpmRules) ...[
+            _ipmObservationCard(forChemicalGate: true),
+            const SizedBox(height: 14),
+          ],
+          if (chemicalGateOpen && _playbook != null) ...[
             _pesticidePicker(_playbook!),
             const SizedBox(height: 14),
           ],
+          if (!chemicalGateOpen) ...[
+            _chemicalLockedCard(),
+            const SizedBox(height: 14),
+          ],
+          if (chemicalGateOpen) ...[
           _textField(
             controller: _materialCtrl,
             label: 'İlaç adı',
@@ -637,9 +806,29 @@ class _QuickLogSheetState extends State<_QuickLogSheet> {
           const SizedBox(height: 14),
           _methodDropdown(
             label: 'Uygulama yöntemi',
-            values: const ['Pülverizatör', 'Sırt pompası', 'Damla ile', 'Tohum uygulaması'],
+            values: const [
+              'Pülverizatör',
+              'Sırt pompası',
+              'Damla ile',
+              'Tohum uygulaması'
+            ],
           ),
           const SizedBox(height: 14),
+          ],
+        ];
+      case ActivityType.scouting:
+        return [
+          if (_hasIpmRules) ...[
+            _ipmObservationCard(),
+            const SizedBox(height: 14),
+          ] else ...[
+            _textField(
+              controller: _targetCtrl,
+              label: 'Gözlem konusu',
+              hint: 'Örn. yaprak, tabla, yabancı ot, hastalık belirtisi',
+            ),
+            const SizedBox(height: 14),
+          ],
         ];
       case ActivityType.harvest:
         return [
@@ -658,6 +847,279 @@ class _QuickLogSheetState extends State<_QuickLogSheet> {
   // ───────────────────────────────────────────────────────────────────────
   // Playbook destekli pickerlar
   // ───────────────────────────────────────────────────────────────────────
+
+  void _syncIpmRuleForSelectedCrop() {
+    final rules = IpmDecisionService.rulesForCrop(_selectedCropName);
+    if (rules.isEmpty) {
+      _ipmPestKey = null;
+      return;
+    }
+    if (_ipmPestKey == null ||
+        !rules.any((rule) => rule.pestKey == _ipmPestKey)) {
+      _ipmPestKey = rules.first.pestKey;
+      _applyIpmRuleDefaults();
+    }
+  }
+
+  CropIpmRule _selectedIpmRule(List<CropIpmRule> rules) {
+    return rules.firstWhere(
+      (rule) => rule.pestKey == _ipmPestKey,
+      orElse: () => rules.first,
+    );
+  }
+
+  void _applyIpmRuleDefaults() {
+    final rule = IpmDecisionService.ruleFor(
+      cropName: _selectedCropName ?? '',
+      pestKey: _ipmPestKey ?? '',
+    );
+    if (rule == null) return;
+    if (_needsPlantCount(rule) && _sampledPlantsCtrl.text.trim().isEmpty) {
+      _sampledPlantsCtrl.text = '100';
+    }
+  }
+
+  IpmObservationInput? _ipmObservationInput() {
+    final cropName = _selectedCropName;
+    final rules = IpmDecisionService.rulesForCrop(cropName);
+    if (cropName == null || rules.isEmpty) return null;
+    final pestKey = _ipmPestKey ?? rules.first.pestKey;
+    return IpmObservationInput(
+      cropName: cropName,
+      pestKey: pestKey,
+      sampledPlants: _parseInt(_sampledPlantsCtrl.text),
+      affectedPlants: _parseInt(_affectedPlantsCtrl.text),
+      larvaePerSquareMeter: _parseDouble(_larvaePerSqmCtrl.text),
+      trapAverage: _parseDouble(_trapAverageCtrl.text),
+      diseasePercent: _parseDouble(_diseasePercentCtrl.text),
+    );
+  }
+
+  IpmDecision? _currentIpmDecision() {
+    final input = _ipmObservationInput();
+    if (input == null) return null;
+    try {
+      return IpmDecisionService.evaluate(input);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  bool _needsPlantCount(CropIpmRule rule) {
+    return rule.pestKey == 'yesilkurt' || rule.pestKey == 'aycicegi_guvesi';
+  }
+
+  bool _needsLarvaePerSquareMeter(CropIpmRule rule) {
+    return rule.pestKey == 'bozkurt' ||
+        rule.pestKey == 'cayir_tirtili' ||
+        rule.pestKey == 'telkurtlari';
+  }
+
+  int? _parseInt(String raw) {
+    final v = double.tryParse(raw.replaceAll(',', '.'));
+    return v == null ? null : v.round();
+  }
+
+  double? _parseDouble(String raw) {
+    return double.tryParse(raw.replaceAll(',', '.'));
+  }
+
+  Widget _ipmObservationCard({bool forChemicalGate = false}) {
+    final cropName = _selectedCropName;
+    final rules = IpmDecisionService.rulesForCrop(cropName);
+    if (rules.isEmpty) return const SizedBox.shrink();
+    final selected = _selectedIpmRule(rules);
+    final decision = _currentIpmDecision();
+    return _PickerCard(
+      title: forChemicalGate
+          ? 'Ayçiçeği entegre mücadele kilidi'
+          : 'Ayçiçeği gözlem kaydı',
+      subtitle: forChemicalGate
+          ? 'Ürün kataloğu yalnız ekonomik eşik doğrulanırsa açılır.'
+          : 'Sayımı gir; karar otomatik eşik kontrolüyle kayda geçer.',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          DropdownButtonFormField<String>(
+            key: ValueKey(_ipmPestKey),
+            initialValue: selected.pestKey,
+            items: rules
+                .map(
+                  (rule) => DropdownMenuItem<String>(
+                    value: rule.pestKey,
+                    child: Text(rule.pestName),
+                  ),
+                )
+                .toList(),
+            onChanged: (value) => setState(() {
+              _ipmPestKey = value;
+              _pickedPesticide = null;
+              _pesticideCategoryFilter = null;
+              _materialCtrl.clear();
+              _activeCtrl.clear();
+              _targetCtrl.clear();
+              _applyIpmRuleDefaults();
+            }),
+            decoration: InputDecoration(
+              labelText: 'Hedef zararlı/hastalık',
+              filled: true,
+              fillColor: AppColors.surface,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: AppColors.border),
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'Eşik: ${selected.economicThreshold}',
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: AppColors.warning,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            selected.monitoringMethod,
+            style: const TextStyle(
+              fontSize: 12,
+              color: AppColors.textSecondary,
+              height: 1.35,
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (_needsPlantCount(selected)) ...[
+            Row(
+              children: [
+                Expanded(
+                  child: _textField(
+                    controller: _sampledPlantsCtrl,
+                    label: 'Örneklenen bitki',
+                    hint: '100',
+                    number: true,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _textField(
+                    controller: _affectedPlantsCtrl,
+                    label: 'Belirti görülen',
+                    hint: '0',
+                    number: true,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+          ],
+          if (_needsLarvaePerSquareMeter(selected)) ...[
+            _textField(
+              controller: _larvaePerSqmCtrl,
+              label: 'Metrekare larva sayısı',
+              hint: '0',
+              suffix: 'adet/m²',
+              number: true,
+            ),
+            const SizedBox(height: 12),
+          ],
+          if (selected.pestKey == 'aycicegi_guvesi') ...[
+            _textField(
+              controller: _trapAverageCtrl,
+              label: 'Tuzak ortalaması',
+              hint: '0',
+              suffix: 'ergin',
+              number: true,
+            ),
+            const SizedBox(height: 12),
+          ],
+          if (selected.pestKey == 'mildiyo') ...[
+            _textField(
+              controller: _diseasePercentCtrl,
+              label: 'Hastalıklı bitki oranı',
+              hint: '0',
+              suffix: '%',
+              number: true,
+            ),
+            const SizedBox(height: 12),
+          ],
+          if (decision != null) _ipmDecisionPreview(decision),
+        ],
+      ),
+    );
+  }
+
+  Widget _ipmDecisionPreview(IpmDecision decision) {
+    final color = switch (decision.status) {
+      IpmDecisionStatus.chemicalAllowed => AppColors.warning,
+      IpmDecisionStatus.criticalNoChemical => AppColors.error,
+      IpmDecisionStatus.followUp => AppColors.frost,
+      IpmDecisionStatus.belowThreshold => AppColors.emerald,
+    };
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '${decision.status.label} · ${decision.headline}',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              color: color,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            decision.message,
+            style: const TextStyle(
+              fontSize: 12,
+              color: AppColors.textPrimary,
+              height: 1.35,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _chemicalLockedCard() {
+    final decision = _currentIpmDecision();
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.warning.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.lock_outline_rounded,
+              color: AppColors.warning, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              decision == null
+                  ? 'Ayçiçeğinde ilaç kataloğu için önce hedef zararlıyı seçip gözlem sayımı gir.'
+                  : 'Kimyasal kapı kapalı: ${decision.message}',
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppColors.textPrimary,
+                height: 1.35,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _fertilizerPicker(CropPlaybook pb) {
     return _PickerCard(
@@ -678,9 +1140,7 @@ class _QuickLogSheetState extends State<_QuickLogSheet> {
                     : AppColors.surface,
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(
-                  color: selected
-                      ? AppColors.emerald
-                      : AppColors.border,
+                  color: selected ? AppColors.emerald : AppColors.border,
                   width: selected ? 1.5 : 1,
                 ),
               ),
@@ -762,9 +1222,8 @@ class _QuickLogSheetState extends State<_QuickLogSheet> {
                             : AppColors.surface,
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(
-                          color: selected
-                              ? AppColors.warning
-                              : AppColors.border,
+                          color:
+                              selected ? AppColors.warning : AppColors.border,
                           width: selected ? 1.5 : 1,
                         ),
                       ),
@@ -856,6 +1315,79 @@ class _QuickLogSheetState extends State<_QuickLogSheet> {
             color: selected ? AppColors.emeraldDark : AppColors.textSecondary,
           ),
         ),
+      ),
+    );
+  }
+
+  WaterImpact _waterImpact({double? qty, double? liters}) {
+    final areaSqm =
+        (widget.fieldAreaDekar <= 0 ? 1.0 : widget.fieldAreaDekar) * 1000.0;
+    final crop = _selectedCropMap();
+    final plantCount = WaterAccounting.estimatePlantCount(
+      areaSqm: areaSqm,
+      rowSpacingCm: (crop?['row_spacing_cm'] as num?)?.toDouble(),
+      plantSpacingCm: (crop?['plant_spacing_cm'] as num?)?.toDouble(),
+    );
+    return WaterAccounting.calculate(
+      metadata: {
+        'irrigation_method': _method,
+        if (liters != null) 'water_liters': liters,
+        if (qty != null) 'duration_minutes': qty,
+      },
+      quantity: qty,
+      quantityUnit: 'dk',
+      areaSqm: areaSqm,
+      plantCount: plantCount,
+    );
+  }
+
+  Widget _wateringEffectPreview() {
+    final qty = double.tryParse(_qtyCtrl.text.replaceAll(',', '.'));
+    final liters = double.tryParse(_extraQtyCtrl.text.replaceAll(',', '.'));
+    final impact = _waterImpact(qty: qty, liters: liters);
+    final pb = _playbook;
+    final crop = _selectedCropMap();
+    double? weeklyTarget;
+    if (pb != null && crop != null) {
+      final planted = _parsePlantedDate(crop['planted_date']?.toString());
+      if (planted != null) {
+        final daysSince = DateTime.now().difference(planted).inDays;
+        weeklyTarget = pb.bandForDay(daysSince)?.weeklyMm.toDouble();
+      }
+    }
+    final targetPct = weeklyTarget == null || weeklyTarget <= 0
+        ? null
+        : (impact.mm / weeklyTarget * 100).clamp(0, 999).round();
+    final hasInput = (qty != null && qty > 0) || (liters != null && liters > 0);
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.frostBg.withValues(alpha: 0.7),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.frost.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.insights_rounded, color: AppColors.frost, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              hasInput
+                  ? 'Bu kayıt yaklaşık ${impact.mm.toStringAsFixed(1)} mm / '
+                      '${_formatLargeLiter(impact.liters)} L etki eder. '
+                      '${targetPct == null ? '' : 'Haftalık hedefin %$targetPct kadarını karşılar. '}'
+                      'Su açığını yaklaşık ${impact.mm.toStringAsFixed(1)} mm azaltır.'
+                  : 'Süre veya litre girince sulamanın tarlaya kaç mm etki edeceği burada hesaplanır.',
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppColors.textPrimary,
+                height: 1.35,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -993,9 +1525,11 @@ class _QuickLogSheetState extends State<_QuickLogSheet> {
         ),
         const SizedBox(height: 6),
         DropdownButtonFormField<String>(
-          value: _method,
+          key: ValueKey(_method),
+          initialValue: _method,
           items: values
-              .map((value) => DropdownMenuItem(value: value, child: Text(value)))
+              .map(
+                  (value) => DropdownMenuItem(value: value, child: Text(value)))
               .toList(),
           onChanged: (value) => setState(() => _method = value ?? values.first),
           decoration: InputDecoration(

@@ -8,10 +8,12 @@ class SatelliteWeatherScreen extends ConsumerStatefulWidget {
   const SatelliteWeatherScreen({super.key, required this.fieldData});
 
   @override
-  ConsumerState<SatelliteWeatherScreen> createState() => _SatelliteWeatherScreenState();
+  ConsumerState<SatelliteWeatherScreen> createState() =>
+      _SatelliteWeatherScreenState();
 }
 
-class _SatelliteWeatherScreenState extends ConsumerState<SatelliteWeatherScreen> {
+class _SatelliteWeatherScreenState
+    extends ConsumerState<SatelliteWeatherScreen> {
   Map<String, dynamic>? _data;
   bool _isLoading = true;
   String? _error;
@@ -31,10 +33,11 @@ class _SatelliteWeatherScreenState extends ConsumerState<SatelliteWeatherScreen>
     });
     try {
       final d = widget.fieldData;
-      final result = await ref.read(weatherRepositoryProvider).getSatelliteWeather(
-            latitude: (d['latitude'] as num).toDouble(),
-            longitude: (d['longitude'] as num).toDouble(),
-          );
+      final result =
+          await ref.read(weatherRepositoryProvider).getSatelliteWeather(
+                latitude: (d['latitude'] as num).toDouble(),
+                longitude: (d['longitude'] as num).toDouble(),
+              );
       if (mounted) {
         setState(() {
           _data = result.data;
@@ -152,22 +155,23 @@ class _SatelliteWeatherScreenState extends ConsumerState<SatelliteWeatherScreen>
             ),
             child: Row(
               children: [
-                const Icon(Icons.wifi_off_rounded, color: Color(0xFF7A5D00), size: 18),
+                const Icon(Icons.wifi_off_rounded,
+                    color: Color(0xFF7A5D00), size: 18),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     _lastUpdated == null
                         ? 'Çevrimdışı mod: Son başarılı hava verisi gösteriliyor.'
                         : 'Çevrimdışı mod: Son başarılı veri ${_formatUpdatedAt(_lastUpdated!)} tarihinde alındı.',
-                    style: const TextStyle(color: Color(0xFF7A5D00), fontSize: 12.5),
+                    style: const TextStyle(
+                        color: Color(0xFF7A5D00), fontSize: 12.5),
                   ),
                 ),
               ],
             ),
           ),
 
-        if (_isStaleData)
-          const SizedBox(height: 12),
+        if (_isStaleData) const SizedBox(height: 12),
 
         // ── ANLIK HAVA (Open-Meteo ERA5) ──
         _sectionTitle('Anlık Hava Durumu', Icons.wb_sunny_outlined),
@@ -178,8 +182,7 @@ class _SatelliteWeatherScreenState extends ConsumerState<SatelliteWeatherScreen>
 
         // ── NASA UYDU VERİSİ ──
         if (d['nasa_success'] == true) ...[
-          _sectionTitle(
-              'NASA Uydu Atmosfer Verisi (${d['nasa_date']})',
+          _sectionTitle('NASA Uydu Atmosfer Verisi (${d['nasa_date']})',
               Icons.rocket_launch_outlined),
           const SizedBox(height: 8),
           _nasaCard(d),
@@ -205,8 +208,7 @@ class _SatelliteWeatherScreenState extends ConsumerState<SatelliteWeatherScreen>
               itemCount: (d['hourly_forecast'] as List).length,
               separatorBuilder: (_, __) => const SizedBox(width: 8),
               itemBuilder: (_, i) => _hourlyCard(
-                  (d['hourly_forecast'] as List)[i]
-                      as Map<String, dynamic>),
+                  (d['hourly_forecast'] as List)[i] as Map<String, dynamic>),
             ),
           ),
           const SizedBox(height: 16),
@@ -221,7 +223,8 @@ class _SatelliteWeatherScreenState extends ConsumerState<SatelliteWeatherScreen>
             scrollDirection: Axis.horizontal,
             itemCount: forecast.length,
             separatorBuilder: (_, __) => const SizedBox(width: 8),
-            itemBuilder: (_, i) => _dayCard(forecast[i] as Map<String, dynamic>),
+            itemBuilder: (_, i) =>
+                _dayCard(forecast[i] as Map<String, dynamic>),
           ),
         ),
 
@@ -240,7 +243,6 @@ class _SatelliteWeatherScreenState extends ConsumerState<SatelliteWeatherScreen>
     );
   }
 
-
   String _formatUpdatedAt(DateTime dt) {
     final local = dt.toLocal();
     String two(int v) => v.toString().padLeft(2, '0');
@@ -253,9 +255,7 @@ class _SatelliteWeatherScreenState extends ConsumerState<SatelliteWeatherScreen>
       const SizedBox(width: 8),
       Text(title,
           style: const TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.bold)),
+              color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
     ]);
   }
 
@@ -303,10 +303,26 @@ class _SatelliteWeatherScreenState extends ConsumerState<SatelliteWeatherScreen>
         ]),
         const SizedBox(height: 16),
         Row(children: [
-          _miniStat(Icons.water_drop, '%${(d['current_humidity'] as double).toStringAsFixed(0)}', 'Nem', Colors.blue),
-          _miniStat(Icons.air, '${(d['current_wind'] as double).toStringAsFixed(1)} km/h', 'Rüzgar', Colors.cyan),
-          _miniStat(Icons.cloud, '%${(d['current_cloud_cover'] as double).toStringAsFixed(0)}', 'Bulut', Colors.grey),
-          _miniStat(Icons.compress, '${(d['current_pressure'] as double).toStringAsFixed(0)} hPa', 'Basınç', Colors.purple),
+          _miniStat(
+              Icons.water_drop,
+              '%${(d['current_humidity'] as double).toStringAsFixed(0)}',
+              'Nem',
+              Colors.blue),
+          _miniStat(
+              Icons.air,
+              '${(d['current_wind'] as double).toStringAsFixed(1)} km/h',
+              'Rüzgar',
+              Colors.cyan),
+          _miniStat(
+              Icons.cloud,
+              '%${(d['current_cloud_cover'] as double).toStringAsFixed(0)}',
+              'Bulut',
+              Colors.grey),
+          _miniStat(
+              Icons.compress,
+              '${(d['current_pressure'] as double).toStringAsFixed(0)} hPa',
+              'Basınç',
+              Colors.purple),
         ]),
         if ((d['current_precip'] as double) > 0)
           Padding(
@@ -316,7 +332,8 @@ class _SatelliteWeatherScreenState extends ConsumerState<SatelliteWeatherScreen>
               const SizedBox(width: 6),
               Text(
                   'Anlık yağış: ${(d['current_precip'] as double).toStringAsFixed(1)} mm',
-                  style: const TextStyle(color: Colors.lightBlue, fontSize: 13)),
+                  style:
+                      const TextStyle(color: Colors.lightBlue, fontSize: 13)),
             ]),
           ),
       ]),
@@ -384,11 +401,8 @@ class _SatelliteWeatherScreenState extends ConsumerState<SatelliteWeatherScreen>
         ]),
         if ((d['nasa_precip'] as double) > 0) ...[
           const SizedBox(height: 10),
-          _nasaStat(
-              '${(d['nasa_precip'] as double).toStringAsFixed(2)} mm',
-              'Düzeltilmiş Yağış',
-              Colors.lightBlue,
-              Icons.grain),
+          _nasaStat('${(d['nasa_precip'] as double).toStringAsFixed(2)} mm',
+              'Düzeltilmiş Yağış', Colors.lightBlue, Icons.grain),
         ],
         const SizedBox(height: 10),
         Container(
@@ -419,18 +433,12 @@ class _SatelliteWeatherScreenState extends ConsumerState<SatelliteWeatherScreen>
       ),
       child: Row(children: [
         Expanded(
-            child: _nasaStat(
-                '%${moisture.toStringAsFixed(1)}',
-                'Toprak Nemi',
-                Colors.green,
-                Icons.water_drop)),
+            child: _nasaStat('%${moisture.toStringAsFixed(1)}', 'Toprak Nemi',
+                Colors.green, Icons.water_drop)),
         const SizedBox(width: 10),
         Expanded(
-            child: _nasaStat(
-                '${soilTemp.toStringAsFixed(1)}°C',
-                'Toprak Sıcaklığı',
-                Colors.deepOrange,
-                Icons.thermostat)),
+            child: _nasaStat('${soilTemp.toStringAsFixed(1)}°C',
+                'Toprak Sıcaklığı', Colors.deepOrange, Icons.thermostat)),
       ]),
     );
   }
@@ -453,9 +461,7 @@ class _SatelliteWeatherScreenState extends ConsumerState<SatelliteWeatherScreen>
       width: 90,
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: hasRain
-            ? const Color(0xFF0D1B2A)
-            : const Color(0xFF1A2035),
+        color: hasRain ? const Color(0xFF0D1B2A) : const Color(0xFF1A2035),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
             color: hasRain
@@ -504,9 +510,7 @@ class _SatelliteWeatherScreenState extends ConsumerState<SatelliteWeatherScreen>
       width: 72,
       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
       decoration: BoxDecoration(
-        color: isRain
-            ? const Color(0xFF0D1B2A)
-            : const Color(0xFF1A2035),
+        color: isRain ? const Color(0xFF0D1B2A) : const Color(0xFF1A2035),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
             color: isRain
@@ -521,8 +525,7 @@ class _SatelliteWeatherScreenState extends ConsumerState<SatelliteWeatherScreen>
                 color: Colors.white70)),
         const SizedBox(height: 4),
         Icon(isRain ? Icons.umbrella : Icons.wb_sunny,
-            size: 18,
-            color: isRain ? Colors.lightBlue : Colors.amber),
+            size: 18, color: isRain ? Colors.lightBlue : Colors.amber),
         const SizedBox(height: 4),
         Text('$temp°',
             style: const TextStyle(
@@ -532,12 +535,10 @@ class _SatelliteWeatherScreenState extends ConsumerState<SatelliteWeatherScreen>
         Text('$wind km/h',
             style: const TextStyle(color: Colors.white38, fontSize: 10)),
         Text('%$hum',
-            style: const TextStyle(
-                color: Color(0xFF4FC3F7), fontSize: 10)),
+            style: const TextStyle(color: Color(0xFF4FC3F7), fontSize: 10)),
         if (prob > 0)
           Text('🌧$prob%',
-              style: const TextStyle(
-                  color: Colors.lightBlue, fontSize: 10)),
+              style: const TextStyle(color: Colors.lightBlue, fontSize: 10)),
       ]),
     );
   }
@@ -551,19 +552,23 @@ class _SatelliteWeatherScreenState extends ConsumerState<SatelliteWeatherScreen>
     final String uvTip;
     final Color uvColor;
     if (maxUv >= 11) {
-      uvTip = 'Tehlikeli (${maxUv.toStringAsFixed(0)}): Tarla çalışması sabah erken / akşam üstü yapılmalı. Güneş koruyucu zorunlu.';
+      uvTip =
+          'Tehlikeli (${maxUv.toStringAsFixed(0)}): Tarla çalışması sabah erken / akşam üstü yapılmalı. Güneş koruyucu zorunlu.';
       uvColor = Colors.purple;
     } else if (maxUv >= 8) {
-      uvTip = 'Çok Yüksek (${maxUv.toStringAsFixed(0)}): Öğleden sonra tarla çalışmasından kaçının. Gölge ve bol su önemli.';
+      uvTip =
+          'Çok Yüksek (${maxUv.toStringAsFixed(0)}): Öğleden sonra tarla çalışmasından kaçının. Gölge ve bol su önemli.';
       uvColor = Colors.red;
     } else if (maxUv >= 6) {
-      uvTip = 'Yüksek (${maxUv.toStringAsFixed(0)}): Şapka ve uzun kollu giysi ile çalışın.';
+      uvTip =
+          'Yüksek (${maxUv.toStringAsFixed(0)}): Şapka ve uzun kollu giysi ile çalışın.';
       uvColor = Colors.orange;
     } else if (maxUv >= 3) {
       uvTip = 'Orta (${maxUv.toStringAsFixed(0)}): Normal önlemler yeterli.';
       uvColor = Colors.yellow;
     } else {
-      uvTip = 'Düşük (${maxUv.toStringAsFixed(0)}): Tarla çalışması için güvenli koşullar.';
+      uvTip =
+          'Düşük (${maxUv.toStringAsFixed(0)}): Tarla çalışması için güvenli koşullar.';
       uvColor = Colors.green;
     }
     return Container(
@@ -577,15 +582,15 @@ class _SatelliteWeatherScreenState extends ConsumerState<SatelliteWeatherScreen>
         Icon(Icons.wb_sunny, color: uvColor, size: 22),
         const SizedBox(width: 10),
         Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text('UV İndeksi Haftanın Zirvesi',
                 style: TextStyle(
-                    color: uvColor,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13)),
+                    color: uvColor, fontWeight: FontWeight.bold, fontSize: 13)),
             const SizedBox(height: 4),
             Text(uvTip,
-                style: const TextStyle(color: Colors.white70, fontSize: 13, height: 1.4)),
+                style: const TextStyle(
+                    color: Colors.white70, fontSize: 13, height: 1.4)),
           ]),
         ),
       ]),
@@ -603,7 +608,9 @@ class _SatelliteWeatherScreenState extends ConsumerState<SatelliteWeatherScreen>
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         const Text('Veri Kaynakları',
             style: TextStyle(
-                color: Colors.white54, fontSize: 12, fontWeight: FontWeight.bold)),
+                color: Colors.white54,
+                fontSize: 12,
+                fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
         _sourceRow('🛰️ NASA POWER',
             'CERES uydu ölçümleri + MERRA-2 atmosfer yeniden analizi. Güneş radyasyonu, sıcaklık, nem, rüzgar.'),
@@ -629,7 +636,8 @@ class _SatelliteWeatherScreenState extends ConsumerState<SatelliteWeatherScreen>
       ),
       Expanded(
         child: Text(desc,
-            style: const TextStyle(color: Colors.white38, fontSize: 11, height: 1.4)),
+            style: const TextStyle(
+                color: Colors.white38, fontSize: 11, height: 1.4)),
       ),
     ]);
   }

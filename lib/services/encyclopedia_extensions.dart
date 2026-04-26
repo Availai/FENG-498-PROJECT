@@ -47,87 +47,139 @@ class EncyclopediaExtensions {
 
   static const Map<String, List<GrowthStage>> _stagesByType = {
     'tahıl': [
-      GrowthStage(label: 'Çimlenme', durationDays: '7–14 gün',
+      GrowthStage(
+          label: 'Çimlenme',
+          durationDays: '7–14 gün',
           description: 'Tohum toprakta su alır, kök ve sürgün belirir.',
           careTip: 'Toprak nemli kalmalı, kabuk bağlamasını önleyin.'),
-      GrowthStage(label: 'Kardeşlenme', durationDays: '20–40 gün',
+      GrowthStage(
+          label: 'Kardeşlenme',
+          durationDays: '20–40 gün',
           description: 'Ana sap çevresinde yan sürgünler oluşur.',
           careTip: 'İlk azot gübresi (üre) bu dönemde verilir.'),
-      GrowthStage(label: 'Sapa Kalkma', durationDays: '30–50 gün',
+      GrowthStage(
+          label: 'Sapa Kalkma',
+          durationDays: '30–50 gün',
           description: 'Saplar uzar, başak taslakları oluşur.',
           careTip: 'Yabancı ot ilaçlaması ve ikinci sulama.'),
-      GrowthStage(label: 'Başaklanma', durationDays: '15–25 gün',
+      GrowthStage(
+          label: 'Başaklanma',
+          durationDays: '15–25 gün',
           description: 'Başaklar görünür hale gelir, çiçeklenme başlar.',
           careTip: 'Su stresi olmamalı; dane verimini doğrudan etkiler.'),
-      GrowthStage(label: 'Olgunlaşma & Hasat', durationDays: '30–45 gün',
+      GrowthStage(
+          label: 'Olgunlaşma & Hasat',
+          durationDays: '30–45 gün',
           description: 'Daneler sertleşir, bitki sararır.',
           careTip: 'Nem %14\'ün altına düştüğünde hasat.'),
     ],
     'yağlı tohum': [
-      GrowthStage(label: 'Çimlenme', durationDays: '7–14 gün',
+      GrowthStage(
+          label: 'Çimlenme',
+          durationDays: '7–14 gün',
           description: 'Tohum tavlı toprakta kök ve sürgün oluşturur.',
           careTip: 'Kabuk bağlamasını ve boş sıra oluşumunu kontrol edin.'),
-      GrowthStage(label: 'Rozet ve Hızlı Gelişim', durationDays: '20–45 gün',
+      GrowthStage(
+          label: 'Rozet ve Hızlı Gelişim',
+          durationDays: '20–45 gün',
           description: 'Kök derine iner, yaprak alanı hızla büyür.',
           careTip: 'Yabancı ot kontrolü ve üst azot bu dönemde yapılır.'),
-      GrowthStage(label: 'Tabla Oluşumu', durationDays: '45–65 gün',
+      GrowthStage(
+          label: 'Tabla Oluşumu',
+          durationDays: '45–65 gün',
           description: 'Tabla taslağı belirginleşir, su ihtiyacı artar.',
-          careTip: 'Kuraklık varsa ilk kritik sulama bu döneme denk getirilir.'),
-      GrowthStage(label: 'Çiçeklenme', durationDays: '15–25 gün',
+          careTip:
+              'Kuraklık varsa ilk kritik sulama bu döneme denk getirilir.'),
+      GrowthStage(
+          label: 'Çiçeklenme',
+          durationDays: '15–25 gün',
           description: 'Tabla çiçekleri açar ve döllenme başlar.',
-          careTip: 'Yeşilkurt, çayır tırtılı ve mildiyö belirtilerini izleyin.'),
-      GrowthStage(label: 'Dane Dolumu & Hasat', durationDays: '30–45 gün',
+          careTip:
+              'Yeşilkurt, çayır tırtılı ve mildiyö belirtilerini izleyin.'),
+      GrowthStage(
+          label: 'Dane Dolumu & Hasat',
+          durationDays: '30–45 gün',
           description: 'Daneler sertleşir, tabla arkası sararır.',
           careTip: 'Geç hasat kuş zararı ve dane dökümünü artırır.'),
     ],
     'sebze': [
-      GrowthStage(label: 'Tohum Ekimi', durationDays: '0–5 gün',
+      GrowthStage(
+          label: 'Tohum Ekimi',
+          durationDays: '0–5 gün',
           description: 'Tohum yastığa veya doğrudan tarlaya ekilir.',
           careTip: '1–2 cm derinlik; pülverize sulama.'),
-      GrowthStage(label: 'Fide', durationDays: '20–35 gün',
+      GrowthStage(
+          label: 'Fide',
+          durationDays: '20–35 gün',
           description: 'İlk gerçek yapraklar belirir, kök sistem güçlenir.',
           careTip: 'Sertleştirme için fide gündüz dışarı çıkarılır.'),
-      GrowthStage(label: 'Vejetatif Büyüme', durationDays: '25–45 gün',
+      GrowthStage(
+          label: 'Vejetatif Büyüme',
+          durationDays: '25–45 gün',
           description: 'Yapraklar ve gövde hızla büyür.',
           careTip: 'Azot ağırlıklı gübre; sürgün alma (kalem alma).'),
-      GrowthStage(label: 'Çiçeklenme & Meyve', durationDays: '20–40 gün',
+      GrowthStage(
+          label: 'Çiçeklenme & Meyve',
+          durationDays: '20–40 gün',
           description: 'Çiçek açar, küçük meyveler bağlanır.',
           careTip: 'Potasyum ağırlıklı gübre; arı dostu davranın.'),
-      GrowthStage(label: 'Hasat Dönemi', durationDays: '30–60 gün',
+      GrowthStage(
+          label: 'Hasat Dönemi',
+          durationDays: '30–60 gün',
           description: 'Olgun meyveler sırayla toplanır.',
           careTip: 'Sabah erken veya akşam serinlikte toplayın.'),
     ],
     'meyve': [
-      GrowthStage(label: 'Dikim & Tutma', durationDays: '15–30 gün',
+      GrowthStage(
+          label: 'Dikim & Tutma',
+          durationDays: '15–30 gün',
           description: 'Fidan çukura dikilir, kök tutar.',
           careTip: 'Destek kazığı; köke su yastığı yapın.'),
-      GrowthStage(label: 'Sürgün Verme', durationDays: '40–80 gün',
+      GrowthStage(
+          label: 'Sürgün Verme',
+          durationDays: '40–80 gün',
           description: 'Yeni dallar uzar, taç oluşur.',
           careTip: 'Şekil budaması ile ana dallar belirlenir.'),
-      GrowthStage(label: 'Çiçeklenme', durationDays: '15–30 gün',
+      GrowthStage(
+          label: 'Çiçeklenme',
+          durationDays: '15–30 gün',
           description: 'İlkbahar tomurcukları açar.',
           careTip: 'Don tehlikesinde sis makinesi/duman/örtü kullanın.'),
-      GrowthStage(label: 'Meyve Tutma & Büyüme', durationDays: '60–120 gün',
+      GrowthStage(
+          label: 'Meyve Tutma & Büyüme',
+          durationDays: '60–120 gün',
           description: 'Çiçekler meyveye dönüşür, irileşir.',
           careTip: 'Fazla meyveyi seyreltin; iri ve kaliteli kalır.'),
-      GrowthStage(label: 'Olgunlaşma & Hasat', durationDays: '20–40 gün',
+      GrowthStage(
+          label: 'Olgunlaşma & Hasat',
+          durationDays: '20–40 gün',
           description: 'Renk ve şeker dengesi olgunluğa erişir.',
           careTip: 'Elle, sap kısa bırakılarak toplayın.'),
     ],
     'kök': [
-      GrowthStage(label: 'Çimlenme', durationDays: '7–14 gün',
+      GrowthStage(
+          label: 'Çimlenme',
+          durationDays: '7–14 gün',
           description: 'Toprak altında ilk kök belirir.',
           careTip: 'Toprak gevşek ve taşsız olmalı.'),
-      GrowthStage(label: 'Yaprak Gelişimi', durationDays: '20–30 gün',
+      GrowthStage(
+          label: 'Yaprak Gelişimi',
+          durationDays: '20–30 gün',
           description: 'Üst kısımda yaprak kümeleri oluşur.',
           careTip: 'Sıra arası çapalama yapılır.'),
-      GrowthStage(label: 'Kök Şişme', durationDays: '40–60 gün',
+      GrowthStage(
+          label: 'Kök Şişme',
+          durationDays: '40–60 gün',
           description: 'Toprak altındaki kök kalınlaşır.',
           careTip: 'Düzenli sulama; kuraklık kökü çatlatır.'),
-      GrowthStage(label: 'Olgunlaşma', durationDays: '20–30 gün',
+      GrowthStage(
+          label: 'Olgunlaşma',
+          durationDays: '20–30 gün',
           description: 'Kök tam boyuna ulaşır.',
           careTip: 'Hasat öncesi 1 hafta sulamayı azaltın.'),
-      GrowthStage(label: 'Hasat', durationDays: '5–10 gün',
+      GrowthStage(
+          label: 'Hasat',
+          durationDays: '5–10 gün',
           description: 'Kökler topraktan çıkarılır.',
           careTip: 'Kürekle alttan kaldırın, kırılmasın.'),
     ],
@@ -136,22 +188,35 @@ class EncyclopediaExtensions {
   /// Bitki adından tipini çıkarır (basit kural tabanlı).
   static String inferType(String cropName) {
     final n = cropName.toLowerCase();
-    if (n.contains('ayçiçek') || n.contains('aycicek') ||
+    if (n.contains('ayçiçek') ||
+        n.contains('aycicek') ||
         n.contains('günebakan')) {
       return 'yağlı tohum';
     }
-    if (n.contains('buğday') || n.contains('arpa') || n.contains('mısır') ||
-        n.contains('çavdar') || n.contains('yulaf') || n.contains('çeltik') ||
+    if (n.contains('buğday') ||
+        n.contains('arpa') ||
+        n.contains('mısır') ||
+        n.contains('çavdar') ||
+        n.contains('yulaf') ||
+        n.contains('çeltik') ||
         n.contains('sorgum')) {
       return 'tahıl';
     }
-    if (n.contains('elma') || n.contains('armut') || n.contains('zeytin') ||
-        n.contains('üzüm') || n.contains('erik') || n.contains('kiraz') ||
-        n.contains('şeftali') || n.contains('kayısı')) {
+    if (n.contains('elma') ||
+        n.contains('armut') ||
+        n.contains('zeytin') ||
+        n.contains('üzüm') ||
+        n.contains('erik') ||
+        n.contains('kiraz') ||
+        n.contains('şeftali') ||
+        n.contains('kayısı')) {
       return 'meyve';
     }
-    if (n.contains('havuç') || n.contains('turp') || n.contains('soğan') ||
-        n.contains('patates') || n.contains('pancar')) {
+    if (n.contains('havuç') ||
+        n.contains('turp') ||
+        n.contains('soğan') ||
+        n.contains('patates') ||
+        n.contains('pancar')) {
       return 'kök';
     }
     return 'sebze';
@@ -281,75 +346,96 @@ class EncyclopediaExtensions {
 
   static const Map<String, List<PestEntry>> _pestsByType = {
     'sebze': [
-      PestEntry(name: 'Beyazsinek',
+      PestEntry(
+          name: 'Beyazsinek',
           symptoms: 'Yaprak altında küçük beyaz sinekler; sarı yapışkan salgı.',
           organicTreatment: 'Sarı yapışkan tuzak, sabunlu su, neem yağı.',
           chemicalTreatment: 'İmidakloprid bazlı insektisit (etiket dozu).'),
-      PestEntry(name: 'Kırmızı Örümcek',
+      PestEntry(
+          name: 'Kırmızı Örümcek',
           symptoms: 'Yapraklarda sarımsı noktalar, ince ağ dokusu.',
           organicTreatment: 'Yaprak altına su püskürtme, kükürt tozu.',
           chemicalTreatment: 'Akarisit (abamektin vb.)'),
-      PestEntry(name: 'Mildiyö',
+      PestEntry(
+          name: 'Mildiyö',
           symptoms: 'Yaprakta sarı lekeler, alt yüzde grimsi tüy.',
           organicTreatment: 'Bordo bulamacı, havalandırma artırma.',
           chemicalTreatment: 'Bakır oksiklorür veya mancozeb fungisit.'),
-      PestEntry(name: 'Külleme',
+      PestEntry(
+          name: 'Külleme',
           symptoms: 'Yaprak üstünde un benzeri beyaz lekeler.',
           organicTreatment: 'Süt + su (1:9) sprey, kükürt tozu.',
           chemicalTreatment: 'Sistemik fungisit (penkonazol).'),
     ],
     'tahıl': [
-      PestEntry(name: 'Sarı Pas',
+      PestEntry(
+          name: 'Sarı Pas',
           symptoms: 'Yaprakta sıralı sarı toz püstüller.',
           organicTreatment: 'Dayanıklı çeşit seçimi, tarla rotasyonu.',
           chemicalTreatment: 'Triazol grubu fungisit.'),
-      PestEntry(name: 'Süne',
+      PestEntry(
+          name: 'Süne',
           symptoms: 'Başakta beyaz, boş daneler; sap dibinde böcek.',
           organicTreatment: 'Erken hasat, doğal düşman (yumurta paraziti).',
           chemicalTreatment: 'Deltamethrin (TAGEM eşik üstü).'),
-      PestEntry(name: 'Külleme',
+      PestEntry(
+          name: 'Külleme',
           symptoms: 'Yaprak ve sapta beyaz unsu lekeler.',
           organicTreatment: 'Sık ekimden kaçın, dengeli azot.',
           chemicalTreatment: 'Tebukonazol fungisit.'),
     ],
     'yağlı tohum': [
-      PestEntry(name: 'Canavar otu',
-          symptoms: 'Bitki dibinde parazit sürgünler; ayçiçeğinde bodurluk ve tabla küçülmesi.',
+      PestEntry(
+          name: 'Canavar otu',
+          symptoms:
+              'Bitki dibinde parazit sürgünler; ayçiçeğinde bodurluk ve tabla küçülmesi.',
           organicTreatment: 'Uzun münavebe, temiz tohum, dayanıklı çeşit.',
-          chemicalTreatment: 'Yalnız ruhsatlı çeşit/ürün etiketine göre uzman önerisiyle.'),
-      PestEntry(name: 'Ayçiçeği mildiyösü',
+          chemicalTreatment:
+              'Yalnız ruhsatlı çeşit/ürün etiketine göre uzman önerisiyle.'),
+      PestEntry(
+          name: 'Ayçiçeği mildiyösü',
           symptoms: 'Bodur bitki, sararma, yaprak altında beyazımsı küf.',
-          organicTreatment: 'Dayanıklı çeşit, sertifikalı tohum, hastalıklı artıkları uzaklaştırma.',
-          chemicalTreatment: 'Etiketli ürün ve il/ilçe müdürlüğü önerisi esas alınmalı.'),
-      PestEntry(name: 'Yeşilkurt / Çayır tırtılı',
+          organicTreatment:
+              'Dayanıklı çeşit, sertifikalı tohum, hastalıklı artıkları uzaklaştırma.',
+          chemicalTreatment:
+              'Etiketli ürün ve il/ilçe müdürlüğü önerisi esas alınmalı.'),
+      PestEntry(
+          name: 'Yeşilkurt / Çayır tırtılı',
           symptoms: 'Yaprak, tomurcuk ve tablaya kemirme zararı.',
-          organicTreatment: 'Yabancı ot temizliği, tarla sayımı, doğal düşmanları koruma.',
+          organicTreatment:
+              'Yabancı ot temizliği, tarla sayımı, doğal düşmanları koruma.',
           chemicalTreatment: 'Eşik aşılırsa etiket dozu ve uzman önerisiyle.'),
     ],
     'meyve': [
-      PestEntry(name: 'Elma İç Kurdu',
+      PestEntry(
+          name: 'Elma İç Kurdu',
           symptoms: 'Meyvede delik, içte kahverengi tünel.',
           organicTreatment: 'Feromon tuzak, oluklu mukavva bant.',
           chemicalTreatment: 'Spinosad veya klorantraniliprol.'),
-      PestEntry(name: 'Karaleke',
+      PestEntry(
+          name: 'Karaleke',
           symptoms: 'Yaprak ve meyvede zeytin yeşili lekeler.',
           organicTreatment: 'Yere düşmüş yaprakları temizle, bakır.',
           chemicalTreatment: 'Captan veya difenokonazol.'),
-      PestEntry(name: 'Zeytin Sineği',
+      PestEntry(
+          name: 'Zeytin Sineği',
           symptoms: 'Meyvede iğne deliği, içeride larva, erken dökülme.',
           organicTreatment: 'Mc Phail tuzak, kaolin kil püskürtme.',
           chemicalTreatment: 'Spinosad zehirli yem püskürtme.'),
     ],
     'kök': [
-      PestEntry(name: 'Havuç Sineği',
+      PestEntry(
+          name: 'Havuç Sineği',
           symptoms: 'Kökte kahverengi tüneller, üst yapraklar mor.',
           organicTreatment: 'Soğanla birlikte ekim, ince tül örtü.',
           chemicalTreatment: 'Spinosad veya cypermetrin.'),
-      PestEntry(name: 'Patates Mildiyösü',
+      PestEntry(
+          name: 'Patates Mildiyösü',
           symptoms: 'Yaprakta esmer lekeler, hızlı yayılan kuruma.',
           organicTreatment: 'Bordo bulamacı, dayanıklı çeşit.',
           chemicalTreatment: 'Mancozeb veya metalaksil.'),
-      PestEntry(name: 'Kök Nematodu',
+      PestEntry(
+          name: 'Kök Nematodu',
           symptoms: 'Kökte yumru-şişlikler, bitki cılız kalır.',
           organicTreatment: 'Kadife çiçeği nöbetleşe ekim, solarizasyon.',
           chemicalTreatment: 'Nematisit (uzman önerisiyle).'),
@@ -384,8 +470,9 @@ class EncyclopediaExtensions {
   static const List<Map<String, String>> soilImprovement = [
     {
       'baslik': 'Asitli Toprak (pH < 6)',
-      'oneri': 'Tarım kireci (CaCO₃) uygulanır. Dekara 100–300 kg, ekim öncesi sonbaharda. '
-          'pH yükselir, kalsiyum eksikliği giderilir.',
+      'oneri':
+          'Tarım kireci (CaCO₃) uygulanır. Dekara 100–300 kg, ekim öncesi sonbaharda. '
+              'pH yükselir, kalsiyum eksikliği giderilir.',
     },
     {
       'baslik': 'Bazik / Tuzlu Toprak (pH > 8)',
@@ -399,8 +486,9 @@ class EncyclopediaExtensions {
     },
     {
       'baslik': 'Kumlu / Su Tutmayan Toprak',
-      'oneri': 'Çiftlik gübresi, kompost, malç (saman) ile organik madde artırılır. '
-          'Yeşil gübre (fiğ, yulaf) ekilip toprağa karıştırılır.',
+      'oneri':
+          'Çiftlik gübresi, kompost, malç (saman) ile organik madde artırılır. '
+              'Yeşil gübre (fiğ, yulaf) ekilip toprağa karıştırılır.',
     },
     {
       'baslik': 'Organik Madde Eksik Toprak',
@@ -439,8 +527,9 @@ class EncyclopediaExtensions {
     },
     {
       'baslik': 'Birlikte Ekim (Companion)',
-      'aciklama': 'Domates yanına fesleğen, havuç yanına soğan, lahana yanına kekik. '
-          'Doğal koku zararlıları kovar.',
+      'aciklama':
+          'Domates yanına fesleğen, havuç yanına soğan, lahana yanına kekik. '
+              'Doğal koku zararlıları kovar.',
     },
     {
       'baslik': 'Doğal Mücadele',

@@ -59,7 +59,8 @@ class WeatherRepository {
       final rawData = cached['data'];
       if (rawData is! Map) rethrow;
 
-      final updatedAt = DateTime.tryParse(cached['updated_at']?.toString() ?? '');
+      final updatedAt =
+          DateTime.tryParse(cached['updated_at']?.toString() ?? '');
       return SatelliteWeatherResult(
         data: Map<String, dynamic>.from(rawData),
         fromCache: true,

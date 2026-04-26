@@ -23,7 +23,8 @@ void main() {
       }
     });
 
-    test('Her ürün büyüme aşaması, bölgesel takvim ve mücadele kaydı taşır', () {
+    test('Her ürün büyüme aşaması, bölgesel takvim ve mücadele kaydı taşır',
+        () {
       for (final guide in TurkiyeCropGuides.guides) {
         expect(guide.stages, isNotEmpty, reason: guide.cropName);
         expect(guide.pests, isNotEmpty, reason: guide.cropName);

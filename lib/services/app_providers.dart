@@ -17,6 +17,7 @@ import 'sync_service.dart';
 import 'task_directive_service.dart';
 import 'field_state_service.dart';
 import 'crop_schedule_seeder.dart';
+import 'crop_daily_plan.dart';
 import 'growth_engine.dart';
 import 'weather_soil_service.dart';
 import 'backend_service.dart';
@@ -44,7 +45,6 @@ final cropScheduleSeederProvider = Provider<CropScheduleSeeder>((ref) {
   return CropScheduleSeeder(ref.watch(appDatabaseProvider));
 });
 
-
 final settingsBoxProvider = Provider<Box>((ref) {
   return Hive.box('settingsBox');
 });
@@ -54,7 +54,8 @@ final firebaseAuthProvider = Provider<FirebaseAuth>((ref) {
 });
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
-  final repository = AuthRepository(firebaseAuth: ref.watch(firebaseAuthProvider));
+  final repository =
+      AuthRepository(firebaseAuth: ref.watch(firebaseAuthProvider));
   BackendService.configure(authTokenProvider: repository.getIdToken);
   return repository;
 });
@@ -64,11 +65,13 @@ final authStateChangesProvider = StreamProvider<User?>((ref) {
 });
 
 final fieldRepositoryProvider = Provider<FieldRepository>((ref) {
-  return FieldRepository(localDataRepository: ref.watch(localDataRepositoryProvider));
+  return FieldRepository(
+      localDataRepository: ref.watch(localDataRepositoryProvider));
 });
 
 final calendarRepositoryProvider = Provider<CalendarRepository>((ref) {
-  return CalendarRepository(localDataRepository: ref.watch(localDataRepositoryProvider));
+  return CalendarRepository(
+      localDataRepository: ref.watch(localDataRepositoryProvider));
 });
 
 final weatherRepositoryProvider = Provider<WeatherRepository>((ref) {
@@ -160,6 +163,13 @@ final fieldStateServiceProvider = Provider<FieldStateService>((ref) {
   return const FieldStateService();
 });
 
+/// Saf gün-gün plan üreteci. UI mevcut aktivite/auto-seed/growth stream'lerini
+/// dinler, bu servisi çağırarak `CropDailyPlanResult` oluşturur. Sulama ve
+/// yağmur değiştiğinde stream'ler tazelenir → ekran canlı güncellenir.
+final cropDailyPlanServiceProvider = Provider<CropDailyPlanService>((ref) {
+  return const CropDailyPlanService();
+});
+
 /// Dashboard'da tarla başına hızlı yönerge özeti — hava tahmini yüklenmez
 /// (o online iştir, detail ekranında çalışır). Burada ekim + aktivite log'u
 /// yeter: sulama aralığı doldu mu, hasat zamanı geldi mi, gübre gecikti mi.
@@ -170,9 +180,8 @@ final fieldDirectivesSummaryProvider = FutureProvider.family
   final repo = ref.watch(localDataRepositoryProvider);
   final activities = await ref.watch(fieldActivityLogProvider(fieldId).future);
   final crops = await repo.loadFieldCrops(fieldId);
-  final scheduled = await repo
-      .watchScheduledAutoSeedEvents(fieldId: fieldId)
-      .first;
+  final scheduled =
+      await repo.watchScheduledAutoSeedEvents(fieldId: fieldId).first;
   return ref.watch(taskDirectiveServiceProvider).generate(
         fieldCrops: crops,
         activities: activities,
@@ -187,4 +196,3 @@ final fieldScheduledAutoSeedProvider = StreamProvider.family
   final repo = ref.watch(localDataRepositoryProvider);
   return repo.watchScheduledAutoSeedEvents(fieldId: fieldId);
 });
-

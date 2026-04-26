@@ -52,8 +52,10 @@ class _CostLedgerScreenState extends State<CostLedgerScreen> {
       }
     }
     all.sort((a, b) {
-      final da = DateTime.tryParse(a['date']?.toString() ?? '') ?? DateTime(1970);
-      final db = DateTime.tryParse(b['date']?.toString() ?? '') ?? DateTime(1970);
+      final da =
+          DateTime.tryParse(a['date']?.toString() ?? '') ?? DateTime(1970);
+      final db =
+          DateTime.tryParse(b['date']?.toString() ?? '') ?? DateTime(1970);
       return db.compareTo(da);
     });
     return all;
@@ -103,7 +105,8 @@ class _CostLedgerScreenState extends State<CostLedgerScreen> {
   }
 
   Widget _buildSummaryCard(double total, int count) {
-    final fmt = NumberFormat.currency(locale: 'tr_TR', symbol: '₺', decimalDigits: 0);
+    final fmt =
+        NumberFormat.currency(locale: 'tr_TR', symbol: '₺', decimalDigits: 0);
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
       padding: const EdgeInsets.all(20),
@@ -120,8 +123,7 @@ class _CostLedgerScreenState extends State<CostLedgerScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Toplam Masraf',
-                    style: AppText.bodyDark(context)),
+                Text('Toplam Masraf', style: AppText.bodyDark(context)),
                 const SizedBox(height: 4),
                 Text(fmt.format(total), style: AppText.h1Dark(context)),
                 const SizedBox(height: 2),
@@ -158,10 +160,12 @@ class _CostLedgerScreenState extends State<CostLedgerScreen> {
         children: [
           Row(
             children: [
-              Icon(Icons.trending_up_rounded, color: AppColors.emerald, size: 20),
+              Icon(Icons.trending_up_rounded,
+                  color: AppColors.emerald, size: 20),
               const SizedBox(width: 8),
               Text('Canlı Piyasa Fiyatları',
-                  style: AppText.bodyMd(context).copyWith(fontWeight: FontWeight.w700)),
+                  style: AppText.bodyMd(context)
+                      .copyWith(fontWeight: FontWeight.w700)),
               const Spacer(),
               GestureDetector(
                 onTap: _refreshFuel,
@@ -195,7 +199,8 @@ class _CostLedgerScreenState extends State<CostLedgerScreen> {
               final gasolineStr = fp.gasolineTry > 0
                   ? '${fp.gasolineTry.toStringAsFixed(2)} ₺/lt'
                   : '--';
-              final dateStr = DateFormat('dd.MM.yyyy HH:mm').format(fp.fetchedAt);
+              final dateStr =
+                  DateFormat('dd.MM.yyyy HH:mm').format(fp.fetchedAt);
               final srcLabel = fp.fromCache ? 'Önbellek' : 'EPDK ${fp.city}';
               return Column(
                 children: [
@@ -224,8 +229,7 @@ class _CostLedgerScreenState extends State<CostLedgerScreen> {
           // ── Gübre Fiyatları — TZOB / Tarım Bakanlığı ──
           Text('Gübre Fiyatları (TZOB)',
               style: AppText.xs(context).copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textSecondary)),
+                  fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
           const SizedBox(height: 6),
           ...fertilizerPrices.map((fp) => _priceRow(
                 icon: Icons.science_outlined,
@@ -237,8 +241,8 @@ class _CostLedgerScreenState extends State<CostLedgerScreen> {
           const SizedBox(height: 6),
           Text(
             'Kaynak: EPDK Haftalık Bülten · TZOB Gübre Bülteni',
-            style: AppText.xs(context).copyWith(
-                fontSize: 10, color: AppColors.textTertiary),
+            style: AppText.xs(context)
+                .copyWith(fontSize: 10, color: AppColors.textTertiary),
           ),
         ],
       ),
@@ -269,16 +273,17 @@ class _CostLedgerScreenState extends State<CostLedgerScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label, style: AppText.sm(context).copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary)),
+                Text(label,
+                    style: AppText.sm(context).copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary)),
                 Text(sub, style: AppText.xs(context).copyWith(fontSize: 10)),
               ],
             ),
           ),
           Text(value,
-              style: AppText.bodyMd(context).copyWith(
-                  fontWeight: FontWeight.w700, color: color)),
+              style: AppText.bodyMd(context)
+                  .copyWith(fontWeight: FontWeight.w700, color: color)),
         ],
       ),
     );
@@ -314,11 +319,9 @@ class _CostLedgerScreenState extends State<CostLedgerScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.receipt_long_rounded,
-                size: 56, color: AppColors.sage),
+            Icon(Icons.receipt_long_rounded, size: 56, color: AppColors.sage),
             const SizedBox(height: 12),
-            Text('Henüz masraf girişi yok',
-                style: AppText.h3(context)),
+            Text('Henüz masraf girişi yok', style: AppText.h3(context)),
             const SizedBox(height: 6),
             Text(
               'DAP, Üre, mazot gibi masraflarınızı alt sağdaki butondan ekleyin.',
@@ -333,9 +336,8 @@ class _CostLedgerScreenState extends State<CostLedgerScreen> {
 
   Widget _buildEntryTile(Map<String, dynamic> e) {
     final date = DateTime.tryParse(e['date']?.toString() ?? '');
-    final dateStr = date != null
-        ? DateFormat('dd.MM.yyyy', 'tr_TR').format(date)
-        : '—';
+    final dateStr =
+        date != null ? DateFormat('dd.MM.yyyy', 'tr_TR').format(date) : '—';
     final kind = e['kind']?.toString() ?? 'Diğer';
     final perDekar = (e['per_dekar_try'] as num?)?.toDouble() ?? 0;
     final dekar = (e['dekar'] as num?)?.toDouble() ?? 0;
@@ -396,7 +398,8 @@ class _CostLedgerScreenState extends State<CostLedgerScreen> {
               ),
             ),
             Text('${total.toStringAsFixed(0)} ₺',
-                style: AppText.h3(context).copyWith(color: AppColors.emeraldDark)),
+                style:
+                    AppText.h3(context).copyWith(color: AppColors.emeraldDark)),
           ],
         ),
       ),
@@ -452,7 +455,16 @@ class _AddCostSheetState extends State<_AddCostSheet> {
   final _noteCtrl = TextEditingController();
   String _kind = 'DAP';
 
-  static const _kinds = ['DAP', 'Üre', 'Kompoze', 'Mazot', 'İlaç', 'Tohum', 'İşçilik', 'Diğer'];
+  static const _kinds = [
+    'DAP',
+    'Üre',
+    'Kompoze',
+    'Mazot',
+    'İlaç',
+    'Tohum',
+    'İşçilik',
+    'Diğer'
+  ];
 
   @override
   void dispose() {
@@ -507,7 +519,8 @@ class _AddCostSheetState extends State<_AddCostSheet> {
             const SizedBox(height: 16),
             TextField(
               controller: _perDekarCtrl,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
               decoration: const InputDecoration(
                 labelText: 'Dönüm başı tutar (₺/da)',
                 prefixIcon: Icon(Icons.attach_money_rounded),
@@ -516,7 +529,8 @@ class _AddCostSheetState extends State<_AddCostSheet> {
             const SizedBox(height: 12),
             TextField(
               controller: _dekarCtrl,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
               decoration: const InputDecoration(
                 labelText: 'Toplam dekar',
                 prefixIcon: Icon(Icons.crop_square_rounded),
@@ -543,7 +557,8 @@ class _AddCostSheetState extends State<_AddCostSheet> {
   }
 
   void _save() {
-    final perDekar = double.tryParse(_perDekarCtrl.text.replaceAll(',', '.')) ?? 0;
+    final perDekar =
+        double.tryParse(_perDekarCtrl.text.replaceAll(',', '.')) ?? 0;
     final dekar = double.tryParse(_dekarCtrl.text.replaceAll(',', '.')) ?? 0;
     if (perDekar <= 0 || dekar <= 0) {
       AppToast.show(

@@ -30,7 +30,9 @@ class TrustedClock {
   static Future<void> hydrate() async {
     if (_hydrated) return;
     try {
-      final box = Hive.isBoxOpen(_boxName) ? Hive.box(_boxName) : await Hive.openBox(_boxName);
+      final box = Hive.isBoxOpen(_boxName)
+          ? Hive.box(_boxName)
+          : await Hive.openBox(_boxName);
       final micros = box.get(_deltaKey);
       if (micros is int) {
         _delta = Duration(microseconds: micros);
@@ -82,7 +84,9 @@ class TrustedClock {
 
     _delta = newDelta;
     try {
-      final box = Hive.isBoxOpen(_boxName) ? Hive.box(_boxName) : await Hive.openBox(_boxName);
+      final box = Hive.isBoxOpen(_boxName)
+          ? Hive.box(_boxName)
+          : await Hive.openBox(_boxName);
       await box.put(_deltaKey, newDelta.inMicroseconds);
       await box.put(_lastSyncKey, deviceAfterUtc.toIso8601String());
     } catch (e) {

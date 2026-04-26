@@ -36,9 +36,8 @@ List<LatLng> plantPlacementInPolygon({
   );
 
   // ── 1. Poligon alanı ve naif yoğunluktan ölçek çarpanı
-  final toolkitPts = polygon
-      .map((p) => toolkit.LatLng(p.latitude, p.longitude))
-      .toList();
+  final toolkitPts =
+      polygon.map((p) => toolkit.LatLng(p.latitude, p.longitude)).toList();
   final areaSqm = toolkit.SphericalUtil.computeArea(toolkitPts).toDouble();
   final cellArea = spacing.rowM * spacing.plantM;
   final rawDensity = cellArea > 0 ? (areaSqm / cellArea).floor() : 0;
@@ -87,8 +86,10 @@ List<LatLng> plantPlacementInPolygon({
 
   final rotatedPoly = polygon.map((p) => rotate(p, -rowAngle)).toList();
 
-  double minLat = rotatedPoly.first.latitude, maxLat = rotatedPoly.first.latitude;
-  double minLng = rotatedPoly.first.longitude, maxLng = rotatedPoly.first.longitude;
+  double minLat = rotatedPoly.first.latitude,
+      maxLat = rotatedPoly.first.latitude;
+  double minLng = rotatedPoly.first.longitude,
+      maxLng = rotatedPoly.first.longitude;
   for (final p in rotatedPoly) {
     if (p.latitude < minLat) minLat = p.latitude;
     if (p.latitude > maxLat) maxLat = p.latitude;

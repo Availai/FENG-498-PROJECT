@@ -26,7 +26,8 @@ class CropZoneLegend extends StatelessWidget {
           children: [
             Row(
               children: [
-                const Icon(Icons.layers_rounded, color: Color(0xFF00E676), size: 13),
+                const Icon(Icons.layers_rounded,
+                    color: Color(0xFF00E676), size: 13),
                 const SizedBox(width: 5),
                 Text(
                   'Bölge Dağılımı',
@@ -74,9 +75,7 @@ class CropZoneLegend extends StatelessWidget {
                       hasZone
                           ? Icons.crop_square_rounded
                           : Icons.crop_free_rounded,
-                      color: hasZone
-                          ? const Color(0xFF00E676)
-                          : Colors.white24,
+                      color: hasZone ? const Color(0xFF00E676) : Colors.white24,
                       size: 12,
                     ),
                   ],

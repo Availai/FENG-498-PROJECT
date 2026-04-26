@@ -18,7 +18,8 @@ void main() {
     await database.close();
   });
 
-  test('loadPendingJobs only returns pending rows ordered by updatedAt', () async {
+  test('loadPendingJobs only returns pending rows ordered by updatedAt',
+      () async {
     final now = DateTime.now().toUtc();
 
     await database.into(database.syncJobs).insert(
@@ -82,8 +83,6 @@ void main() {
     expect(row.attemptCount, 1);
     expect(row.lastError, 'timeout');
   });
-
-
 
   test('getQueueStats returns counts by status', () async {
     final now = DateTime.now().toUtc();

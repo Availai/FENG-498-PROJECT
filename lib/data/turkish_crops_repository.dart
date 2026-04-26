@@ -115,8 +115,18 @@ class TurkishCropsRepository {
     if (db == null) return const [];
     // İlk N bitki — isimden sıralı, yaygın ürünler seed'in başında.
     const priority = [
-      'Domates','Buğday','Mısır','Salatalık','Patlıcan','Biber',
-      'Patates','Soğan','Sarımsak','Kabak','Karpuz','Zeytin',
+      'Domates',
+      'Buğday',
+      'Mısır',
+      'Salatalık',
+      'Patlıcan',
+      'Biber',
+      'Patates',
+      'Soğan',
+      'Sarımsak',
+      'Kabak',
+      'Karpuz',
+      'Zeytin',
     ];
     final result = <TurkishCrop>[];
     for (final name in priority) {
@@ -136,8 +146,18 @@ class TurkishCropsRepository {
 
   static String _normalize(String s) {
     const replacements = {
-      'ı': 'i', 'ğ': 'g', 'ü': 'u', 'ş': 's', 'ö': 'o', 'ç': 'c',
-      'İ': 'i', 'Ğ': 'g', 'Ü': 'u', 'Ş': 's', 'Ö': 'o', 'Ç': 'c',
+      'ı': 'i',
+      'ğ': 'g',
+      'ü': 'u',
+      'ş': 's',
+      'ö': 'o',
+      'ç': 'c',
+      'İ': 'i',
+      'Ğ': 'g',
+      'Ü': 'u',
+      'Ş': 's',
+      'Ö': 'o',
+      'Ç': 'c',
     };
     final buf = StringBuffer();
     for (final ch in s.toLowerCase().split('')) {
@@ -260,7 +280,8 @@ class TurkishCrop {
       reasons.add('Sıcaklık minimum ${tempMinC!.toStringAsFixed(0)}°C altında');
     } else if (tempMaxC != null && t > tempMaxC!) {
       score -= 25;
-      reasons.add('Sıcaklık maksimum ${tempMaxC!.toStringAsFixed(0)}°C üstünde');
+      reasons
+          .add('Sıcaklık maksimum ${tempMaxC!.toStringAsFixed(0)}°C üstünde');
     } else if (optimalTempC != null) {
       final diff = (t - optimalTempC!).abs();
       if (diff <= 3) {
@@ -280,7 +301,8 @@ class TurkishCrop {
         reasons.add('pH uygun (${ph.toStringAsFixed(1)})');
       } else {
         score -= 15;
-        reasons.add('pH uygun değil (tercih ${soilPhMin!.toStringAsFixed(1)}-${soilPhMax!.toStringAsFixed(1)})');
+        reasons.add(
+            'pH uygun değil (tercih ${soilPhMin!.toStringAsFixed(1)}-${soilPhMax!.toStringAsFixed(1)})');
       }
     }
 
@@ -288,7 +310,8 @@ class TurkishCrop {
       missing++;
     } else if (sowingMonths.isNotEmpty) {
       // Mevsime hoşgörülü: ±1 ay kabul.
-      final ok = sowingMonths.any((mm) => (mm - m).abs() <= 1 || (12 - (mm - m).abs()) <= 1);
+      final ok = sowingMonths
+          .any((mm) => (mm - m).abs() <= 1 || (12 - (mm - m).abs()) <= 1);
       if (ok) {
         score += 6;
       } else {
@@ -318,9 +341,8 @@ class TurkishCrop {
     }
 
     // Çok sayıda eksik veri varsa güven düşer — kullanıcı uyarılmalı.
-    final confidence = missing >= 3
-        ? 'low'
-        : (missing >= 1 ? 'medium' : 'high');
+    final confidence =
+        missing >= 3 ? 'low' : (missing >= 1 ? 'medium' : 'high');
     if (missing >= 2) {
       reasons.add('Bazı çevre verileri eksik ($missing alan)');
     }
@@ -336,6 +358,7 @@ class TurkishCrop {
 class SuitabilityScore {
   final double score;
   final List<String> reasons;
+
   /// 'high' | 'medium' | 'low' — giriş veri kalitesine göre.
   final String confidence;
   const SuitabilityScore({

@@ -174,8 +174,10 @@ class SoilFertilizationService {
     final n = cropName.toLowerCase();
 
     // Tahıllar (buğday, arpa, çavdar, yulaf)
-    if (n.contains('buğday') || n.contains('arpa') ||
-        n.contains('çavdar') || n.contains('yulaf')) {
+    if (n.contains('buğday') ||
+        n.contains('arpa') ||
+        n.contains('çavdar') ||
+        n.contains('yulaf')) {
       return const [
         FertilizationStep(
           period: 'Ekim Öncesi (Sonbahar)',
@@ -224,8 +226,10 @@ class SoilFertilizationService {
     }
 
     // Domates / biber / patlıcan / sebze
-    if (n.contains('domates') || n.contains('biber') ||
-        n.contains('patlıcan') || n.contains('salatalık')) {
+    if (n.contains('domates') ||
+        n.contains('biber') ||
+        n.contains('patlıcan') ||
+        n.contains('salatalık')) {
       return const [
         FertilizationStep(
           period: 'Dikim Öncesi',
@@ -255,9 +259,12 @@ class SoilFertilizationService {
     }
 
     // Meyve ağaçları (zeytin, elma, üzüm vb.)
-    if (n.contains('zeytin') || n.contains('elma') ||
-        n.contains('armut') || n.contains('üzüm') ||
-        n.contains('kayısı') || n.contains('kiraz')) {
+    if (n.contains('zeytin') ||
+        n.contains('elma') ||
+        n.contains('armut') ||
+        n.contains('üzüm') ||
+        n.contains('kayısı') ||
+        n.contains('kiraz')) {
       return const [
         FertilizationStep(
           period: 'Kış Sonu (Şubat)',
@@ -287,8 +294,10 @@ class SoilFertilizationService {
     }
 
     // Kök bitkileri
-    if (n.contains('havuç') || n.contains('soğan') ||
-        n.contains('patates') || n.contains('turp') ||
+    if (n.contains('havuç') ||
+        n.contains('soğan') ||
+        n.contains('patates') ||
+        n.contains('turp') ||
         n.contains('pancar')) {
       return const [
         FertilizationStep(

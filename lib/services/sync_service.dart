@@ -63,7 +63,8 @@ class SyncService {
       }
 
       // 2. Başarısız job'ları tekrar dene
-      final retriedCount = await _syncRepository.retryFailedJobs(limit: batchSize);
+      final retriedCount =
+          await _syncRepository.retryFailedJobs(limit: batchSize);
       if (retriedCount > 0) {
         debugPrint('[Sync] $retriedCount başarısız iş yeniden kuyruğa alındı.');
       }
@@ -202,19 +203,19 @@ class SyncService {
     // Upsert
     final p = item.payload;
     await db.into(db.fields).insertOnConflictUpdate(FieldsCompanion(
-      id: Value(item.entityId),
-      name: Value((p['name'] ?? existing?.name ?? 'İsimsiz').toString()),
-      crop: Value(p['crop']?.toString() ?? existing?.crop),
-      date: Value((p['date'] ?? existing?.date ?? '').toString()),
-      latitude: Value(_toDouble(p['latitude']) ?? existing?.latitude),
-      longitude: Value(_toDouble(p['longitude']) ?? existing?.longitude),
-      areaDekar: Value(_toDouble(p['area_dekar']) ?? existing?.areaDekar),
-      areaSqm: Value(_toDouble(p['area_sqm']) ?? existing?.areaSqm),
-      polygonJson: Value(p['polygon']?.toString() ?? existing?.polygonJson),
-      createdAt: Value(existing?.createdAt ?? item.updatedAt),
-      updatedAt: Value(item.updatedAt),
-      deletedAt: const Value(null),
-    ));
+          id: Value(item.entityId),
+          name: Value((p['name'] ?? existing?.name ?? 'İsimsiz').toString()),
+          crop: Value(p['crop']?.toString() ?? existing?.crop),
+          date: Value((p['date'] ?? existing?.date ?? '').toString()),
+          latitude: Value(_toDouble(p['latitude']) ?? existing?.latitude),
+          longitude: Value(_toDouble(p['longitude']) ?? existing?.longitude),
+          areaDekar: Value(_toDouble(p['area_dekar']) ?? existing?.areaDekar),
+          areaSqm: Value(_toDouble(p['area_sqm']) ?? existing?.areaSqm),
+          polygonJson: Value(p['polygon']?.toString() ?? existing?.polygonJson),
+          createdAt: Value(existing?.createdAt ?? item.updatedAt),
+          updatedAt: Value(item.updatedAt),
+          deletedAt: const Value(null),
+        ));
     return true;
   }
 
@@ -243,26 +244,36 @@ class SyncService {
 
     final p = item.payload;
     await db.into(db.fieldCrops).insertOnConflictUpdate(FieldCropsCompanion(
-      id: Value(item.entityId),
-      fieldId: Value((p['field_id'] ?? existing?.fieldId ?? '').toString()),
-      name: Value((p['name'] ?? existing?.name ?? 'Bitki').toString()),
-      zoneStart: Value(_toDouble(p['zone_start']) ?? existing?.zoneStart ?? 0.0),
-      zoneEnd: Value(_toDouble(p['zone_end']) ?? existing?.zoneEnd ?? 1.0),
-      rowSpacingCm: Value(_toDouble(p['row_spacing_cm']) ?? existing?.rowSpacingCm ?? 50.0),
-      plantSpacingCm: Value(_toDouble(p['plant_spacing_cm']) ?? existing?.plantSpacingCm ?? 40.0),
-      colorValue: Value(_toInt(p['color_value']) ?? existing?.colorValue),
-      plantedDate: Value(p['planted_date']?.toString() ?? existing?.plantedDate),
-      harvestDays: Value(_toInt(p['harvest_days']) ?? existing?.harvestDays ?? 90),
-      waterIntervalDays: Value(_toInt(p['water_interval_days']) ?? existing?.waterIntervalDays ?? 7),
-      zonePolygonJson: Value(p['zone_polygon_json']?.toString() ?? existing?.zonePolygonJson),
-      createdAt: Value(existing?.createdAt ?? item.updatedAt),
-      updatedAt: Value(item.updatedAt),
-      deletedAt: const Value(null),
-    ));
+          id: Value(item.entityId),
+          fieldId: Value((p['field_id'] ?? existing?.fieldId ?? '').toString()),
+          name: Value((p['name'] ?? existing?.name ?? 'Bitki').toString()),
+          zoneStart:
+              Value(_toDouble(p['zone_start']) ?? existing?.zoneStart ?? 0.0),
+          zoneEnd: Value(_toDouble(p['zone_end']) ?? existing?.zoneEnd ?? 1.0),
+          rowSpacingCm: Value(
+              _toDouble(p['row_spacing_cm']) ?? existing?.rowSpacingCm ?? 50.0),
+          plantSpacingCm: Value(_toDouble(p['plant_spacing_cm']) ??
+              existing?.plantSpacingCm ??
+              40.0),
+          colorValue: Value(_toInt(p['color_value']) ?? existing?.colorValue),
+          plantedDate:
+              Value(p['planted_date']?.toString() ?? existing?.plantedDate),
+          harvestDays:
+              Value(_toInt(p['harvest_days']) ?? existing?.harvestDays ?? 90),
+          waterIntervalDays: Value(_toInt(p['water_interval_days']) ??
+              existing?.waterIntervalDays ??
+              7),
+          zonePolygonJson: Value(
+              p['zone_polygon_json']?.toString() ?? existing?.zonePolygonJson),
+          createdAt: Value(existing?.createdAt ?? item.updatedAt),
+          updatedAt: Value(item.updatedAt),
+          deletedAt: const Value(null),
+        ));
     return true;
   }
 
-  Future<bool> _applyCalendarEventItem(AppDatabase db, SyncPullItem item) async {
+  Future<bool> _applyCalendarEventItem(
+      AppDatabase db, SyncPullItem item) async {
     final existing = await (db.select(db.calendarEvents)
           ..where((tbl) => tbl.id.equals(item.entityId)))
         .getSingleOrNull();
@@ -284,25 +295,30 @@ class SyncService {
 
     final p = item.payload;
     final eventDateStr = p['event_date']?.toString();
-    final eventDate = (eventDateStr != null ? DateTime.tryParse(eventDateStr) : null)
-        ?? existing?.eventDate
-        ?? DateTime.now().toUtc();
+    final eventDate =
+        (eventDateStr != null ? DateTime.tryParse(eventDateStr) : null) ??
+            existing?.eventDate ??
+            DateTime.now().toUtc();
 
-    await db.into(db.calendarEvents).insertOnConflictUpdate(CalendarEventsCompanion(
-      id: Value(item.entityId),
-      fieldId: Value(p['field_id']?.toString() ?? existing?.fieldId),
-      cropId: Value(p['crop_id']?.toString() ?? existing?.cropId),
-      title: Value((p['title'] ?? existing?.title ?? '').toString()),
-      eventType: Value((p['event_type'] ?? existing?.eventType ?? 'manual').toString()),
-      eventDate: Value(eventDate),
-      createdAt: Value(existing?.createdAt ?? item.updatedAt),
-      updatedAt: Value(item.updatedAt),
-      deletedAt: const Value(null),
-    ));
+    await db
+        .into(db.calendarEvents)
+        .insertOnConflictUpdate(CalendarEventsCompanion(
+          id: Value(item.entityId),
+          fieldId: Value(p['field_id']?.toString() ?? existing?.fieldId),
+          cropId: Value(p['crop_id']?.toString() ?? existing?.cropId),
+          title: Value((p['title'] ?? existing?.title ?? '').toString()),
+          eventType: Value(
+              (p['event_type'] ?? existing?.eventType ?? 'manual').toString()),
+          eventDate: Value(eventDate),
+          createdAt: Value(existing?.createdAt ?? item.updatedAt),
+          updatedAt: Value(item.updatedAt),
+          deletedAt: const Value(null),
+        ));
     return true;
   }
 
-  Future<bool> _applyIrrigationPlanItem(AppDatabase db, SyncPullItem item) async {
+  Future<bool> _applyIrrigationPlanItem(
+      AppDatabase db, SyncPullItem item) async {
     final existing = await (db.select(db.irrigationPlans)
           ..where((tbl) => tbl.id.equals(item.entityId)))
         .getSingleOrNull();
@@ -324,26 +340,34 @@ class SyncService {
 
     final p = item.payload;
     final scheduledDateStr = p['scheduled_date']?.toString();
-    final scheduledDate = (scheduledDateStr != null ? DateTime.tryParse(scheduledDateStr) : null)
-        ?? existing?.scheduledDate
-        ?? DateTime.now().toUtc();
+    final scheduledDate = (scheduledDateStr != null
+            ? DateTime.tryParse(scheduledDateStr)
+            : null) ??
+        existing?.scheduledDate ??
+        DateTime.now().toUtc();
 
-    await db.into(db.irrigationPlans).insertOnConflictUpdate(IrrigationPlansCompanion(
-      id: Value(item.entityId),
-      fieldId: Value((p['field_id'] ?? existing?.fieldId ?? '').toString()),
-      cropId: Value(p['crop_id']?.toString() ?? existing?.cropId),
-      scheduledDate: Value(scheduledDate),
-      shouldIrrigate: Value(p['should_irrigate'] as bool? ?? existing?.shouldIrrigate ?? true),
-      reason: Value((p['reason'] ?? existing?.reason ?? '').toString()),
-      recommendation: Value(p['recommendation']?.toString() ?? existing?.recommendation),
-      createdAt: Value(existing?.createdAt ?? item.updatedAt),
-      updatedAt: Value(item.updatedAt),
-      deletedAt: const Value(null),
-    ));
+    await db
+        .into(db.irrigationPlans)
+        .insertOnConflictUpdate(IrrigationPlansCompanion(
+          id: Value(item.entityId),
+          fieldId: Value((p['field_id'] ?? existing?.fieldId ?? '').toString()),
+          cropId: Value(p['crop_id']?.toString() ?? existing?.cropId),
+          scheduledDate: Value(scheduledDate),
+          shouldIrrigate: Value(p['should_irrigate'] as bool? ??
+              existing?.shouldIrrigate ??
+              true),
+          reason: Value((p['reason'] ?? existing?.reason ?? '').toString()),
+          recommendation: Value(
+              p['recommendation']?.toString() ?? existing?.recommendation),
+          createdAt: Value(existing?.createdAt ?? item.updatedAt),
+          updatedAt: Value(item.updatedAt),
+          deletedAt: const Value(null),
+        ));
     return true;
   }
 
-  Future<bool> _applySuitabilityReportItem(AppDatabase db, SyncPullItem item) async {
+  Future<bool> _applySuitabilityReportItem(
+      AppDatabase db, SyncPullItem item) async {
     final existing = await (db.select(db.suitabilityReports)
           ..where((tbl) => tbl.id.equals(item.entityId)))
         .getSingleOrNull();
@@ -368,16 +392,19 @@ class SyncService {
         ? p['report'] as Map<String, dynamic>
         : const <String, dynamic>{};
 
-    await db.into(db.suitabilityReports).insertOnConflictUpdate(SuitabilityReportsCompanion(
-      id: Value(item.entityId),
-      fieldId: Value((p['field_id'] ?? existing?.fieldId ?? '').toString()),
-      cropName: Value((p['crop_name'] ?? existing?.cropName ?? '').toString()),
-      score: Value(_toDouble(p['score']) ?? existing?.score),
-      reportJson: Value(reportJson.toString()),
-      createdAt: Value(existing?.createdAt ?? item.updatedAt),
-      updatedAt: Value(item.updatedAt),
-      deletedAt: const Value(null),
-    ));
+    await db
+        .into(db.suitabilityReports)
+        .insertOnConflictUpdate(SuitabilityReportsCompanion(
+          id: Value(item.entityId),
+          fieldId: Value((p['field_id'] ?? existing?.fieldId ?? '').toString()),
+          cropName:
+              Value((p['crop_name'] ?? existing?.cropName ?? '').toString()),
+          score: Value(_toDouble(p['score']) ?? existing?.score),
+          reportJson: Value(reportJson.toString()),
+          createdAt: Value(existing?.createdAt ?? item.updatedAt),
+          updatedAt: Value(item.updatedAt),
+          deletedAt: const Value(null),
+        ));
     return true;
   }
 
@@ -387,25 +414,29 @@ class SyncService {
     DateTime deletedAt,
   ) async {
     await (db.update(db.fieldCrops)
-          ..where((tbl) => tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull()))
+          ..where(
+              (tbl) => tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull()))
         .write(FieldCropsCompanion(
       updatedAt: Value(deletedAt),
       deletedAt: Value(deletedAt),
     ));
     await (db.update(db.irrigationPlans)
-          ..where((tbl) => tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull()))
+          ..where(
+              (tbl) => tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull()))
         .write(IrrigationPlansCompanion(
       updatedAt: Value(deletedAt),
       deletedAt: Value(deletedAt),
     ));
     await (db.update(db.calendarEvents)
-          ..where((tbl) => tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull()))
+          ..where(
+              (tbl) => tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull()))
         .write(CalendarEventsCompanion(
       updatedAt: Value(deletedAt),
       deletedAt: Value(deletedAt),
     ));
     await (db.update(db.suitabilityReports)
-          ..where((tbl) => tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull()))
+          ..where(
+              (tbl) => tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull()))
         .write(SuitabilityReportsCompanion(
       updatedAt: Value(deletedAt),
       deletedAt: Value(deletedAt),
@@ -483,8 +514,8 @@ class SyncService {
         failedIds.add(entry.key);
       }
 
-      final unresolved = ids.where((id) =>
-          !completedIds.contains(id) && !failedIds.contains(id));
+      final unresolved = ids
+          .where((id) => !completedIds.contains(id) && !failedIds.contains(id));
       for (final id in unresolved) {
         await _syncRepository.markFailed(
           id: id,
@@ -519,4 +550,3 @@ class SyncService {
     );
   }
 }
-

@@ -33,6 +33,9 @@ class PestDiseaseGuide {
   final String monitoring;
   final String integratedControl;
   final String escalation;
+  final String? samplingMethod;
+  final String? economicThreshold;
+  final String? chemicalGate;
 
   const PestDiseaseGuide({
     required this.name,
@@ -41,6 +44,9 @@ class PestDiseaseGuide {
     required this.monitoring,
     required this.integratedControl,
     required this.escalation,
+    this.samplingMethod,
+    this.economicThreshold,
+    this.chemicalGate,
   });
 
   Map<String, dynamic> toJson() => {
@@ -50,6 +56,9 @@ class PestDiseaseGuide {
         'monitoring': monitoring,
         'integratedControl': integratedControl,
         'escalation': escalation,
+        if (samplingMethod != null) 'samplingMethod': samplingMethod,
+        if (economicThreshold != null) 'economicThreshold': economicThreshold,
+        if (chemicalGate != null) 'chemicalGate': chemicalGate,
       };
 }
 
@@ -250,8 +259,9 @@ class TurkiyeCropGuide {
         'nutritionPlan': nutritionPlan.map((n) => n.toJson()).toList(),
       };
 
-  static String _fmt(double value) =>
-      value == value.roundToDouble() ? value.toStringAsFixed(0) : value.toStringAsFixed(1);
+  static String _fmt(double value) => value == value.roundToDouble()
+      ? value.toStringAsFixed(0)
+      : value.toStringAsFixed(1);
 }
 
 class TurkiyeCropGuides {
@@ -290,7 +300,8 @@ class TurkiyeCropGuides {
       fertilizerType: 'Taban P + bölünmüş azot',
       dailyWaterLitersPerPlant: 2,
       companionPlants: 'Buğday, arpa, baklagil münavebesi',
-      avoidPlants: 'Ayçiçeği üst üste ekim, yoğun canavar otu geçmişi olan parsel',
+      avoidPlants:
+          'Ayçiçeği üst üste ekim, yoğun canavar otu geçmişi olan parsel',
       pruning: 'Yok',
       droughtTolerant: true,
       plantingTip:
@@ -348,16 +359,109 @@ class TurkiyeCropGuides {
       ],
       pests: [
         PestDiseaseGuide(
+          name: 'Bozkurt',
+          type: 'Zararlı',
+          symptoms:
+              'Genç bitkiler kök boğazından kesilir veya kemirilir; sıra üzerinde boşluklar oluşur.',
+          monitoring:
+              '2 gerçek yapraklı dönemde kesik bitki ve metrekare larva sayısı kontrol edilir.',
+          samplingMethod:
+              'Tarlada köşegen veya zikzak yürüyerek kesik bitki varlığı ve m² larva sayımı yapılır.',
+          economicThreshold: 'Metrekarede 1-3 larva',
+          integratedControl:
+              'Sonbahar sürümü ve ilkbahar başından itibaren yabancı ot temizliği temel önlemdir.',
+          chemicalGate:
+              'Eşik aşılmadan ilaç önerilmez; eşik aşılırsa etiket ve il/ilçe teknik önerisi esas alınır.',
+          escalation:
+              'Eşik üstünde akşam saatleri ve toprak tavı dikkate alınarak resmi teknik öneriyle ilerlenmelidir.',
+        ),
+        PestDiseaseGuide(
+          name: 'Yeşilkurt',
+          type: 'Zararlı',
+          symptoms:
+              'Yapraklarda damar kalacak şekilde yenik, tomurcuk/tabla zararları ve tane kaybı.',
+          monitoring:
+              'R1 döneminden itibaren feromon takibi ve 100 bitki kontrolü yapılır.',
+          samplingMethod:
+              'Her 20 dekarlık alan bir ünite kabul edilerek zikzak yürüyüşle toplam 100 bitkide yumurta, birinci dönem larva veya ilk zarar aranır.',
+          economicThreshold:
+              '100 bitkinin 5’inde yumurta, birinci dönem larva veya ilk zarar belirtisi',
+          integratedControl:
+              'Baharda iyi toprak işleme ile kışlayan pupalar azaltılır; doğal düşmanları koruyan uygulamalar önceliklidir.',
+          chemicalGate:
+              'Yalnız eşik doğrulanırsa kontrollü kimyasal kapısı açılır.',
+          escalation:
+              'Eşik aşılırsa etiket, son ilaçlama-hasat arası süre ve il/ilçe teknik önerisi birlikte kontrol edilmelidir.',
+        ),
+        PestDiseaseGuide(
+          name: 'Çayır tırtılı',
+          type: 'Zararlı',
+          symptoms:
+              'Yaprak, tomurcuk ve çiçeklerde oburca beslenme; yoğunlukta yeşil aksamın hızla kaybolması.',
+          monitoring:
+              'Vejetatif gelişme döneminde bitkiler gözle kontrol edilir ve m² larva sayısı kaydedilir.',
+          samplingMethod:
+              'Tarla genelinde gözle larva sayımı yapılır; yoğunluk metrekareye çevrilir.',
+          economicThreshold: 'Metrekarede 10 larva',
+          integratedControl:
+              'Erken gözlem ve yabancı ot temizliği uygulanır; müdahale gerekiyorsa en geç üçüncü dönem larvalara karşı planlanır.',
+          chemicalGate:
+              'Eşik altında kimyasal yok; eşik aşılırsa etiket ve teknik öneri ile ilerlenir.',
+          escalation:
+              'Eşik üstünde uygulama zamanı larva dönemi ve resmi teknik öneriyle birlikte değerlendirilmelidir.',
+        ),
+        PestDiseaseGuide(
+          name: 'Ayçiçeği güvesi',
+          type: 'Zararlı',
+          symptoms:
+              'Çiçeklenmeden sonra polen, taç yaprak ve tablada tohum zararı.',
+          monitoring:
+              'Çiçeklenmeden itibaren feromon tuzakları ve 100 bitkide tabla kontrolü birlikte yapılır.',
+          samplingMethod:
+              'Tarla kenarı ve merkeze feromon tuzağı asılır; tuzak ortalaması 10+ erginse 7-10 gün sonra 100 bitkide yumurta, larva veya ilk zarar aranır.',
+          economicThreshold:
+              '100 bitkinin 5’inde yumurta, larva veya ilk zarar; sadece tuzak artışı ilaç kararı değildir.',
+          integratedControl:
+              'Ekim öncesi derin sürüm ve Asteraceae yabancı ot temizliği önceliklidir.',
+          chemicalGate:
+              'Sadece tuzak artışı kimyasal için yeterli değildir; bitki kontrolünde eşik doğrulanmalıdır.',
+          escalation:
+              'Eşik doğrulanırsa etiket ve il/ilçe teknik önerisiyle kontrollü uygulama değerlendirilir.',
+        ),
+        PestDiseaseGuide(
+          name: 'Telkurtları',
+          type: 'Zararlı',
+          symptoms:
+              'Köklerde ve toprak altı bitki kısımlarında beslenme; yeni çıkan bitkilerde ölüm.',
+          monitoring:
+              '2 gerçek yaprak döneminden itibaren 1/4 m² çerçeve ve 20 cm toprak kontrolü yapılır.',
+          samplingMethod:
+              'Köşegen yürüyüşle 10-20 m aralıklarla en az 12 noktada çerçeve atılır; larvalar m² yoğunluğuna çevrilir.',
+          economicThreshold: 'Metrekarede en az 6 larva',
+          integratedControl:
+              'Geçmiş bulaşık tarlada münavebe, yabancı ot temizliği ve şubat-mart sürümü uygulanır.',
+          chemicalGate:
+              'Eşik aşılmadan kimyasal önerilmez; geçmiş yoğun bulaşıklık resmi teknik destekle değerlendirilir.',
+          escalation:
+              'Yoğun bulaşıklıkta ürün seçimi ve toprak işlemesi uzman desteğiyle planlanmalıdır.',
+        ),
+        PestDiseaseGuide(
           name: 'Ayçiçeği mildiyösü',
           type: 'Hastalık',
           symptoms:
               'Bodur bitki, yaprak üstünde sararma, yaprak altında beyazımsı küf görünümü.',
           monitoring:
-              'Çıkıştan itibaren zayıf ve bodur ocaklar gezilerek kontrol edilir.',
+              '2 gerçek yaprak döneminden itibaren zayıf ve bodur ocaklar gezilerek kontrol edilir.',
+          samplingMethod:
+              'Köşegen veya zikzak yürüyüşle enfeksiyon belirtileri aranır; hastalıklı bitki oranı yüzde olarak kaydedilir.',
+          economicThreshold:
+              'İki yapraklı dönemde hastalık oranı %30’un üzerine çıkarsa kritik uyarı',
           integratedControl:
               'Dayanıklı çeşit, temiz sertifikalı tohum, münavebe ve hastalıklı bitki artıklarının tarladan uzaklaştırılması esastır.',
+          chemicalGate:
+              'Yeşil aksam ilaç kapısı açılmaz; %30 üstünde resmi teknik destek ve tarla sürümü uyarısı verilir.',
           escalation:
-              'Kimyasal karar için etiketli ürün, etiket dozu ve il/ilçe müdürlüğü önerisi esas alınmalıdır.',
+              'Hastalık oranı %30’u aşarsa il/ilçe müdürlüğü veya yetkili uzmanla görüşülmeli, ağır bulaşık alanda sürüm kararı değerlendirilmelidir.',
         ),
         PestDiseaseGuide(
           name: 'Canavar otu',
@@ -371,37 +475,28 @@ class TurkiyeCropGuides {
           escalation:
               'Herbisit kullanımı yalnız çeşit teknolojisi ve ruhsatlı etiket koşulları uygunsa yapılmalıdır.',
         ),
-        PestDiseaseGuide(
-          name: 'Yeşilkurt ve çayır tırtılı',
-          type: 'Zararlı',
-          symptoms:
-              'Yaprak, tomurcuk, çiçek ve tablaya kemirme zararı; yoğunlukta hızlı yaprak kaybı.',
-          monitoring:
-              'Tarla köşeleri ve yabancı otlu alanlar dahil düzenli larva sayımı yapılır.',
-          integratedControl:
-              'Yabancı ot temizliği, erken gözlem ve doğal düşmanları koruyan uygulamalar önceliklidir.',
-          escalation:
-              'Eşik aşılırsa uygulama sabah/akşam, etiket dozu ve uzman önerisiyle yapılmalıdır.',
-        ),
       ],
       regionalCalendar: [
         RegionalCropCalendar(
           region: 'Marmara-Trakya',
           plantingWindow: 'Mart sonu-Nisan',
           harvestWindow: 'Ağustos sonu-Eylül',
-          notes: 'Ana üretim bölgesi; orobanş ve mildiyö dayanımı çeşit seçiminde kritiktir.',
+          notes:
+              'Ana üretim bölgesi; orobanş ve mildiyö dayanımı çeşit seçiminde kritiktir.',
         ),
         RegionalCropCalendar(
           region: 'İç Anadolu',
           plantingWindow: 'Nisan',
           harvestWindow: 'Eylül',
-          notes: 'İlkbahar yağışından yararlanmak için tav yakalanınca gecikmeden ekim yapılır.',
+          notes:
+              'İlkbahar yağışından yararlanmak için tav yakalanınca gecikmeden ekim yapılır.',
         ),
         RegionalCropCalendar(
           region: 'Akdeniz-Güneydoğu',
           plantingWindow: 'Mart-Nisan',
           harvestWindow: 'Ağustos',
-          notes: 'Sıcak ve sulanan alanlarda tabla dönemi sulaması ve yabancı ot yönetimi öne çıkar.',
+          notes:
+              'Sıcak ve sulanan alanlarda tabla dönemi sulaması ve yabancı ot yönetimi öne çıkar.',
         ),
       ],
       nutritionPlan: [
@@ -431,7 +526,8 @@ class TurkiyeCropGuides {
         'TAGEM Açık Alan Domates Entegre Mücadele Teknik Talimatı, 2022',
         'Tarım ve Orman Bakanlığı il müdürlükleri açıkta domates yetiştiriciliği broşürleri',
       ],
-      sowingWindow: 'Fide: Mart-Nisan; tarlaya dikim: don riski geçince Nisan-Mayıs',
+      sowingWindow:
+          'Fide: Mart-Nisan; tarlaya dikim: don riski geçince Nisan-Mayıs',
       harvestWindow: 'Haziran-Ekim; çeşit ve bölgeye göre kademeli hasat',
       sowingDepthCm: 1,
       rowSpacingCm: 100,
@@ -451,8 +547,10 @@ class TurkiyeCropGuides {
       fertilizerType: 'Dengeli NPK + meyvede potasyum/kalsiyum',
       dailyWaterLitersPerPlant: 2.5,
       companionPlants: 'Fesleğen, kadife çiçeği, soğan, sarımsak',
-      avoidPlants: 'Patates, biber, patlıcan ardışık ekim; sık ve havasız dikim',
-      pruning: 'Sırık çeşitlerde koltuk alma, bağlama ve gerektiğinde alt yaprak temizliği',
+      avoidPlants:
+          'Patates, biber, patlıcan ardışık ekim; sık ve havasız dikim',
+      pruning:
+          'Sırık çeşitlerde koltuk alma, bağlama ve gerektiğinde alt yaprak temizliği',
       droughtTolerant: false,
       plantingTip:
           'Fideleri serin saatte dik; kök boğazını çok derine gömme, hemen can suyu ver ve sırık çeşitte erken destek sistemini kur.',
@@ -479,16 +577,14 @@ class TurkiyeCropGuides {
           timing: 'Don riski geçince',
           action:
               '100 x 50 cm ana aralığı koru; serin saatte dik, can suyu ver ve sırık çeşitte destek planını hazırla.',
-          risk:
-              'Sıcak saatte dikim ve yetersiz can suyu fide kaybı yapar.',
+          risk: 'Sıcak saatte dikim ve yetersiz can suyu fide kaybı yapar.',
         ),
         GuideStage(
           title: 'Köklenme ve ilk çapa',
           timing: 'Dikimden 10-20 gün sonra',
           action:
               'İlk çapayı yap, yabancı otları temizle, kök boğazını havalandır ve damla hattını kontrol et.',
-          risk:
-              'Kabuk bağlayan veya otlu toprak kök gelişimini zayıflatır.',
+          risk: 'Kabuk bağlayan veya otlu toprak kök gelişimini zayıflatır.',
         ),
         GuideStage(
           title: 'Çiçeklenme ve meyve tutumu',
@@ -550,13 +646,15 @@ class TurkiyeCropGuides {
           region: 'Akdeniz',
           plantingWindow: 'Şubat-Nisan; örtü altında daha erken',
           harvestWindow: 'Haziran-Ekim',
-          notes: 'Erken üretim avantajlıdır; yaz sıcaklarında gölgeleme ve düzenli sulama gerekir.',
+          notes:
+              'Erken üretim avantajlıdır; yaz sıcaklarında gölgeleme ve düzenli sulama gerekir.',
         ),
         RegionalCropCalendar(
           region: 'Ege-Marmara',
           plantingWindow: 'Mart-Mayıs',
           harvestWindow: 'Temmuz-Ekim',
-          notes: 'Açık tarla için don sonrası dikim ve sırık çeşitlerde destek önemlidir.',
+          notes:
+              'Açık tarla için don sonrası dikim ve sırık çeşitlerde destek önemlidir.',
         ),
         RegionalCropCalendar(
           region: 'İç Anadolu',
@@ -568,7 +666,8 @@ class TurkiyeCropGuides {
           region: 'Karadeniz',
           plantingWindow: 'Nisan-Mayıs',
           harvestWindow: 'Temmuz-Eylül',
-          notes: 'Nemli iklim nedeniyle sıra havalanması ve mantari hastalık takibi kritik olur.',
+          notes:
+              'Nemli iklim nedeniyle sıra havalanması ve mantari hastalık takibi kritik olur.',
         ),
       ],
       nutritionPlan: [
@@ -604,7 +703,8 @@ class TurkiyeCropGuides {
         'TAGEM Mısır Entegre Mücadele Teknik Talimatı, 2022',
         'Trakya Tarımsal Araştırma Enstitüsü Mısır Tarımı notları',
       ],
-      sowingWindow: 'Nisan-Mayıs ana ürün; güneyde Haziran sonuna kadar II. ürün',
+      sowingWindow:
+          'Nisan-Mayıs ana ürün; güneyde Haziran sonuna kadar II. ürün',
       harvestWindow: 'Silaj: süt-hamur olum; dane: Eylül-Ekim',
       sowingDepthCm: 5,
       rowSpacingCm: 70,
@@ -624,7 +724,8 @@ class TurkiyeCropGuides {
       fertilizerType: 'Taban P-K + bölünmüş azot + çinko takibi',
       dailyWaterLitersPerPlant: 3.5,
       companionPlants: 'Baklagil ve buğday münavebesi',
-      avoidPlants: 'Üst üste mısır, yoğun mısır kurdu geçmişi ve kötü parçalanmış sap artığı',
+      avoidPlants:
+          'Üst üste mısır, yoğun mısır kurdu geçmişi ve kötü parçalanmış sap artığı',
       pruning: 'Yok',
       droughtTolerant: false,
       plantingTip:
@@ -676,8 +777,7 @@ class TurkiyeCropGuides {
           timing: 'Süt olum-hasat',
           action:
               'Silaj ve dane amacına göre hasat zamanını ayır; depolanacak danede nemi düşür.',
-          risk:
-              'Nemli depolama küf ve aflatoksin riskini artırır.',
+          risk: 'Nemli depolama küf ve aflatoksin riskini artırır.',
         ),
       ],
       pests: [
@@ -723,19 +823,22 @@ class TurkiyeCropGuides {
           region: 'Akdeniz-Güneydoğu',
           plantingWindow: 'Mart-Nisan ana ürün; Haziran II. ürün',
           harvestWindow: 'Ağustos-Ekim',
-          notes: 'Sulama planı yüksek sıcaklık ve ikinci ürün takvimine göre sıkı tutulmalıdır.',
+          notes:
+              'Sulama planı yüksek sıcaklık ve ikinci ürün takvimine göre sıkı tutulmalıdır.',
         ),
         RegionalCropCalendar(
           region: 'Ege-Marmara',
           plantingWindow: 'Nisan-Mayıs',
           harvestWindow: 'Eylül-Ekim',
-          notes: 'Dane ve silaj için uygun; Trakya’da geç II. ürün dane riski taşır.',
+          notes:
+              'Dane ve silaj için uygun; Trakya’da geç II. ürün dane riski taşır.',
         ),
         RegionalCropCalendar(
           region: 'Karadeniz',
           plantingWindow: 'Nisan-Mayıs',
           harvestWindow: 'Ağustos-Eylül',
-          notes: 'Nemli koşullarda yaprak hastalıkları ve hasat nemi yakından izlenmelidir.',
+          notes:
+              'Nemli koşullarda yaprak hastalıkları ve hasat nemi yakından izlenmelidir.',
         ),
       ],
       nutritionPlan: [

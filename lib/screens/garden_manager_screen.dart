@@ -13,7 +13,8 @@ class GardenManagerScreen extends ConsumerStatefulWidget {
   const GardenManagerScreen({super.key, required this.fieldData});
 
   @override
-  ConsumerState<GardenManagerScreen> createState() => _GardenManagerScreenState();
+  ConsumerState<GardenManagerScreen> createState() =>
+      _GardenManagerScreenState();
 }
 
 class _GardenManagerScreenState extends ConsumerState<GardenManagerScreen> {
@@ -53,7 +54,8 @@ class _GardenManagerScreenState extends ConsumerState<GardenManagerScreen> {
       return;
     }
 
-    final crops = await ref.read(localDataRepositoryProvider).loadFieldCrops(fieldId);
+    final crops =
+        await ref.read(localDataRepositoryProvider).loadFieldCrops(fieldId);
     if (!mounted) return;
     setState(() => _crops = crops);
   }
@@ -145,8 +147,7 @@ class _GardenManagerScreenState extends ConsumerState<GardenManagerScreen> {
         ),
         title: Row(children: [
           const Text('🌿 '),
-          Expanded(
-              child: Text(fieldName, overflow: TextOverflow.ellipsis)),
+          Expanded(child: Text(fieldName, overflow: TextOverflow.ellipsis)),
         ]),
         actions: [
           if (_dirty)
@@ -174,9 +175,8 @@ class _GardenManagerScreenState extends ConsumerState<GardenManagerScreen> {
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
-        child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
+        child:
+            Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           // ── TARLA BİLGİ KARTI ──────────────────────────────────────────
           _fieldInfoCard(dekar),
           const SizedBox(height: 16),
@@ -213,12 +213,10 @@ class _GardenManagerScreenState extends ConsumerState<GardenManagerScreen> {
           if (warnings.isNotEmpty) ...[
             Row(children: [
               const Text('⚠️ Uyarılar & Öneriler',
-                  style: TextStyle(
-                      fontSize: 18, fontWeight: FontWeight.bold)),
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               const SizedBox(width: 8),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
                   color: errorCount > 0
                       ? Colors.red.shade100
@@ -243,20 +241,18 @@ class _GardenManagerScreenState extends ConsumerState<GardenManagerScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text('🌱 Ekilen Bitkiler',
-                  style: TextStyle(
-                      fontSize: 18, fontWeight: FontWeight.bold)),
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               if (_crops.isNotEmpty)
                 Text('Toplam: ${_totalPlants()} bitki',
-                    style: TextStyle(
-                        color: Colors.green.shade700, fontSize: 13)),
+                    style:
+                        TextStyle(color: Colors.green.shade700, fontSize: 13)),
             ],
           ),
           const SizedBox(height: 8),
           _crops.isEmpty
               ? _noCropsHint()
               : Column(
-                  children: List.generate(
-                      _crops.length, (i) => _cropCard(i))),
+                  children: List.generate(_crops.length, (i) => _cropCard(i))),
 
           const SizedBox(height: 80), // FAB boşluğu
         ]),
@@ -276,18 +272,17 @@ class _GardenManagerScreenState extends ConsumerState<GardenManagerScreen> {
       ),
       child: Row(children: [
         Expanded(
-          child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-            Text('${_fieldWidthM.toStringAsFixed(0)} m × ${_fieldHeightM.toStringAsFixed(0)} m',
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(
+                '${_fieldWidthM.toStringAsFixed(0)} m × ${_fieldHeightM.toStringAsFixed(0)} m',
                 style: const TextStyle(
                     color: Colors.white,
                     fontSize: 22,
                     fontWeight: FontWeight.bold)),
             Text(
                 '${_areaM2.toStringAsFixed(0)} m²  •  ${dekar.toStringAsFixed(1)} Dekar',
-                style: const TextStyle(
-                    color: Colors.white70, fontSize: 13)),
+                style: const TextStyle(color: Colors.white70, fontSize: 13)),
           ]),
         ),
         Column(children: [
@@ -356,17 +351,13 @@ class _GardenManagerScreenState extends ConsumerState<GardenManagerScreen> {
         Icon(w.icon, color: w.color, size: 22),
         const SizedBox(width: 10),
         Expanded(
-            child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text('${w.emoji} ${w.title}',
               style: TextStyle(
-                  color: w.color,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14)),
+                  color: w.color, fontWeight: FontWeight.bold, fontSize: 14)),
           const SizedBox(height: 4),
-          Text(w.message,
-              style: const TextStyle(fontSize: 13, height: 1.4)),
+          Text(w.message, style: const TextStyle(fontSize: 13, height: 1.4)),
         ])),
       ]),
     );
@@ -402,9 +393,7 @@ class _GardenManagerScreenState extends ConsumerState<GardenManagerScreen> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       child: Padding(
         padding: const EdgeInsets.all(14),
-        child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
             // Renk + emoji
             Container(
@@ -416,22 +405,21 @@ class _GardenManagerScreenState extends ConsumerState<GardenManagerScreen> {
                 border: Border.all(color: color, width: 2),
               ),
               child: Center(
-                  child: Text(emoji,
-                      style: const TextStyle(fontSize: 22))),
+                  child: Text(emoji, style: const TextStyle(fontSize: 22))),
             ),
             const SizedBox(width: 12),
             Expanded(
                 child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-              Text(name,
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold, fontSize: 16)),
-              if (plantedDate.isNotEmpty)
-                Text('Ekim: $plantedDate',
-                    style: TextStyle(
-                        fontSize: 12, color: Colors.grey.shade500)),
-            ])),
+                  Text(name,
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 16)),
+                  if (plantedDate.isNotEmpty)
+                    Text('Ekim: $plantedDate',
+                        style: TextStyle(
+                            fontSize: 12, color: Colors.grey.shade500)),
+                ])),
             IconButton(
               icon: const Icon(Icons.delete_outline, color: Colors.red),
               onPressed: () => _deleteCrop(index),
@@ -451,16 +439,15 @@ class _GardenManagerScreenState extends ConsumerState<GardenManagerScreen> {
             _statChip(
                 Icons.straighten,
                 '${(zoneWidthM).toStringAsFixed(1)} m × '
-                    '${_fieldHeightM.toStringAsFixed(0)} m',
+                '${_fieldHeightM.toStringAsFixed(0)} m',
                 Colors.teal),
-            _statChip(Icons.grid_on,
-                '${zoneAreaM2.toStringAsFixed(0)} m² alan', Colors.blue),
+            _statChip(Icons.grid_on, '${zoneAreaM2.toStringAsFixed(0)} m² alan',
+                Colors.blue),
+            _statChip(Icons.eco, '$plantCount bitki', Colors.green.shade700),
             _statChip(
-                Icons.eco, '$plantCount bitki', Colors.green.shade700),
-            _statChip(Icons.swap_vert, '${row.round()} cm sıra arası',
-                Colors.brown),
-            _statChip(Icons.swap_horiz,
-                '${plant.round()} cm bitki arası', Colors.orange),
+                Icons.swap_vert, '${row.round()} cm sıra arası', Colors.brown),
+            _statChip(Icons.swap_horiz, '${plant.round()} cm bitki arası',
+                Colors.orange),
           ]),
         ]),
       ),
@@ -479,13 +466,13 @@ class _GardenManagerScreenState extends ConsumerState<GardenManagerScreen> {
         borderRadius: BorderRadius.circular(6),
         child: Stack(children: [
           Container(
-              height: 12,
-              width: double.infinity,
-              color: Colors.grey.shade200),
+              height: 12, width: double.infinity, color: Colors.grey.shade200),
           FractionallySizedBox(
             widthFactor: end - start,
             child: FractionalTranslation(
-              translation: Offset(start / (end - start == 0 ? 1 : end - start) * (end - start), 0),
+              translation: Offset(
+                  start / (end - start == 0 ? 1 : end - start) * (end - start),
+                  0),
               child: Container(height: 12, color: color.withValues(alpha: 0.7)),
             ),
           ),
@@ -540,8 +527,7 @@ class _GardenManagerScreenState extends ConsumerState<GardenManagerScreen> {
         content: Text('$name bu tarladan kaldırılsın mı?'),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('İptal')),
+              onPressed: () => Navigator.pop(ctx), child: const Text('İptal')),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () {
@@ -599,229 +585,221 @@ class _GardenManagerScreenState extends ConsumerState<GardenManagerScreen> {
           );
           final zoneW =
               (_fieldWidthM * (zoneEnd - zoneStart)).toStringAsFixed(1);
-          final zoneA =
-              (_fieldWidthM * (zoneEnd - zoneStart) * _fieldHeightM)
-                  .toStringAsFixed(0);
+          final zoneA = (_fieldWidthM * (zoneEnd - zoneStart) * _fieldHeightM)
+              .toStringAsFixed(0);
 
           return Padding(
             padding: EdgeInsets.only(
                 bottom: MediaQuery.of(ctx).viewInsets.bottom,
-                left: 20, right: 20, top: 20),
+                left: 20,
+                right: 20,
+                top: 20),
             child: SingleChildScrollView(
               child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                // Başlık
-                Row(children: [
-                  Text(defaults?.emoji ?? '🌱',
-                      style: const TextStyle(fontSize: 30)),
-                  const SizedBox(width: 12),
-                  const Text('Yeni Bitki Ekle',
-                      style: TextStyle(
-                          fontSize: 20, fontWeight: FontWeight.bold)),
-                ]),
-                const SizedBox(height: 16),
+                    // Başlık
+                    Row(children: [
+                      Text(defaults?.emoji ?? '🌱',
+                          style: const TextStyle(fontSize: 30)),
+                      const SizedBox(width: 12),
+                      const Text('Yeni Bitki Ekle',
+                          style: TextStyle(
+                              fontSize: 20, fontWeight: FontWeight.bold)),
+                    ]),
+                    const SizedBox(height: 16),
 
-                // Bitki seçimi
-                const Text('Bitki Seç',
-                    style: TextStyle(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 6),
-                DropdownButtonFormField<String>(
-                  initialValue: selectedCrop,
-                  decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 10)),
-                  items: CompanionService.cropNames
-                      .map((n) => DropdownMenuItem(
-                          value: n,
-                          child: Row(children: [
-                            Text(
-                                CompanionService.getDefaults(n)?.emoji ??
+                    // Bitki seçimi
+                    const Text('Bitki Seç',
+                        style: TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 6),
+                    DropdownButtonFormField<String>(
+                      initialValue: selectedCrop,
+                      decoration: const InputDecoration(
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 10)),
+                      items: CompanionService.cropNames
+                          .map((n) => DropdownMenuItem(
+                              value: n,
+                              child: Row(children: [
+                                Text(CompanionService.getDefaults(n)?.emoji ??
                                     '🌱'),
-                            const SizedBox(width: 8),
-                            Text(n),
-                          ])))
-                      .toList(),
-                  onChanged: (v) {
-                    if (v == null) return;
-                    setSheet(() {
-                      selectedCrop = v;
-                      final d = CompanionService.getDefaults(v);
-                      rowCm = d?.rowSpacingCm ?? 50;
-                      plantCm = d?.plantSpacingCm ?? 40;
-                    });
-                  },
-                ),
-                const SizedBox(height: 16),
+                                const SizedBox(width: 8),
+                                Text(n),
+                              ])))
+                          .toList(),
+                      onChanged: (v) {
+                        if (v == null) return;
+                        setSheet(() {
+                          selectedCrop = v;
+                          final d = CompanionService.getDefaults(v);
+                          rowCm = d?.rowSpacingCm ?? 50;
+                          plantCm = d?.plantSpacingCm ?? 40;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 16),
 
-                // Tarla bölgesi
-                Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                  const Text('Tarladaki Bölge',
-                      style: TextStyle(fontWeight: FontWeight.bold)),
-                  Text(
-                      '%${(zoneStart * 100).round()} – %${(zoneEnd * 100).round()}',
-                      style: TextStyle(
-                          color: Colors.green.shade700,
-                          fontWeight: FontWeight.bold)),
-                ]),
-                RangeSlider(
-                  values: RangeValues(zoneStart, zoneEnd),
-                  min: 0,
-                  max: 1,
-                  divisions: 20,
-                  activeColor: Colors.green.shade700,
-                  onChanged: (v) => setSheet(() {
-                    zoneStart = v.start;
-                    zoneEnd = v.end;
-                    if (zoneEnd - zoneStart < 0.05) {
-                      zoneEnd = (zoneStart + 0.05).clamp(0, 1);
-                    }
-                  }),
-                ),
-
-                // Boyut bilgisi
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.teal.shade50,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                      '📐 $zoneW m genişlik  •  $zoneA m² alan  •  ~$preview bitki',
-                      style: TextStyle(
-                          color: Colors.teal.shade800,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 13)),
-                ),
-
-                const SizedBox(height: 14),
-
-                // Aralık ayarları
-                Row(children: [
-                  Expanded(
-                    child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                    // Tarla bölgesi
+                    Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                      Text(
-                          'Sıra Arası: ${rowCm!.round()} cm',
-                          style: const TextStyle(
+                          const Text('Tarladaki Bölge',
+                              style: TextStyle(fontWeight: FontWeight.bold)),
+                          Text(
+                              '%${(zoneStart * 100).round()} – %${(zoneEnd * 100).round()}',
+                              style: TextStyle(
+                                  color: Colors.green.shade700,
+                                  fontWeight: FontWeight.bold)),
+                        ]),
+                    RangeSlider(
+                      values: RangeValues(zoneStart, zoneEnd),
+                      min: 0,
+                      max: 1,
+                      divisions: 20,
+                      activeColor: Colors.green.shade700,
+                      onChanged: (v) => setSheet(() {
+                        zoneStart = v.start;
+                        zoneEnd = v.end;
+                        if (zoneEnd - zoneStart < 0.05) {
+                          zoneEnd = (zoneStart + 0.05).clamp(0, 1);
+                        }
+                      }),
+                    ),
+
+                    // Boyut bilgisi
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.teal.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                          '📐 $zoneW m genişlik  •  $zoneA m² alan  •  ~$preview bitki',
+                          style: TextStyle(
+                              color: Colors.teal.shade800,
                               fontWeight: FontWeight.bold,
                               fontSize: 13)),
-                      Slider(
-                        value: rowCm!,
-                        min: 10,
-                        max: 200,
-                        divisions: 38,
-                        activeColor: Colors.brown,
-                        label: '${rowCm!.round()} cm',
-                        onChanged: (v) =>
-                            setSheet(() => rowCm = v),
-                      ),
-                    ]),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                      Text(
-                          'Bitki Arası: ${plantCm!.round()} cm',
-                          style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 13)),
-                      Slider(
-                        value: plantCm!,
-                        min: 5,
-                        max: 150,
-                        divisions: 29,
-                        activeColor: Colors.green,
-                        label: '${plantCm!.round()} cm',
-                        onChanged: (v) =>
-                            setSheet(() => plantCm = v),
-                      ),
-                    ]),
-                  ),
-                ]),
+                    ),
 
-                // Uyumluluk ön uyarısı
-                if (_crops.isNotEmpty) ...[
-                  ..._crops.map((existing) {
-                    final existName = existing['name'] as String;
-                    final tempCrops = [
-                      ...(_crops.map((c) => Map<String, dynamic>.from(c))),
-                      {
-                        'name': selectedCrop,
-                        'zone_start': zoneStart,
-                        'zone_end': zoneEnd,
-                        'row_spacing_cm': rowCm,
-                        'plant_spacing_cm': plantCm,
-                      }
-                    ];
-                    final newWarnings =
-                        CompanionService.generateWarnings(
-                      crops: tempCrops,
-                      fieldWidthM: _fieldWidthM,
-                      fieldHeightM: _fieldHeightM,
-                    )
+                    const SizedBox(height: 14),
+
+                    // Aralık ayarları
+                    Row(children: [
+                      Expanded(
+                        child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Sıra Arası: ${rowCm!.round()} cm',
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13)),
+                              Slider(
+                                value: rowCm!,
+                                min: 10,
+                                max: 200,
+                                divisions: 38,
+                                activeColor: Colors.brown,
+                                label: '${rowCm!.round()} cm',
+                                onChanged: (v) => setSheet(() => rowCm = v),
+                              ),
+                            ]),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Bitki Arası: ${plantCm!.round()} cm',
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13)),
+                              Slider(
+                                value: plantCm!,
+                                min: 5,
+                                max: 150,
+                                divisions: 29,
+                                activeColor: Colors.green,
+                                label: '${plantCm!.round()} cm',
+                                onChanged: (v) => setSheet(() => plantCm = v),
+                              ),
+                            ]),
+                      ),
+                    ]),
+
+                    // Uyumluluk ön uyarısı
+                    if (_crops.isNotEmpty) ...[
+                      ..._crops.map((existing) {
+                        final existName = existing['name'] as String;
+                        final tempCrops = [
+                          ...(_crops.map((c) => Map<String, dynamic>.from(c))),
+                          {
+                            'name': selectedCrop,
+                            'zone_start': zoneStart,
+                            'zone_end': zoneEnd,
+                            'row_spacing_cm': rowCm,
+                            'plant_spacing_cm': plantCm,
+                          }
+                        ];
+                        final newWarnings = CompanionService.generateWarnings(
+                          crops: tempCrops,
+                          fieldWidthM: _fieldWidthM,
+                          fieldHeightM: _fieldHeightM,
+                        )
                             .where((w) =>
                                 w.level == WarnLevel.error &&
                                 (w.title.contains(selectedCrop) ||
                                     w.title.contains(existName)))
                             .toList();
-                    return Column(
-                        children: newWarnings
-                            .map((w) => Container(
-                                  margin: const EdgeInsets.only(
-                                      bottom: 6),
-                                  padding: const EdgeInsets.all(10),
-                                  decoration: BoxDecoration(
-                                    color: Colors.red.shade50,
-                                    borderRadius:
-                                        BorderRadius.circular(10),
-                                    border: Border.all(
-                                        color: Colors.red.shade200),
-                                  ),
-                                  child: Text(
-                                      '🚫 ${w.title}\n${w.message}',
-                                      style: TextStyle(
-                                          color: Colors.red.shade700,
-                                          fontSize: 12)),
-                                ))
-                            .toList());
-                  }),
-                ],
+                        return Column(
+                            children: newWarnings
+                                .map((w) => Container(
+                                      margin: const EdgeInsets.only(bottom: 6),
+                                      padding: const EdgeInsets.all(10),
+                                      decoration: BoxDecoration(
+                                        color: Colors.red.shade50,
+                                        borderRadius: BorderRadius.circular(10),
+                                        border: Border.all(
+                                            color: Colors.red.shade200),
+                                      ),
+                                      child: Text('🚫 ${w.title}\n${w.message}',
+                                          style: TextStyle(
+                                              color: Colors.red.shade700,
+                                              fontSize: 12)),
+                                    ))
+                                .toList());
+                      }),
+                    ],
 
-                const SizedBox(height: 16),
+                    const SizedBox(height: 16),
 
-                // Ekle butonu
-                FilledButton.icon(
-                  onPressed: () {
-                    Navigator.pop(ctx);
-                    _addCrop(
-                      name: selectedCrop,
-                      zoneStart: zoneStart,
-                      zoneEnd: zoneEnd,
-                      rowCm: rowCm!,
-                      plantCm: plantCm!,
-                      color: CompanionService.getDefaults(selectedCrop)
-                              ?.color ??
-                          Colors.green,
-                    );
-                  },
-                  icon: const Icon(Icons.add),
-                  label: const Text('Tarlaya Ekle'),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: Colors.green.shade700,
-                    minimumSize: const Size.fromHeight(50),
-                  ),
-                ),
-                const SizedBox(height: 20),
-              ]),
+                    // Ekle butonu
+                    FilledButton.icon(
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        _addCrop(
+                          name: selectedCrop,
+                          zoneStart: zoneStart,
+                          zoneEnd: zoneEnd,
+                          rowCm: rowCm!,
+                          plantCm: plantCm!,
+                          color: CompanionService.getDefaults(selectedCrop)
+                                  ?.color ??
+                              Colors.green,
+                        );
+                      },
+                      icon: const Icon(Icons.add),
+                      label: const Text('Tarlaya Ekle'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.green.shade700,
+                        minimumSize: const Size.fromHeight(50),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                  ]),
             ),
           );
         },

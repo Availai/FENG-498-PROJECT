@@ -58,13 +58,15 @@ class OWCurrentWeather {
       rainMm1h: (cur['precipitation'] as num?)?.toDouble() ?? 0,
       description: desc,
       iconCode: icon,
-      observedAt: DateTime.tryParse(cur['time']?.toString() ?? '') ?? DateTime.now(),
+      observedAt:
+          DateTime.tryParse(cur['time']?.toString() ?? '') ?? DateTime.now(),
     );
   }
 
   String get agronomicSummary {
     final parts = <String>[];
-    if (tempC > 35) parts.add('Aşırı sıcaklık riski (${tempC.toStringAsFixed(0)}°C)');
+    if (tempC > 35)
+      parts.add('Aşırı sıcaklık riski (${tempC.toStringAsFixed(0)}°C)');
     if (tempC < 0) parts.add('Don riski (${tempC.toStringAsFixed(0)}°C)');
     if (humidityPct > 85) parts.add('Yüksek nem — mantar hastalığı riski');
     if (windSpeedMs > 10) parts.add('Kuvvetli rüzgar — ilaçlama yapma');
@@ -214,7 +216,8 @@ class OpenWeatherApi {
     if (pts.isEmpty) return [];
     final map = <String, List<OWForecastPoint>>{};
     for (final p in pts) {
-      final key = '${p.time.year}-${p.time.month.toString().padLeft(2,'0')}-${p.time.day.toString().padLeft(2,'0')}';
+      final key =
+          '${p.time.year}-${p.time.month.toString().padLeft(2, '0')}-${p.time.day.toString().padLeft(2, '0')}';
       (map[key] ??= []).add(p);
     }
     return map.entries.map((e) {
@@ -226,11 +229,14 @@ class OpenWeatherApi {
         maxTempC: temps.reduce((a, b) => a > b ? a : b),
         avgTempC: temps.reduce((a, b) => a + b) / temps.length,
         totalPrecipMm: day.map((p) => p.precipMm).reduce((a, b) => a + b),
-        maxWindMs: day.map((p) => p.windSpeedMs).reduce((a, b) => a > b ? a : b),
-        avgHumidityPct: day.map((p) => p.humidityPct).reduce((a, b) => a + b) / day.length,
+        maxWindMs:
+            day.map((p) => p.windSpeedMs).reduce((a, b) => a > b ? a : b),
+        avgHumidityPct:
+            day.map((p) => p.humidityPct).reduce((a, b) => a + b) / day.length,
         summary: day.last.description,
       );
-    }).toList()..sort((a, b) => a.date.compareTo(b.date));
+    }).toList()
+      ..sort((a, b) => a.date.compareTo(b.date));
   }
 
   /// Sulama kararı — Türkçe gerekçe
@@ -240,23 +246,40 @@ class OpenWeatherApi {
     required double soilMoisturePct,
     required String cropTr,
   }) {
-    final recent3 = forecast.take(3).map((d) => d.totalPrecipMm).fold(0.0, (a, b) => a + b);
-    final upcomingRain = forecast.isNotEmpty ? forecast.first.totalPrecipMm : 0.0;
+    final recent3 =
+        forecast.take(3).map((d) => d.totalPrecipMm).fold(0.0, (a, b) => a + b);
+    final upcomingRain =
+        forecast.isNotEmpty ? forecast.first.totalPrecipMm : 0.0;
 
     if (upcomingRain > 8) {
-      return (false, 'Yarın ${upcomingRain.toStringAsFixed(0)} mm yağış bekleniyor — sulama gerekmiyor.');
+      return (
+        false,
+        'Yarın ${upcomingRain.toStringAsFixed(0)} mm yağış bekleniyor — sulama gerekmiyor.'
+      );
     }
     if (recent3 > 15) {
-      return (false, 'Son 3 günde ${recent3.toStringAsFixed(0)} mm yağış düştü — toprak nemli.');
+      return (
+        false,
+        'Son 3 günde ${recent3.toStringAsFixed(0)} mm yağış düştü — toprak nemli.'
+      );
     }
     if (soilMoisturePct > 70) {
-      return (false, 'Toprak nemi yüksek (%${soilMoisturePct.round()}) — sulama gerekmiyor.');
+      return (
+        false,
+        'Toprak nemi yüksek (%${soilMoisturePct.round()}) — sulama gerekmiyor.'
+      );
     }
     if (current.tempC > 32 && soilMoisturePct < 40) {
-      return (true, 'Sıcaklık ${current.tempC.toStringAsFixed(0)}°C, toprak nemi düşük — sabah erken sulama önerilir.');
+      return (
+        true,
+        'Sıcaklık ${current.tempC.toStringAsFixed(0)}°C, toprak nemi düşük — sabah erken sulama önerilir.'
+      );
     }
     if (soilMoisturePct < 30) {
-      return (true, 'Toprak nemi kritik (%${soilMoisturePct.round()}) — acil sulama gerekli.');
+      return (
+        true,
+        'Toprak nemi kritik (%${soilMoisturePct.round()}) — acil sulama gerekli.'
+      );
     }
     return (false, 'Mevcut koşullarda sulama gerekmiyor.');
   }

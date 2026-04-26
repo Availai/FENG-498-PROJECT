@@ -27,8 +27,8 @@ class FuelPrices {
   factory FuelPrices.fromMap(Map m, {bool fromCache = false}) => FuelPrices(
         dieselTry: (m['diesel'] as num).toDouble(),
         gasolineTry: (m['gasoline'] as num).toDouble(),
-        fetchedAt:
-            DateTime.tryParse(m['fetchedAt']?.toString() ?? '') ?? DateTime.now(),
+        fetchedAt: DateTime.tryParse(m['fetchedAt']?.toString() ?? '') ??
+            DateTime.now(),
         city: m['city']?.toString() ?? 'ISTANBUL',
         fromCache: fromCache,
       );
@@ -57,14 +57,15 @@ class EpdkPricesApi {
       if (list is List) {
         for (final item in list) {
           if (item is! Map) continue;
-          final name = (item['urun'] ?? item['urunTuru'] ?? '')
+          final name =
+              (item['urun'] ?? item['urunTuru'] ?? '').toString().toLowerCase();
+          final priceStr = (item['fiyat'] ?? item['price'] ?? '')
               .toString()
-              .toLowerCase();
-          final priceStr =
-              (item['fiyat'] ?? item['price'] ?? '').toString().replaceAll(',', '.');
+              .replaceAll(',', '.');
           final price = double.tryParse(priceStr);
           if (price == null) continue;
-          if (name.contains('motorin') || name.contains('mazot') ||
+          if (name.contains('motorin') ||
+              name.contains('mazot') ||
               name.contains('diesel')) {
             diesel ??= price;
           } else if (name.contains('benzin') || name.contains('gasoline')) {

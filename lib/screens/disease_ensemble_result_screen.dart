@@ -94,7 +94,8 @@ class DiseaseEnsembleResultScreen extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.medical_services_outlined, color: color, size: 20),
+                      Icon(Icons.medical_services_outlined,
+                          color: color, size: 20),
                       const SizedBox(width: 8),
                       Text('Önerilen Müdahale',
                           style: AppText.h3(context).copyWith(color: color)),
@@ -116,8 +117,7 @@ class DiseaseEnsembleResultScreen extends StatelessWidget {
             ),
             child: Row(
               children: [
-                const Icon(Icons.info_outline,
-                    size: 16, color: Colors.white54),
+                const Icon(Icons.info_outline, size: 16, color: Colors.white54),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -161,8 +161,8 @@ class DiseaseEnsembleResultScreen extends StatelessWidget {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(title,
-                      style: AppText.sm(context)
-                          .copyWith(color: Colors.white70)),
+                      style:
+                          AppText.sm(context).copyWith(color: Colors.white70)),
                 ),
                 Text('%$confidencePct',
                     style: TextStyle(

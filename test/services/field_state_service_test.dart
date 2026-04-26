@@ -46,13 +46,22 @@ void main() {
             'irrigation_method': 'Damla sulama',
           },
         },
+        {
+          'crop_id': 'crop-1',
+          'type': ActivityType.watering,
+          'date': DateTime(2026, 4, 24),
+          'metadata': const {
+            'water_liters': 1200,
+            'irrigation_method': 'Damla sulama',
+          },
+        },
       ],
     );
 
     expect(states, hasLength(1));
     expect(states.single.areaDekar, closeTo(1.5, 0.001));
     expect(states.single.estimatedPlantCount, 3000);
-    expect(states.single.weeklyWaterMm, greaterThan(0));
-    expect(states.single.weeklyWaterLiters, greaterThan(0));
+    expect(states.single.weeklyWaterMm, closeTo(4.0, 0.001));
+    expect(states.single.weeklyWaterLiters, closeTo(6000, 0.001));
   });
 }

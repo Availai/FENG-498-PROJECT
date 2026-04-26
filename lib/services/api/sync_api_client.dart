@@ -83,9 +83,8 @@ class SyncApiClient {
   Future<DateTime?> fetchServerTime() async {
     final uri = Uri.parse('$_baseUrl/api/sync/time');
     try {
-      final response = await _httpClient
-          .get(uri)
-          .timeout(const Duration(seconds: 5));
+      final response =
+          await _httpClient.get(uri).timeout(const Duration(seconds: 5));
       if (response.statusCode < 200 || response.statusCode >= 300) {
         return null;
       }
@@ -163,4 +162,3 @@ class SyncApiClient {
     return SyncPullResult(items: items, serverTime: serverTime);
   }
 }
-

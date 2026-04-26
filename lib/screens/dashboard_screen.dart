@@ -46,7 +46,12 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
     // boş görünmesin. Konum + ağ tamamlanınca _refreshData taze değer atar.
     _hydrateFromLastCache();
     _animController.forward();
-    _refreshData();
+    // Konum izin diyaloğunu ilk frame'den sonraya ertele — flutter run'ın
+    // Dart VM servisine bağlanmasına zaman tanır; aksi hâlde sistem diyalogu
+    // aktiviteyi "paused" yapıp bağlantıyı donduruyor.
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => Future.delayed(const Duration(milliseconds: 600), _refreshData),
+    );
   }
 
   /// Son başarılı tarihteki cache'i Hive'dan oku — instant first paint.
@@ -104,13 +109,17 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
         d.contains('yağmur') ||
         d.contains('drizzle') ||
         d.contains('storm') ||
-        d.contains('fırtına')) { return 'rainy'; }
+        d.contains('fırtına')) {
+      return 'rainy';
+    }
     if (d.contains('cloud') ||
         d.contains('bulut') ||
         d.contains('overcast') ||
         d.contains('kapalı') ||
         d.contains('fog') ||
-        d.contains('sis')) { return 'cloudy'; }
+        d.contains('sis')) {
+      return 'cloudy';
+    }
     return 'sunny';
   }
 
@@ -206,13 +215,11 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
   void _triggerWeatherAlertIfDue(double lat, double lng) {
     final settingsBox = Hive.box('settingsBox');
     final lastCheckStr = settingsBox.get('last_weather_check_at') as String?;
-    final lastCheck = lastCheckStr != null
-        ? DateTime.tryParse(lastCheckStr)
-        : null;
+    final lastCheck =
+        lastCheckStr != null ? DateTime.tryParse(lastCheckStr) : null;
     final now = DateTime.now().toUtc();
 
-    if (lastCheck != null &&
-        now.difference(lastCheck).inHours < 3) {
+    if (lastCheck != null && now.difference(lastCheck).inHours < 3) {
       return;
     }
 
@@ -259,12 +266,13 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
                         children: [
                           _buildFieldOverview(),
                           const SizedBox(height: 24),
-                          _buildSectionHeader(
-                              'Bugün Yapılacaklar', Icons.checklist_rtl_rounded),
+                          _buildSectionHeader('Bugün Yapılacaklar',
+                              Icons.checklist_rtl_rounded),
                           const SizedBox(height: 12),
                           _buildTasksSummarySection(),
                           const SizedBox(height: 24),
-                          _buildSectionHeader('Tarlalarım', Icons.grass_rounded),
+                          _buildSectionHeader(
+                              'Tarlalarım', Icons.grass_rounded),
                           const SizedBox(height: 12),
                           _buildMyFieldsSection(),
                           const SizedBox(height: 24),
@@ -301,7 +309,10 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
         const SizedBox(width: 8),
       ],
       flexibleSpace: FlexibleSpaceBar(
-        stretchModes: const [StretchMode.zoomBackground, StretchMode.blurBackground],
+        stretchModes: const [
+          StretchMode.zoomBackground,
+          StretchMode.blurBackground
+        ],
         background: Stack(
           fit: StackFit.expand,
           children: [
@@ -414,7 +425,10 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
             color: Colors.white,
             letterSpacing: 0.3,
             shadows: [
-              Shadow(color: Color(0x66000000), blurRadius: 4, offset: Offset(0, 1)),
+              Shadow(
+                  color: Color(0x66000000),
+                  blurRadius: 4,
+                  offset: Offset(0, 1)),
             ],
           ),
         ),
@@ -459,7 +473,8 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
           colors: [Color(0xFFFBF7EC), Colors.white],
         ),
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.6), width: 1.5),
+        border:
+            Border.all(color: Colors.white.withValues(alpha: 0.6), width: 1.5),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.18),
@@ -496,7 +511,8 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
               const Spacer(),
               if (needsIrrigation > 0)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: AppColors.error.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
@@ -539,9 +555,7 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
               Expanded(
                 child: _overviewMetric(
                   icon: Icons.straighten_rounded,
-                  value: totalDekar > 0
-                      ? totalDekar.toStringAsFixed(1)
-                      : '0',
+                  value: totalDekar > 0 ? totalDekar.toStringAsFixed(1) : '0',
                   label: 'Dekar',
                   color: AppColors.soil,
                 ),
@@ -703,7 +717,8 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
           foregroundColor: Colors.white,
           backgroundColor: Colors.white.withValues(alpha: 0.1),
           side: const BorderSide(color: Colors.white54),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         ),
       ),
     );
@@ -817,7 +832,8 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
                 ? '2-3 gün içinde'
                 : '4+ gün sonra';
 
-    final moisturePct = soilMoisture != null ? (soilMoisture * 100).round() : null;
+    final moisturePct =
+        soilMoisture != null ? (soilMoisture * 100).round() : null;
 
     return TapScale(
       scale: 0.96,
@@ -922,7 +938,10 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
                         height: 6,
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
-                            colors: [healthColor.withValues(alpha: 0.6), healthColor],
+                            colors: [
+                              healthColor.withValues(alpha: 0.6),
+                              healthColor
+                            ],
                           ),
                         ),
                       ),
@@ -1061,10 +1080,7 @@ class _FieldDirectivesStrip extends ConsumerWidget {
             'Yönerge hesaplanamadı', null),
       ]),
       data: (directives) {
-        final top = directives
-            .where((d) => d.urgency >= 1)
-            .take(3)
-            .toList();
+        final top = directives.where((d) => d.urgency >= 1).take(3).toList();
 
         if (top.isEmpty) {
           return _shell(context, name, [
@@ -1080,7 +1096,8 @@ class _FieldDirectivesStrip extends ConsumerWidget {
                 ? const Color(0xFFFF5252)
                 : const Color(0xFFFFB74D);
             final icon = _iconFor(d.kind);
-            return _miniRow(color, icon, d.headline, d.urgency == 2 ? 'BUGÜN' : null);
+            return _miniRow(
+                color, icon, d.headline, d.urgency == 2 ? 'BUGÜN' : null);
           }).toList(),
         );
       },

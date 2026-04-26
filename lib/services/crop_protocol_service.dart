@@ -75,7 +75,8 @@ class CropProtocolService {
     final raw = box.get(_configKey(fieldId, cropName));
     if (raw == null) return null;
     try {
-      return CropConfig.fromJson(jsonDecode(raw as String) as Map<String, dynamic>);
+      return CropConfig.fromJson(
+          jsonDecode(raw as String) as Map<String, dynamic>);
     } catch (_) {
       return null;
     }
@@ -87,7 +88,8 @@ class CropProtocolService {
     if (raw == null || raw.isEmpty) return null;
     final parts = raw.split('.');
     if (parts.length == 3) {
-      final iso = '${parts[2]}-${parts[1].padLeft(2, '0')}-${parts[0].padLeft(2, '0')}';
+      final iso =
+          '${parts[2]}-${parts[1].padLeft(2, '0')}-${parts[0].padLeft(2, '0')}';
       final dt = DateTime.tryParse(iso);
       if (dt != null) return dt;
     }
@@ -114,14 +116,16 @@ class CropProtocolService {
     // Config yükle (fieldId varsa)
     CropConfig? config;
     if (fieldId != null && cropId != null) {
-      config = loadConfig(fieldId: fieldId, cropName: crop['name']?.toString() ?? '');
+      config = loadConfig(
+          fieldId: fieldId, cropName: crop['name']?.toString() ?? '');
     }
 
     final relevantActs = activities.where((a) {
       final fid = a['crop_id']?.toString();
       final actDate = a['date'];
       if (actDate is! DateTime) return false;
-      if (actDate.isBefore(planted.subtract(const Duration(days: 1)))) return false;
+      if (actDate.isBefore(planted.subtract(const Duration(days: 1))))
+        return false;
       return fid == null || fid.isEmpty || fid == cropId;
     }).toList();
 
@@ -197,7 +201,8 @@ class CropProtocolService {
       if (lastNotifiedOrder != -1) {
         await NotificationService.show(
           id: _notifId(fieldId, cropId, 999),
-          title: '${progress.protocol.emoji} ${progress.protocol.displayName} — Yetiştirme tamamlandı!',
+          title:
+              '${progress.protocol.emoji} ${progress.protocol.displayName} — Yetiştirme tamamlandı!',
           body: 'Tüm adımlar tamamlandı. Hasadın bereketli olsun.',
         );
         await box.put(key, -1);
@@ -210,8 +215,7 @@ class CropProtocolService {
       final step = progress.activeStep!;
       await NotificationService.show(
         id: _notifId(fieldId, cropId, activeOrder),
-        title:
-            '${progress.protocol.emoji} ${progress.protocol.displayName} — '
+        title: '${progress.protocol.emoji} ${progress.protocol.displayName} — '
             'Adım ${step.order}/${progress.totalCount}: ${step.stageEmoji}',
         body: '${step.title}. Detay için Görevler sekmesine bakın.',
       );
@@ -228,7 +232,8 @@ class CropProtocolService {
     if (!Hive.isBoxOpen(_hiveBoxName)) return;
     final box = Hive.box(_hiveBoxName);
     final prefix = '$fieldId$_sep$cropId$_sep';
-    final toRemove = box.keys.where((k) => k.toString().startsWith(prefix)).toList();
+    final toRemove =
+        box.keys.where((k) => k.toString().startsWith(prefix)).toList();
     for (final k in toRemove) {
       await box.delete(k);
     }

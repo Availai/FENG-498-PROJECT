@@ -51,6 +51,8 @@ class _DiseaseResult {
 }
 
 class AgriService {
+  static const Duration _optionalBackendTimeout = Duration(seconds: 3);
+
   // ═══════════════════════════════════════════════════
   // ANA ANALİZ FONKSİYONU
   // ═══════════════════════════════════════════════════
@@ -114,8 +116,7 @@ class AgriService {
       final numericHumidity = (env?['humidity'] as num?)?.toDouble() ?? 50.0;
       final agroData = await _getAgroSoilData(latitude, longitude);
       final soilMoisture = (agroData?['moisture'] as num?)?.toDouble() ?? 0.0;
-      final soilTempC =
-          (agroData?['soil_temp_c'] as num?)?.toDouble() ?? 15.0;
+      final soilTempC = (agroData?['soil_temp_c'] as num?)?.toDouble() ?? 15.0;
 
       if (!isPlant && !isField) {
         final report = await _generateEnvironmentalReport(
@@ -161,14 +162,16 @@ class AgriService {
           final commonTitle = names.isNotEmpty
               ? names.first.toString()
               : (scientificName.isNotEmpty ? scientificName : 'Bitki');
-          final confidence = ((bestMatch['score'] as num?) ?? 0).toDouble() * 100;
+          final confidence =
+              ((bestMatch['score'] as num?) ?? 0).toDouble() * 100;
           final detailsFromCache =
               await PlantCacheService.get(scientificName) != null;
           final secondRound = await Future.wait([
             _fetchPerenualDetails(scientificName, commonTitle),
             disease.analyzed
                 ? Future.value(disease)
-                : _callGeminiDiseaseCheck(jpegFile, scientificName, commonTitle),
+                : _callGeminiDiseaseCheck(
+                    jpegFile, scientificName, commonTitle),
           ]);
           final perenualDetails = secondRound[0] as Map<String, dynamic>;
           disease = secondRound[1] as _DiseaseResult;
@@ -214,10 +217,9 @@ class AgriService {
                 'nasil_yetistirilir': perenualDetails['care_description'] ??
                     _buildGrowGuide(perenualDetails),
                 'bakim_puf_noktasi': _buildCareGuide(perenualDetails),
-                'hastalik_riskleri':
-                    perenualDetails['pest_susceptibility'] ??
-                        perenualDetails['pest_info'] ??
-                        'Zararlı bilgisi bulunamadı.',
+                'hastalik_riskleri': perenualDetails['pest_susceptibility'] ??
+                    perenualDetails['pest_info'] ??
+                    'Zararlı bilgisi bulunamadı.',
                 'sulama_takvimi': _generateWateringSchedule(
                   totalWeeklyRain,
                   numericHumidity,
@@ -301,7 +303,6 @@ class AgriService {
     }
   }
 
-
   // ═══════════════════════════════════════════════════
   // PLANTNET API — timeout + 1 retry + hata sınıflandırma
   // ═══════════════════════════════════════════════════
@@ -319,7 +320,9 @@ class AgriService {
         final data = await BackendService.plantNetIdentify(jpegFile);
         return _PlantNetResult.ok(data);
       } on BackendException catch (e) {
-        if (e.statusCode == 429) return _PlantNetResult.fail('günlük kota dolu');
+        if (e.statusCode == 429) {
+          return _PlantNetResult.fail('günlük kota dolu');
+        }
         if (e.statusCode == 401 || e.statusCode == 403) {
           return _PlantNetResult.fail('yetki reddedildi');
         }
@@ -335,7 +338,6 @@ class AgriService {
     }
     return _PlantNetResult.fail('bağlantı kurulamadı');
   }
-
 
   // ═══════════════════════════════════════════════════
   // GEMİNİ VİZYON — Görüntüden Hastalık Tespiti (v2.5-flash)
@@ -380,7 +382,6 @@ class AgriService {
       return _DiseaseResult.unknown('servis yanıt vermedi');
     }
   }
-
 
   /// Gemini yanıtını güvenli parse eder — safety block, finishReason,
   /// eksik alan, bozuk JSON hepsini yakalar.
@@ -436,13 +437,12 @@ class AgriService {
         return null;
       }
 
-      final bool present =
-          parsedJson['disease_present'] == true || parsedJson['present'] == true;
-      final int rawConf =
-          ((parsedJson['disease_confidence'] ?? parsedJson['confidence'])
-                      as num?)
-                  ?.toInt() ??
-              0;
+      final bool present = parsedJson['disease_present'] == true ||
+          parsedJson['present'] == true;
+      final int rawConf = ((parsedJson['disease_confidence'] ??
+                  parsedJson['confidence']) as num?)
+              ?.toInt() ??
+          0;
       return _DiseaseResult(
         analyzed: true,
         present: present,
@@ -459,7 +459,6 @@ class AgriService {
       return null;
     }
   }
-
 
   // ═══════════════════════════════════════════════════
   // PERENUAL API — Bitki Detaylarını Çek
@@ -490,9 +489,6 @@ class AgriService {
     return {};
   }
 
-
-
-
   // ═══════════════════════════════════════════════════
   // AGROMONITORING API — Toprak Verisi
   // ═══════════════════════════════════════════════════
@@ -502,7 +498,6 @@ class AgriService {
   ) async {
     return BackendService.satelliteSoil(lat: lat, lng: lng);
   }
-
 
   // ═══════════════════════════════════════════════════
   // DETERMİNİSTİK HESAPLAMA FONKSİYONLARI
@@ -922,9 +917,13 @@ class AgriService {
     if (temp < 3) notes.add('Don riski var, gece koruması planlayın.');
     if (temp > 34) notes.add('Sıcak stresine karşı sabah erken sulama yapın.');
     if (weeklyRain < 5) notes.add('Yağış az, sulama ihtiyacı yüksek.');
-    if (weeklyRain > 50) notes.add('Aşırı yağışta drenaj ve mantar riski izlenmeli.');
+    if (weeklyRain > 50) {
+      notes.add('Aşırı yağışta drenaj ve mantar riski izlenmeli.');
+    }
     if (ph < 5.8) notes.add('Toprak asidik, kireçleme gerekebilir.');
-    if (ph > 7.6) notes.add('Toprak bazik, kükürt ve organik madde desteği düşünülmeli.');
+    if (ph > 7.6) {
+      notes.add('Toprak bazik, kükürt ve organik madde desteği düşünülmeli.');
+    }
     if (notes.isEmpty) notes.add('Koşullar genel olarak dengeli görünüyor.');
     return 'Sıcaklık ${temp.toStringAsFixed(1)}°C, nem %${humidity.toStringAsFixed(0)}, '
         'haftalık yağış ${weeklyRain.toStringAsFixed(1)} mm, pH ${ph.toStringAsFixed(1)}, '
@@ -952,7 +951,11 @@ class AgriService {
       'month': month,
       'plant_details': plantDetails,
     };
-    return await BackendService.analyzeFieldPlan(body) ??
+    final backendText = await BackendService.analyzeFieldPlan(body).timeout(
+      _optionalBackendTimeout,
+      onTimeout: () => null,
+    );
+    return backendText ??
         _localFieldPlan(
           plantName: plantName,
           fieldName: fieldName,
@@ -1011,7 +1014,11 @@ class AgriService {
       'month': month,
       'crops': crops,
     };
-    return await BackendService.analyzeWeeklyComment(body) ??
+    final backendText = await BackendService.analyzeWeeklyComment(body).timeout(
+      _optionalBackendTimeout,
+      onTimeout: () => null,
+    );
+    return backendText ??
         _localWeeklyComment(
           fieldName: fieldName,
           temp: temp,
@@ -1083,8 +1090,9 @@ class AgriService {
     final envFuture = BackendService.fieldEnvironment(
       lat: latitude,
       lng: longitude,
-    );
-    final agroFuture = _getAgroSoilData(latitude, longitude);
+    ).timeout(_optionalBackendTimeout, onTimeout: () => null);
+    final agroFuture = _getAgroSoilData(latitude, longitude)
+        .timeout(_optionalBackendTimeout, onTimeout: () => null);
     final env = await envFuture;
     final agroData = await agroFuture;
 
@@ -1144,7 +1152,6 @@ class AgriService {
       'ai_weekly_comment': aiWeeklyComment,
     };
   }
-
 
   // ═══════════════════════════════════════════════════
   // REHBER SİSTEMİ (Yeni Eklenen Özellik)
@@ -1275,7 +1282,8 @@ class AgriService {
           'seeds_per_dekar': data['seeds_per_dekar'],
           'irrigation_type': data['irrigation_type'],
           'irrigation_line_spacing_cm': data['irrigation_line_spacing_cm'],
-          'irrigation_dripper_spacing_cm': data['irrigation_dripper_spacing_cm'],
+          'irrigation_dripper_spacing_cm':
+              data['irrigation_dripper_spacing_cm'],
           'fertilizer_band_cm': data['fertilizer_band_cm'],
           'fertilizer_depth_cm': data['fertilizer_depth_cm'],
           'fertilizer_type': data['fertilizer_type'],
@@ -1298,10 +1306,12 @@ class AgriService {
     } catch (e) {
       return {
         'success': false,
-        'guide': 'Rehber verisi hazırlanamadı. Çevrimdışı ansiklopediye bakın. Hata: $e',
+        'guide':
+            'Rehber verisi hazırlanamadı. Çevrimdışı ansiklopediye bakın. Hata: $e',
       };
     }
   }
+
   // ═══════════════════════════════════════════════════
   static Future<Map<String, dynamic>> getSatelliteWeather(
     double latitude,
@@ -1349,8 +1359,7 @@ class AgriService {
       'current_precip': (env?['current_precip'] as num?)?.toDouble() ?? 0.0,
       'current_cloud_cover':
           (env?['current_cloud_cover'] as num?)?.toDouble() ?? 0.0,
-      'current_pressure':
-          (env?['current_pressure'] as num?)?.toDouble() ?? 0.0,
+      'current_pressure': (env?['current_pressure'] as num?)?.toDouble() ?? 0.0,
       'weather_code': (env?['weather_code'] as num?)?.toInt() ?? 0,
       'daily_forecast': dailyForecast,
       'hourly_forecast': hourlyForecast,
@@ -1367,7 +1376,6 @@ class AgriService {
     };
   }
 
-
   // ═══════════════════════════════════════════════════
   // SAATLİK HAVA (field_detail_screen için hafif çağrı)
   // ═══════════════════════════════════════════════════
@@ -1377,7 +1385,6 @@ class AgriService {
   ) async {
     return BackendService.hourlyWeather(lat: latitude, lng: longitude);
   }
-
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

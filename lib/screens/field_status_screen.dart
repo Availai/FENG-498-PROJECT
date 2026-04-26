@@ -77,7 +77,7 @@ class FieldStatusScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Önce "Tarlalarım" ekranından bir alan ekleyin; bu menü '
+                      'Önce "Tarlalarım" ekranından bir tarla ekleyin; bu menü '
                       'her tarlada ne yetiştirildiğini, hangi işleme kaç gün '
                       'kaldığını ve nasıl yapılacağını özetleyecek.',
                       textAlign: TextAlign.center,
@@ -132,10 +132,8 @@ class _FieldStatusCard extends ConsumerWidget {
             .toList() ??
         const [];
 
-    final directivesAsync =
-        ref.watch(fieldDirectivesSummaryProvider(fieldId));
-    final growthStatesAsync =
-        ref.watch(fieldGrowthStatesProvider(fieldId));
+    final directivesAsync = ref.watch(fieldDirectivesSummaryProvider(fieldId));
+    final growthStatesAsync = ref.watch(fieldGrowthStatesProvider(fieldId));
 
     return TapScale(
       scale: 0.98,
@@ -311,8 +309,7 @@ class _FieldStatusCard extends ConsumerWidget {
               Icon(urgencyIcon, size: 14, color: urgencyColor),
               const SizedBox(width: 4),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                 decoration: BoxDecoration(
                   color: urgencyColor,
                   borderRadius: BorderRadius.circular(6),
@@ -353,8 +350,8 @@ class _FieldStatusCard extends ConsumerWidget {
                                 fontSize: 11, fontWeight: FontWeight.bold)),
                         Expanded(
                           child: Text(s,
-                              style: const TextStyle(
-                                  fontSize: 11, height: 1.3)),
+                              style:
+                                  const TextStyle(fontSize: 11, height: 1.3)),
                         ),
                       ],
                     ),
@@ -397,9 +394,8 @@ class _CropProgressRow extends StatelessWidget {
     final now = DateTime.now();
     final daysSincePlanting =
         plantedDate == null ? null : now.difference(plantedDate).inDays;
-    final daysToHarvest = daysSincePlanting == null
-        ? null
-        : (harvestDays - daysSincePlanting);
+    final daysToHarvest =
+        daysSincePlanting == null ? null : (harvestDays - daysSincePlanting);
     final progress = daysSincePlanting == null
         ? 0.0
         : (daysSincePlanting / harvestDays).clamp(0.0, 1.0).toDouble();
@@ -417,8 +413,7 @@ class _CropProgressRow extends StatelessWidget {
       harvestColor = AppColors.emerald;
     } else {
       harvestLabel = 'Hasada $daysToHarvest gün';
-      harvestColor =
-          daysToHarvest <= 7 ? AppColors.warning : AppColors.emerald;
+      harvestColor = daysToHarvest <= 7 ? AppColors.warning : AppColors.emerald;
     }
 
     final stageLabel = _stageLabel(growth?.currentStageKey);
@@ -480,8 +475,7 @@ class _CropProgressRow extends StatelessWidget {
                     fontWeight: FontWeight.w600),
               ),
               const Spacer(),
-              Icon(Icons.water_drop,
-                  size: 12, color: Colors.blue.shade600),
+              Icon(Icons.water_drop, size: 12, color: Colors.blue.shade600),
               const SizedBox(width: 4),
               Text(
                 'Sulama her $waterIntervalDays gün',

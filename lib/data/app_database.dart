@@ -39,6 +39,7 @@ class FieldCrops extends Table {
   TextColumn get plantedDate => text().nullable()();
   IntColumn get harvestDays => integer().nullable()();
   IntColumn get waterIntervalDays => integer().nullable()();
+
   /// Sub-polygon JSON: [{"lat":..., "lng":...}, ...]
   /// null ise bitki tüm tarla alanına ekilmiş kabul edilir.
   TextColumn get zonePolygonJson => text().nullable()();
@@ -59,12 +60,15 @@ class CalendarEvents extends Table {
   DateTimeColumn get eventDate => dateTime()();
   TextColumn get source => text().withDefault(const Constant('manual'))();
   TextColumn get metadataJson => text().nullable()();
+
   /// Çiftçinin gerçekten uyguladığı miktar (ör. sulama dk, gübre kg, ilaç mL).
   /// metadata_json içinde de tutulur; bu kolon GrowthEngine sorguları için
   /// indekslenebilir hızlı erişim sağlar (v4).
   RealColumn get quantity => real().nullable()();
+
   /// Miktar birimi — 'dk', 'kg', 'L', 'g', 'mL'. (v4)
   TextColumn get unit => text().nullable()();
+
   /// Direktif motorunun aynı anda önerdiği miktar — eksik/fazla oranını
   /// hesaplamak için. Null ise öneri-dışı manuel kayıt. (v4)
   RealColumn get recommendedQuantity => real().nullable()();
@@ -83,25 +87,36 @@ class CropGrowthStates extends Table {
   /// FieldCrops.id ile aynı — 1:1 ilişki.
   TextColumn get cropId => text()();
   TextColumn get fieldId => text()();
+
   /// Son hesaplama tarihi (local midnight).
   DateTimeColumn get asOfDate => dateTime()();
+
   /// Ekimden bu yana biriken GDD (gün-derece). Tbase bitkiye göre değişir.
   RealColumn get accumulatedGdd => real().withDefault(const Constant(0))();
+
   /// Aktif fenoloji evresi: 'cimlenme' | 'vejetatif' | 'ciceklenme' |
   /// 'meyve_dolumu' | 'olgunlasma' | 'hasat'.
-  TextColumn get currentStageKey => text().withDefault(const Constant('cimlenme'))();
+  TextColumn get currentStageKey =>
+      text().withDefault(const Constant('cimlenme'))();
+
   /// Aktif evre içindeki ilerleme (0..1). Büyüme animasyonu bu değeri okur.
   RealColumn get stageProgress => real().withDefault(const Constant(0))();
+
   /// Sulama açığı (mm) — öneriye göre eksik veren toplam. 0 = ideal, >0 stres.
   RealColumn get waterDeficitMm => real().withDefault(const Constant(0))();
+
   /// Azot (N) stresi 0..1 — gübreleme eksikliğinin kümülatif etkisi.
   RealColumn get nStressIdx => real().withDefault(const Constant(0))();
+
   /// Hastalık baskısı 0..1 — yağmur + eksik ilaçlama kombinasyonu.
   RealColumn get diseasePressure => real().withDefault(const Constant(0))();
+
   /// Tahmin edilen boy (cm) — görsel büyüme için.
   RealColumn get heightCm => real().withDefault(const Constant(0))();
+
   /// Göreceli biyokütle 0..1 (sigmoid).
   RealColumn get biomassRel => real().withDefault(const Constant(0))();
+
   /// Verim çarpanı — 0.5..1.15 aralığında; her stres zinciri bunu aşağı çeker.
   RealColumn get yieldMultiplier => real().withDefault(const Constant(1.0))();
   DateTimeColumn get lastComputedAt => dateTime()();

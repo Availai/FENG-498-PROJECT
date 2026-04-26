@@ -1,4 +1,4 @@
-import 'package:drift/drift.dart';
+import 'package:drift/drift.dart' hide isNotNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -63,7 +63,28 @@ void main() {
         );
   }
 
-  test('eksik gubreleme azot stresini ve verim carpani etkisini artirir', () async {
+  Future<void> addWaterLiters(
+      String cropId, DateTime date, double liters) async {
+    final now = DateTime.utc(2026, 4, 24);
+    await database.into(database.calendarEvents).insert(
+          CalendarEventsCompanion.insert(
+            id: 'water-$cropId-${date.day}',
+            fieldId: Value('field-$cropId'),
+            cropId: Value(cropId),
+            title: 'Sulama',
+            eventType: ActivityType.watering,
+            eventDate: date,
+            unit: const Value('L'),
+            metadataJson: Value(
+                '{"water_liters":$liters,"irrigation_method":"Damla sulama"}'),
+            createdAt: now,
+            updatedAt: now,
+          ),
+        );
+  }
+
+  test('eksik gubreleme azot stresini ve verim carpani etkisini artirir',
+      () async {
     await seedCrop('low', fertilizerKg: 2);
     await seedCrop('ok', fertilizerKg: 10);
 
@@ -81,5 +102,27 @@ void main() {
     expect(ok, isNotNull);
     expect(low!.nStressIdx, greaterThan(ok!.nStressIdx));
     expect(low.yieldMultiplier, lessThan(ok.yieldMultiplier));
+  });
+
+  test('litreyle girilen sulama su acigini dakika gibi yorumlamaz', () async {
+    await seedCrop('dry', fertilizerKg: 10);
+    await seedCrop('wet', fertilizerKg: 10);
+    for (final day in [3, 6, 9, 12, 15, 18, 21]) {
+      await addWaterLiters('wet', DateTime(2026, 4, day), 6000);
+    }
+
+    final engine = GrowthEngine(database);
+    final dry = await engine.recompute(
+      cropId: 'dry',
+      now: DateTime(2026, 4, 24),
+    );
+    final wet = await engine.recompute(
+      cropId: 'wet',
+      now: DateTime(2026, 4, 24),
+    );
+
+    expect(dry, isNotNull);
+    expect(wet, isNotNull);
+    expect(wet!.waterDeficitMm, lessThan(dry!.waterDeficitMm));
   });
 }
