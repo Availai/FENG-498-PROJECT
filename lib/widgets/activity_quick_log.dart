@@ -917,7 +917,7 @@ class _QuickLogSheetState extends State<_QuickLogSheet> {
 
   int? _parseInt(String raw) {
     final v = double.tryParse(raw.replaceAll(',', '.'));
-    return v == null ? null : v.round();
+    return v?.round();
   }
 
   double? _parseDouble(String raw) {

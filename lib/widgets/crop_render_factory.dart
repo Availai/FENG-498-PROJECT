@@ -52,29 +52,38 @@ String _getAssetPath(String cropName) {
   final name = cropName.toLowerCase();
   if (name.contains('buğday') ||
       name.contains('arpa') ||
-      name.contains('yulaf')) return 'assets/crops/wheat.png';
+      name.contains('yulaf')) {
+    return 'assets/crops/wheat.png';
+  }
   if (name.contains('mısır')) return 'assets/crops/corn.png';
-  if (name.contains('ayçiçek') || name.contains('ayçiçeği'))
+  if (name.contains('ayçiçek') || name.contains('ayçiçeği')) {
     return 'assets/crops/sunflower.png';
+  }
   if (name.contains('pamuk')) return 'assets/crops/cotton.png';
-  if (name.contains('çeltik') || name.contains('pirinç'))
+  if (name.contains('çeltik') || name.contains('pirinç')) {
     return 'assets/crops/rice.png';
+  }
   if (name.contains('domates')) return 'assets/crops/tomato.png';
   if (name.contains('biber')) return 'assets/crops/pepper.png';
   if (name.contains('patlıcan')) return 'assets/crops/eggplant.png';
   if (name.contains('üzüm')) return 'assets/crops/grape.png';
   if (name.contains('elma')) return 'assets/crops/apple_tree.png';
-  if (name.contains('karpuz') || name.contains('kavun'))
+  if (name.contains('karpuz') || name.contains('kavun')) {
     return 'assets/crops/watermelon.png';
+  }
   if (name.contains('marul') ||
       name.contains('lahana') ||
-      name.contains('kolza')) return 'assets/crops/cabbage.png';
+      name.contains('kolza')) {
+    return 'assets/crops/cabbage.png';
+  }
   if (name.contains('havuç')) return 'assets/crops/carrot.png';
   if (name.contains('soğan')) return 'assets/crops/onion.png';
   if (name.contains('zeytin')) return 'assets/crops/olive_tree.png';
   if (name.contains('nohut') ||
       name.contains('mercimek') ||
-      name.contains('patates')) return 'assets/crops/potato.png';
+      name.contains('patates')) {
+    return 'assets/crops/potato.png';
+  }
   return 'assets/crops/wheat.png';
 }
 
@@ -142,17 +151,16 @@ Widget buildCropMarkerWidget({
           ),
         );
 
+        // Bitkinin TABANI (kök) marker'ın alt kenarına yapıştırılır;
+        // dış Marker `Alignment.topCenter` ile bu kenar lat/lng noktasına oturur.
+        // Böylece kullanıcının çizdiği bölge tam olarak bitkinin yetiştiği yerdir.
         final markerSprite = Transform(
           transform: Matrix4.identity()..rotateX(0.55),
           alignment: Alignment.bottomCenter,
-          child: SizedBox(
-            width: 240,
-            height: 240,
-            child: Center(
-              child: Transform.translate(
-                offset: Offset(0, -canvasH * 0.10),
-                child: vectorSprite,
-              ),
+          child: SizedBox.expand(
+            child: Align(
+              alignment: Alignment.bottomCenter,
+              child: vectorSprite,
             ),
           ),
         );
@@ -216,33 +224,41 @@ Widget buildCropMarkerWidget({
         ),
       );
 
+      // PNG bitki: TABANI marker'ın alt kenarına yapışır. Dış Marker
+      // `Alignment.topCenter` ile bu kenar lat/lng zeminine oturur.
       final marker = Transform(
-        transform: Matrix4.identity()
-          ..rotateX(0.95), // Doğru 3D pop-up perspektifi
-        alignment:
-            Alignment.center, // Harita koordinatı olan merkeze kilitli dön!
-        child: SizedBox(
-          width: 240,
-          height: 240,
-          child: Stack(
-            clipBehavior: Clip.none,
-            alignment: Alignment
-                .center, // Bütün objelerin tam ortası LatLng koordinatına oturur!
-            children: [
-              // 1. Toprak dairesi — koordinatın merkezinde, ekim izlenimini verir
-              currentZoom < 16.5 ? const SizedBox.shrink() : soilDisc,
-              // 2. Gölge: toprak üstünde hafif kararma
-              currentZoom < 16.5 ? const SizedBox.shrink() : groundShadow,
-
-              // 3. Bitki: Ortası harita noktasındayken (yani yarısı yeraltındayken),
-              // tam boyunun yarısı kadar (spriteH / 2) yukarı (eksi Y ekseni) kaydırarak
-              // bitkinin tam KÖKÜNÜ koordinata/gölgeye oturtuyoruz!
-              Transform.translate(
-                offset: Offset(
-                    0, -(spriteH / 2) + 4), // 4 pixel küçük bir gölge/kök payı
-                child: sprite,
+        transform: Matrix4.identity()..rotateX(0.95),
+        alignment: Alignment.bottomCenter,
+        child: SizedBox.expand(
+          child: Align(
+            alignment: Alignment.bottomCenter,
+            child: SizedBox(
+              width: spriteW,
+              height: spriteH,
+              child: Stack(
+                clipBehavior: Clip.none,
+                alignment: Alignment.bottomCenter,
+                children: [
+                  // 1. Toprak dairesi (zemin) — bitkinin altına denk gelir
+                  if (currentZoom >= 16.5)
+                    Positioned(
+                      bottom: 0,
+                      child: soilDisc,
+                    ),
+                  // 2. Gölge: toprağın üstünde hafif kararma
+                  if (currentZoom >= 16.5)
+                    Positioned(
+                      bottom: 0,
+                      child: groundShadow,
+                    ),
+                  // 3. Bitki: tabanı zemin çizgisinde
+                  Align(
+                    alignment: Alignment.bottomCenter,
+                    child: sprite,
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       );

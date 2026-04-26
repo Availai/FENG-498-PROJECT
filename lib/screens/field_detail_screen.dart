@@ -1977,8 +1977,9 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
         for (final pos in positions) {
           zoneMarkers.add(Marker(
             point: pos,
-            width: 240,
-            height: 280,
+            width: 140,
+            height: 160,
+            alignment: Alignment.topCenter,
             child: AnimatedBuilder(
               animation: _harvestPulseCtrl,
               builder: (_, __) => buildCropMarkerWidget(
@@ -2011,6 +2012,20 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
       );
       positions.sort((a, b) => b.latitude.compareTo(a.latitude));
 
+      // Fallback: polygon çok küçükse ya da yerleştirme boş dönerse merkeze tek marker
+      if (positions.isEmpty) {
+        if (polygon.isNotEmpty) {
+          double cLat = 0, cLng = 0;
+          for (final p in polygon) {
+            cLat += p.latitude;
+            cLng += p.longitude;
+          }
+          positions.add(LatLng(cLat / polygon.length, cLng / polygon.length));
+        } else {
+          positions.add(center);
+        }
+      }
+
       for (int i = 0; i < positions.length; i++) {
         final crop = gridCrops[i % gridCrops.length];
         final maturity = _computeMaturityPercent(
@@ -2020,8 +2035,9 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
         markers.add(
           Marker(
             point: positions[i],
-            width: 240,
-            height: 280,
+            width: 140,
+            height: 160,
+            alignment: Alignment.topCenter,
             child: AnimatedBuilder(
               animation: _harvestPulseCtrl,
               builder: (_, __) => buildCropMarkerWidget(

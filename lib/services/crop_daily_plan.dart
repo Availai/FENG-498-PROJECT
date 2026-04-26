@@ -225,8 +225,9 @@ class CropDailyPlanService {
       if (aCrop != null && aCrop.isNotEmpty && aCrop != cropId) continue;
       final date = a['date'];
       if (date is! DateTime) continue;
-      if (date.isBefore(plantedDate.subtract(const Duration(days: 1))))
+      if (date.isBefore(plantedDate.subtract(const Duration(days: 1)))) {
         continue;
+      }
       final key = DateTime(date.year, date.month, date.day);
       activitiesByDay.putIfAbsent(key, () => []).add(a);
       if (a['type']?.toString() == ActivityType.watering) {

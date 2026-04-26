@@ -93,22 +93,28 @@ class SoilProfile {
   /// Actionable Turkish agronomic assessment
   String get assessment {
     final issues = <String>[];
-    if (phReal < 5.8)
+    if (phReal < 5.8) {
       issues.add(
           'pH düşük (${phReal.toStringAsFixed(1)}) — dekar başına 200-400 kg kireç uygula');
-    if (phReal > 8.0)
+    }
+    if (phReal > 8.0) {
       issues.add(
           'pH yüksek (${phReal.toStringAsFixed(1)}) — kükürt veya asit gübre kullan');
-    if (organicCarbonGKg < 5)
+    }
+    if (organicCarbonGKg < 5) {
       issues.add(
           'Organik madde yetersiz — ahır gübresi veya yeşil gübre önerilir');
+    }
     if (clayPct > 50) issues.add('Ağır kil — drenaj sorununa dikkat');
-    if (sandPct > 75)
+    if (sandPct > 75) {
       issues.add('Kumlu toprak — sık sulama ve bölünmüş gübreleme uygula');
-    if (nitrogenGKg < 1)
+    }
+    if (nitrogenGKg < 1) {
       issues.add('Azot yetersiz — ekim öncesi N gübresi planla');
-    if (issues.isEmpty)
+    }
+    if (issues.isEmpty) {
       return 'Toprak özellikleri genel tarım için uygun görünüyor.';
+    }
     return issues.join('\n');
   }
 }

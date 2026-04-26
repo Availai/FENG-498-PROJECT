@@ -65,8 +65,9 @@ class OWCurrentWeather {
 
   String get agronomicSummary {
     final parts = <String>[];
-    if (tempC > 35)
+    if (tempC > 35) {
       parts.add('Aşırı sıcaklık riski (${tempC.toStringAsFixed(0)}°C)');
+    }
     if (tempC < 0) parts.add('Don riski (${tempC.toStringAsFixed(0)}°C)');
     if (humidityPct > 85) parts.add('Yüksek nem — mantar hastalığı riski');
     if (windSpeedMs > 10) parts.add('Kuvvetli rüzgar — ilaçlama yapma');

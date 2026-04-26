@@ -124,8 +124,9 @@ class CropProtocolService {
       final fid = a['crop_id']?.toString();
       final actDate = a['date'];
       if (actDate is! DateTime) return false;
-      if (actDate.isBefore(planted.subtract(const Duration(days: 1))))
+      if (actDate.isBefore(planted.subtract(const Duration(days: 1)))) {
         return false;
+      }
       return fid == null || fid.isEmpty || fid == cropId;
     }).toList();
 

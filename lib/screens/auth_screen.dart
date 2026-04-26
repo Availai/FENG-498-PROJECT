@@ -422,10 +422,12 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                                         icon: Icons.email_outlined,
                                         type: TextInputType.emailAddress,
                                         validator: (v) {
-                                          if (v == null || v.isEmpty)
+                                          if (v == null || v.isEmpty) {
                                             return 'E-posta gerekli';
-                                          if (!v.contains('@'))
+                                          }
+                                          if (!v.contains('@')) {
                                             return 'Geçerli bir e-posta girin';
+                                          }
                                           return null;
                                         },
                                       ),
@@ -464,10 +466,12 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                                           ),
                                         ),
                                         validator: (v) {
-                                          if (v == null || v.isEmpty)
+                                          if (v == null || v.isEmpty) {
                                             return 'Şifre gerekli';
-                                          if (v.length < 6)
+                                          }
+                                          if (v.length < 6) {
                                             return 'En az 6 karakter';
+                                          }
                                           return null;
                                         },
                                       ),
