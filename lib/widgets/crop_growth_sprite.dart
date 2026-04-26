@@ -370,51 +370,54 @@ class _CropPainter extends CustomPainter {
       _drawLeaf(canvas, Offset(ax, ay), len, -0.2 - t * 0.3, leafColorDark);
     }
 
-    // Tabla / çiçek — çiçeklenme ve sonrası
-    if (_floweringStages.contains(stageKey)) {
-      final flowerR = height * 0.09 +
-          height * 0.05 * (overallProgress - 0.4).clamp(0.0, 0.6);
-      final isRipe = _ripeStages.contains(stageKey);
-      final petalColor =
-          isRipe ? const Color(0xFFB8860B) : const Color(0xFFFFC107);
-      final centerColor =
-          isRipe ? const Color(0xFF3E2A14) : const Color(0xFF5D3A1F);
+    // Tabla / çiçek — HER EVREDE görünür; boyut overallProgress ile büyür.
+    // Kullanıcı seçtiği bitkiyi anında ayçiçeği olarak tanısın diye min %35.
+    final isRipe = _ripeStages.contains(stageKey);
+    final isMature = _floweringStages.contains(stageKey);
+    final flowerScale = (0.35 + 0.65 * overallProgress).clamp(0.35, 1.0);
+    final flowerR = height * 0.09 * flowerScale +
+        (isMature ? height * 0.05 * (overallProgress - 0.4).clamp(0.0, 0.6) : 0);
+    final petalColor =
+        isRipe ? const Color(0xFFB8860B) : const Color(0xFFFFC107);
+    final centerColor =
+        isRipe ? const Color(0xFF3E2A14) : const Color(0xFF5D3A1F);
 
-      // Taç yaprakları — 14 tane
-      final petalPaint = Paint()..color = petalColor;
-      for (int i = 0; i < 14; i++) {
-        final angle = (i / 14) * 2 * math.pi;
-        final px = topX + math.cos(angle) * flowerR * 1.35;
-        final py = topY + math.sin(angle) * flowerR * 1.35;
-        canvas.save();
-        canvas.translate(px, py);
-        canvas.rotate(angle + math.pi / 2);
-        canvas.drawOval(
-          Rect.fromCenter(
-            center: Offset.zero,
-            width: flowerR * 0.55,
-            height: flowerR * 0.95,
-          ),
-          petalPaint,
-        );
-        canvas.restore();
-      }
-      // Merkez
-      canvas.drawCircle(
-        Offset(topX, topY),
-        flowerR,
-        Paint()..color = centerColor,
+    // Erken evrede daha az petal — buton-tomurcuk hissi; olgun: 14 petal
+    final petalCount =
+        isMature ? 14 : (8 + (overallProgress * 6).round()).clamp(8, 14);
+    final petalPaint = Paint()..color = petalColor;
+    for (int i = 0; i < petalCount; i++) {
+      final angle = (i / petalCount) * 2 * math.pi;
+      final px = topX + math.cos(angle) * flowerR * 1.35;
+      final py = topY + math.sin(angle) * flowerR * 1.35;
+      canvas.save();
+      canvas.translate(px, py);
+      canvas.rotate(angle + math.pi / 2);
+      canvas.drawOval(
+        Rect.fromCenter(
+          center: Offset.zero,
+          width: flowerR * 0.55,
+          height: flowerR * 0.95,
+        ),
+        petalPaint,
       );
-      // Olgunlukta başı aşağı düşür
-      if (isRipe) {
-        canvas.drawLine(
-          Offset(topX, topY),
-          Offset(topX - flowerR * 0.2, topY + flowerR * 0.4),
-          Paint()
-            ..color = centerColor
-            ..strokeWidth = flowerR * 0.2,
-        );
-      }
+      canvas.restore();
+    }
+    // Merkez
+    canvas.drawCircle(
+      Offset(topX, topY),
+      flowerR,
+      Paint()..color = centerColor,
+    );
+    // Olgunlukta başı aşağı düşür
+    if (isRipe) {
+      canvas.drawLine(
+        Offset(topX, topY),
+        Offset(topX - flowerR * 0.2, topY + flowerR * 0.4),
+        Paint()
+          ..color = centerColor
+          ..strokeWidth = flowerR * 0.2,
+      );
     }
   }
 
@@ -468,38 +471,43 @@ class _CropPainter extends CustomPainter {
       );
     }
 
-    // Püskül (tassel) — çiçeklenme+
-    if (_floweringStages.contains(stageKey)) {
-      final tasselColor = _ripeStages.contains(stageKey)
-          ? const Color(0xFF8B7D3A)
-          : const Color(0xFFBFA96E);
-      final tasselPaint = Paint()
-        ..color = tasselColor
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.8
-        ..strokeCap = StrokeCap.round;
-      for (int i = -3; i <= 3; i++) {
-        canvas.drawLine(
-          Offset(topX, topY),
-          Offset(topX + i * 2.2, topY - height * 0.08),
-          tasselPaint,
-        );
-      }
+    // Püskül (tassel) — HER EVREDE görünür, boyut overallProgress ile artar.
+    final isRipe = _ripeStages.contains(stageKey);
+    final isFruiting = _fruitingStages.contains(stageKey);
+    final tasselScale = (0.25 + 0.75 * overallProgress).clamp(0.25, 1.0);
+    final tasselColor =
+        isRipe ? const Color(0xFF8B7D3A) : const Color(0xFFBFA96E);
+    final tasselPaint = Paint()
+      ..color = tasselColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.6 + 0.6 * tasselScale
+      ..strokeCap = StrokeCap.round;
+    for (int i = -3; i <= 3; i++) {
+      canvas.drawLine(
+        Offset(topX, topY),
+        Offset(topX + i * 2.2 * tasselScale,
+            topY - height * 0.08 * tasselScale),
+        tasselPaint,
+      );
     }
 
-    // Koçan — meyve_dolumu ve olgunlaşma
-    if (_fruitingStages.contains(stageKey)) {
-      final isRipe = _ripeStages.contains(stageKey);
+    // Koçan — %30 olgunluktan itibaren görünür, boyut + renk progress ile değişir
+    if (overallProgress >= 0.30) {
+      final cobProgress = ((overallProgress - 0.30) / 0.70).clamp(0.0, 1.0);
+      final cobScale = 0.4 + 0.6 * cobProgress;
       final cobY = groundY - height * 0.45;
       final cobX = cx + leanX * 0.2 + stemWidth + 3;
-      final cobColor =
-          isRipe ? const Color(0xFFE8B64B) : const Color(0xFFC9D87E);
+      final cobColor = isRipe
+          ? const Color(0xFFE8B64B)
+          : isFruiting
+              ? const Color(0xFFD9C76A)
+              : const Color(0xFFC9D87E);
       canvas.drawRRect(
         RRect.fromRectAndRadius(
           Rect.fromCenter(
             center: Offset(cobX, cobY),
-            width: height * 0.07,
-            height: height * 0.18,
+            width: height * 0.07 * cobScale,
+            height: height * 0.18 * cobScale,
           ),
           const Radius.circular(4),
         ),
@@ -508,8 +516,8 @@ class _CropPainter extends CustomPainter {
       // Kabuk yaprakları
       _drawLeaf(
         canvas,
-        Offset(cobX, cobY - height * 0.09),
-        height * 0.14,
+        Offset(cobX, cobY - height * 0.09 * cobScale),
+        height * 0.14 * cobScale,
         -math.pi / 2 + 0.35,
         leafColor,
       );
@@ -582,39 +590,49 @@ class _CropPainter extends CustomPainter {
       );
     }
 
-    // Çiçekler — çiçeklenme evresinde küçük sarı noktalar
-    if (stageKey == 'ciceklenme') {
-      final flowerPaint = Paint()..color = const Color(0xFFFFE082);
-      for (int i = 1; i <= 3; i++) {
-        final t = 0.3 + i * 0.2;
-        final fx = cx + leanX * t * 0.5 + (i.isEven ? 6 : -6);
-        final fy = groundY - height * t;
-        canvas.drawCircle(Offset(fx, fy), 2.0, flowerPaint);
-      }
-    }
+    // Meyveler / çiçekler — HER EVREDE en az 1 görünür; sayı + renk progress ile değişir.
+    // Erken evre: küçük yeşil tomurcuklar — kullanıcı seçtiği bitkiyi domates olarak tanır.
+    final isRipe = _ripeStages.contains(stageKey);
+    final isFruiting = _fruitingStages.contains(stageKey);
+    final isFlowering = stageKey == 'ciceklenme';
 
-    // Meyveler — meyve_dolumu ve olgunlaşma
-    if (_fruitingStages.contains(stageKey)) {
-      final isRipe = _ripeStages.contains(stageKey);
-      final fruitColor =
-          isRipe ? const Color(0xFFD32F2F) : const Color(0xFFC9D87E);
-      final fruitHighlight =
-          isRipe ? const Color(0xFFFF6B6B) : const Color(0xFFDDE79E);
-      // 3 meyve kümesi
-      final positions = [
-        Offset(cx - height * 0.12, groundY - height * 0.35),
-        Offset(cx + height * 0.10, groundY - height * 0.50),
-        Offset(cx - height * 0.05, groundY - height * 0.62),
-      ];
-      final r = height * 0.05;
-      for (final p in positions) {
-        canvas.drawCircle(p, r, Paint()..color = fruitColor);
-        canvas.drawCircle(
-          Offset(p.dx - r * 0.3, p.dy - r * 0.3),
-          r * 0.35,
-          Paint()..color = fruitHighlight,
-        );
-      }
+    final fruitColor = isRipe
+        ? const Color(0xFFD32F2F)
+        : isFruiting
+            ? const Color(0xFFC9D87E)
+            : isFlowering
+                ? const Color(0xFFFFE082) // çiçek sarısı
+                : const Color(0xFF7CB342); // genç yeşil tomurcuk
+
+    final fruitHighlight = isRipe
+        ? const Color(0xFFFF6B6B)
+        : isFruiting
+            ? const Color(0xFFDDE79E)
+            : isFlowering
+                ? const Color(0xFFFFF59D)
+                : const Color(0xFFA5D6A7);
+
+    // Erken evre: 1, vejetatif: 2, çiçeklenme/meyve: 3
+    final visibleCount = (isFruiting || isFlowering)
+        ? 3
+        : (overallProgress < 0.15 ? 1 : 2);
+
+    final positions = [
+      Offset(cx - height * 0.12, groundY - height * 0.35),
+      Offset(cx + height * 0.10, groundY - height * 0.50),
+      Offset(cx - height * 0.05, groundY - height * 0.62),
+    ];
+
+    final fruitScale = (0.40 + 0.60 * overallProgress).clamp(0.40, 1.0);
+    final r = height * 0.05 * fruitScale;
+    for (int i = 0; i < visibleCount; i++) {
+      final p = positions[i];
+      canvas.drawCircle(p, r, Paint()..color = fruitColor);
+      canvas.drawCircle(
+        Offset(p.dx - r * 0.3, p.dy - r * 0.3),
+        r * 0.35,
+        Paint()..color = fruitHighlight,
+      );
     }
   }
 
