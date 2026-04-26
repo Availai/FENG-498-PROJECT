@@ -665,15 +665,16 @@ class LocalDataRepository {
     // shouldIrrigate=false yap ve sebebi güncelle. Plan tarihi olduğu gibi
     // kalır (geçmiş kayıt). Bu sayede _DirectiveCard "sulama gerekiyor"
     // direktifini düşürür ve sezon özeti hesabı doğru çalışır.
-    if (type == 'watering') {
+    if (type == ActivityType.watering) {
       await _consumeNextIrrigationPlan(fieldId: fieldId, cropId: cropId);
     }
 
-    // Auto-seed takvim programı (sulama/gübreleme/ilaçlama) — eşleşen en yakın
+    // Auto-seed takvim programı (sulama/gübreleme/gözlem/ilaçlama) — eşleşen en yakın
     // planlı kaydı soft-delete ederek "tamamlandı" olarak işaretle. Böylece
     // takvim temizlenir, TaskDirectiveService "yapılmadı" senaryosu üretmez.
     if (type == ActivityType.watering ||
         type == ActivityType.fertilizing ||
+        type == ActivityType.scouting ||
         type == ActivityType.spraying) {
       await _consumeNextAutoSeedEvent(
         fieldId: fieldId,
@@ -990,6 +991,8 @@ class LocalDataRepository {
         return '$fieldName — Gübreleme';
       case 'spraying':
         return '$fieldName — İlaçlama';
+      case 'scouting':
+        return '$fieldName — Gözlem';
       case 'harvest':
         return '$fieldName — Hasat';
       case 'planting':

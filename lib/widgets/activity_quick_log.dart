@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/activity_types.dart';
+import '../data/crop_ipm_rules.dart';
 import '../data/crop_playbooks.dart';
 import '../data/supported_crops.dart';
 import '../services/app_providers.dart';
 import '../services/haptic_service.dart';
+import '../services/ipm_decision_service.dart';
 import '../services/water_accounting.dart';
 import '../theme/app_theme.dart';
 import 'floating_toast.dart';
@@ -264,7 +266,13 @@ class _QuickLogSheetState extends State<_QuickLogSheet> {
   final _materialCtrl = TextEditingController();
   final _activeCtrl = TextEditingController();
   final _targetCtrl = TextEditingController();
+  final _sampledPlantsCtrl = TextEditingController();
+  final _affectedPlantsCtrl = TextEditingController();
+  final _larvaePerSqmCtrl = TextEditingController();
+  final _trapAverageCtrl = TextEditingController();
+  final _diseasePercentCtrl = TextEditingController();
   String? _selectedCropId;
+  String? _ipmPestKey;
   String _method = 'Damla sulama';
 
   // Playbook'tan seçilen ürün (null → serbest metin modu).
@@ -275,6 +283,8 @@ class _QuickLogSheetState extends State<_QuickLogSheet> {
   /// Seçili bitkinin playbook'u (Ayçiçeği/Mısır/Domates) — yoksa null.
   CropPlaybook? get _playbook => CropPlaybooks.resolveByName(_selectedCropName);
 
+  bool get _hasIpmRules => IpmDecisionService.supports(_selectedCropName);
+
   List<Map<String, dynamic>> get _selectableCrops => widget.crops
       .where((crop) => (crop['id']?.toString().isNotEmpty ?? false))
       .toList(growable: false);
@@ -283,12 +293,22 @@ class _QuickLogSheetState extends State<_QuickLogSheet> {
   void dispose() {
     _qtyCtrl.removeListener(_refreshWaterPreview);
     _extraQtyCtrl.removeListener(_refreshWaterPreview);
+    _sampledPlantsCtrl.removeListener(_refreshIpmPreview);
+    _affectedPlantsCtrl.removeListener(_refreshIpmPreview);
+    _larvaePerSqmCtrl.removeListener(_refreshIpmPreview);
+    _trapAverageCtrl.removeListener(_refreshIpmPreview);
+    _diseasePercentCtrl.removeListener(_refreshIpmPreview);
     _noteCtrl.dispose();
     _qtyCtrl.dispose();
     _extraQtyCtrl.dispose();
     _materialCtrl.dispose();
     _activeCtrl.dispose();
     _targetCtrl.dispose();
+    _sampledPlantsCtrl.dispose();
+    _affectedPlantsCtrl.dispose();
+    _larvaePerSqmCtrl.dispose();
+    _trapAverageCtrl.dispose();
+    _diseasePercentCtrl.dispose();
     super.dispose();
   }
 
@@ -316,12 +336,26 @@ class _QuickLogSheetState extends State<_QuickLogSheet> {
     if (widget.initialNote != null && widget.initialNote!.trim().isNotEmpty) {
       _noteCtrl.text = widget.initialNote!.trim();
     }
+    _syncIpmRuleForSelectedCrop();
     _qtyCtrl.addListener(_refreshWaterPreview);
     _extraQtyCtrl.addListener(_refreshWaterPreview);
+    _sampledPlantsCtrl.addListener(_refreshIpmPreview);
+    _affectedPlantsCtrl.addListener(_refreshIpmPreview);
+    _larvaePerSqmCtrl.addListener(_refreshIpmPreview);
+    _trapAverageCtrl.addListener(_refreshIpmPreview);
+    _diseasePercentCtrl.addListener(_refreshIpmPreview);
   }
 
   void _refreshWaterPreview() {
     if (widget.type == ActivityType.watering && mounted) {
+      setState(() {});
+    }
+  }
+
+  void _refreshIpmPreview() {
+    if ((widget.type == ActivityType.scouting ||
+            widget.type == ActivityType.spraying) &&
+        mounted) {
       setState(() {});
     }
   }
@@ -391,7 +425,8 @@ class _QuickLogSheetState extends State<_QuickLogSheet> {
                 ),
                 const SizedBox(height: 6),
                 DropdownButtonFormField<String>(
-                  value: _selectedCropId,
+                  key: ValueKey(_selectedCropId),
+                  initialValue: _selectedCropId,
                   items: _selectableCrops.map((crop) {
                     final id = crop['id']!.toString();
                     final name = crop['name']?.toString() ?? 'Ürün';
@@ -406,6 +441,7 @@ class _QuickLogSheetState extends State<_QuickLogSheet> {
                     _pickedFertilizer = null;
                     _pickedPesticide = null;
                     _pesticideCategoryFilter = null;
+                    _syncIpmRuleForSelectedCrop();
                   }),
                   decoration: InputDecoration(
                     hintText: 'Ürün seç',
@@ -516,6 +552,27 @@ class _QuickLogSheetState extends State<_QuickLogSheet> {
   void _save() {
     final qty = double.tryParse(_qtyCtrl.text.replaceAll(',', '.'));
     final extraQty = double.tryParse(_extraQtyCtrl.text.replaceAll(',', '.'));
+    final ipmDecision = _currentIpmDecision();
+    if (widget.type == ActivityType.scouting &&
+        _hasIpmRules &&
+        ipmDecision == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Gözlem için hedef zararlı seçin.')),
+      );
+      return;
+    }
+    if (widget.type == ActivityType.spraying &&
+        _hasIpmRules &&
+        ipmDecision?.allowsChemical != true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Eşik aşılmadan ayçiçeğinde ilaç kaydı açılamaz. Önce gözlem kaydı oluşturun.',
+          ),
+        ),
+      );
+      return;
+    }
     if (widget.type == ActivityType.spraying &&
         _materialCtrl.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -585,6 +642,23 @@ class _QuickLogSheetState extends State<_QuickLogSheet> {
         metadata['pesticide_dose_unit'] = p.unit;
         metadata['preharvest_interval_days'] = p.preharvestIntervalDays;
         metadata['source'] = 'playbook';
+      }
+      if (ipmDecision != null) {
+        metadata['ipm_gate'] = ipmDecision.toJson();
+        metadata['ipm_observation'] = _ipmObservationInput()?.toJson();
+        metadata['chemical_gate_reason'] = ipmDecision.message;
+      }
+    } else if (widget.type == ActivityType.scouting) {
+      final input = _ipmObservationInput();
+      if (input != null && ipmDecision != null) {
+        metadata['source'] = 'ipm';
+        metadata['ipm_observation'] = input.toJson();
+        metadata['ipm_decision'] = ipmDecision.toJson();
+        metadata['target_pest'] = ipmDecision.rule.pestName;
+        metadata['threshold_status'] = ipmDecision.status.name;
+        metadata['allows_chemical'] = ipmDecision.allowsChemical;
+      } else if (_targetCtrl.text.trim().isNotEmpty) {
+        metadata['scouting_target'] = _targetCtrl.text.trim();
       }
     } else if (widget.type == ActivityType.harvest) {
       if (qty != null) metadata['harvest_kg'] = qty;
@@ -696,11 +770,22 @@ class _QuickLogSheetState extends State<_QuickLogSheet> {
           const SizedBox(height: 14),
         ];
       case ActivityType.spraying:
+        final chemicalGateOpen =
+            !_hasIpmRules || (_currentIpmDecision()?.allowsChemical ?? false);
         return [
-          if (_playbook != null) ...[
+          if (_hasIpmRules) ...[
+            _ipmObservationCard(forChemicalGate: true),
+            const SizedBox(height: 14),
+          ],
+          if (chemicalGateOpen && _playbook != null) ...[
             _pesticidePicker(_playbook!),
             const SizedBox(height: 14),
           ],
+          if (!chemicalGateOpen) ...[
+            _chemicalLockedCard(),
+            const SizedBox(height: 14),
+          ],
+          if (chemicalGateOpen) ...[
           _textField(
             controller: _materialCtrl,
             label: 'İlaç adı',
@@ -729,6 +814,21 @@ class _QuickLogSheetState extends State<_QuickLogSheet> {
             ],
           ),
           const SizedBox(height: 14),
+          ],
+        ];
+      case ActivityType.scouting:
+        return [
+          if (_hasIpmRules) ...[
+            _ipmObservationCard(),
+            const SizedBox(height: 14),
+          ] else ...[
+            _textField(
+              controller: _targetCtrl,
+              label: 'Gözlem konusu',
+              hint: 'Örn. yaprak, tabla, yabancı ot, hastalık belirtisi',
+            ),
+            const SizedBox(height: 14),
+          ],
         ];
       case ActivityType.harvest:
         return [
@@ -747,6 +847,279 @@ class _QuickLogSheetState extends State<_QuickLogSheet> {
   // ───────────────────────────────────────────────────────────────────────
   // Playbook destekli pickerlar
   // ───────────────────────────────────────────────────────────────────────
+
+  void _syncIpmRuleForSelectedCrop() {
+    final rules = IpmDecisionService.rulesForCrop(_selectedCropName);
+    if (rules.isEmpty) {
+      _ipmPestKey = null;
+      return;
+    }
+    if (_ipmPestKey == null ||
+        !rules.any((rule) => rule.pestKey == _ipmPestKey)) {
+      _ipmPestKey = rules.first.pestKey;
+      _applyIpmRuleDefaults();
+    }
+  }
+
+  CropIpmRule _selectedIpmRule(List<CropIpmRule> rules) {
+    return rules.firstWhere(
+      (rule) => rule.pestKey == _ipmPestKey,
+      orElse: () => rules.first,
+    );
+  }
+
+  void _applyIpmRuleDefaults() {
+    final rule = IpmDecisionService.ruleFor(
+      cropName: _selectedCropName ?? '',
+      pestKey: _ipmPestKey ?? '',
+    );
+    if (rule == null) return;
+    if (_needsPlantCount(rule) && _sampledPlantsCtrl.text.trim().isEmpty) {
+      _sampledPlantsCtrl.text = '100';
+    }
+  }
+
+  IpmObservationInput? _ipmObservationInput() {
+    final cropName = _selectedCropName;
+    final rules = IpmDecisionService.rulesForCrop(cropName);
+    if (cropName == null || rules.isEmpty) return null;
+    final pestKey = _ipmPestKey ?? rules.first.pestKey;
+    return IpmObservationInput(
+      cropName: cropName,
+      pestKey: pestKey,
+      sampledPlants: _parseInt(_sampledPlantsCtrl.text),
+      affectedPlants: _parseInt(_affectedPlantsCtrl.text),
+      larvaePerSquareMeter: _parseDouble(_larvaePerSqmCtrl.text),
+      trapAverage: _parseDouble(_trapAverageCtrl.text),
+      diseasePercent: _parseDouble(_diseasePercentCtrl.text),
+    );
+  }
+
+  IpmDecision? _currentIpmDecision() {
+    final input = _ipmObservationInput();
+    if (input == null) return null;
+    try {
+      return IpmDecisionService.evaluate(input);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  bool _needsPlantCount(CropIpmRule rule) {
+    return rule.pestKey == 'yesilkurt' || rule.pestKey == 'aycicegi_guvesi';
+  }
+
+  bool _needsLarvaePerSquareMeter(CropIpmRule rule) {
+    return rule.pestKey == 'bozkurt' ||
+        rule.pestKey == 'cayir_tirtili' ||
+        rule.pestKey == 'telkurtlari';
+  }
+
+  int? _parseInt(String raw) {
+    final v = double.tryParse(raw.replaceAll(',', '.'));
+    return v == null ? null : v.round();
+  }
+
+  double? _parseDouble(String raw) {
+    return double.tryParse(raw.replaceAll(',', '.'));
+  }
+
+  Widget _ipmObservationCard({bool forChemicalGate = false}) {
+    final cropName = _selectedCropName;
+    final rules = IpmDecisionService.rulesForCrop(cropName);
+    if (rules.isEmpty) return const SizedBox.shrink();
+    final selected = _selectedIpmRule(rules);
+    final decision = _currentIpmDecision();
+    return _PickerCard(
+      title: forChemicalGate
+          ? 'Ayçiçeği entegre mücadele kilidi'
+          : 'Ayçiçeği gözlem kaydı',
+      subtitle: forChemicalGate
+          ? 'Ürün kataloğu yalnız ekonomik eşik doğrulanırsa açılır.'
+          : 'Sayımı gir; karar otomatik eşik kontrolüyle kayda geçer.',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          DropdownButtonFormField<String>(
+            key: ValueKey(_ipmPestKey),
+            initialValue: selected.pestKey,
+            items: rules
+                .map(
+                  (rule) => DropdownMenuItem<String>(
+                    value: rule.pestKey,
+                    child: Text(rule.pestName),
+                  ),
+                )
+                .toList(),
+            onChanged: (value) => setState(() {
+              _ipmPestKey = value;
+              _pickedPesticide = null;
+              _pesticideCategoryFilter = null;
+              _materialCtrl.clear();
+              _activeCtrl.clear();
+              _targetCtrl.clear();
+              _applyIpmRuleDefaults();
+            }),
+            decoration: InputDecoration(
+              labelText: 'Hedef zararlı/hastalık',
+              filled: true,
+              fillColor: AppColors.surface,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: AppColors.border),
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'Eşik: ${selected.economicThreshold}',
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: AppColors.warning,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            selected.monitoringMethod,
+            style: const TextStyle(
+              fontSize: 12,
+              color: AppColors.textSecondary,
+              height: 1.35,
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (_needsPlantCount(selected)) ...[
+            Row(
+              children: [
+                Expanded(
+                  child: _textField(
+                    controller: _sampledPlantsCtrl,
+                    label: 'Örneklenen bitki',
+                    hint: '100',
+                    number: true,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _textField(
+                    controller: _affectedPlantsCtrl,
+                    label: 'Belirti görülen',
+                    hint: '0',
+                    number: true,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+          ],
+          if (_needsLarvaePerSquareMeter(selected)) ...[
+            _textField(
+              controller: _larvaePerSqmCtrl,
+              label: 'Metrekare larva sayısı',
+              hint: '0',
+              suffix: 'adet/m²',
+              number: true,
+            ),
+            const SizedBox(height: 12),
+          ],
+          if (selected.pestKey == 'aycicegi_guvesi') ...[
+            _textField(
+              controller: _trapAverageCtrl,
+              label: 'Tuzak ortalaması',
+              hint: '0',
+              suffix: 'ergin',
+              number: true,
+            ),
+            const SizedBox(height: 12),
+          ],
+          if (selected.pestKey == 'mildiyo') ...[
+            _textField(
+              controller: _diseasePercentCtrl,
+              label: 'Hastalıklı bitki oranı',
+              hint: '0',
+              suffix: '%',
+              number: true,
+            ),
+            const SizedBox(height: 12),
+          ],
+          if (decision != null) _ipmDecisionPreview(decision),
+        ],
+      ),
+    );
+  }
+
+  Widget _ipmDecisionPreview(IpmDecision decision) {
+    final color = switch (decision.status) {
+      IpmDecisionStatus.chemicalAllowed => AppColors.warning,
+      IpmDecisionStatus.criticalNoChemical => AppColors.error,
+      IpmDecisionStatus.followUp => AppColors.frost,
+      IpmDecisionStatus.belowThreshold => AppColors.emerald,
+    };
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '${decision.status.label} · ${decision.headline}',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              color: color,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            decision.message,
+            style: const TextStyle(
+              fontSize: 12,
+              color: AppColors.textPrimary,
+              height: 1.35,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _chemicalLockedCard() {
+    final decision = _currentIpmDecision();
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.warning.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.lock_outline_rounded,
+              color: AppColors.warning, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              decision == null
+                  ? 'Ayçiçeğinde ilaç kataloğu için önce hedef zararlıyı seçip gözlem sayımı gir.'
+                  : 'Kimyasal kapı kapalı: ${decision.message}',
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppColors.textPrimary,
+                height: 1.35,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _fertilizerPicker(CropPlaybook pb) {
     return _PickerCard(
@@ -1152,7 +1525,8 @@ class _QuickLogSheetState extends State<_QuickLogSheet> {
         ),
         const SizedBox(height: 6),
         DropdownButtonFormField<String>(
-          value: _method,
+          key: ValueKey(_method),
+          initialValue: _method,
           items: values
               .map(
                   (value) => DropdownMenuItem(value: value, child: Text(value)))

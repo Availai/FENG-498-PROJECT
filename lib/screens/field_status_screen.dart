@@ -77,7 +77,7 @@ class FieldStatusScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Önce "Tarlalarım" ekranından bir alan ekleyin; bu menü '
+                      'Önce "Tarlalarım" ekranından bir tarla ekleyin; bu menü '
                       'her tarlada ne yetiştirildiğini, hangi işleme kaç gün '
                       'kaldığını ve nasıl yapılacağını özetleyecek.',
                       textAlign: TextAlign.center,

@@ -5,6 +5,7 @@ import '../data/crop_playbooks.dart';
 import '../data/crop_protocols.dart';
 import '../data/turkiye_crop_guides.dart';
 import 'field_state_service.dart';
+import 'ipm_decision_service.dart';
 import 'water_accounting.dart';
 
 /// `GrowthEngine` tarafından üretilen bir ekinin stres/verim özeti. Saf POD —
@@ -197,10 +198,21 @@ class TaskDirectiveService {
         return fid == null || fid.isEmpty || fid == cropId;
       }).toList();
 
-      final lastWater = _lastActivity(activitiesForCrop, ActivityType.watering);
-      final lastFert =
-          _lastActivity(activitiesForCrop, ActivityType.fertilizing);
-      final lastSpray = _lastActivity(activitiesForCrop, ActivityType.spraying);
+      final lastWater = _lastActivity(
+        activitiesForCrop,
+        ActivityType.watering,
+        notAfter: t,
+      );
+      final lastFert = _lastActivity(
+        activitiesForCrop,
+        ActivityType.fertilizing,
+        notAfter: t,
+      );
+      final lastSpray = _lastActivity(
+        activitiesForCrop,
+        ActivityType.spraying,
+        notAfter: t,
+      );
       final growth = cropId == null ? null : growthStates?[cropId];
       final fieldState = cropId == null ? null : fieldStates?[cropId];
       final sourceRefs = _sourceRefsFor(cropName);
@@ -319,20 +331,37 @@ class TaskDirectiveService {
         final daysSinceSpray =
             lastSpray == null ? 999 : t.difference(lastSpray).inDays;
         if (daysSinceSpray >= 7) {
-          out.add(FieldDirective(
-            urgency: 1,
-            headline: '$cropName: MANTAR RİSKİ — İLAÇLA',
-            reason:
-                'Son 24 saatte ${rainLast24h.toStringAsFixed(0)} mm yağdı. Fungisit uygulaması öneriliyor.',
-            kind: 'spray',
-            actionType: ActivityType.spraying,
-            steps: _spraySteps(cropName, fieldState),
-            sourceRefs: sourceRefs,
-            areaDekar: fieldState?.areaDekar,
-            plantCount: fieldState?.estimatedPlantCount,
-            cropId: cropId,
-            cropName: cropName,
-          ));
+          if (IpmDecisionService.supports(cropName)) {
+            out.add(FieldDirective(
+              urgency: 1,
+              headline: '$cropName: YAĞMUR SONRASI GÖZLEM YAP',
+              reason:
+                  'Son 24 saatte ${rainLast24h.toStringAsFixed(0)} mm yağdı. Entegre mücadelede eşik doğrulanmadan ilaç önerilmez.',
+              kind: 'ipm_scouting',
+              actionType: ActivityType.scouting,
+              steps: _ipmScoutingSteps(cropName, preferredPestKey: 'mildiyo'),
+              sourceRefs: sourceRefs,
+              areaDekar: fieldState?.areaDekar,
+              plantCount: fieldState?.estimatedPlantCount,
+              cropId: cropId,
+              cropName: cropName,
+            ));
+          } else {
+            out.add(FieldDirective(
+              urgency: 1,
+              headline: '$cropName: MANTAR RİSKİ — İLAÇLA',
+              reason:
+                  'Son 24 saatte ${rainLast24h.toStringAsFixed(0)} mm yağdı. Fungisit uygulaması öneriliyor.',
+              kind: 'spray',
+              actionType: ActivityType.spraying,
+              steps: _spraySteps(cropName, fieldState),
+              sourceRefs: sourceRefs,
+              areaDekar: fieldState?.areaDekar,
+              plantCount: fieldState?.estimatedPlantCount,
+              cropId: cropId,
+              cropName: cropName,
+            ));
+          }
         }
       }
 
@@ -377,10 +406,13 @@ class TaskDirectiveService {
     }
 
     // ── Her şey yolunda ise ferahlatıcı mesaj ──────────────────
+    // Headline tarafına "acil iş yok" deniyor çünkü direktif motoru
+    // kullanıcı henüz hiçbir şey kaydetmediyse de bu dala düşebilir; o
+    // durumda reason metni "Henüz sulama kaydın yok…" diyerek bilgilendirir.
     if (out.isEmpty) {
       out.add(FieldDirective(
         urgency: 0,
-        headline: 'BUGÜN YAPILACAK BİR ŞEY YOK',
+        headline: 'BUGÜN İÇİN ACİL BİR İŞ YOK',
         reason: _nextCheckHint(fieldCrops, activities, t),
         kind: 'idle',
       ));
@@ -504,9 +536,39 @@ class TaskDirectiveService {
             cropName: cropName,
           ));
           break;
+        case 'scouting':
+          final targets = (meta['targets'] as List?)?.join(', ');
+          out.add(FieldDirective(
+            urgency: urgency,
+            headline: '$cropLabel: GÖZLEM GECİKTİ',
+            reason: targets == null
+                ? 'Entegre mücadele gözlemi $lateDays gün önce planlıydı. Eşik doğrulanmadan kimyasal önerilmez.$lossNote'
+                : '$targets gözlemi $lateDays gün önce planlıydı. Sayım yapmadan kimyasal kapı açılmaz.$lossNote',
+            kind: 'overdue_scouting',
+            actionType: ActivityType.scouting,
+            steps: _ipmScoutingSteps(cropName),
+            cropId: cropId,
+            cropName: cropName,
+          ));
+          break;
         case 'spraying':
           final productName = meta['pesticide_name']?.toString();
           final targets = (meta['targets'] as List?)?.join(', ');
+          if (IpmDecisionService.supports(cropName)) {
+            out.add(FieldDirective(
+              urgency: urgency,
+              headline: '$cropLabel: GÖZLEM GECİKTİ',
+              reason: productName == null
+                  ? 'Eski koruyucu ilaç planı $lateDays gün önceydi; ayçiçeğinde önce entegre mücadele gözlemi yapılmalı.$lossNote'
+                  : '$productName planı $lateDays gün önceydi; ayçiçeğinde kimyasal kapı yalnız eşik doğrulanınca açılır.$lossNote',
+              kind: 'overdue_scouting',
+              actionType: ActivityType.scouting,
+              steps: _ipmScoutingSteps(cropName),
+              cropId: cropId,
+              cropName: cropName,
+            ));
+            break;
+          }
           out.add(FieldDirective(
             urgency: urgency,
             headline: '$cropLabel: ${productName ?? 'İLAÇLAMA'} GECİKTİ',
@@ -749,6 +811,28 @@ class TaskDirectiveService {
     ];
   }
 
+  static List<String> _ipmScoutingSteps(
+    String cropName, {
+    String? preferredPestKey,
+  }) {
+    final rules = IpmDecisionService.rulesForCrop(cropName);
+    if (rules.isEmpty) {
+      return const ['Önce tarla gözlemi yap; belirti varsa teknik destek al.'];
+    }
+    final ordered = preferredPestKey == null
+        ? rules
+        : [
+            ...rules.where((rule) => rule.pestKey == preferredPestKey),
+            ...rules.where((rule) => rule.pestKey != preferredPestKey),
+          ];
+    return [
+      'Gözlemledim kaydı aç; hedef zararlıyı seç ve sayımı gir.',
+      for (final rule in ordered.take(3))
+        '${rule.pestName}: ${rule.monitoringMethod} Eşik: ${rule.economicThreshold}.',
+      'Eşik aşılmadan ilaç/doz önerilmez; eşik aşılırsa etiket ve il/ilçe teknik önerisi esas alınır.',
+    ];
+  }
+
   static List<String> _harvestSteps(CropFieldState? fieldState) {
     return [
       ..._fieldScaleSteps(fieldState),
@@ -795,12 +879,27 @@ class TaskDirectiveService {
     return DateTime.tryParse(raw);
   }
 
-  static DateTime? _lastActivity(List<Map<String, dynamic>> acts, String type) {
+  /// "En son yapılmış" aktiviteyi döner. **Plan değil, kayıt** olmalı:
+  ///   - `source == 'auto_seed'` → çiftçinin yaptığı bir iş değil, takvime
+  ///     yazılmış öneri; `lastActivity` olarak sayılmaz.
+  ///   - Gelecek tarihli kayıt → henüz yaşanmadı; "yapılmış" varsayılmaz.
+  /// Bu filtreler olmadan, sezon başında auto_seed ile yazılmış ileri tarihli
+  /// sulama planları "son sulama tarihi" olarak okunup `daysSinceWater`'ı
+  /// negatife düşürür ve "Bir sonraki sulama için 111 gün var" gibi imkânsız
+  /// mesajlar üretir.
+  static DateTime? _lastActivity(
+    List<Map<String, dynamic>> acts,
+    String type, {
+    DateTime? notAfter,
+  }) {
+    final cutoff = notAfter ?? DateTime.now();
     DateTime? latest;
     for (final a in acts) {
       if (a['type']?.toString() != type) continue;
+      if (a['source']?.toString() == 'auto_seed') continue;
       final date = a['date'];
       if (date is DateTime) {
+        if (date.isAfter(cutoff)) continue;
         if (latest == null || date.isAfter(latest)) latest = date;
       }
     }
@@ -836,24 +935,37 @@ class TaskDirectiveService {
     return f.isEmpty ? 0 : f[0].rain;
   }
 
+  /// "Bugün acil bir şey yok" direktifinin altına eklenen kısa ipucu.
+  /// Mantık: tüm bitkilerin sulama aralığı + son sulama tarihinden, en yakın
+  /// "tekrar sulama günü"nü bulur. Hiç sulama kaydı yoksa kullanıcıya
+  /// "henüz kayıt yok, ilk sulamada `Suladım` butonunu kullan" yönergesi gösterir.
+  /// `_lastActivity` artık `auto_seed` ve gelecek tarihli kayıtları eler;
+  /// bu sayede "111 gün var" türü imkânsız sonuçlar oluşamaz.
   static String _nextCheckHint(
     List<Map<String, dynamic>> crops,
     List<Map<String, dynamic>> activities,
     DateTime t,
   ) {
+    final lastWater = _lastActivity(activities, ActivityType.watering, notAfter: t);
     int? minDays;
     for (final crop in crops) {
       final interval = (crop['water_interval_days'] as num?)?.toInt() ?? 7;
-      final lastWater = _lastActivity(activities, ActivityType.watering);
-      final days =
-          lastWater == null ? interval : t.difference(lastWater).inDays;
+      if (lastWater == null) continue; // Aşağıda ayrı mesaj göstereceğiz.
+      final days = t.difference(lastWater).inDays;
       final remaining = interval - days;
-      if (remaining > 0 && (minDays == null || remaining < minDays)) {
-        minDays = remaining;
+      // Defansif sınır: aralıktan büyük "kalan gün" olamaz.
+      final clamped = remaining > interval ? interval : remaining;
+      if (clamped > 0 && (minDays == null || clamped < minDays)) {
+        minDays = clamped;
       }
     }
-    if (minDays == null) return 'Kayıtlı aktivitelere göre tarlan güncel.';
-    return 'Bir sonraki sulama için $minDays gün var.';
+    if (lastWater == null) {
+      return 'Henüz sulama kaydın yok. Suladığında ekrandan "Suladım" diyerek kaydet.';
+    }
+    if (minDays == null) {
+      return 'Sulama planın güncel görünüyor.';
+    }
+    return 'Bir sonraki sulama yaklaşık $minDays gün sonra.';
   }
 }
 

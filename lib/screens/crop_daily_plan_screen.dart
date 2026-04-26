@@ -473,7 +473,7 @@ class _HeaderCard extends StatelessWidget {
                       'Ekim: ${DateFormat('d MMM y', 'tr_TR').format(r.plantedDate)}'
                       ' • $daysSince. gün',
                       style: AppText.xs(context)
-                          .copyWith(color: Colors.white.withOpacity(0.85)),
+                          .copyWith(color: Colors.white.withValues(alpha: 0.85)),
                     ),
                   ],
                 ),
@@ -492,7 +492,7 @@ class _HeaderCard extends StatelessWidget {
                 child: _Pill(
                   icon: Icons.spa_rounded,
                   label: _stageLabel(r.currentStageKey),
-                  background: Colors.white.withOpacity(0.2),
+                  background: Colors.white.withValues(alpha: 0.2),
                 ),
               ),
               const SizedBox(width: 8),
@@ -501,7 +501,7 @@ class _HeaderCard extends StatelessWidget {
                   icon: Icons.local_fire_department_rounded,
                   label:
                       'GDD ${r.accumulatedGdd.round()}/${r.totalGdd.round()}',
-                  background: Colors.white.withOpacity(0.2),
+                  background: Colors.white.withValues(alpha: 0.2),
                 ),
               ),
             ],
@@ -512,7 +512,7 @@ class _HeaderCard extends StatelessWidget {
             child: LinearProgressIndicator(
               value: progress,
               minHeight: 8,
-              backgroundColor: Colors.white.withOpacity(0.25),
+              backgroundColor: Colors.white.withValues(alpha: 0.25),
               valueColor: const AlwaysStoppedAnimation(Colors.white),
             ),
           ),
@@ -1073,7 +1073,7 @@ class _DayTile extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color:
-            highlight ? AppColors.emerald.withOpacity(0.07) : AppColors.surface,
+            highlight ? AppColors.emerald.withValues(alpha: 0.07) : AppColors.surface,
         borderRadius: AppRadius.md,
         border: Border.all(
           color: highlight ? AppColors.emerald : AppColors.border,
@@ -1100,7 +1100,7 @@ class _DayTile extends StatelessWidget {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
-                      color: AppColors.warning.withOpacity(0.15),
+                      color: AppColors.warning.withValues(alpha: 0.15),
                       borderRadius: AppRadius.full,
                     ),
                     child: Text(
@@ -1270,13 +1270,13 @@ class _TaskTile extends StatelessWidget {
           ),
           decoration: BoxDecoration(
             color: task.done
-                ? AppColors.emeraldDark.withOpacity(0.08)
-                : color.withOpacity(0.08),
+                ? AppColors.emeraldDark.withValues(alpha: 0.08)
+                : color.withValues(alpha: 0.08),
             borderRadius: AppRadius.sm,
             border: Border.all(
               color: task.done
-                  ? AppColors.emeraldDark.withOpacity(0.3)
-                  : color.withOpacity(0.3),
+                  ? AppColors.emeraldDark.withValues(alpha: 0.3)
+                  : color.withValues(alpha: 0.3),
             ),
           ),
           child: Row(

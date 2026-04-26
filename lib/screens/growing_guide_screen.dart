@@ -992,6 +992,24 @@ class _GrowingGuideScreenState extends State<GrowingGuideScreen> {
                           'Kontrol: ${pest['monitoring']}',
                           style: const TextStyle(fontSize: 12),
                         ),
+                        if (pest['samplingMethod'] != null) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            'Gözlem yöntemi: ${pest['samplingMethod']}',
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                        ],
+                        if (pest['economicThreshold'] != null) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            'Eşik: ${pest['economicThreshold']}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.red.shade800,
+                            ),
+                          ),
+                        ],
                         const SizedBox(height: 2),
                         Text(
                           'Önlem: ${pest['integratedControl']}',
@@ -1000,6 +1018,16 @@ class _GrowingGuideScreenState extends State<GrowingGuideScreen> {
                             color: Colors.green.shade900,
                           ),
                         ),
+                        if (pest['chemicalGate'] != null) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            'Kimyasal kapı: ${pest['chemicalGate']}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.orange.shade900,
+                            ),
+                          ),
+                        ],
                         const SizedBox(height: 2),
                         Text(
                           'Kimyasal karar: ${pest['escalation']}',

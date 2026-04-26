@@ -46,7 +46,12 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
     // boş görünmesin. Konum + ağ tamamlanınca _refreshData taze değer atar.
     _hydrateFromLastCache();
     _animController.forward();
-    _refreshData();
+    // Konum izin diyaloğunu ilk frame'den sonraya ertele — flutter run'ın
+    // Dart VM servisine bağlanmasına zaman tanır; aksi hâlde sistem diyalogu
+    // aktiviteyi "paused" yapıp bağlantıyı donduruyor.
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => Future.delayed(const Duration(milliseconds: 600), _refreshData),
+    );
   }
 
   /// Son başarılı tarihteki cache'i Hive'dan oku — instant first paint.

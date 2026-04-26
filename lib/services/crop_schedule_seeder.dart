@@ -4,11 +4,13 @@ import 'package:drift/drift.dart';
 
 import '../data/activity_types.dart';
 import '../data/app_database.dart';
+import '../data/crop_ipm_rules.dart';
 import '../data/crop_playbooks.dart';
 import '../data/crop_protocols.dart' show IrrigationMethod;
+import 'ipm_decision_service.dart';
 
 /// Bitki tarlaya eklendiğinde sezonluk takvim programını (sulama + gübreleme +
-/// ilaçlama) `CalendarEvents` tablosuna **source='auto_seed'** olarak yazan
+/// gözlem/ilaçlama) `CalendarEvents` tablosuna **source='auto_seed'** olarak yazan
 /// saf yardımcı.
 ///
 /// - Çiftçi gerçek aktiviteyi logladığında `LocalDataRepository.logActivity`
@@ -17,7 +19,8 @@ import '../data/crop_protocols.dart' show IrrigationMethod;
 ///   bunu "yapılmadı" senaryosuna dönüştürür.
 ///
 /// Playbook/protokol bulunmayan bitkiler için sadece sulama programı yazılır
-/// (basit aralık tabanlı). 3 vitrin bitkide gübre/ilaç de eklenir.
+/// (basit aralık tabanlı). IPM kuralı olan bitkilerde kimyasal yerine önce
+/// gözlem programı eklenir.
 class CropScheduleSeeder {
   CropScheduleSeeder(this._db);
   final AppDatabase _db;
@@ -83,15 +86,25 @@ class CropScheduleSeeder {
         areaDekar: areaDekar,
         playbook: playbook,
       );
-      count += await _seedPreventiveSprays(
-        fieldId: fieldId,
-        cropId: cropId,
-        cropName: cropName,
-        plantedDate: plantedDate,
-        harvestDays: harvestDays,
-        areaDekar: areaDekar,
-        playbook: playbook,
-      );
+      if (IpmDecisionService.supports(cropName)) {
+        count += await _seedIpmScoutings(
+          fieldId: fieldId,
+          cropId: cropId,
+          cropName: cropName,
+          plantedDate: plantedDate,
+          harvestDays: harvestDays,
+        );
+      } else {
+        count += await _seedPreventiveSprays(
+          fieldId: fieldId,
+          cropId: cropId,
+          cropName: cropName,
+          plantedDate: plantedDate,
+          harvestDays: harvestDays,
+          areaDekar: areaDekar,
+          playbook: playbook,
+        );
+      }
     }
 
     return count;
@@ -344,6 +357,57 @@ class CropScheduleSeeder {
           if (areaDekar != null) 'area_dekar': areaDekar,
           if (preferred.tip != null) 'tip': preferred.tip,
           'note': 'Koruyucu uygulama — yağmurdan 48 saat önce.',
+        },
+      );
+      written++;
+    }
+    return written;
+  }
+
+  Future<int> _seedIpmScoutings({
+    required String fieldId,
+    required String cropId,
+    required String cropName,
+    required DateTime plantedDate,
+    required int harvestDays,
+  }) async {
+    final windows = IpmDecisionService.scoutingWindowsFor(cropName);
+    if (windows.isEmpty) return 0;
+
+    int written = 0;
+    for (final window in windows) {
+      if (window.dayOffset > harvestDays) continue;
+      final rules = window.pestKeys
+          .map((key) => IpmDecisionService.ruleFor(
+                cropName: cropName,
+                pestKey: key,
+              ))
+          .whereType<CropIpmRule>()
+          .toList(growable: false);
+      if (rules.isEmpty) continue;
+
+      await _insertEvent(
+        fieldId: fieldId,
+        cropId: cropId,
+        title: '$cropName — ${window.title}',
+        eventType: ActivityType.scouting,
+        eventDate: plantedDate.add(Duration(days: window.dayOffset)),
+        quantity: null,
+        unit: null,
+        recommendedQuantity: null,
+        metadata: {
+          'seed_kind': 'scouting',
+          'ipm_crop': cropName,
+          'ipm_rule_keys': window.pestKeys,
+          'targets': rules.map((rule) => rule.pestName).toList(),
+          'thresholds': {
+            for (final rule in rules) rule.pestKey: rule.economicThreshold,
+          },
+          'monitoring_methods': {
+            for (final rule in rules) rule.pestKey: rule.monitoringMethod,
+          },
+          'note':
+              'Entegre mücadele gözlemi — eşik doğrulanmadan kimyasal önerilmez.',
         },
       );
       written++;

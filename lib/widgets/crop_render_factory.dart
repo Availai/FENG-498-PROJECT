@@ -2,6 +2,10 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 
+import '../data/supported_crops.dart';
+import '../services/growth_engine.dart';
+import 'crop_growth_sprite.dart';
+
 enum GrowthPhase { seedling, growing, mature, harvest }
 
 GrowthPhase getGrowthPhase(double maturityPercent) {
@@ -9,6 +13,26 @@ GrowthPhase getGrowthPhase(double maturityPercent) {
   if (maturityPercent < 75) return GrowthPhase.growing;
   if (maturityPercent < 90) return GrowthPhase.mature;
   return GrowthPhase.harvest;
+}
+
+/// Olgunluk yüzdesinden (0..100) `CropGrowthSprite` aşamasına çevrim.
+/// Sınırlar `growth_engine.dart` fenoloji tablolarıyla uyumlu — bant geçişleri
+/// görsel sprite ile (gövde / yapraklar / çiçek / meyve) eşleşsin diye.
+String _stageKeyForMaturity(double maturityPercent) {
+  if (maturityPercent < 12) return 'cimlenme';
+  if (maturityPercent < 50) return 'vejetatif';
+  if (maturityPercent < 68) return 'ciceklenme';
+  if (maturityPercent < 92) return 'meyve_dolumu';
+  return 'olgunlasma';
+}
+
+/// Desteklenen 3 vitrin bitki (ayçiçeği, mısır, domates) için vektör çizim
+/// anahtarı. Diğer bitkiler PNG fallback'ine düşer.
+String? _spriteCropKey(String cropName) {
+  final canonical = SupportedCrops.canonicalName(cropName);
+  if (canonical == null) return null;
+  final key = SupportedCrops.normalize(canonical);
+  return GrowthEngine.isSupported(key) ? key : null;
 }
 
 double _getScaleMultiplier(GrowthPhase phase) {
@@ -82,7 +106,6 @@ Widget buildCropMarkerWidget({
 
       final phase = getGrowthPhase(maturityPercent);
       final phaseScale = _getScaleMultiplier(phase);
-      final assetPath = _getAssetPath(cropName);
 
       const double baseWidth =
           42; // Görselde çok devasa durduğu için yarıya indirdim
@@ -91,6 +114,61 @@ Widget buildCropMarkerWidget({
       final double spriteW = baseWidth * phaseScale * zoomScale;
       final double spriteH = baseHeight * phaseScale * zoomScale;
 
+      // ── Farmville-tarzı vektör çizim ────────────────────────────────────
+      // Desteklenen 3 vitrin bitki (ayçiçeği, mısır, domates) için
+      // `CropGrowthSprite` kullan: ekim 0%'da küçük çimlenme fidesi, %50'de
+      // çiçek, %90+'da meyveli/olgunlaşmış sprite. Olgunluk arttıkça sprite
+      // hem aşamayı (stageKey) hem de boy'u (overallProgress) günceller —
+      // PNG ile elde edemediğimiz "yavaş büyüme" hissi.
+      final spriteKey = _spriteCropKey(cropName);
+      if (spriteKey != null) {
+        // Sprite'a daha geniş tuval verelim — kök zemine, baş havaya otursun.
+        final canvasW = spriteW * 2.4;
+        final canvasH = spriteH * 2.6;
+        final progress = (maturityPercent / 100).clamp(0.0, 1.0);
+        final stageKey = _stageKeyForMaturity(maturityPercent);
+        final harvestReady = stageKey == 'olgunlasma';
+
+        final vectorSprite = SizedBox(
+          width: canvasW,
+          height: canvasH,
+          child: CropGrowthSprite(
+            cropKey: spriteKey,
+            stageKey: stageKey,
+            overallProgress: progress,
+            harvestReady: harvestReady,
+            // Harita üstünde çok marker olunca sallanma CPU'yu yorar; kapalı.
+            animateSway: false,
+          ),
+        );
+
+        final markerSprite = Transform(
+          transform: Matrix4.identity()..rotateX(0.55),
+          alignment: Alignment.bottomCenter,
+          child: SizedBox(
+            width: 240,
+            height: 240,
+            child: Center(
+              child: Transform.translate(
+                offset: Offset(0, -canvasH * 0.10),
+                child: vectorSprite,
+              ),
+            ),
+          ),
+        );
+
+        if (onTap != null) {
+          return GestureDetector(
+            onTap: onTap,
+            behavior: HitTestBehavior.opaque,
+            child: markerSprite,
+          );
+        }
+        return markerSprite;
+      }
+
+      // ── PNG fallback (desteklenmeyen bitkiler) ───────────────────────────
+      final assetPath = _getAssetPath(cropName);
       final sprite = Image.asset(
         assetPath,
         width: spriteW,

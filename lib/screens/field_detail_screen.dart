@@ -1296,12 +1296,15 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
         cropName: plant.nameTr,
       );
       selectedConfig = existingConfig;
+      final fieldArea =
+          (widget.fieldData['area_dekar'] as num?)?.toDouble() ?? 1.0;
       final config = await showModalBottomSheet<CropConfig>(
         context: context,
         backgroundColor: Colors.transparent,
         isScrollControlled: true,
         builder: (_) => _CropSetupSheet(
           protocol: protocol,
+          fieldAreaDekar: fieldArea,
           initialConfig: existingConfig,
         ),
       );
@@ -3432,6 +3435,9 @@ class _DirectiveCardState extends ConsumerState<_DirectiveCard> {
         return Icons.grass_rounded;
       case 'spray':
         return Icons.science_rounded;
+      case 'ipm_scouting':
+      case 'overdue_scouting':
+        return Icons.manage_search_rounded;
       case 'harvest':
         return Icons.agriculture_rounded;
       case 'frost':
@@ -4279,10 +4285,20 @@ class _RoadmapStepTile extends StatelessWidget {
 // CropConfig nesnesi döndürür.
 // ═══════════════════════════════════════════════════════════════════════
 class _CropSetupSheet extends StatefulWidget {
-  const _CropSetupSheet({required this.protocol, this.initialConfig});
+  const _CropSetupSheet({
+    required this.protocol,
+    required this.fieldAreaDekar,
+    this.initialConfig,
+  });
 
   final CropProtocol protocol;
   final CropConfig? initialConfig;
+
+  /// Tarla poligonundan ölçülen alan. Çiftçi manuel olarak tekrar girmiyor;
+  /// `_CropSetupSheet` bu değeri rehber not'larında ve ekim hesabında kullanır.
+  /// Manuel input UX'i karışıktı: kullanıcı 50 da yazsa bile poligon 5 da
+  /// olduğunda gerçek alan poligondan geliyordu.
+  final double fieldAreaDekar;
 
   @override
   State<_CropSetupSheet> createState() => _CropSetupSheetState();
@@ -4291,7 +4307,6 @@ class _CropSetupSheet extends StatefulWidget {
 class _CropSetupSheetState extends State<_CropSetupSheet> {
   late SoilType _soil;
   late IrrigationMethod _irrigation;
-  late final TextEditingController _areaCtrl;
   late final TextEditingController _rowCtrl;
   late final TextEditingController _plantCtrl;
 
@@ -4305,8 +4320,6 @@ class _CropSetupSheetState extends State<_CropSetupSheet> {
     final cfg = widget.initialConfig;
     _soil = cfg?.soilType ?? SoilType.loamy;
     _irrigation = cfg?.irrigationMethod ?? IrrigationMethod.furrow;
-    _areaCtrl =
-        TextEditingController(text: (cfg?.areaDekar ?? 10).toStringAsFixed(0));
     _rowCtrl = TextEditingController(
         text: (cfg?.rowSpacingCm ?? widget.protocol.defaultRowSpacingCm)
             .toStringAsFixed(0));
@@ -4317,24 +4330,25 @@ class _CropSetupSheetState extends State<_CropSetupSheet> {
 
   @override
   void dispose() {
-    _areaCtrl.dispose();
     _rowCtrl.dispose();
     _plantCtrl.dispose();
     super.dispose();
   }
 
   void _confirm() {
-    final area = double.tryParse(_areaCtrl.text.trim()) ?? 10.0;
     final row = double.tryParse(_rowCtrl.text.trim()) ??
         widget.protocol.defaultRowSpacingCm;
     final plant = double.tryParse(_plantCtrl.text.trim()) ??
         widget.protocol.defaultPlantSpacingCm;
+    // Alan tarladan otomatik geliyor — manuel input kaldırıldı.
+    // Bir alt sınır koruyoruz ki bozuk poligon (0 da) hesabı patlatmasın.
+    final area = widget.fieldAreaDekar.clamp(0.1, 10000).toDouble();
     Navigator.pop(
       context,
       CropConfig(
         soilType: _soil,
         irrigationMethod: _irrigation,
-        areaDekar: area.clamp(0.1, 10000),
+        areaDekar: area,
         rowSpacingCm: row.clamp(20, 200),
         plantSpacingCm: plant.clamp(5, 200),
       ),
@@ -4503,14 +4517,31 @@ class _CropSetupSheetState extends State<_CropSetupSheet> {
             }),
             const SizedBox(height: 20),
 
-            // ── Tarla Alanı ──
+            // ── Tarla Alanı (otomatik, salt-okunur) ──
+            // Eskiden manuel "Dekar" input'u vardı; tarla poligonu zaten alanı
+            // belirlediği için kullanıcının yazdığı sayı geçersiz kalıyordu.
+            // Şimdi alanı bilgi olarak gösteriyoruz; gerçek değer poligondan.
             _sectionLabel('📐 Tarla Alanı'),
             const SizedBox(height: 8),
-            _inputField(
-              controller: _areaCtrl,
-              label: 'Dekar',
-              hint: 'ör. 10',
-              suffix: 'da',
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: _card,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.white12),
+              ),
+              child: Row(children: [
+                const Icon(Icons.straighten_rounded,
+                    color: Colors.white54, size: 18),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    '${widget.fieldAreaDekar.toStringAsFixed(1)} da · tarladan otomatik alındı',
+                    style: const TextStyle(
+                        color: Colors.white70, fontSize: 13, height: 1.3),
+                  ),
+                ),
+              ]),
             ),
             const SizedBox(height: 16),
 

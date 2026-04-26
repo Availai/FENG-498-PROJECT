@@ -21,7 +21,7 @@ class MyCropsScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: AppColors.bg,
       appBar: AppBar(
-        title: Text('Tarım Alanlarım', style: AppText.h2(context)),
+        title: Text('Tarlalarım', style: AppText.h2(context)),
         backgroundColor: AppColors.surface,
         elevation: 0,
         centerTitle: false,
@@ -54,7 +54,7 @@ class MyCropsScreen extends ConsumerWidget {
           },
           backgroundColor: AppColors.emerald,
           icon: const Icon(Icons.satellite_alt, color: Colors.white),
-          label: Text('YENİ ALAN ÇİZ',
+          label: Text('YENİ TARLA ÇİZ',
               style: AppText.label(context).copyWith(color: Colors.white)),
         ),
       ),
@@ -75,7 +75,7 @@ class MyCropsScreen extends ConsumerWidget {
           child: Padding(
             padding: const EdgeInsets.all(24),
             child: Text(
-              'Alanlar yüklenemedi: $error',
+              'Tarlalar yüklenemedi: $error',
               style: AppText.body(context),
               textAlign: TextAlign.center,
             ),
@@ -100,13 +100,13 @@ class MyCropsScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 24),
                     Text(
-                      'Kayıtlı Alan Bulunmuyor',
+                      'Henüz Kayıtlı Tarla Yok',
                       textAlign: TextAlign.center,
                       style: AppText.h2(context),
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      'Uydudan gerçek arazinizi seçerek ekim alanlarınızı oluşturmaya başlayın.',
+                      'Aşağıdaki "Yeni Tarla Çiz" butonuyla uydu haritasından arazini işaretleyerek başla.',
                       textAlign: TextAlign.center,
                       style: AppText.body(context),
                     ),
