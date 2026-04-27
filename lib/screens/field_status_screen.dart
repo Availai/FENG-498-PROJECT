@@ -346,6 +346,7 @@ class _FieldStatusCard extends ConsumerWidget {
     final date = entry['date'];
     final qty = (entry['quantity'] as num?)?.toDouble();
     final unit = entry['unit']?.toString();
+    final cropName = entry['crop_name']?.toString();
     final color = ActivityType.color(type);
     final icon = ActivityType.icon(type);
     final label = ActivityType.label(type);
@@ -364,9 +365,15 @@ class _FieldStatusCard extends ConsumerWidget {
       }
     }
 
-    final qtyStr = qty != null && unit != null
-        ? '$label · ${qty.toStringAsFixed(qty == qty.roundToDouble() ? 0 : 1)} $unit'
-        : label;
+    // "Domates · Sulama · 5 L"  veya  "Domates · Sulama"  veya  "Sulama · 5 L"
+    final parts = <String>[
+      if (cropName != null && cropName.isNotEmpty) cropName,
+      if (qty != null && unit != null)
+        '$label · ${qty.toStringAsFixed(qty == qty.roundToDouble() ? 0 : 1)} $unit'
+      else
+        label,
+    ];
+    final qtyStr = parts.join(' · ');
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),

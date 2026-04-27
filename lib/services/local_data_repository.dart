@@ -207,6 +207,12 @@ class LocalDataRepository {
       await (_db.delete(_db.calendarEvents)
             ..where((tbl) => tbl.fieldId.equals(fieldId)))
           .go();
+      // Ek: fieldId null olup cropId ile bağlı günlük kayıtlarını da sil
+      if (cropIds.isNotEmpty) {
+        await (_db.delete(_db.calendarEvents)
+              ..where((tbl) => tbl.cropId.isIn(cropIds)))
+            .go();
+      }
       await (_db.delete(_db.irrigationPlans)
             ..where((tbl) => tbl.fieldId.equals(fieldId)))
           .go();
@@ -1032,6 +1038,10 @@ class LocalDataRepository {
     return query.watch().asyncMap((rows) async {
       final fields = await _activeFieldsQuery().get();
       final names = {for (final f in fields) f.id: f.name};
+      final cropRows = await (_db.select(_db.fieldCrops)
+            ..where((tbl) => tbl.deletedAt.isNull()))
+          .get();
+      final cropNames = {for (final c in cropRows) c.id: c.name};
       final filtered = types == null || types.isEmpty
           ? rows
           : rows.where((r) => types.contains(r.eventType)).toList();
@@ -1055,6 +1065,7 @@ class LocalDataRepository {
           'field_id': ev.fieldId,
           'field_name': ev.fieldId == null ? null : names[ev.fieldId],
           'crop_id': ev.cropId,
+          'crop_name': ev.cropId == null ? null : cropNames[ev.cropId],
           'title': ev.title,
           'type': ev.eventType,
           'date': ev.eventDate.toLocal(),
