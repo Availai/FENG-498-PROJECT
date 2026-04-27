@@ -8,7 +8,7 @@ import '../widgets/floating_toast.dart';
 import '../widgets/shimmer_loader.dart';
 import '../widgets/tap_scale.dart';
 import 'field_3d_planner_screen.dart';
-import 'field_detail_screen.dart';
+import 'field_status_screen.dart';
 import '../theme/app_theme.dart';
 
 class MyCropsScreen extends ConsumerWidget {
@@ -133,7 +133,8 @@ class MyCropsScreen extends ConsumerWidget {
                       ? () {
                           Navigator.of(context).push(
                             AnimatedRoute.scaleFade(
-                              FieldDetailScreen(fieldData: item),
+                              FieldStatusScreen(
+                                  fieldId: item['id']?.toString()),
                             ),
                           );
                         }

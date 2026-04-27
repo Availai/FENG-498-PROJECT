@@ -18,7 +18,10 @@ import 'field_detail_screen.dart';
 /// menü. `fieldDirectivesSummaryProvider` ile canlı bağlıdır: çiftçi sulama
 /// kaydı girer girmez liste tazelenir.
 class FieldStatusScreen extends ConsumerWidget {
-  const FieldStatusScreen({super.key});
+  /// Belirli bir tarlanın durumunu göstermek için [fieldId] verilebilir.
+  /// Verilmezse tüm tarlalar listelenir.
+  final String? fieldId;
+  const FieldStatusScreen({super.key, this.fieldId});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -27,7 +30,7 @@ class FieldStatusScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: AppColors.bg,
       appBar: AppBar(
-        title: Text('Tarla Durumum', style: AppText.h2(context)),
+        title: Text('Tarla Durumu', style: AppText.h2(context)),
         backgroundColor: AppColors.surface,
         elevation: 0,
         centerTitle: false,
@@ -55,7 +58,12 @@ class FieldStatusScreen extends ConsumerWidget {
             ),
           ),
         ),
-        data: (fields) {
+        data: (allFields) {
+          final fields = fieldId == null
+              ? allFields
+              : allFields
+                  .where((f) => f['id']?.toString() == fieldId)
+                  .toList();
           if (fields.isEmpty) {
             return Center(
               child: Padding(

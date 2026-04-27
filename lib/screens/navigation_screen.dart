@@ -12,7 +12,6 @@ import 'my_crops_screen.dart';
 import 'camera_screen.dart';
 import 'plant_database_screen.dart';
 import 'crop_calendar_screen.dart';
-import 'field_status_screen.dart';
 import 'map_hub_screen.dart';
 
 class MainNavigationScreen extends ConsumerStatefulWidget {
@@ -42,20 +41,19 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
     AgriDashboard(), // 0 – Özet
     MyCropsScreen(), // 1 – Tarlalarım
     CameraScreen(), // 2 – AI Analiz (FAB)
-    FieldStatusScreen(), // 3 – Tarla Durumum
-    CropCalendarScreen(), // 4 – Takvim
-    GrowingGuideScreen(), // 5 – Rehber
-    PlantDatabaseScreen(), // 6 – Arşiv
+    CropCalendarScreen(), // 3 – Takvim
+    GrowingGuideScreen(), // 4 – Rehber
+    PlantDatabaseScreen(), // 5 – Arşiv
   ];
 
-  // Bottom nav slots: 0=Özet, 1=Tarlalarım, [FAB gap], 2=Durumum, 3=Takvim, 4=Rehber
-  // Arşiv profile menüsünden erişilir.
-  static const List<int> _navToPage = [0, 1, 3, 4, 5];
+  // Bottom nav slots: 0=Özet, 1=Tarlalarım, [FAB gap], 2=Takvim, 3=Rehber
+  // Durumum: Tarlalarım → tarla kartına tıkla. Arşiv: profil menüsünden.
+  static const List<int> _navToPage = [0, 1, 3, 4];
 
   int get _navIndex {
     if (_currentIndex == 2) return -1;
     final idx = _navToPage.indexOf(_currentIndex);
-    return idx; // -1 if page 6 (Arşiv) is active
+    return idx; // -1 if page 5 (Arşiv) is active
   }
 
   void _onNavTap(int navIdx) {
@@ -141,29 +139,6 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
                 leading: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                      color: Colors.teal.shade50,
-                      borderRadius: BorderRadius.circular(10)),
-                  child: Icon(Icons.agriculture_rounded,
-                      color: Colors.teal.shade700, size: 20),
-                ),
-                title: const Text('Tarla Durumum'),
-                subtitle: const Text(
-                    'Ne yetiştiriliyor, sonraki işleme kaç gün, nasıl yap'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const FieldStatusScreen(),
-                    ),
-                  );
-                },
-              ),
-              const Divider(),
-              ListTile(
-                leading: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
                       color: Colors.purple.shade50,
                       borderRadius: BorderRadius.circular(10)),
                   child: Icon(Icons.library_books_rounded,
@@ -174,7 +149,7 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () {
                   Navigator.pop(context);
-                  setState(() => _currentIndex = 6);
+                  setState(() => _currentIndex = 5);
                 },
               ),
               const Divider(),
@@ -291,27 +266,18 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
               ),
               // FAB gap
               const SizedBox(width: 56),
-              // Right: Durumum + Takvim + Rehber + Profil
+              // Right: Takvim + Rehber + Profil
               Expanded(
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
                     Flexible(
                       child: _NavButton(
-                        icon: Icons.fact_check_outlined,
-                        activeIcon: Icons.fact_check,
-                        label: 'Durumum',
-                        isActive: _navIndex == 2,
-                        onTap: () => _onNavTap(2),
-                      ),
-                    ),
-                    Flexible(
-                      child: _NavButton(
                         icon: Icons.calendar_month_outlined,
                         activeIcon: Icons.calendar_month,
                         label: 'Takvim',
-                        isActive: _navIndex == 3,
-                        onTap: () => _onNavTap(3),
+                        isActive: _navIndex == 2,
+                        onTap: () => _onNavTap(2),
                       ),
                     ),
                     Flexible(
@@ -319,8 +285,8 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
                         icon: Icons.menu_book_outlined,
                         activeIcon: Icons.menu_book,
                         label: 'Rehber',
-                        isActive: _navIndex == 4,
-                        onTap: () => _onNavTap(4),
+                        isActive: _navIndex == 3,
+                        onTap: () => _onNavTap(3),
                       ),
                     ),
                     Flexible(
