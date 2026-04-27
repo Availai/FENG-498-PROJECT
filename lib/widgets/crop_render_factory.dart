@@ -2,10 +2,6 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 
-import '../data/supported_crops.dart';
-import '../services/growth_engine.dart';
-import 'crop_growth_sprite.dart';
-
 enum GrowthPhase { seedling, growing, mature, harvest }
 
 GrowthPhase getGrowthPhase(double maturityPercent) {
@@ -15,9 +11,7 @@ GrowthPhase getGrowthPhase(double maturityPercent) {
   return GrowthPhase.harvest;
 }
 
-/// Olgunluk yüzdesinden (0..100) `CropGrowthSprite` aşamasına çevrim.
-/// Sınırlar `growth_engine.dart` fenoloji tablolarıyla uyumlu — bant geçişleri
-/// görsel sprite ile (gövde / yapraklar / çiçek / meyve) eşleşsin diye.
+// ignore: unused_element
 String _stageKeyForMaturity(double maturityPercent) {
   if (maturityPercent < 12) return 'cimlenme';
   if (maturityPercent < 50) return 'vejetatif';
@@ -26,14 +20,10 @@ String _stageKeyForMaturity(double maturityPercent) {
   return 'olgunlasma';
 }
 
-/// Desteklenen 3 vitrin bitki (ayçiçeği, mısır, domates) için vektör çizim
-/// anahtarı. Diğer bitkiler PNG fallback'ine düşer.
-String? _spriteCropKey(String cropName) {
-  final canonical = SupportedCrops.canonicalName(cropName);
-  if (canonical == null) return null;
-  final key = SupportedCrops.normalize(canonical);
-  return GrowthEngine.isSupported(key) ? key : null;
-}
+/// Ayçiçeği, mısır ve domates dahil tüm bitkiler için gerçek PNG asset
+/// dosyaları kullanılır. Vektör sprite devre dışı bırakıldı.
+// ignore: unused_element
+String? _spriteCropKey(String cropName) => null;
 
 double _getScaleMultiplier(GrowthPhase phase) {
   switch (phase) {
@@ -123,59 +113,10 @@ Widget buildCropMarkerWidget({
       final double spriteW = baseWidth * phaseScale * zoomScale;
       final double spriteH = baseHeight * phaseScale * zoomScale;
 
-      // ── Farmville-tarzı vektör çizim ────────────────────────────────────
-      // Desteklenen 3 vitrin bitki (ayçiçeği, mısır, domates) için
-      // `CropGrowthSprite` kullan: ekim 0%'da küçük çimlenme fidesi, %50'de
-      // çiçek, %90+'da meyveli/olgunlaşmış sprite. Olgunluk arttıkça sprite
-      // hem aşamayı (stageKey) hem de boy'u (overallProgress) günceller —
-      // PNG ile elde edemediğimiz "yavaş büyüme" hissi.
-      final spriteKey = _spriteCropKey(cropName);
-      if (spriteKey != null) {
-        // Sprite'a daha geniş tuval verelim — kök zemine, baş havaya otursun.
-        final canvasW = spriteW * 2.4;
-        final canvasH = spriteH * 2.6;
-        final progress = (maturityPercent / 100).clamp(0.0, 1.0);
-        final stageKey = _stageKeyForMaturity(maturityPercent);
-        final harvestReady = stageKey == 'olgunlasma';
-
-        final vectorSprite = SizedBox(
-          width: canvasW,
-          height: canvasH,
-          child: CropGrowthSprite(
-            cropKey: spriteKey,
-            stageKey: stageKey,
-            overallProgress: progress,
-            harvestReady: harvestReady,
-            // Harita üstünde çok marker olunca sallanma CPU'yu yorar; kapalı.
-            animateSway: false,
-          ),
-        );
-
-        // Bitkinin TABANI (kök) marker'ın alt kenarına yapıştırılır;
-        // dış Marker `Alignment.topCenter` ile bu kenar lat/lng noktasına oturur.
-        // Böylece kullanıcının çizdiği bölge tam olarak bitkinin yetiştiği yerdir.
-        final markerSprite = Transform(
-          transform: Matrix4.identity()..rotateX(0.55),
-          alignment: Alignment.bottomCenter,
-          child: SizedBox.expand(
-            child: Align(
-              alignment: Alignment.bottomCenter,
-              child: vectorSprite,
-            ),
-          ),
-        );
-
-        if (onTap != null) {
-          return GestureDetector(
-            onTap: onTap,
-            behavior: HitTestBehavior.opaque,
-            child: markerSprite,
-          );
-        }
-        return markerSprite;
-      }
-
-      // ── PNG fallback (desteklenmeyen bitkiler) ───────────────────────────
+      // ── PNG rendering — tüm bitkiler için gerçek asset dosyası ─────────────
+      // Ayçiçeği → assets/crops/sunflower.png
+      // Mısır    → assets/crops/corn.png
+      // Domates  → assets/crops/tomato.png
       final assetPath = _getAssetPath(cropName);
       final sprite = Image.asset(
         assetPath,

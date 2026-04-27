@@ -241,6 +241,19 @@ LazyDatabase _openConnection() {
       file = File(p.join(fallbackDir.path, 'smart_agri_local.sqlite'));
     }
 
-    return NativeDatabase.createInBackground(file);
+    // WAL (Write-Ahead Logging) modu: okuma ve yazma birbirini kilitlemez.
+    // busy_timeout: başka bir işlem DB'yi tutarken 5s bekleyip yeniden dener
+    // → SqliteException(5) "database is locked" hatasını ortadan kaldırır.
+    // synchronous=NORMAL: WAL ile birlikte yeterli güvenlik + daha hızlı commit.
+    return NativeDatabase(
+      file,
+      setup: (db) {
+        db.execute('PRAGMA journal_mode=WAL;');
+        db.execute('PRAGMA busy_timeout=5000;');
+        db.execute('PRAGMA synchronous=NORMAL;');
+        db.execute('PRAGMA foreign_keys=ON;');
+        db.execute('PRAGMA cache_size=-4096;'); // 4MB sayfa önbelleği
+      },
+    );
   });
 }

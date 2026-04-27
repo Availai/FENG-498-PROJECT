@@ -98,65 +98,98 @@ class _Field3DPlannerScreenState extends ConsumerState<Field3DPlannerScreen> {
     centerLng /= _points.length;
     final dekar = _calculatedAreaSqm / 1000;
 
-    String name = widget.existingField?['name']?.split(' ').first ?? '';
+    final nameCtrl = TextEditingController(
+      text: widget.existingField?['name']?.split(' ').first ?? '',
+    );
+
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        title: Text('Ekim Alanını Kaydet', style: AppText.h2(context)),
-        content: TextField(
-          onChanged: (v) => name = v,
-          autofocus: true,
-          decoration: InputDecoration(
-            hintText: 'Örn: Kuzey Tarlası',
-            helperText: '${dekar.toStringAsFixed(1)} Dekar alan eklenecek',
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child:
-                Text('İptal', style: TextStyle(color: AppColors.textSecondary)),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              if (name.trim().isNotEmpty) {
-                final data = {
-                  'id': widget.existingField?['id'],
-                  'name': '${name.trim()} (${dekar.toStringAsFixed(1)} da)',
-                  'date': DateFormat('dd.MM.yyyy').format(DateTime.now()),
-                  'latitude': centerLat,
-                  'longitude': centerLng,
-                  'area_dekar': dekar,
-                  'area_sqm': _calculatedAreaSqm,
-                  'polygon': _points
-                      .map((p) => {'lat': p.latitude, 'lng': p.longitude})
-                      .toList(),
-                  'planted_crops':
-                      widget.existingField?['planted_crops'] ?? const [],
-                };
-
-                await ref
-                    .read(localDataRepositoryProvider)
-                    .upsertFieldFromLegacyMap(data);
-
-                if (!ctx.mounted) return;
-                Navigator.pop(ctx);
-                if (!mounted) return;
-                Navigator.pop(context);
-                if (!mounted) return;
-                AppToast.show(
-                  context,
-                  message: 'Ekim alanı başarıyla kaydedildi!',
-                  type: ToastType.success,
-                );
-              }
-            },
-            child: const Text('Kaydet'),
-          ),
-        ],
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) {
+          final hasName = nameCtrl.text.trim().isNotEmpty;
+          return AlertDialog(
+            backgroundColor: AppColors.surface,
+            title: Text('Ekim Alanını Kaydet', style: AppText.h2(context)),
+            content: TextField(
+              controller: nameCtrl,
+              autofocus: true,
+              onChanged: (_) => setDialogState(() {}),
+              decoration: InputDecoration(
+                hintText: 'Örn: Kuzey Tarlası',
+                helperText: '${dekar.toStringAsFixed(1)} Dekar alan eklenecek',
+                errorText:
+                    nameCtrl.text.isEmpty ? null : null, // sadece görseli temiz tut
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  nameCtrl.dispose();
+                  Navigator.pop(ctx);
+                },
+                child: Text('İptal',
+                    style: TextStyle(color: AppColors.textSecondary)),
+              ),
+              ElevatedButton(
+                onPressed: hasName
+                    ? () async {
+                        final trimmed = nameCtrl.text.trim();
+                        final data = {
+                          'id': widget.existingField?['id'],
+                          'name':
+                              '$trimmed (${dekar.toStringAsFixed(1)} da)',
+                          'date': DateFormat('dd.MM.yyyy')
+                              .format(DateTime.now()),
+                          'latitude': centerLat,
+                          'longitude': centerLng,
+                          'area_dekar': dekar,
+                          'area_sqm': _calculatedAreaSqm,
+                          'polygon': _points
+                              .map((p) =>
+                                  {'lat': p.latitude, 'lng': p.longitude})
+                              .toList(),
+                          'planted_crops': widget.existingField?[
+                                  'planted_crops'] ??
+                              const [],
+                        };
+                        try {
+                          await ref
+                              .read(localDataRepositoryProvider)
+                              .upsertFieldFromLegacyMap(data);
+                          nameCtrl.dispose();
+                          if (!ctx.mounted) return;
+                          Navigator.pop(ctx);
+                          if (!mounted) return;
+                          Navigator.pop(context);
+                          if (!mounted) return;
+                          AppToast.show(
+                            context,
+                            message: 'Ekim alanı başarıyla kaydedildi!',
+                            type: ToastType.success,
+                          );
+                        } catch (e) {
+                          if (!ctx.mounted) return;
+                          AppToast.show(
+                            ctx,
+                            message: 'Kayıt hatası: $e',
+                            type: ToastType.error,
+                          );
+                        }
+                      }
+                    : null,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.emerald,
+                  disabledBackgroundColor: AppColors.textTertiary,
+                ),
+                child: const Text('Kaydet'),
+              ),
+            ],
+          );
+        },
       ),
     );
+
   }
 
   // Tarla içi yerleşim paterni

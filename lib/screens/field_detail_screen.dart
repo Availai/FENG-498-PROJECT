@@ -176,7 +176,8 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = 'Bağlantı hatası — analiz yüklenemedi.';
+          _error = 'Analiz yüklenemedi (çevrimdışı modu). '
+              'Hava ve toprak verisi alınamadı: $e';
           _isLoading = false;
         });
       }
@@ -1750,11 +1751,11 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
           message: '${crop['name']} bölgesi silindi.',
           type: ToastType.info,
         );
-      } catch (_) {
+      } catch (e) {
         if (!mounted) return;
         AppToast.show(
           context,
-          message: 'Bitki silinemedi. Lütfen tekrar deneyin.',
+          message: 'Bitki silinemedi: $e',
           type: ToastType.error,
         );
       }
@@ -1960,7 +1961,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
           rowSpacingCm: (crop['row_spacing_cm'] as num?)?.toDouble(),
           plantSpacingCm: (crop['plant_spacing_cm'] as num?)?.toDouble(),
           maxCount: 35,
-          minVisualSpacingM: 3.0,
+          minVisualSpacingM: 0.5,
         );
         if (positions.isEmpty) {
           double cLat = 0, cLng = 0;
@@ -2008,7 +2009,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
         plantSpacingCm:
             (gridCrops.first['plant_spacing_cm'] as num?)?.toDouble(),
         maxCount: 30,
-        minVisualSpacingM: 3.5,
+        minVisualSpacingM: 0.5,
       );
       positions.sort((a, b) => b.latitude.compareTo(a.latitude));
 

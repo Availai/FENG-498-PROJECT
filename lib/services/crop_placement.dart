@@ -4,28 +4,29 @@ import 'package:maps_toolkit/maps_toolkit.dart' as toolkit;
 import '../data/crop_spacing.dart';
 
 /// Poligon içinde, tarlanın ilk kenarına paralel satırlar halinde,
-/// bitki için önerilen gerçek sıra × bitki aralığına uyan noktalar üretir.
+/// bitki için girilen gerçek sıra × bitki aralığına (cm) uyan coğrafi
+/// noktalar üretir.
 ///
 /// - [polygon]: ekim bölgesi sınırı (en az 3 nokta)
-/// - [cropName]: bitki adı — [spacingFor] tablosundan aralık seçmek için
-/// - [maxCount]: render başına üst sınır (render performansı için); gerçek
-///   yoğunluk bu sayıdan fazlaysa aralıklar orantılı büyütülür (noktalar aynı
-///   grid'de kalır, sadece seyrelir).
-/// - [minVisualSpacingM]: Harita üzerindeki marker'lar 240px genişliğinde
-///   olduğu için görsel örtüşmeyi engellemek üzere uygulanan en küçük metre
-///   aralığı. Gerçek agronomik aralık bundan küçükse, marker'lar "temsili
-///   küme" olarak seyreltilir (bir marker = bir öbek bitki).
+/// - [cropName]: bitki adı — [spacingFor] tablosundan varsayılan aralık için
+/// - [rowSpacingCm]: sıra arası cm (kullanıcının girdiği değer önceliklidir)
+/// - [plantSpacingCm]: bitki arası cm (kullanıcının girdiği değer önceliklidir)
+/// - [maxCount]: render başına üst sınır; gerçek yoğunluk fazlaysa aralıklar
+///   orantılı büyütülür (grid korunur, seyrelir).
+/// - [minVisualSpacingM]: marker çakışmasını engellemek için alt sınır (metre).
+///   Gerçekçi görünüm için düşük tutulmalı; varsayılan 0.5m.
 List<LatLng> plantPlacementInPolygon({
   required List<LatLng> polygon,
   required String cropName,
   double? rowSpacingCm,
   double? plantSpacingCm,
   int maxCount = 45,
-  double minVisualSpacingM = 2.8,
+  double minVisualSpacingM = 0.5,
 }) {
   if (polygon.length < 3 || maxCount <= 0) return const [];
 
   final defaultSpacing = spacingFor(cropName);
+  // Kullanıcı değeri her zaman önce gelir; yoksa tablo varsayılanı kullan.
   final spacing = CropSpacing(
     (rowSpacingCm != null && rowSpacingCm > 0)
         ? rowSpacingCm
@@ -41,14 +42,16 @@ List<LatLng> plantPlacementInPolygon({
   final areaSqm = toolkit.SphericalUtil.computeArea(toolkitPts).toDouble();
   final cellArea = spacing.rowM * spacing.plantM;
   final rawDensity = cellArea > 0 ? (areaSqm / cellArea).floor() : 0;
+  // maxCount'u aşan yoğunluğu orantılı seyrelterek agronomik oran koru.
   final scale = rawDensity > maxCount
-      ? math.sqrt(rawDensity / maxCount) // aralıkları orantılı genişlet
+      ? math.sqrt(rawDensity / maxCount)
       : 1.0;
-  // Önce agronomik ölçek uygulanır, sonra görsel minimum aralık dayatılır.
-  // Bu sayede marker'lar harita üzerinde hiçbir zaman üst üste binmez;
-  // agronomik oran (row:plant) korunur, sadece mutlak büyüklük artar.
+
+  // Gerçek agronomik aralıklar — kullanıcı cm girişinden doğrudan hesaplanır.
   final agroRowM = spacing.rowM * scale;
   final agroPlantM = spacing.plantM * scale;
+
+  // Görsel minimum: sadece marker çakışmasını önler, agronomik oranı bozmaz.
   final visualBoost = math.max(
     1.0,
     math.max(

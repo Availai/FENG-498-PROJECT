@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'dart:math';
 
 import 'package:drift/drift.dart';
@@ -1440,24 +1440,27 @@ class LocalDataRepository {
   /// Tek bir bitkiyi soft-delete eder.
   Future<void> deleteSingleCrop(String cropId) async {
     final now = DateTime.now().toUtc();
-    FieldCrop? crop;
 
+    // 1. Transaction oncesi: iliskili kayitlarin ID'lerini topla
+    // (sync outbox icin; transaction ici enqueue = nested transaction kilidi)
+    final crop = await (_db.select(_db.fieldCrops)
+          ..where((tbl) => tbl.id.equals(cropId)))
+        .getSingleOrNull();
+    if (crop == null) return;
+
+    final relatedPlans = await (_db.select(_db.irrigationPlans)
+          ..where(
+              (tbl) => tbl.cropId.equals(cropId) & tbl.deletedAt.isNull()))
+        .get();
+    final relatedEvents = await (_db.select(_db.calendarEvents)
+          ..where(
+              (tbl) => tbl.cropId.equals(cropId) & tbl.deletedAt.isNull()))
+        .get();
+
+    // 2. Atomik write transaction - yalnizca DB guncelleme/silme
     await _db.transaction(() async {
-      crop = await (_db.select(_db.fieldCrops)
+      await (_db.update(_db.fieldCrops)
             ..where((tbl) => tbl.id.equals(cropId)))
-          .getSingleOrNull();
-      if (crop == null) return;
-
-      final relatedPlans = await (_db.select(_db.irrigationPlans)
-            ..where(
-                (tbl) => tbl.cropId.equals(cropId) & tbl.deletedAt.isNull()))
-          .get();
-      final relatedEvents = await (_db.select(_db.calendarEvents)
-            ..where(
-                (tbl) => tbl.cropId.equals(cropId) & tbl.deletedAt.isNull()))
-          .get();
-
-      await (_db.update(_db.fieldCrops)..where((tbl) => tbl.id.equals(cropId)))
           .write(FieldCropsCompanion(
         updatedAt: Value(now),
         deletedAt: Value(now),
@@ -1470,6 +1473,7 @@ class LocalDataRepository {
         updatedAt: Value(now),
         deletedAt: Value(now),
       ));
+
       await (_db.update(_db.calendarEvents)
             ..where(
                 (tbl) => tbl.cropId.equals(cropId) & tbl.deletedAt.isNull()))
@@ -1477,42 +1481,43 @@ class LocalDataRepository {
         updatedAt: Value(now),
         deletedAt: Value(now),
       ));
+
       await (_db.delete(_db.cropGrowthStates)
             ..where((tbl) => tbl.cropId.equals(cropId)))
           .go();
-
-      for (final plan in relatedPlans) {
-        await _enqueueSyncJob(
-          entityType: 'irrigation_plans',
-          entityId: plan.id,
-          operation: 'delete',
-          payload: {'id': plan.id, 'crop_id': cropId},
-          updatedAt: now,
-        );
-      }
-      for (final event in relatedEvents) {
-        await _enqueueSyncJob(
-          entityType: 'calendar_events',
-          entityId: event.id,
-          operation: 'delete',
-          payload: {'id': event.id, 'crop_id': cropId},
-          updatedAt: now,
-        );
-      }
-      await _enqueueSyncJob(
-        entityType: 'field_crops',
-        entityId: cropId,
-        operation: 'delete',
-        payload: {'id': cropId, 'field_id': crop!.fieldId},
-        updatedAt: now,
-      );
     });
 
-    if (crop == null) return;
+    // 3. Transaction disari: sync outbox kayitlari (kilit riski yok)
+    for (final plan in relatedPlans) {
+      await _enqueueSyncJob(
+        entityType: 'irrigation_plans',
+        entityId: plan.id,
+        operation: 'delete',
+        payload: {'id': plan.id, 'crop_id': cropId},
+        updatedAt: now,
+      );
+    }
+    for (final event in relatedEvents) {
+      await _enqueueSyncJob(
+        entityType: 'calendar_events',
+        entityId: event.id,
+        operation: 'delete',
+        payload: {'id': event.id, 'crop_id': cropId},
+        updatedAt: now,
+      );
+    }
+    await _enqueueSyncJob(
+      entityType: 'field_crops',
+      entityId: cropId,
+      operation: 'delete',
+      payload: {'id': cropId, 'field_id': crop.fieldId},
+      updatedAt: now,
+    );
+
     await CropProtocolService.clearStateFor(
-      fieldId: crop!.fieldId,
+      fieldId: crop.fieldId,
       cropId: cropId,
-      cropName: crop!.name,
+      cropName: crop.name,
     );
 
     await _mirrorActiveFieldsToHive();
