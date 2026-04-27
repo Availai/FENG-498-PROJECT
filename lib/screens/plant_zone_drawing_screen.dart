@@ -7,6 +7,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:maps_toolkit/maps_toolkit.dart' as toolkit;
 
 import '../theme/app_theme.dart';
+import '../widgets/help_panel.dart';
 import '../widgets/zone_drawing_toolbar.dart';
 
 /// Mevcut ekili bir bölgeyi haritada gösterirken kullanılır.
@@ -217,6 +218,41 @@ class _PlantZoneDrawingScreenState extends State<PlantZoneDrawingScreen>
     Navigator.of(context).pop(json);
   }
 
+  // ── Harita yakınlaştırma kontrolleri ──────────────────────────────────
+  static const double _minZoom = 14.0;
+  static const double _maxZoom = 21.0;
+
+  void _zoomIn() {
+    final z = _mapController.camera.zoom;
+    _mapController.move(
+      _mapController.camera.center,
+      (z + 1).clamp(_minZoom, _maxZoom),
+    );
+  }
+
+  void _zoomOut() {
+    final z = _mapController.camera.zoom;
+    _mapController.move(
+      _mapController.camera.center,
+      (z - 1).clamp(_minZoom, _maxZoom),
+    );
+  }
+
+  /// Haritayı tarla poligonunun tamamına sığdır.
+  void _fitToField() {
+    if (widget.fieldPolygon.length < 2) {
+      _mapController.move(_fieldCenter, 19.0);
+      return;
+    }
+    final bounds = LatLngBounds.fromPoints(widget.fieldPolygon);
+    _mapController.fitCamera(
+      CameraFit.bounds(
+        bounds: bounds,
+        padding: const EdgeInsets.all(60),
+      ),
+    );
+  }
+
   void _useWholeField() {
     if (widget.fieldPolygon.length < 3) return;
     final json = jsonEncode(
@@ -264,6 +300,12 @@ class _PlantZoneDrawingScreenState extends State<PlantZoneDrawingScreen>
               'Tarlanın tamamı',
               style: TextStyle(color: Colors.white, fontSize: 12),
             ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.help_outline_rounded, color: Colors.white),
+            tooltip: 'Yardım',
+            onPressed: () =>
+                HelpPanel.show(context, HelpContent.plantZoneDrawing),
           ),
         ],
       ),
@@ -575,6 +617,26 @@ class _PlantZoneDrawingScreenState extends State<PlantZoneDrawingScreen>
             ),
           ),
 
+          // ── ZOOM KONTROLLERİ (sağ kenar) ──
+          Positioned(
+            right: 12,
+            top: MediaQuery.of(context).padding.top + kToolbarHeight + 72,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _zoomBtn(Icons.add, _zoomIn, tooltip: 'Yakınlaştır'),
+                const SizedBox(height: 8),
+                _zoomBtn(Icons.remove, _zoomOut, tooltip: 'Uzaklaştır'),
+                const SizedBox(height: 8),
+                _zoomBtn(
+                  Icons.center_focus_strong,
+                  _fitToField,
+                  tooltip: 'Tarlaya Sığdır',
+                ),
+              ],
+            ),
+          ),
+
           // Alt çizim araç çubuğu
           Positioned(
             left: 12,
@@ -615,6 +677,32 @@ class _PlantZoneDrawingScreenState extends State<PlantZoneDrawingScreen>
         ],
       ),
     );
+  }
+
+  Widget _zoomBtn(IconData icon, VoidCallback onTap, {String? tooltip}) {
+    final btn = Material(
+      color: Colors.black.withValues(alpha: 0.65),
+      elevation: 3,
+      shadowColor: Colors.black.withValues(alpha: 0.5),
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: widget.plantColor.withValues(alpha: 0.6),
+              width: 1.2,
+            ),
+          ),
+          child: Icon(icon, color: Colors.white, size: 22),
+        ),
+      ),
+    );
+    return tooltip == null ? btn : Tooltip(message: tooltip, child: btn);
   }
 
   /// Poligonun merkez noktasını hesapla (etiket konumu için)

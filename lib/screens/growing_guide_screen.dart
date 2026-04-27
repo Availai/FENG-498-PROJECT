@@ -15,6 +15,7 @@ import '../services/task_directive_service.dart';
 import '../utils/location_utils.dart';
 import '../widgets/activity_quick_log.dart';
 import '../widgets/floating_toast.dart';
+import '../widgets/help_panel.dart';
 import '../widgets/weekly_water_card.dart';
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -1377,14 +1378,15 @@ class _GenericGuideScreenState extends State<_GenericGuideScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        leading: widget.onBack == null
-            ? null
-            : IconButton(
-                icon: const Icon(Icons.arrow_back),
-                onPressed: widget.onBack,
-              ),
         title: const Text('Akıllı Tarım Rehberi'),
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.help_outline_rounded),
+            tooltip: 'Yardım',
+            onPressed: () => HelpPanel.show(context, HelpContent.guide),
+          ),
+        ],
       ),
       body: Column(
         children: [

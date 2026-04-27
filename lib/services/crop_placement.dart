@@ -43,9 +43,7 @@ List<LatLng> plantPlacementInPolygon({
   final cellArea = spacing.rowM * spacing.plantM;
   final rawDensity = cellArea > 0 ? (areaSqm / cellArea).floor() : 0;
   // maxCount'u aşan yoğunluğu orantılı seyrelterek agronomik oran koru.
-  final scale = rawDensity > maxCount
-      ? math.sqrt(rawDensity / maxCount)
-      : 1.0;
+  final scale = rawDensity > maxCount ? math.sqrt(rawDensity / maxCount) : 1.0;
 
   // Gerçek agronomik aralıklar — kullanıcı cm girişinden doğrudan hesaplanır.
   final agroRowM = spacing.rowM * scale;

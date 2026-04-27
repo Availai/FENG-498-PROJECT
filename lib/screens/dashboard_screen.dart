@@ -9,6 +9,7 @@ import '../services/weather_soil_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/location_utils.dart';
 import '../widgets/animated_route.dart';
+import '../widgets/help_panel.dart';
 import '../widgets/tap_scale.dart';
 import 'farm_journal_screen.dart';
 import 'field_detail_screen.dart';
@@ -302,6 +303,11 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
       stretch: true,
       backgroundColor: const Color(0xFF1B5E20),
       actions: [
+        IconButton(
+          icon: const Icon(Icons.help_outline_rounded, color: Colors.white),
+          tooltip: 'Yardım',
+          onPressed: () => HelpPanel.show(context, HelpContent.dashboard),
+        ),
         IconButton(
           icon: const Icon(Icons.refresh_rounded, color: Colors.white),
           onPressed: _refreshData,

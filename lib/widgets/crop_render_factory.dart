@@ -1,6 +1,39 @@
+import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
+
+/// seed_plants.json'daki 292 bitkiden her biri için Wikipedia'dan indirilen
+/// fotoğrafları (Türkçe isim → dosya adı) taşır. `assets/data/crop_images.json`
+/// içinde üretilir (backend/data_pipeline/fetch_crop_images.js).
+class CropImageMap {
+  static Map<String, String> _map = {};
+  static Map<String, String> _mapLower = {};
+  static bool _loaded = false;
+
+  static Future<void> load() async {
+    if (_loaded) return;
+    try {
+      final raw = await rootBundle.loadString('assets/data/crop_images.json');
+      final decoded = jsonDecode(raw);
+      if (decoded is Map) {
+        _map = decoded.map((k, v) => MapEntry(k.toString(), v.toString()));
+        _mapLower = {
+          for (final e in _map.entries) e.key.toLowerCase(): e.value,
+        };
+      }
+    } catch (_) {
+      // Map yoksa sessiz kal — fallback string-match devrede
+    }
+    _loaded = true;
+  }
+
+  static String? lookup(String cropName) {
+    final hit = _map[cropName] ?? _mapLower[cropName.toLowerCase()];
+    return hit == null ? null : 'assets/crops/$hit';
+  }
+}
 
 enum GrowthPhase { seedling, growing, mature, harvest }
 
@@ -39,6 +72,11 @@ double _getScaleMultiplier(GrowthPhase phase) {
 }
 
 String _getAssetPath(String cropName) {
+  // 1. Önce indirilen 292-bitki eşlemesinde ara (Türkçe isim tam eşleşme)
+  final mapped = CropImageMap.lookup(cropName);
+  if (mapped != null) return mapped;
+
+  // 2. Fallback: substring eşleştirme — Türkçe dosya adlarıyla
   final name = cropName.toLowerCase();
   if (name.contains('buğday') ||
       name.contains('arpa') ||

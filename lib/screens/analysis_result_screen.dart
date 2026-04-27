@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
+import 'marketplace_screen.dart';
 
 class AnalysisResultScreen extends StatelessWidget {
   final File image;
@@ -148,6 +149,38 @@ class AnalysisResultScreen extends StatelessWidget {
                             ),
                           ],
                         ),
+                      ),
+                    ),
+                  ],
+
+                  // ── Toplulukla Paylaş ────────────────────────────────
+                  if (type != 'error') ...[
+                    const SizedBox(height: 8),
+                    OutlinedButton.icon(
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => MarketplaceScreen(
+                            args: MarketplaceArgs(
+                              preFillDiseaseName: title,
+                              preFillCropName: type == 'plant'
+                                  ? (data['plant_details']?['name']?.toString())
+                                  : null,
+                            ),
+                          ),
+                        ),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.green.shade700,
+                        side: BorderSide(color: Colors.green.shade400),
+                        minimumSize: const Size(double.infinity, 48),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10)),
+                      ),
+                      icon: const Icon(Icons.people_alt_rounded),
+                      label: const Text(
+                        'Toplulukla Paylaş',
+                        style: TextStyle(
+                            fontSize: 15, fontWeight: FontWeight.w700),
                       ),
                     ),
                   ],

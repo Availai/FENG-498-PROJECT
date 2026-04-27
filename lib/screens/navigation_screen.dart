@@ -13,6 +13,7 @@ import 'camera_screen.dart';
 import 'plant_database_screen.dart';
 import 'crop_calendar_screen.dart';
 import 'map_hub_screen.dart';
+import 'marketplace_screen.dart';
 
 class MainNavigationScreen extends ConsumerStatefulWidget {
   const MainNavigationScreen({super.key});
@@ -46,12 +47,12 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
     PlantDatabaseScreen(), // 5 – Arşiv
   ];
 
-  // Bottom nav slots: 0=Özet, 1=Tarlalarım, [FAB gap], 2=Takvim, 3=Rehber
-  // Durumum: Tarlalarım → tarla kartına tıkla. Arşiv: profil menüsünden.
-  static const List<int> _navToPage = [0, 1, 3, 4];
+  // Bottom nav slots: 0=Özet, 1=Tarlalar, 2=Pazar, [FAB gap], 3=Takvim, 4=Rehber
+  // Arşiv accessible via profile menu
+  static const List<int> _navToPage = [0, 1, 6, 3, 4];
 
   int get _navIndex {
-    if (_currentIndex == 2) return -1;
+    if (_currentIndex == 2) return -1; // FAB (camera)
     final idx = _navToPage.indexOf(_currentIndex);
     return idx; // -1 if page 5 (Arşiv) is active
   }
@@ -233,33 +234,30 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
           16, 0, 16, 24), // Float above the very bottom
       child: GlassPanel(
         borderRadius: 28,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
         child: SizedBox(
-          height: 56,
+          height: 68,
           child: Row(
             children: [
+              // Left: Özet + Tarlalar + Pazar
               // Left: Özet + Tarlalar
               Expanded(
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
-                    Flexible(
-                      child: _NavButton(
-                        icon: Icons.dashboard_outlined,
-                        activeIcon: Icons.dashboard,
-                        label: 'Özet',
-                        isActive: _navIndex == 0,
-                        onTap: () => _onNavTap(0),
-                      ),
+                    _NavButton(
+                      icon: Icons.dashboard_outlined,
+                      activeIcon: Icons.dashboard,
+                      label: 'Özet',
+                      isActive: _navIndex == 0,
+                      onTap: () => _onNavTap(0),
                     ),
-                    Flexible(
-                      child: _NavButton(
-                        icon: Icons.grass_outlined,
-                        activeIcon: Icons.grass,
-                        label: 'Tarlalar',
-                        isActive: _navIndex == 1,
-                        onTap: () => _onNavTap(1),
-                      ),
+                    _NavButton(
+                      icon: Icons.grass_outlined,
+                      activeIcon: Icons.grass,
+                      label: 'Tarlalar',
+                      isActive: _navIndex == 1,
+                      onTap: () => _onNavTap(1),
                     ),
                   ],
                 ),
@@ -276,8 +274,8 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
                         icon: Icons.calendar_month_outlined,
                         activeIcon: Icons.calendar_month,
                         label: 'Takvim',
-                        isActive: _navIndex == 2,
-                        onTap: () => _onNavTap(2),
+                        isActive: _navIndex == 3,
+                        onTap: () => _onNavTap(3),
                       ),
                     ),
                     Flexible(
@@ -285,8 +283,8 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
                         icon: Icons.menu_book_outlined,
                         activeIcon: Icons.menu_book,
                         label: 'Rehber',
-                        isActive: _navIndex == 3,
-                        onTap: () => _onNavTap(3),
+                        isActive: _navIndex == 4,
+                        onTap: () => _onNavTap(4),
                       ),
                     ),
                     Flexible(
@@ -349,14 +347,14 @@ class _NavButton extends StatelessWidget {
                 isActive ? activeIcon : icon,
                 key: ValueKey(isActive),
                 color: isActive ? AppColors.emerald : AppColors.textTertiary,
-                size: 22,
+                size: 26,
               ),
             ),
             const SizedBox(height: 2),
             AnimatedDefaultTextStyle(
               duration: const Duration(milliseconds: 200),
               style: GoogleFonts.inter(
-                fontSize: 10,
+                fontSize: 12,
                 fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
                 color: isActive ? AppColors.emerald : AppColors.textTertiary,
                 letterSpacing: 0.1,

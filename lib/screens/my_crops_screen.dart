@@ -5,6 +5,7 @@ import '../services/app_providers.dart';
 import '../utils/location_utils.dart';
 import '../widgets/animated_route.dart';
 import '../widgets/floating_toast.dart';
+import '../widgets/help_panel.dart';
 import '../widgets/shimmer_loader.dart';
 import '../widgets/tap_scale.dart';
 import 'field_3d_planner_screen.dart';
@@ -25,6 +26,13 @@ class MyCropsScreen extends ConsumerWidget {
         backgroundColor: AppColors.surface,
         elevation: 0,
         centerTitle: false,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.help_outline_rounded),
+            tooltip: 'Yardım',
+            onPressed: () => HelpPanel.show(context, HelpContent.myCrops),
+          ),
+        ],
       ),
       floatingActionButton: Padding(
         // Ana nav bar (~96px float) üzerinden yukarıda kalması için offset

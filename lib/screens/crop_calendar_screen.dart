@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
 
 import '../services/app_providers.dart';
+import '../widgets/help_panel.dart';
 import '../widgets/activity_quick_log.dart';
 import '../widgets/floating_toast.dart';
 
@@ -130,7 +131,8 @@ class _CropCalendarScreenState extends ConsumerState<CropCalendarScreen> {
                 fieldId: fieldId,
                 cropId: ev.cropId,
                 fieldCrops: fieldCrops,
-                fieldAreaDekar: (field['area_dekar'] as num?)?.toDouble() ?? 1.0,
+                fieldAreaDekar:
+                    (field['area_dekar'] as num?)?.toDouble() ?? 1.0,
                 onLogged: () {
                   Navigator.of(ctx).maybePop();
                 },
@@ -156,6 +158,11 @@ class _CropCalendarScreenState extends ConsumerState<CropCalendarScreen> {
       appBar: AppBar(
         title: const Text('Tarım Takvimi'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.help_outline_rounded),
+            tooltip: 'Yardım',
+            onPressed: () => HelpPanel.show(context, HelpContent.calendar),
+          ),
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
             onPressed: _buildEventsFromRepository,

@@ -11,6 +11,7 @@ import '../theme/app_theme.dart';
 import '../widgets/animated_route.dart';
 import '../widgets/floating_toast.dart';
 import '../widgets/glass_panel.dart';
+import '../widgets/help_panel.dart';
 
 class CameraScreen extends StatefulWidget {
   const CameraScreen({super.key});
@@ -45,6 +46,13 @@ class _CameraScreenState extends State<CameraScreen> {
         backgroundColor: AppColors.surface,
         elevation: 0,
         centerTitle: false,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.help_outline_rounded),
+            tooltip: 'Yardım',
+            onPressed: () => HelpPanel.show(context, HelpContent.camera),
+          ),
+        ],
       ),
       body: Column(
         children: [

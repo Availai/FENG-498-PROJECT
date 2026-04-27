@@ -25,6 +25,7 @@ import '../widgets/activity_quick_log.dart';
 import '../widgets/floating_toast.dart';
 import '../widgets/glass_panel.dart';
 import '../widgets/season_summary_card.dart';
+import '../widgets/help_panel.dart';
 import '../widgets/zone_drawing_toolbar.dart';
 import '../widgets/crop_zone_tooltip.dart';
 import '../widgets/crop_render_factory.dart';
@@ -33,6 +34,7 @@ import 'farm_journal_screen.dart';
 import 'growing_guide_screen.dart';
 import 'plant_zone_drawing_screen.dart';
 import '../widgets/animated_route.dart';
+import '../theme/app_theme.dart';
 
 class FieldDetailScreen extends ConsumerStatefulWidget {
   final dynamic fieldData;
@@ -66,6 +68,12 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
   late AnimationController _harvestPulseCtrl;
 
   final MapController _mapController = MapController();
+
+  // Polygon tıklama algılayıcı — bölge poligonlarına direkt dokunmayı
+  // tespit eder; marker'ların büyük hitbox'ları sebebiyle yanlış bölge
+  // silme hatasını önler.
+  final LayerHitNotifier<Map<String, dynamic>> _zoneHitNotifier =
+      LayerHitNotifier<Map<String, dynamic>>(null);
 
   @override
   void initState() {
@@ -398,6 +406,11 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
         ),
         centerTitle: false,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.help_outline_rounded, color: Colors.white70),
+            tooltip: 'Yardım',
+            onPressed: () => HelpPanel.show(context, HelpContent.fieldDetail),
+          ),
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -1930,7 +1943,8 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
     }
 
     // ── Ekili bölge poligonları (zonePolygonJson olanlar) ──
-    final zonePolygons = <Polygon>[];
+    // Tıklanabilir bölge poligonları (her biri hitValue ile crop'a bağlı)
+    final zoneHitPolygons = <Polygon<Map<String, dynamic>>>[];
     final zoneMarkers = <Marker>[];
     // Zone olmayan bitkiler için eski grid markerlar
     final gridCrops = <Map<String, dynamic>>[];
@@ -1941,11 +1955,14 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
 
       if (zonePoly.length >= 3) {
         final color = _cropColor(crop);
-        zonePolygons.add(Polygon(
+        // hitValue ile polygonu direkt crop'a bağlıyoruz — tıklama
+        // marker'lara değil polygonun kendisine düşüyor.
+        zoneHitPolygons.add(Polygon<Map<String, dynamic>>(
           points: zonePoly,
           color: color.withValues(alpha: 0.15),
           borderColor: color,
           borderStrokeWidth: 4.0,
+          hitValue: crop,
         ));
 
         // Bölgeyi tamamen dolduran marker ağı oluştur — dokunulabilir
@@ -1954,7 +1971,6 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
           growthState: growthByCrop[crop['id']?.toString()],
         );
         final cropName = crop['name']?.toString() ?? '';
-        // Bitkinin gerçek sıra × bitki aralığına göre (cm cinsinden) yerleşim
         final positions = plantPlacementInPolygon(
           polygon: zonePoly,
           cropName: cropName,
@@ -2195,6 +2211,74 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
           if (cornerMarkers.isNotEmpty) MarkerLayer(markers: cornerMarkers),
         ],
       ),
+        cameraConstraint: bounds != null
+            ? CameraConstraint.containCenter(bounds: bounds)
+            : const CameraConstraint.unconstrained(),
+        interactionOptions: InteractionOptions(
+          flags: _isZoneDrawingMode
+              ? InteractiveFlag.pinchZoom | InteractiveFlag.drag
+              : InteractiveFlag.pinchZoom |
+                  InteractiveFlag.drag |
+                  InteractiveFlag.doubleTapZoom,
+        ),
+        onTap: _isZoneDrawingMode
+            ? (tapPos, point) => _onMapTapForZone(point)
+            : null,
+      ),
+      children: [
+        TileLayer(
+          urlTemplate:
+              'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+          userAgentPackageName: 'com.example.feng_498',
+          maxZoom: 21,
+        ),
+        if (polygon.length >= 3)
+          PolygonLayer(
+            polygons: [
+              // Dış halo (kalın yumuşak çizgi)
+              Polygon(
+                points: polygon,
+                color: Colors.transparent,
+                borderColor: borderColor.withValues(alpha: 0.5),
+                borderStrokeWidth: 12.0,
+              ),
+              // Ana sınır + dolgu
+              Polygon(
+                points: polygon,
+                color: Colors.black.withValues(alpha: 0.2),
+                borderColor: borderColor,
+                borderStrokeWidth: 4.0,
+              ),
+              // Çizilmekte olan polygon
+              ...drawingPolygons,
+            ],
+          ),
+        // Ekili bölge poligonları — tıklanabilir katman. Tıklanan polygon,
+        // hitNotifier üzerinden tam olarak o bölgenin crop'unu döndürür.
+        if (zoneHitPolygons.isNotEmpty && !_isZoneDrawingMode)
+          GestureDetector(
+            onTap: () {
+              final hit = _zoneHitNotifier.value;
+              if (hit == null) return;
+              final values = hit.hitValues;
+              if (values.isEmpty) return;
+              _onCropZoneTap(values.first);
+            },
+            child: PolygonLayer<Map<String, dynamic>>(
+              hitNotifier: _zoneHitNotifier,
+              polygons: zoneHitPolygons,
+            ),
+          )
+        else if (zoneHitPolygons.isNotEmpty)
+          PolygonLayer<Map<String, dynamic>>(
+            polygons: zoneHitPolygons,
+          ),
+        if (markers.isNotEmpty) MarkerLayer(markers: markers),
+        if (zoneMarkers.isNotEmpty) MarkerLayer(markers: zoneMarkers),
+        if (drawingMarkers.isNotEmpty) MarkerLayer(markers: drawingMarkers),
+        if (cornerMarkers.isNotEmpty) MarkerLayer(markers: cornerMarkers),
+      ],
+    ),
     );
   }
 
@@ -2978,23 +3062,26 @@ class _DirectivesModalContent extends ConsumerWidget {
     return Container(
       height: MediaQuery.of(context).size.height * 0.8,
       decoration: const BoxDecoration(
-        color: Color(0xFF0D1811),
+        color: AppColors.bg,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: Column(
         children: [
           const SizedBox(height: 8),
           Container(
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: Colors.white24,
-              borderRadius: BorderRadius.circular(2),
-            ),
+            width: 44, height: 4,
+            decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(2)),
           ),
-          const SizedBox(height: 12),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
+          const SizedBox(height: 14),
+          // Yeşil hero başlık
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.fromLTRB(16, 14, 10, 14),
+            decoration: BoxDecoration(
+              gradient: AppGradients.forestHero,
+              borderRadius: AppRadius.md,
+              boxShadow: AppShadows.md,
+            ),
             child: Row(children: [
               const Icon(Icons.checklist_rtl_rounded,
                   color: Color(0xFF00E676), size: 22),
@@ -3038,11 +3125,11 @@ class _DirectivesModalContent extends ConsumerWidget {
               ),
               IconButton(
                 onPressed: () => Navigator.pop(context),
-                icon: const Icon(Icons.close, color: Colors.white54),
+                icon: const Icon(Icons.close, color: Colors.white),
               ),
             ]),
           ),
-          const Divider(color: Colors.white12, height: 20),
+          const SizedBox(height: 14),
           Expanded(
             child: activityAsync.when(
               loading: () => const Center(

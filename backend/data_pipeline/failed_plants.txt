@@ -1,0 +1,64 @@
+Hayvan Pancarı
+Beyaz Lahana
+Fuji Elması
+Gala Elması
+Mutsu Elması
+Deveci Armudu
+Santa Maria Armudu
+Williams Armudu
+Ankara Armudu
+Akça Armudu
+Sultani Üzümü
+Çavuş Üzümü
+Müşküle Üzümü
+Öküzgözü
+Kalecik Karası
+Papazkarası
+Boğazkere
+Narince
+Emir Üzümü
+Razakı Üzümü
+Hasandede Üzümü
+Gemlik Zeytini
+Memecik Zeytini
+Ayvalık Zeytini
+Domat Zeytini
+Uslu Zeytini
+Halhalı Zeytini
+Kilis Yağlık
+Nizip Yağlık
+0900 Ziraat Kirazı
+Lambert Kirazı
+Starks Gold
+Sweetheart Kirazı
+Hacıhaliloğlu Kayısısı
+Kabaaşı Kayısı
+Alyanak Kayısı
+Şalak Kayısı
+Bursa Siyahı İncir
+Sarılop İncir
+Bardakçı İncir
+Washington Navel
+Valencia Portakalı
+Finike Portakalı
+Kozan Portakalı
+Kütdiken Limon
+Interdonato Limon
+Lamas Limon
+Starruby Greyfurt
+Marsh Seedless
+Redhaven Şeftali
+J.H. Hale Şeftali
+Papaz Eriği
+Santa Rosa Erik
+Brüksel Lahanası
+Kara Lahana
+Kırmızı Lahana
+Kırmızı Turp
+Arpacık Soğan
+Rezene (Sebze)
+Barbunya
+Glayör
+Mor Havuç
+Kavun (Galia)
+Çekirdeklik Kabak

@@ -60,6 +60,9 @@ dependencies:
   workmanager: ^0.9.0+3
   flutter_image_compress: ^2.3.0
   sqlite3: ^2.4.0
+  pdf: ^3.10.0
+  file_saver: ^0.2.0
+  open_file: ^3.5.0
 
 
 dev_dependencies:
@@ -103,6 +106,7 @@ flutter:
     - assets/crops/
     - assets/data/
     - assets/dashboard_bg.png
+    - assets/fonts/
 
   # To add assets to your application, add an assets section, like this:
   # assets:
