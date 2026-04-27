@@ -8,8 +8,6 @@ import '../services/agri_service.dart';
 import '../services/app_providers.dart';
 import '../services/crop_daily_plan.dart';
 import '../services/crop_protocol_service.dart';
-import '../services/field_state_service.dart';
-import '../services/task_directive_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/activity_quick_log.dart';
 import '../widgets/floating_toast.dart';
@@ -167,45 +165,12 @@ class _CropDailyPlanScreenState extends ConsumerState<CropDailyPlanScreen> {
           );
         }
 
-        // Tüm tarla için yönergeler — bu ekine ait olanlar süzülür.
-        final fieldStateMap = <String, CropFieldState>{
-          for (final s in ref.read(fieldStateServiceProvider).compute(
-            field: {'id': widget.fieldId, 'name': widget.fieldName},
-            fieldCrops: snap.data!,
-            activities: activities,
-          ))
-            s.cropId: s,
-        };
-        final growthSnapshots = <String, GrowthSnapshot>{};
-        for (final g in growthList) {
-          final id = _extractCropId(g);
-          if (id == null) continue;
-          try {
-            final dyn = g as dynamic;
-            growthSnapshots[id] = GrowthSnapshot(
-              stageKey: dyn.currentStageKey as String? ?? '',
-              stageProgress: (dyn.stageProgress as num?)?.toDouble() ?? 0,
-              accumulatedGdd: (dyn.accumulatedGdd as num?)?.toDouble() ?? 0,
-              waterDeficitMm: (dyn.waterDeficitMm as num?)?.toDouble() ?? 0,
-              nStressIdx: (dyn.nStressIdx as num?)?.toDouble() ?? 0,
-              diseasePressure: (dyn.diseasePressure as num?)?.toDouble() ?? 0,
-              yieldMultiplier: (dyn.yieldMultiplier as num?)?.toDouble() ?? 1.0,
-            );
-          } catch (_) {}
-        }
-        final allDirectives = const TaskDirectiveService().generate(
-          fieldCrops: snap.data!,
-          activities: activities,
-          dailyForecast: _dailyForecast,
-          growthStates: growthSnapshots,
-          fieldStates: fieldStateMap,
-          scheduledEvents: scheduled,
-        );
-        // Bu ekine ait + tarla geneli (cropId null) olan + acil olanlar.
-        final cropDirectives = allDirectives.where((d) {
-          if (d.cropId == null) return d.urgency >= 1;
-          return d.cropId == widget.cropId;
-        }).toList();
+        // Direktif hesaplaması burada KALDIRILDI: aynı liste Durumum,
+        // HUD'taki "Yapılacaklar" modal'ı ve Yetiştirme Rehberi'nde zaten
+        // gösteriliyordu. Bu ekran 14-günlük plan + su muhasebesi + yol
+        // haritasına odaklansın diye direktifler tek merkezden okunuyor.
+        // fieldStateMap / growthSnapshots da yalnız direktif motoru için
+        // hesaplanıyordu, onlar da kaldırıldı.
 
         // Yetiştirme protokolü (3 vitrin bitki için yol haritası).
         final progress = CropProtocolService.computeProgress(
@@ -216,7 +181,6 @@ class _CropDailyPlanScreenState extends ConsumerState<CropDailyPlanScreen> {
 
         return _buildContent(
           r: result,
-          directives: cropDirectives,
           progress: progress,
           fieldCrops: snap.data!,
           seasonSummary: computeSeasonSummary(
@@ -231,7 +195,6 @@ class _CropDailyPlanScreenState extends ConsumerState<CropDailyPlanScreen> {
 
   Widget _buildContent({
     required CropDailyPlanResult r,
-    required List<FieldDirective> directives,
     required CropProtocolProgress? progress,
     required List<Map<String, dynamic>> fieldCrops,
     required Map<String, dynamic> seasonSummary,
@@ -252,21 +215,10 @@ class _CropDailyPlanScreenState extends ConsumerState<CropDailyPlanScreen> {
         ),
         const SizedBox(height: 16),
         _WaterAccountingCard(result: r),
-        if (directives.isNotEmpty) ...[
-          const SizedBox(height: 20),
-          _SectionTitle('Bugünün yönergeleri'),
-          const SizedBox(height: 8),
-          for (final d in directives)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: _DirectiveTile(
-                directive: d,
-                onLog: d.actionType == null
-                    ? null
-                    : () => _logDirective(d, fieldCrops),
-              ),
-            ),
-        ],
+        // "Bugünün yönergeleri" bölümü kaldırıldı:
+        // aynı direktifler "Durumum", HUD'taki "Yapılacaklar" modal'ı ve
+        // Yetiştirme Rehberi'nde gösteriliyor. Burada tekrar etmek
+        // kullanıcıyı aynı sulama emrini iki kere okumaya zorluyordu.
         const SizedBox(height: 20),
         _SectionTitle('Bugün ne yapmalıyım?'),
         const SizedBox(height: 8),
@@ -315,26 +267,6 @@ class _CropDailyPlanScreenState extends ConsumerState<CropDailyPlanScreen> {
           ),
         ),
       ],
-    );
-  }
-
-  Future<void> _logDirective(
-    FieldDirective d,
-    List<Map<String, dynamic>> fieldCrops,
-  ) async {
-    final type = d.actionType;
-    if (type == null) return;
-    await showActivityQuickLogSheet(
-      context: context,
-      ref: ref,
-      fieldId: widget.fieldId,
-      type: type,
-      cropId: d.cropId,
-      fieldCrops: fieldCrops,
-      fieldAreaDekar: widget.areaDekar ?? d.areaDekar ?? 1.0,
-      recommendedQuantity: d.recommendedQuantity ?? d.suggestedQuantity,
-      quantityUnit: d.quantityUnit,
-      note: d.reason,
     );
   }
 
@@ -688,118 +620,6 @@ class _SectionTitle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Text(text, style: AppText.h2(context));
-  }
-}
-
-class _DirectiveTile extends StatelessWidget {
-  final FieldDirective directive;
-  final VoidCallback? onLog;
-
-  const _DirectiveTile({
-    required this.directive,
-    this.onLog,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final actionType = directive.actionType;
-    final color = actionType == null
-        ? (directive.urgency >= 2 ? AppColors.warning : AppColors.emerald)
-        : ActivityType.color(actionType);
-    final icon = actionType == null
-        ? (directive.urgency >= 2
-            ? Icons.warning_rounded
-            : Icons.info_outline_rounded)
-        : ActivityType.icon(actionType);
-    final qty = directive.suggestedQuantity ?? directive.recommendedQuantity;
-    final qtyText = qty != null && directive.quantityUnit != null
-        ? '${_fmtNum(qty)} ${directive.quantityUnit}'
-        : null;
-
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: AppRadius.md,
-        border: Border.all(color: color.withValues(alpha: 0.28)),
-        boxShadow: AppShadows.sm,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.12),
-                  borderRadius: AppRadius.sm,
-                ),
-                child: Icon(icon, color: color, size: 21),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      directive.headline,
-                      style: AppText.bodyMd(context)
-                          .copyWith(color: AppColors.textPrimary),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      directive.reason,
-                      style: AppText.body(context)
-                          .copyWith(color: AppColors.textSecondary),
-                    ),
-                  ],
-                ),
-              ),
-              if (qtyText != null)
-                _Pill(
-                  label: qtyText,
-                  background: color.withValues(alpha: 0.75),
-                ),
-            ],
-          ),
-          if (directive.steps.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            for (final step in directive.steps.take(3))
-              Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(Icons.check_rounded, size: 15, color: color),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        step,
-                        style: AppText.xs(context)
-                            .copyWith(color: AppColors.textSecondary),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-          ],
-          if (onLog != null) ...[
-            const SizedBox(height: 10),
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton.icon(
-                onPressed: onLog,
-                icon: Icon(ActivityType.icon(actionType!), size: 18),
-                label: Text(ActivityType.actionLabel(actionType)),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
   }
 }
 

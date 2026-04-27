@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
+import '../data/activity_types.dart';
 import '../data/app_database.dart';
 import '../services/app_providers.dart';
 import '../services/task_directive_service.dart';
@@ -8,6 +10,7 @@ import '../theme/app_theme.dart';
 import '../widgets/animated_route.dart';
 import '../widgets/shimmer_loader.dart';
 import '../widgets/tap_scale.dart';
+import 'farm_journal_screen.dart';
 import 'field_detail_screen.dart';
 
 /// "Tarla Durumum" — her tarlada ne yetiştirildiğini, hangi işleme kaç gün
@@ -134,6 +137,7 @@ class _FieldStatusCard extends ConsumerWidget {
 
     final directivesAsync = ref.watch(fieldDirectivesSummaryProvider(fieldId));
     final growthStatesAsync = ref.watch(fieldGrowthStatesProvider(fieldId));
+    final activityLogAsync = ref.watch(fieldActivityLogProvider(fieldId));
 
     return TapScale(
       scale: 0.98,
@@ -252,22 +256,150 @@ class _FieldStatusCard extends ConsumerWidget {
                 'Yönergeler yüklenemedi: $err',
                 style: AppText.xs(context),
               ),
+              // TaskDirectiveService boş liste döndürmez (idle direktifi var);
+              // bu yüzden boş data dalı buradan çıkarıldı.
               data: (directives) {
-                if (directives.isEmpty) {
-                  return Text(
-                    'Bu tarla için önerilen bir işlem yok.',
-                    style: AppText.xs(context),
-                  );
-                }
-                // En fazla 4 öneri — en acilden sıralı
                 final top = directives.take(4).toList();
                 return Column(
                   children: top.map(_buildDirective).toList(),
                 );
               },
             ),
+
+            // ── Son Aktiviteler — kullanıcının kendi kayıtları (DB) ──
+            // auto_seed planları (sistem önerisi) hariç; sadece çiftçinin
+            // "Suladım/Gübreledim/İlaçladım" diye işaretlediği gerçek kayıtlar.
+            const SizedBox(height: 14),
+            const Divider(height: 1),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Icon(Icons.history_rounded,
+                    size: 16, color: Colors.indigo.shade700),
+                const SizedBox(width: 6),
+                Text(
+                  'Son Aktiviteler',
+                  style: AppText.label(context)
+                      .copyWith(color: Colors.indigo.shade800),
+                ),
+                const Spacer(),
+                TapScale(
+                  onTap: () {
+                    Navigator.of(context).push(
+                      AnimatedRoute.slideX(
+                        FarmJournalScreen(fieldId: fieldId),
+                      ),
+                    );
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 6, vertical: 2),
+                    child: Text(
+                      'Tümü →',
+                      style: AppText.xs(context).copyWith(
+                        color: Colors.indigo.shade700,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            activityLogAsync.when(
+              loading: () => Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Text('Geçmiş yükleniyor…', style: AppText.xs(context)),
+              ),
+              error: (err, _) => Text(
+                'Geçmiş yüklenemedi.',
+                style: AppText.xs(context),
+              ),
+              data: (entries) {
+                final userEntries = entries
+                    .where((e) => e['source']?.toString() != 'auto_seed')
+                    .take(3)
+                    .toList();
+                if (userEntries.isEmpty) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    child: Text(
+                      'Henüz aktivite kaydı yok. Suladığında veya gübrelediğinde '
+                      '"Aktivite" butonundan kaydet, geçmiş burada birikir.',
+                      style: AppText.xs(context),
+                    ),
+                  );
+                }
+                return Column(
+                  children: userEntries.map(_buildActivityRow).toList(),
+                );
+              },
+            ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildActivityRow(Map<String, dynamic> entry) {
+    final type = entry['type']?.toString() ?? ActivityType.other;
+    final date = entry['date'];
+    final qty = (entry['quantity'] as num?)?.toDouble();
+    final unit = entry['unit']?.toString();
+    final color = ActivityType.color(type);
+    final icon = ActivityType.icon(type);
+    final label = ActivityType.label(type);
+
+    String timeAgo = '';
+    if (date is DateTime) {
+      final diff = DateTime.now().difference(date);
+      if (diff.inDays >= 1) {
+        timeAgo = '${diff.inDays} gün önce';
+      } else if (diff.inHours >= 1) {
+        timeAgo = '${diff.inHours} saat önce';
+      } else if (diff.inMinutes >= 1) {
+        timeAgo = '${diff.inMinutes} dk önce';
+      } else {
+        timeAgo = 'Az önce';
+      }
+    }
+
+    final qtyStr = qty != null && unit != null
+        ? '$label · ${qty.toStringAsFixed(qty == qty.roundToDouble() ? 0 : 1)} $unit'
+        : label;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Icon(icon, size: 14, color: color),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  qtyStr,
+                  style: const TextStyle(
+                      fontSize: 12, fontWeight: FontWeight.w600),
+                ),
+                if (date is DateTime)
+                  Text(
+                    '$timeAgo · ${DateFormat('d MMM', 'tr_TR').format(date)}',
+                    style: const TextStyle(
+                        fontSize: 11, color: AppColors.textTertiary),
+                  ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

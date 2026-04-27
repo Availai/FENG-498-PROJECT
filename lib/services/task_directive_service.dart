@@ -936,10 +936,12 @@ class TaskDirectiveService {
   }
 
   /// "Bugün acil bir şey yok" direktifinin altına eklenen kısa ipucu.
-  /// Mantık: tüm bitkilerin sulama aralığı + son sulama tarihinden, en yakın
-  /// "tekrar sulama günü"nü bulur. Hiç sulama kaydı yoksa kullanıcıya
-  /// "henüz kayıt yok, ilk sulamada `Suladım` butonunu kullan" yönergesi gösterir.
-  /// `_lastActivity` artık `auto_seed` ve gelecek tarihli kayıtları eler;
+  /// Çiftçinin "her şey yolunda mı?" sorusuna somut cevap üretir:
+  ///   - Son sulama kaç gün önceydi
+  ///   - Bir sonraki sulama yaklaşık kaç gün sonra
+  ///   - Sıradaki hasat ne zaman (en yakın bitki için)
+  /// Hiç sulama kaydı yoksa kullanıcıya yapması gereken konkre eylemi söyler.
+  /// `_lastActivity` zaten `auto_seed` ve gelecek tarihli kayıtları eler;
   /// bu sayede "111 gün var" türü imkânsız sonuçlar oluşamaz.
   static String _nextCheckHint(
     List<Map<String, dynamic>> crops,
@@ -947,25 +949,60 @@ class TaskDirectiveService {
     DateTime t,
   ) {
     final lastWater = _lastActivity(activities, ActivityType.watering, notAfter: t);
+
+    // Sıradaki sulama (kalan gün, en yakın bitki)
     int? minDays;
+    String? closestCropName;
     for (final crop in crops) {
       final interval = (crop['water_interval_days'] as num?)?.toInt() ?? 7;
-      if (lastWater == null) continue; // Aşağıda ayrı mesaj göstereceğiz.
+      if (lastWater == null) continue;
       final days = t.difference(lastWater).inDays;
       final remaining = interval - days;
-      // Defansif sınır: aralıktan büyük "kalan gün" olamaz.
       final clamped = remaining > interval ? interval : remaining;
       if (clamped > 0 && (minDays == null || clamped < minDays)) {
         minDays = clamped;
+        closestCropName = crop['name']?.toString();
       }
     }
+
+    // En yakın hasat (bitki bazlı)
+    int? minHarvestDays;
+    String? harvestCropName;
+    for (final crop in crops) {
+      final harvestDays = (crop['harvest_days'] as num?)?.toInt() ?? 90;
+      final planted = _parsePlantedDate(crop['planted_date']?.toString());
+      if (planted == null) continue;
+      final remaining = harvestDays - t.difference(planted).inDays;
+      if (remaining >= 0 &&
+          (minHarvestDays == null || remaining < minHarvestDays)) {
+        minHarvestDays = remaining;
+        harvestCropName = crop['name']?.toString();
+      }
+    }
+
     if (lastWater == null) {
-      return 'Henüz sulama kaydın yok. Suladığında ekrandan "Suladım" diyerek kaydet.';
+      return 'Henüz sulama kaydın yok. Bugün sulayınca "Aktivite" → "Suladım" '
+          'diyerek kaydet — geçmiş ve sıradaki tarih buradan hesaplanacak.';
     }
-    if (minDays == null) {
-      return 'Sulama planın güncel görünüyor.';
-    }
-    return 'Bir sonraki sulama yaklaşık $minDays gün sonra.';
+
+    final lastWaterDays = t.difference(lastWater).inDays;
+    final lastWaterPart = lastWaterDays == 0
+        ? 'Bugün sulamışsın.'
+        : 'Son sulama $lastWaterDays gün önce.';
+
+    final nextPart = minDays == null
+        ? 'Sulama planı güncel.'
+        : closestCropName == null
+            ? 'Sıradaki sulama $minDays gün sonra.'
+            : 'Sıradaki sulama $minDays gün sonra ($closestCropName).';
+
+    final harvestPart = minHarvestDays == null
+        ? ''
+        : minHarvestDays == 0
+            ? ' Hasat: bugün ($harvestCropName).'
+            : ' Hasat: $minHarvestDays gün sonra ($harvestCropName).';
+
+    return '$lastWaterPart $nextPart$harvestPart';
   }
 }
 
