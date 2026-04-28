@@ -76,43 +76,37 @@ String _getAssetPath(String cropName) {
   final mapped = CropImageMap.lookup(cropName);
   if (mapped != null) return mapped;
 
-  // 2. Fallback: substring eşleştirme — Türkçe dosya adlarıyla
+  // 2. Fallback: substring eşleştirme — Türkçe dosya adları (.jpg uzantısı,
+  // PNG varsa _buildSprite zaten önce PNG dener, sonra JPG'ye düşer).
   final name = cropName.toLowerCase();
-  if (name.contains('buğday') ||
-      name.contains('arpa') ||
-      name.contains('yulaf')) {
-    return 'assets/crops/wheat.png';
-  }
-  if (name.contains('mısır')) return 'assets/crops/corn.png';
-  if (name.contains('ayçiçek') || name.contains('ayçiçeği')) {
-    return 'assets/crops/sunflower.png';
-  }
-  if (name.contains('pamuk')) return 'assets/crops/cotton.png';
+  if (name.contains('ayçiçek')) return 'assets/crops/aycicegi.jpg';
+  if (name.contains('mısır')) return 'assets/crops/misir.jpg';
+  if (name.contains('domates')) return 'assets/crops/domates.jpg';
+  if (name.contains('buğday')) return 'assets/crops/bugday.jpg';
+  if (name.contains('arpa')) return 'assets/crops/arpa.jpg';
+  if (name.contains('yulaf')) return 'assets/crops/yulaf.jpg';
+  if (name.contains('pamuk')) return 'assets/crops/pamuk.jpg';
   if (name.contains('çeltik') || name.contains('pirinç')) {
-    return 'assets/crops/rice.png';
+    return 'assets/crops/celtik.jpg';
   }
-  if (name.contains('domates')) return 'assets/crops/tomato.png';
-  if (name.contains('biber')) return 'assets/crops/pepper.png';
-  if (name.contains('patlıcan')) return 'assets/crops/eggplant.png';
-  if (name.contains('üzüm')) return 'assets/crops/grape.png';
-  if (name.contains('elma')) return 'assets/crops/apple_tree.png';
-  if (name.contains('karpuz') || name.contains('kavun')) {
-    return 'assets/crops/watermelon.png';
+  if (name.contains('biber')) return 'assets/crops/biber.jpg';
+  if (name.contains('patlıcan')) return 'assets/crops/patlican.jpg';
+  if (name.contains('üzüm')) return 'assets/crops/uzum.jpg';
+  if (name.contains('elma')) return 'assets/crops/elma.jpg';
+  if (name.contains('karpuz')) return 'assets/crops/karpuz.jpg';
+  if (name.contains('kavun')) return 'assets/crops/kavun.jpg';
+  if (name.contains('marul')) return 'assets/crops/marul.jpg';
+  if (name.contains('lahana')) return 'assets/crops/lahana.jpg';
+  if (name.contains('kanola') || name.contains('kolza')) {
+    return 'assets/crops/kanola.jpg';
   }
-  if (name.contains('marul') ||
-      name.contains('lahana') ||
-      name.contains('kolza')) {
-    return 'assets/crops/cabbage.png';
-  }
-  if (name.contains('havuç')) return 'assets/crops/carrot.png';
-  if (name.contains('soğan')) return 'assets/crops/onion.png';
-  if (name.contains('zeytin')) return 'assets/crops/olive_tree.png';
-  if (name.contains('nohut') ||
-      name.contains('mercimek') ||
-      name.contains('patates')) {
-    return 'assets/crops/potato.png';
-  }
-  return 'assets/crops/wheat.png';
+  if (name.contains('havuç')) return 'assets/crops/havuc.jpg';
+  if (name.contains('soğan')) return 'assets/crops/sogan.jpg';
+  if (name.contains('zeytin')) return 'assets/crops/zeytin.jpg';
+  if (name.contains('nohut')) return 'assets/crops/nohut.jpg';
+  if (name.contains('mercimek')) return 'assets/crops/mercimek.jpg';
+  if (name.contains('patates')) return 'assets/crops/patates.jpg';
+  return 'assets/crops/bugday.jpg';
 }
 
 /// Tarla poligonu üzerine yerleşen bitki markerı.
@@ -151,19 +145,29 @@ Widget buildCropMarkerWidget({
       final double spriteW = baseWidth * phaseScale * zoomScale;
       final double spriteH = baseHeight * phaseScale * zoomScale;
 
-      // ── PNG rendering — tüm bitkiler için gerçek asset dosyası ─────────────
-      // Ayçiçeği → assets/crops/sunflower.png
-      // Mısır    → assets/crops/corn.png
-      // Domates  → assets/crops/tomato.png
+      // ── PNG rendering — önce .png dene, bulamazsa .jpg'ye düş ────────────
       final assetPath = _getAssetPath(cropName);
+      final pngPath = assetPath.endsWith('.jpg')
+          ? assetPath.replaceAll('.jpg', '.png')
+          : assetPath;
+      final jpgPath = assetPath.endsWith('.png')
+          ? assetPath.replaceAll('.png', '.jpg')
+          : assetPath;
+
       final sprite = Image.asset(
-        assetPath,
+        pngPath,
         width: spriteW,
         height: spriteH,
         fit: BoxFit.contain,
-        filterQuality: FilterQuality.medium,
-        // Hata durumunda render iptali.
-        errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+        filterQuality: FilterQuality.high,
+        errorBuilder: (_, __, ___) => Image.asset(
+          jpgPath,
+          width: spriteW,
+          height: spriteH,
+          fit: BoxFit.contain,
+          filterQuality: FilterQuality.high,
+          errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+        ),
       );
 
       final double shadowW = spriteW * 0.7;
