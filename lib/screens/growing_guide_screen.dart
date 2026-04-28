@@ -1376,10 +1376,21 @@ class _GenericGuideScreenState extends State<_GenericGuideScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) widget.onBack?.call();
+      },
+      child: Scaffold(
       appBar: AppBar(
         title: const Text('Akıllı Tarım Rehberi'),
         elevation: 0,
+        leading: widget.onBack != null
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: widget.onBack,
+              )
+            : null,
         actions: [
           IconButton(
             icon: const Icon(Icons.help_outline_rounded),
@@ -1470,6 +1481,7 @@ class _GenericGuideScreenState extends State<_GenericGuideScreen> {
           ),
         ],
       ),
+    ),  // PopScope
     );
   }
 
