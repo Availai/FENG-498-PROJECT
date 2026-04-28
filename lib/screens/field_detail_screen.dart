@@ -69,12 +69,6 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
 
   final MapController _mapController = MapController();
 
-  // Polygon tıklama algılayıcı — bölge poligonlarına direkt dokunmayı
-  // tespit eder; marker'ların büyük hitbox'ları sebebiyle yanlış bölge
-  // silme hatasını önler.
-  final LayerHitNotifier<Map<String, dynamic>> _zoneHitNotifier =
-      LayerHitNotifier<Map<String, dynamic>>(null);
-
   @override
   void initState() {
     super.initState();
@@ -2199,8 +2193,6 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
                   borderColor: borderColor,
                   borderStrokeWidth: 4.0,
                 ),
-                // Ekili bölge poligonları
-                ...zonePolygons,
                 // Çizilmekte olan polygon
                 ...drawingPolygons,
               ],
@@ -2211,74 +2203,6 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
           if (cornerMarkers.isNotEmpty) MarkerLayer(markers: cornerMarkers),
         ],
       ),
-        cameraConstraint: bounds != null
-            ? CameraConstraint.containCenter(bounds: bounds)
-            : const CameraConstraint.unconstrained(),
-        interactionOptions: InteractionOptions(
-          flags: _isZoneDrawingMode
-              ? InteractiveFlag.pinchZoom | InteractiveFlag.drag
-              : InteractiveFlag.pinchZoom |
-                  InteractiveFlag.drag |
-                  InteractiveFlag.doubleTapZoom,
-        ),
-        onTap: _isZoneDrawingMode
-            ? (tapPos, point) => _onMapTapForZone(point)
-            : null,
-      ),
-      children: [
-        TileLayer(
-          urlTemplate:
-              'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-          userAgentPackageName: 'com.example.feng_498',
-          maxZoom: 21,
-        ),
-        if (polygon.length >= 3)
-          PolygonLayer(
-            polygons: [
-              // Dış halo (kalın yumuşak çizgi)
-              Polygon(
-                points: polygon,
-                color: Colors.transparent,
-                borderColor: borderColor.withValues(alpha: 0.5),
-                borderStrokeWidth: 12.0,
-              ),
-              // Ana sınır + dolgu
-              Polygon(
-                points: polygon,
-                color: Colors.black.withValues(alpha: 0.2),
-                borderColor: borderColor,
-                borderStrokeWidth: 4.0,
-              ),
-              // Çizilmekte olan polygon
-              ...drawingPolygons,
-            ],
-          ),
-        // Ekili bölge poligonları — tıklanabilir katman. Tıklanan polygon,
-        // hitNotifier üzerinden tam olarak o bölgenin crop'unu döndürür.
-        if (zoneHitPolygons.isNotEmpty && !_isZoneDrawingMode)
-          GestureDetector(
-            onTap: () {
-              final hit = _zoneHitNotifier.value;
-              if (hit == null) return;
-              final values = hit.hitValues;
-              if (values.isEmpty) return;
-              _onCropZoneTap(values.first);
-            },
-            child: PolygonLayer<Map<String, dynamic>>(
-              hitNotifier: _zoneHitNotifier,
-              polygons: zoneHitPolygons,
-            ),
-          )
-        else if (zoneHitPolygons.isNotEmpty)
-          PolygonLayer<Map<String, dynamic>>(
-            polygons: zoneHitPolygons,
-          ),
-        if (markers.isNotEmpty) MarkerLayer(markers: markers),
-        if (zoneMarkers.isNotEmpty) MarkerLayer(markers: zoneMarkers),
-        if (drawingMarkers.isNotEmpty) MarkerLayer(markers: drawingMarkers),
-        if (cornerMarkers.isNotEmpty) MarkerLayer(markers: cornerMarkers),
-      ],
-    ),
     );
   }
 

@@ -13,7 +13,6 @@ import 'camera_screen.dart';
 import 'plant_database_screen.dart';
 import 'crop_calendar_screen.dart';
 import 'map_hub_screen.dart';
-import 'marketplace_screen.dart';
 
 class MainNavigationScreen extends ConsumerStatefulWidget {
   const MainNavigationScreen({super.key});
