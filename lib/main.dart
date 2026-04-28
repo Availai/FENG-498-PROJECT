@@ -15,6 +15,7 @@ import 'services/offline_encyclopedia.dart';
 import 'services/app_providers.dart';
 import 'services/background_sync_service.dart';
 import 'theme/app_theme.dart';
+import 'widgets/crop_render_factory.dart';
 import 'widgets/floating_toast.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -115,6 +116,13 @@ Future<AppDatabase> _bootstrap() async {
         OfflineEncyclopedia.preSeed();
       } catch (e) {
         debugPrint('OfflineEncyclopedia preSeed hata: $e');
+      }
+      try {
+        // 292-bitki crop_images.json eşlemesini yükle — Türkçe isim →
+        // gerçek asset dosyası dönüşümü için tarla haritasında kullanılır.
+        await CropImageMap.load();
+      } catch (e) {
+        debugPrint('CropImageMap load hata: $e');
       }
     });
   });
