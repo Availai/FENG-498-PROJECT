@@ -157,6 +157,50 @@ class SuitabilityReports extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
+/// Tarla içindeki tekil bitkiler — hem kullanıcının manuel eklediği standalone
+/// bitkiler hem de zone içindeki "hasta/ölü" override'ları için tek tablo.
+///
+/// Üç kullanım senaryosu:
+///   • cropId=null + plantIndex=null → Standalone tekil bitki
+///     (kullanıcı haritada boş bir noktaya tıkladığında oluşturulur)
+///   • cropId=set + plantIndex=set → Zone içindeki belirli bir bitkinin
+///     sağlık durumu override'ı (zone marker'ının üstüne badge)
+///   • cropId=set + plantIndex=null → Tüm zone'a uygulanan genel not
+///     (şu an kullanılmıyor; ileride genişlemeye açık)
+class FieldPlantInstances extends Table {
+  TextColumn get id => text()();
+  TextColumn get fieldId => text().references(Fields, #id)();
+  TextColumn get cropId => text().nullable().references(FieldCrops, #id)();
+  IntColumn get plantIndex => integer().nullable()();
+  TextColumn get cropName => text()();
+  RealColumn get lat => real()();
+  RealColumn get lng => real()();
+
+  /// 'healthy' | 'diseased' | 'dead'
+  TextColumn get healthStatus =>
+      text().withDefault(const Constant('healthy'))();
+
+  /// 'Mildiyö', 'Pas', 'Yaprak Lekesi', vb. (manuel veya AI sonucu)
+  TextColumn get diseaseType => text().nullable()();
+
+  /// Hastalık fotoğrafı yerel yolu (app docs altında).
+  TextColumn get diseasePhotoPath => text().nullable()();
+
+  /// 'manual' | 'ai_pending' | 'ai_completed'
+  TextColumn get diagnosisSource =>
+      text().withDefault(const Constant('manual'))();
+  TextColumn get notes => text().nullable()();
+  DateTimeColumn get plantedAt => dateTime()();
+  DateTimeColumn get healthChangedAt => dateTime().nullable()();
+  TextColumn get farmerUid => text().nullable()();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+  DateTimeColumn get deletedAt => dateTime().nullable()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
 class SyncJobs extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get entityType => text()();
@@ -188,13 +232,14 @@ class SyncState extends Table {
     SyncJobs,
     SyncState,
     CropGrowthStates,
+    FieldPlantInstances,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -222,6 +267,10 @@ class AppDatabase extends _$AppDatabase {
               await m.addColumn(
                   calendarEvents, calendarEvents.recommendedQuantity);
               await m.createTable(cropGrowthStates);
+            }
+            if (from < 5) {
+              // v5: Per-bitki sağlık takibi + tekil bitki yerleştirme.
+              await m.createTable(fieldPlantInstances);
             }
           } catch (e, st) {
             debugPrint('Drift migration $from→$to hata: $e\n$st');

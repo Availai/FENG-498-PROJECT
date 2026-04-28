@@ -21,6 +21,7 @@ import 'crop_daily_plan.dart';
 import 'growth_engine.dart';
 import 'weather_soil_service.dart';
 import 'backend_service.dart';
+import 'disease_diagnosis_service.dart';
 import 'api/sync_api_client.dart';
 
 final appDatabaseProvider = Provider<AppDatabase>((ref) {
@@ -151,6 +152,19 @@ final fieldActivityLogProvider = StreamProvider.family
 final fieldGrowthStatesProvider = StreamProvider.family
     .autoDispose<List<CropGrowthState>, String>((ref, fieldId) {
   return ref.watch(growthEngineProvider).watchForField(fieldId);
+});
+
+/// Tarladaki tüm tekil bitki kayıtları (sağlık durumlu + standalone yerleşim).
+/// Marker render'ında ve hastalık badge'inde kullanılır.
+final fieldPlantInstancesProvider = StreamProvider.family
+    .autoDispose<List<FieldPlantInstance>, String>((ref, fieldId) {
+  return ref.watch(localDataRepositoryProvider).watchPlantInstances(fieldId);
+});
+
+/// Bitki hastalığı teşhis servisi — şimdilik stub. AI eklendiğinde tek
+/// satır değişikliği ile `GeminiDiseaseDiagnosisService(...)` döndürülecek.
+final diseaseDiagnosisServiceProvider = Provider<DiseaseDiagnosisService>((_) {
+  return const StubDiseaseDiagnosisService();
 });
 
 /// Kural tabanlı "bugün ne yapmalıyım?" yönerge motoru. Saf servis; widget

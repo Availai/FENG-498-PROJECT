@@ -4459,6 +4459,873 @@ class CropGrowthStatesCompanion extends UpdateCompanion<CropGrowthState> {
   }
 }
 
+class $FieldPlantInstancesTable extends FieldPlantInstances
+    with TableInfo<$FieldPlantInstancesTable, FieldPlantInstance> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $FieldPlantInstancesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _fieldIdMeta =
+      const VerificationMeta('fieldId');
+  @override
+  late final GeneratedColumn<String> fieldId = GeneratedColumn<String>(
+      'field_id', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: true,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('REFERENCES fields (id)'));
+  static const VerificationMeta _cropIdMeta = const VerificationMeta('cropId');
+  @override
+  late final GeneratedColumn<String> cropId = GeneratedColumn<String>(
+      'crop_id', aliasedName, true,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('REFERENCES field_crops (id)'));
+  static const VerificationMeta _plantIndexMeta =
+      const VerificationMeta('plantIndex');
+  @override
+  late final GeneratedColumn<int> plantIndex = GeneratedColumn<int>(
+      'plant_index', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _cropNameMeta =
+      const VerificationMeta('cropName');
+  @override
+  late final GeneratedColumn<String> cropName = GeneratedColumn<String>(
+      'crop_name', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _latMeta = const VerificationMeta('lat');
+  @override
+  late final GeneratedColumn<double> lat = GeneratedColumn<double>(
+      'lat', aliasedName, false,
+      type: DriftSqlType.double, requiredDuringInsert: true);
+  static const VerificationMeta _lngMeta = const VerificationMeta('lng');
+  @override
+  late final GeneratedColumn<double> lng = GeneratedColumn<double>(
+      'lng', aliasedName, false,
+      type: DriftSqlType.double, requiredDuringInsert: true);
+  static const VerificationMeta _healthStatusMeta =
+      const VerificationMeta('healthStatus');
+  @override
+  late final GeneratedColumn<String> healthStatus = GeneratedColumn<String>(
+      'health_status', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant('healthy'));
+  static const VerificationMeta _diseaseTypeMeta =
+      const VerificationMeta('diseaseType');
+  @override
+  late final GeneratedColumn<String> diseaseType = GeneratedColumn<String>(
+      'disease_type', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _diseasePhotoPathMeta =
+      const VerificationMeta('diseasePhotoPath');
+  @override
+  late final GeneratedColumn<String> diseasePhotoPath = GeneratedColumn<String>(
+      'disease_photo_path', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _diagnosisSourceMeta =
+      const VerificationMeta('diagnosisSource');
+  @override
+  late final GeneratedColumn<String> diagnosisSource = GeneratedColumn<String>(
+      'diagnosis_source', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant('manual'));
+  static const VerificationMeta _notesMeta = const VerificationMeta('notes');
+  @override
+  late final GeneratedColumn<String> notes = GeneratedColumn<String>(
+      'notes', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _plantedAtMeta =
+      const VerificationMeta('plantedAt');
+  @override
+  late final GeneratedColumn<DateTime> plantedAt = GeneratedColumn<DateTime>(
+      'planted_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _healthChangedAtMeta =
+      const VerificationMeta('healthChangedAt');
+  @override
+  late final GeneratedColumn<DateTime> healthChangedAt =
+      GeneratedColumn<DateTime>('health_changed_at', aliasedName, true,
+          type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _farmerUidMeta =
+      const VerificationMeta('farmerUid');
+  @override
+  late final GeneratedColumn<String> farmerUid = GeneratedColumn<String>(
+      'farmer_uid', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _updatedAtMeta =
+      const VerificationMeta('updatedAt');
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+      'updated_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _deletedAtMeta =
+      const VerificationMeta('deletedAt');
+  @override
+  late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
+      'deleted_at', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        fieldId,
+        cropId,
+        plantIndex,
+        cropName,
+        lat,
+        lng,
+        healthStatus,
+        diseaseType,
+        diseasePhotoPath,
+        diagnosisSource,
+        notes,
+        plantedAt,
+        healthChangedAt,
+        farmerUid,
+        createdAt,
+        updatedAt,
+        deletedAt
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'field_plant_instances';
+  @override
+  VerificationContext validateIntegrity(Insertable<FieldPlantInstance> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('field_id')) {
+      context.handle(_fieldIdMeta,
+          fieldId.isAcceptableOrUnknown(data['field_id']!, _fieldIdMeta));
+    } else if (isInserting) {
+      context.missing(_fieldIdMeta);
+    }
+    if (data.containsKey('crop_id')) {
+      context.handle(_cropIdMeta,
+          cropId.isAcceptableOrUnknown(data['crop_id']!, _cropIdMeta));
+    }
+    if (data.containsKey('plant_index')) {
+      context.handle(
+          _plantIndexMeta,
+          plantIndex.isAcceptableOrUnknown(
+              data['plant_index']!, _plantIndexMeta));
+    }
+    if (data.containsKey('crop_name')) {
+      context.handle(_cropNameMeta,
+          cropName.isAcceptableOrUnknown(data['crop_name']!, _cropNameMeta));
+    } else if (isInserting) {
+      context.missing(_cropNameMeta);
+    }
+    if (data.containsKey('lat')) {
+      context.handle(
+          _latMeta, lat.isAcceptableOrUnknown(data['lat']!, _latMeta));
+    } else if (isInserting) {
+      context.missing(_latMeta);
+    }
+    if (data.containsKey('lng')) {
+      context.handle(
+          _lngMeta, lng.isAcceptableOrUnknown(data['lng']!, _lngMeta));
+    } else if (isInserting) {
+      context.missing(_lngMeta);
+    }
+    if (data.containsKey('health_status')) {
+      context.handle(
+          _healthStatusMeta,
+          healthStatus.isAcceptableOrUnknown(
+              data['health_status']!, _healthStatusMeta));
+    }
+    if (data.containsKey('disease_type')) {
+      context.handle(
+          _diseaseTypeMeta,
+          diseaseType.isAcceptableOrUnknown(
+              data['disease_type']!, _diseaseTypeMeta));
+    }
+    if (data.containsKey('disease_photo_path')) {
+      context.handle(
+          _diseasePhotoPathMeta,
+          diseasePhotoPath.isAcceptableOrUnknown(
+              data['disease_photo_path']!, _diseasePhotoPathMeta));
+    }
+    if (data.containsKey('diagnosis_source')) {
+      context.handle(
+          _diagnosisSourceMeta,
+          diagnosisSource.isAcceptableOrUnknown(
+              data['diagnosis_source']!, _diagnosisSourceMeta));
+    }
+    if (data.containsKey('notes')) {
+      context.handle(
+          _notesMeta, notes.isAcceptableOrUnknown(data['notes']!, _notesMeta));
+    }
+    if (data.containsKey('planted_at')) {
+      context.handle(_plantedAtMeta,
+          plantedAt.isAcceptableOrUnknown(data['planted_at']!, _plantedAtMeta));
+    } else if (isInserting) {
+      context.missing(_plantedAtMeta);
+    }
+    if (data.containsKey('health_changed_at')) {
+      context.handle(
+          _healthChangedAtMeta,
+          healthChangedAt.isAcceptableOrUnknown(
+              data['health_changed_at']!, _healthChangedAtMeta));
+    }
+    if (data.containsKey('farmer_uid')) {
+      context.handle(_farmerUidMeta,
+          farmerUid.isAcceptableOrUnknown(data['farmer_uid']!, _farmerUidMeta));
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(_updatedAtMeta,
+          updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(_deletedAtMeta,
+          deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  FieldPlantInstance map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return FieldPlantInstance(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      fieldId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}field_id'])!,
+      cropId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}crop_id']),
+      plantIndex: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}plant_index']),
+      cropName: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}crop_name'])!,
+      lat: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}lat'])!,
+      lng: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}lng'])!,
+      healthStatus: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}health_status'])!,
+      diseaseType: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}disease_type']),
+      diseasePhotoPath: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}disease_photo_path']),
+      diagnosisSource: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}diagnosis_source'])!,
+      notes: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}notes']),
+      plantedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}planted_at'])!,
+      healthChangedAt: attachedDatabase.typeMapping.read(
+          DriftSqlType.dateTime, data['${effectivePrefix}health_changed_at']),
+      farmerUid: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}farmer_uid']),
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+      updatedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
+      deletedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}deleted_at']),
+    );
+  }
+
+  @override
+  $FieldPlantInstancesTable createAlias(String alias) {
+    return $FieldPlantInstancesTable(attachedDatabase, alias);
+  }
+}
+
+class FieldPlantInstance extends DataClass
+    implements Insertable<FieldPlantInstance> {
+  final String id;
+  final String fieldId;
+  final String? cropId;
+  final int? plantIndex;
+  final String cropName;
+  final double lat;
+  final double lng;
+
+  /// 'healthy' | 'diseased' | 'dead'
+  final String healthStatus;
+
+  /// 'Mildiyö', 'Pas', 'Yaprak Lekesi', vb. (manuel veya AI sonucu)
+  final String? diseaseType;
+
+  /// Hastalık fotoğrafı yerel yolu (app docs altında).
+  final String? diseasePhotoPath;
+
+  /// 'manual' | 'ai_pending' | 'ai_completed'
+  final String diagnosisSource;
+  final String? notes;
+  final DateTime plantedAt;
+  final DateTime? healthChangedAt;
+  final String? farmerUid;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final DateTime? deletedAt;
+  const FieldPlantInstance(
+      {required this.id,
+      required this.fieldId,
+      this.cropId,
+      this.plantIndex,
+      required this.cropName,
+      required this.lat,
+      required this.lng,
+      required this.healthStatus,
+      this.diseaseType,
+      this.diseasePhotoPath,
+      required this.diagnosisSource,
+      this.notes,
+      required this.plantedAt,
+      this.healthChangedAt,
+      this.farmerUid,
+      required this.createdAt,
+      required this.updatedAt,
+      this.deletedAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['field_id'] = Variable<String>(fieldId);
+    if (!nullToAbsent || cropId != null) {
+      map['crop_id'] = Variable<String>(cropId);
+    }
+    if (!nullToAbsent || plantIndex != null) {
+      map['plant_index'] = Variable<int>(plantIndex);
+    }
+    map['crop_name'] = Variable<String>(cropName);
+    map['lat'] = Variable<double>(lat);
+    map['lng'] = Variable<double>(lng);
+    map['health_status'] = Variable<String>(healthStatus);
+    if (!nullToAbsent || diseaseType != null) {
+      map['disease_type'] = Variable<String>(diseaseType);
+    }
+    if (!nullToAbsent || diseasePhotoPath != null) {
+      map['disease_photo_path'] = Variable<String>(diseasePhotoPath);
+    }
+    map['diagnosis_source'] = Variable<String>(diagnosisSource);
+    if (!nullToAbsent || notes != null) {
+      map['notes'] = Variable<String>(notes);
+    }
+    map['planted_at'] = Variable<DateTime>(plantedAt);
+    if (!nullToAbsent || healthChangedAt != null) {
+      map['health_changed_at'] = Variable<DateTime>(healthChangedAt);
+    }
+    if (!nullToAbsent || farmerUid != null) {
+      map['farmer_uid'] = Variable<String>(farmerUid);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt);
+    }
+    return map;
+  }
+
+  FieldPlantInstancesCompanion toCompanion(bool nullToAbsent) {
+    return FieldPlantInstancesCompanion(
+      id: Value(id),
+      fieldId: Value(fieldId),
+      cropId:
+          cropId == null && nullToAbsent ? const Value.absent() : Value(cropId),
+      plantIndex: plantIndex == null && nullToAbsent
+          ? const Value.absent()
+          : Value(plantIndex),
+      cropName: Value(cropName),
+      lat: Value(lat),
+      lng: Value(lng),
+      healthStatus: Value(healthStatus),
+      diseaseType: diseaseType == null && nullToAbsent
+          ? const Value.absent()
+          : Value(diseaseType),
+      diseasePhotoPath: diseasePhotoPath == null && nullToAbsent
+          ? const Value.absent()
+          : Value(diseasePhotoPath),
+      diagnosisSource: Value(diagnosisSource),
+      notes:
+          notes == null && nullToAbsent ? const Value.absent() : Value(notes),
+      plantedAt: Value(plantedAt),
+      healthChangedAt: healthChangedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(healthChangedAt),
+      farmerUid: farmerUid == null && nullToAbsent
+          ? const Value.absent()
+          : Value(farmerUid),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
+    );
+  }
+
+  factory FieldPlantInstance.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return FieldPlantInstance(
+      id: serializer.fromJson<String>(json['id']),
+      fieldId: serializer.fromJson<String>(json['fieldId']),
+      cropId: serializer.fromJson<String?>(json['cropId']),
+      plantIndex: serializer.fromJson<int?>(json['plantIndex']),
+      cropName: serializer.fromJson<String>(json['cropName']),
+      lat: serializer.fromJson<double>(json['lat']),
+      lng: serializer.fromJson<double>(json['lng']),
+      healthStatus: serializer.fromJson<String>(json['healthStatus']),
+      diseaseType: serializer.fromJson<String?>(json['diseaseType']),
+      diseasePhotoPath: serializer.fromJson<String?>(json['diseasePhotoPath']),
+      diagnosisSource: serializer.fromJson<String>(json['diagnosisSource']),
+      notes: serializer.fromJson<String?>(json['notes']),
+      plantedAt: serializer.fromJson<DateTime>(json['plantedAt']),
+      healthChangedAt: serializer.fromJson<DateTime?>(json['healthChangedAt']),
+      farmerUid: serializer.fromJson<String?>(json['farmerUid']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'fieldId': serializer.toJson<String>(fieldId),
+      'cropId': serializer.toJson<String?>(cropId),
+      'plantIndex': serializer.toJson<int?>(plantIndex),
+      'cropName': serializer.toJson<String>(cropName),
+      'lat': serializer.toJson<double>(lat),
+      'lng': serializer.toJson<double>(lng),
+      'healthStatus': serializer.toJson<String>(healthStatus),
+      'diseaseType': serializer.toJson<String?>(diseaseType),
+      'diseasePhotoPath': serializer.toJson<String?>(diseasePhotoPath),
+      'diagnosisSource': serializer.toJson<String>(diagnosisSource),
+      'notes': serializer.toJson<String?>(notes),
+      'plantedAt': serializer.toJson<DateTime>(plantedAt),
+      'healthChangedAt': serializer.toJson<DateTime?>(healthChangedAt),
+      'farmerUid': serializer.toJson<String?>(farmerUid),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
+    };
+  }
+
+  FieldPlantInstance copyWith(
+          {String? id,
+          String? fieldId,
+          Value<String?> cropId = const Value.absent(),
+          Value<int?> plantIndex = const Value.absent(),
+          String? cropName,
+          double? lat,
+          double? lng,
+          String? healthStatus,
+          Value<String?> diseaseType = const Value.absent(),
+          Value<String?> diseasePhotoPath = const Value.absent(),
+          String? diagnosisSource,
+          Value<String?> notes = const Value.absent(),
+          DateTime? plantedAt,
+          Value<DateTime?> healthChangedAt = const Value.absent(),
+          Value<String?> farmerUid = const Value.absent(),
+          DateTime? createdAt,
+          DateTime? updatedAt,
+          Value<DateTime?> deletedAt = const Value.absent()}) =>
+      FieldPlantInstance(
+        id: id ?? this.id,
+        fieldId: fieldId ?? this.fieldId,
+        cropId: cropId.present ? cropId.value : this.cropId,
+        plantIndex: plantIndex.present ? plantIndex.value : this.plantIndex,
+        cropName: cropName ?? this.cropName,
+        lat: lat ?? this.lat,
+        lng: lng ?? this.lng,
+        healthStatus: healthStatus ?? this.healthStatus,
+        diseaseType: diseaseType.present ? diseaseType.value : this.diseaseType,
+        diseasePhotoPath: diseasePhotoPath.present
+            ? diseasePhotoPath.value
+            : this.diseasePhotoPath,
+        diagnosisSource: diagnosisSource ?? this.diagnosisSource,
+        notes: notes.present ? notes.value : this.notes,
+        plantedAt: plantedAt ?? this.plantedAt,
+        healthChangedAt: healthChangedAt.present
+            ? healthChangedAt.value
+            : this.healthChangedAt,
+        farmerUid: farmerUid.present ? farmerUid.value : this.farmerUid,
+        createdAt: createdAt ?? this.createdAt,
+        updatedAt: updatedAt ?? this.updatedAt,
+        deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+      );
+  FieldPlantInstance copyWithCompanion(FieldPlantInstancesCompanion data) {
+    return FieldPlantInstance(
+      id: data.id.present ? data.id.value : this.id,
+      fieldId: data.fieldId.present ? data.fieldId.value : this.fieldId,
+      cropId: data.cropId.present ? data.cropId.value : this.cropId,
+      plantIndex:
+          data.plantIndex.present ? data.plantIndex.value : this.plantIndex,
+      cropName: data.cropName.present ? data.cropName.value : this.cropName,
+      lat: data.lat.present ? data.lat.value : this.lat,
+      lng: data.lng.present ? data.lng.value : this.lng,
+      healthStatus: data.healthStatus.present
+          ? data.healthStatus.value
+          : this.healthStatus,
+      diseaseType:
+          data.diseaseType.present ? data.diseaseType.value : this.diseaseType,
+      diseasePhotoPath: data.diseasePhotoPath.present
+          ? data.diseasePhotoPath.value
+          : this.diseasePhotoPath,
+      diagnosisSource: data.diagnosisSource.present
+          ? data.diagnosisSource.value
+          : this.diagnosisSource,
+      notes: data.notes.present ? data.notes.value : this.notes,
+      plantedAt: data.plantedAt.present ? data.plantedAt.value : this.plantedAt,
+      healthChangedAt: data.healthChangedAt.present
+          ? data.healthChangedAt.value
+          : this.healthChangedAt,
+      farmerUid: data.farmerUid.present ? data.farmerUid.value : this.farmerUid,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('FieldPlantInstance(')
+          ..write('id: $id, ')
+          ..write('fieldId: $fieldId, ')
+          ..write('cropId: $cropId, ')
+          ..write('plantIndex: $plantIndex, ')
+          ..write('cropName: $cropName, ')
+          ..write('lat: $lat, ')
+          ..write('lng: $lng, ')
+          ..write('healthStatus: $healthStatus, ')
+          ..write('diseaseType: $diseaseType, ')
+          ..write('diseasePhotoPath: $diseasePhotoPath, ')
+          ..write('diagnosisSource: $diagnosisSource, ')
+          ..write('notes: $notes, ')
+          ..write('plantedAt: $plantedAt, ')
+          ..write('healthChangedAt: $healthChangedAt, ')
+          ..write('farmerUid: $farmerUid, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+      id,
+      fieldId,
+      cropId,
+      plantIndex,
+      cropName,
+      lat,
+      lng,
+      healthStatus,
+      diseaseType,
+      diseasePhotoPath,
+      diagnosisSource,
+      notes,
+      plantedAt,
+      healthChangedAt,
+      farmerUid,
+      createdAt,
+      updatedAt,
+      deletedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is FieldPlantInstance &&
+          other.id == this.id &&
+          other.fieldId == this.fieldId &&
+          other.cropId == this.cropId &&
+          other.plantIndex == this.plantIndex &&
+          other.cropName == this.cropName &&
+          other.lat == this.lat &&
+          other.lng == this.lng &&
+          other.healthStatus == this.healthStatus &&
+          other.diseaseType == this.diseaseType &&
+          other.diseasePhotoPath == this.diseasePhotoPath &&
+          other.diagnosisSource == this.diagnosisSource &&
+          other.notes == this.notes &&
+          other.plantedAt == this.plantedAt &&
+          other.healthChangedAt == this.healthChangedAt &&
+          other.farmerUid == this.farmerUid &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.deletedAt == this.deletedAt);
+}
+
+class FieldPlantInstancesCompanion extends UpdateCompanion<FieldPlantInstance> {
+  final Value<String> id;
+  final Value<String> fieldId;
+  final Value<String?> cropId;
+  final Value<int?> plantIndex;
+  final Value<String> cropName;
+  final Value<double> lat;
+  final Value<double> lng;
+  final Value<String> healthStatus;
+  final Value<String?> diseaseType;
+  final Value<String?> diseasePhotoPath;
+  final Value<String> diagnosisSource;
+  final Value<String?> notes;
+  final Value<DateTime> plantedAt;
+  final Value<DateTime?> healthChangedAt;
+  final Value<String?> farmerUid;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<DateTime?> deletedAt;
+  final Value<int> rowid;
+  const FieldPlantInstancesCompanion({
+    this.id = const Value.absent(),
+    this.fieldId = const Value.absent(),
+    this.cropId = const Value.absent(),
+    this.plantIndex = const Value.absent(),
+    this.cropName = const Value.absent(),
+    this.lat = const Value.absent(),
+    this.lng = const Value.absent(),
+    this.healthStatus = const Value.absent(),
+    this.diseaseType = const Value.absent(),
+    this.diseasePhotoPath = const Value.absent(),
+    this.diagnosisSource = const Value.absent(),
+    this.notes = const Value.absent(),
+    this.plantedAt = const Value.absent(),
+    this.healthChangedAt = const Value.absent(),
+    this.farmerUid = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  FieldPlantInstancesCompanion.insert({
+    required String id,
+    required String fieldId,
+    this.cropId = const Value.absent(),
+    this.plantIndex = const Value.absent(),
+    required String cropName,
+    required double lat,
+    required double lng,
+    this.healthStatus = const Value.absent(),
+    this.diseaseType = const Value.absent(),
+    this.diseasePhotoPath = const Value.absent(),
+    this.diagnosisSource = const Value.absent(),
+    this.notes = const Value.absent(),
+    required DateTime plantedAt,
+    this.healthChangedAt = const Value.absent(),
+    this.farmerUid = const Value.absent(),
+    required DateTime createdAt,
+    required DateTime updatedAt,
+    this.deletedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  })  : id = Value(id),
+        fieldId = Value(fieldId),
+        cropName = Value(cropName),
+        lat = Value(lat),
+        lng = Value(lng),
+        plantedAt = Value(plantedAt),
+        createdAt = Value(createdAt),
+        updatedAt = Value(updatedAt);
+  static Insertable<FieldPlantInstance> custom({
+    Expression<String>? id,
+    Expression<String>? fieldId,
+    Expression<String>? cropId,
+    Expression<int>? plantIndex,
+    Expression<String>? cropName,
+    Expression<double>? lat,
+    Expression<double>? lng,
+    Expression<String>? healthStatus,
+    Expression<String>? diseaseType,
+    Expression<String>? diseasePhotoPath,
+    Expression<String>? diagnosisSource,
+    Expression<String>? notes,
+    Expression<DateTime>? plantedAt,
+    Expression<DateTime>? healthChangedAt,
+    Expression<String>? farmerUid,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<DateTime>? deletedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (fieldId != null) 'field_id': fieldId,
+      if (cropId != null) 'crop_id': cropId,
+      if (plantIndex != null) 'plant_index': plantIndex,
+      if (cropName != null) 'crop_name': cropName,
+      if (lat != null) 'lat': lat,
+      if (lng != null) 'lng': lng,
+      if (healthStatus != null) 'health_status': healthStatus,
+      if (diseaseType != null) 'disease_type': diseaseType,
+      if (diseasePhotoPath != null) 'disease_photo_path': diseasePhotoPath,
+      if (diagnosisSource != null) 'diagnosis_source': diagnosisSource,
+      if (notes != null) 'notes': notes,
+      if (plantedAt != null) 'planted_at': plantedAt,
+      if (healthChangedAt != null) 'health_changed_at': healthChangedAt,
+      if (farmerUid != null) 'farmer_uid': farmerUid,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  FieldPlantInstancesCompanion copyWith(
+      {Value<String>? id,
+      Value<String>? fieldId,
+      Value<String?>? cropId,
+      Value<int?>? plantIndex,
+      Value<String>? cropName,
+      Value<double>? lat,
+      Value<double>? lng,
+      Value<String>? healthStatus,
+      Value<String?>? diseaseType,
+      Value<String?>? diseasePhotoPath,
+      Value<String>? diagnosisSource,
+      Value<String?>? notes,
+      Value<DateTime>? plantedAt,
+      Value<DateTime?>? healthChangedAt,
+      Value<String?>? farmerUid,
+      Value<DateTime>? createdAt,
+      Value<DateTime>? updatedAt,
+      Value<DateTime?>? deletedAt,
+      Value<int>? rowid}) {
+    return FieldPlantInstancesCompanion(
+      id: id ?? this.id,
+      fieldId: fieldId ?? this.fieldId,
+      cropId: cropId ?? this.cropId,
+      plantIndex: plantIndex ?? this.plantIndex,
+      cropName: cropName ?? this.cropName,
+      lat: lat ?? this.lat,
+      lng: lng ?? this.lng,
+      healthStatus: healthStatus ?? this.healthStatus,
+      diseaseType: diseaseType ?? this.diseaseType,
+      diseasePhotoPath: diseasePhotoPath ?? this.diseasePhotoPath,
+      diagnosisSource: diagnosisSource ?? this.diagnosisSource,
+      notes: notes ?? this.notes,
+      plantedAt: plantedAt ?? this.plantedAt,
+      healthChangedAt: healthChangedAt ?? this.healthChangedAt,
+      farmerUid: farmerUid ?? this.farmerUid,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (fieldId.present) {
+      map['field_id'] = Variable<String>(fieldId.value);
+    }
+    if (cropId.present) {
+      map['crop_id'] = Variable<String>(cropId.value);
+    }
+    if (plantIndex.present) {
+      map['plant_index'] = Variable<int>(plantIndex.value);
+    }
+    if (cropName.present) {
+      map['crop_name'] = Variable<String>(cropName.value);
+    }
+    if (lat.present) {
+      map['lat'] = Variable<double>(lat.value);
+    }
+    if (lng.present) {
+      map['lng'] = Variable<double>(lng.value);
+    }
+    if (healthStatus.present) {
+      map['health_status'] = Variable<String>(healthStatus.value);
+    }
+    if (diseaseType.present) {
+      map['disease_type'] = Variable<String>(diseaseType.value);
+    }
+    if (diseasePhotoPath.present) {
+      map['disease_photo_path'] = Variable<String>(diseasePhotoPath.value);
+    }
+    if (diagnosisSource.present) {
+      map['diagnosis_source'] = Variable<String>(diagnosisSource.value);
+    }
+    if (notes.present) {
+      map['notes'] = Variable<String>(notes.value);
+    }
+    if (plantedAt.present) {
+      map['planted_at'] = Variable<DateTime>(plantedAt.value);
+    }
+    if (healthChangedAt.present) {
+      map['health_changed_at'] = Variable<DateTime>(healthChangedAt.value);
+    }
+    if (farmerUid.present) {
+      map['farmer_uid'] = Variable<String>(farmerUid.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('FieldPlantInstancesCompanion(')
+          ..write('id: $id, ')
+          ..write('fieldId: $fieldId, ')
+          ..write('cropId: $cropId, ')
+          ..write('plantIndex: $plantIndex, ')
+          ..write('cropName: $cropName, ')
+          ..write('lat: $lat, ')
+          ..write('lng: $lng, ')
+          ..write('healthStatus: $healthStatus, ')
+          ..write('diseaseType: $diseaseType, ')
+          ..write('diseasePhotoPath: $diseasePhotoPath, ')
+          ..write('diagnosisSource: $diagnosisSource, ')
+          ..write('notes: $notes, ')
+          ..write('plantedAt: $plantedAt, ')
+          ..write('healthChangedAt: $healthChangedAt, ')
+          ..write('farmerUid: $farmerUid, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -4473,6 +5340,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $SyncStateTable syncState = $SyncStateTable(this);
   late final $CropGrowthStatesTable cropGrowthStates =
       $CropGrowthStatesTable(this);
+  late final $FieldPlantInstancesTable fieldPlantInstances =
+      $FieldPlantInstancesTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -4485,7 +5354,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         suitabilityReports,
         syncJobs,
         syncState,
-        cropGrowthStates
+        cropGrowthStates,
+        fieldPlantInstances
       ];
 }
 
@@ -4585,6 +5455,24 @@ final class $$FieldsTableReferences
 
     final cache =
         $_typedResult.readTableOrNull(_suitabilityReportsRefsTable($_db));
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: cache));
+  }
+
+  static MultiTypedResultKey<$FieldPlantInstancesTable,
+      List<FieldPlantInstance>> _fieldPlantInstancesRefsTable(
+          _$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(db.fieldPlantInstances,
+          aliasName: $_aliasNameGenerator(
+              db.fields.id, db.fieldPlantInstances.fieldId));
+
+  $$FieldPlantInstancesTableProcessedTableManager get fieldPlantInstancesRefs {
+    final manager =
+        $$FieldPlantInstancesTableTableManager($_db, $_db.fieldPlantInstances)
+            .filter((f) => f.fieldId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache =
+        $_typedResult.readTableOrNull(_fieldPlantInstancesRefsTable($_db));
     return ProcessedTableManager(
         manager.$state.copyWith(prefetchedData: cache));
   }
@@ -4714,6 +5602,27 @@ class $$FieldsTableFilterComposer
             $$SuitabilityReportsTableFilterComposer(
               $db: $db,
               $table: $db.suitabilityReports,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
+
+  Expression<bool> fieldPlantInstancesRefs(
+      Expression<bool> Function($$FieldPlantInstancesTableFilterComposer f) f) {
+    final $$FieldPlantInstancesTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.fieldPlantInstances,
+        getReferencedColumn: (t) => t.fieldId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$FieldPlantInstancesTableFilterComposer(
+              $db: $db,
+              $table: $db.fieldPlantInstances,
               $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
               joinBuilder: joinBuilder,
               $removeJoinBuilderFromRootComposer:
@@ -4904,6 +5813,29 @@ class $$FieldsTableAnnotationComposer
                 ));
     return f(composer);
   }
+
+  Expression<T> fieldPlantInstancesRefs<T extends Object>(
+      Expression<T> Function($$FieldPlantInstancesTableAnnotationComposer a)
+          f) {
+    final $$FieldPlantInstancesTableAnnotationComposer composer =
+        $composerBuilder(
+            composer: this,
+            getCurrentColumn: (t) => t.id,
+            referencedTable: $db.fieldPlantInstances,
+            getReferencedColumn: (t) => t.fieldId,
+            builder: (joinBuilder,
+                    {$addJoinBuilderToRootComposer,
+                    $removeJoinBuilderFromRootComposer}) =>
+                $$FieldPlantInstancesTableAnnotationComposer(
+                  $db: $db,
+                  $table: $db.fieldPlantInstances,
+                  $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                  joinBuilder: joinBuilder,
+                  $removeJoinBuilderFromRootComposer:
+                      $removeJoinBuilderFromRootComposer,
+                ));
+    return f(composer);
+  }
 }
 
 class $$FieldsTableTableManager extends RootTableManager<
@@ -4921,7 +5853,8 @@ class $$FieldsTableTableManager extends RootTableManager<
         {bool fieldCropsRefs,
         bool calendarEventsRefs,
         bool irrigationPlansRefs,
-        bool suitabilityReportsRefs})> {
+        bool suitabilityReportsRefs,
+        bool fieldPlantInstancesRefs})> {
   $$FieldsTableTableManager(_$AppDatabase db, $FieldsTable table)
       : super(TableManagerState(
           db: db,
@@ -5004,14 +5937,16 @@ class $$FieldsTableTableManager extends RootTableManager<
               {fieldCropsRefs = false,
               calendarEventsRefs = false,
               irrigationPlansRefs = false,
-              suitabilityReportsRefs = false}) {
+              suitabilityReportsRefs = false,
+              fieldPlantInstancesRefs = false}) {
             return PrefetchHooks(
               db: db,
               explicitlyWatchedTables: [
                 if (fieldCropsRefs) db.fieldCrops,
                 if (calendarEventsRefs) db.calendarEvents,
                 if (irrigationPlansRefs) db.irrigationPlans,
-                if (suitabilityReportsRefs) db.suitabilityReports
+                if (suitabilityReportsRefs) db.suitabilityReports,
+                if (fieldPlantInstancesRefs) db.fieldPlantInstances
               ],
               addJoins: null,
               getPrefetchedDataCallback: (items) async {
@@ -5066,6 +6001,19 @@ class $$FieldsTableTableManager extends RootTableManager<
                         referencedItemsForCurrentItem: (item,
                                 referencedItems) =>
                             referencedItems.where((e) => e.fieldId == item.id),
+                        typedResults: items),
+                  if (fieldPlantInstancesRefs)
+                    await $_getPrefetchedData<Field, $FieldsTable,
+                            FieldPlantInstance>(
+                        currentTable: table,
+                        referencedTable: $$FieldsTableReferences
+                            ._fieldPlantInstancesRefsTable(db),
+                        managerFromTypedResult: (p0) =>
+                            $$FieldsTableReferences(db, table, p0)
+                                .fieldPlantInstancesRefs,
+                        referencedItemsForCurrentItem: (item,
+                                referencedItems) =>
+                            referencedItems.where((e) => e.fieldId == item.id),
                         typedResults: items)
                 ];
               },
@@ -5089,7 +6037,8 @@ typedef $$FieldsTableProcessedTableManager = ProcessedTableManager<
         {bool fieldCropsRefs,
         bool calendarEventsRefs,
         bool irrigationPlansRefs,
-        bool suitabilityReportsRefs})>;
+        bool suitabilityReportsRefs,
+        bool fieldPlantInstancesRefs})>;
 typedef $$FieldCropsTableCreateCompanionBuilder = FieldCropsCompanion Function({
   required String id,
   required String fieldId,
@@ -5173,6 +6122,24 @@ final class $$FieldCropsTableReferences
 
     final cache =
         $_typedResult.readTableOrNull(_irrigationPlansRefsTable($_db));
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: cache));
+  }
+
+  static MultiTypedResultKey<$FieldPlantInstancesTable,
+      List<FieldPlantInstance>> _fieldPlantInstancesRefsTable(
+          _$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(db.fieldPlantInstances,
+          aliasName: $_aliasNameGenerator(
+              db.fieldCrops.id, db.fieldPlantInstances.cropId));
+
+  $$FieldPlantInstancesTableProcessedTableManager get fieldPlantInstancesRefs {
+    final manager =
+        $$FieldPlantInstancesTableTableManager($_db, $_db.fieldPlantInstances)
+            .filter((f) => f.cropId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache =
+        $_typedResult.readTableOrNull(_fieldPlantInstancesRefsTable($_db));
     return ProcessedTableManager(
         manager.$state.copyWith(prefetchedData: cache));
   }
@@ -5286,6 +6253,27 @@ class $$FieldCropsTableFilterComposer
             $$IrrigationPlansTableFilterComposer(
               $db: $db,
               $table: $db.irrigationPlans,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
+
+  Expression<bool> fieldPlantInstancesRefs(
+      Expression<bool> Function($$FieldPlantInstancesTableFilterComposer f) f) {
+    final $$FieldPlantInstancesTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.fieldPlantInstances,
+        getReferencedColumn: (t) => t.cropId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$FieldPlantInstancesTableFilterComposer(
+              $db: $db,
+              $table: $db.fieldPlantInstances,
               $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
               joinBuilder: joinBuilder,
               $removeJoinBuilderFromRootComposer:
@@ -5483,6 +6471,29 @@ class $$FieldCropsTableAnnotationComposer
             ));
     return f(composer);
   }
+
+  Expression<T> fieldPlantInstancesRefs<T extends Object>(
+      Expression<T> Function($$FieldPlantInstancesTableAnnotationComposer a)
+          f) {
+    final $$FieldPlantInstancesTableAnnotationComposer composer =
+        $composerBuilder(
+            composer: this,
+            getCurrentColumn: (t) => t.id,
+            referencedTable: $db.fieldPlantInstances,
+            getReferencedColumn: (t) => t.cropId,
+            builder: (joinBuilder,
+                    {$addJoinBuilderToRootComposer,
+                    $removeJoinBuilderFromRootComposer}) =>
+                $$FieldPlantInstancesTableAnnotationComposer(
+                  $db: $db,
+                  $table: $db.fieldPlantInstances,
+                  $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                  joinBuilder: joinBuilder,
+                  $removeJoinBuilderFromRootComposer:
+                      $removeJoinBuilderFromRootComposer,
+                ));
+    return f(composer);
+  }
 }
 
 class $$FieldCropsTableTableManager extends RootTableManager<
@@ -5497,7 +6508,10 @@ class $$FieldCropsTableTableManager extends RootTableManager<
     (FieldCrop, $$FieldCropsTableReferences),
     FieldCrop,
     PrefetchHooks Function(
-        {bool fieldId, bool calendarEventsRefs, bool irrigationPlansRefs})> {
+        {bool fieldId,
+        bool calendarEventsRefs,
+        bool irrigationPlansRefs,
+        bool fieldPlantInstancesRefs})> {
   $$FieldCropsTableTableManager(_$AppDatabase db, $FieldCropsTable table)
       : super(TableManagerState(
           db: db,
@@ -5589,12 +6603,14 @@ class $$FieldCropsTableTableManager extends RootTableManager<
           prefetchHooksCallback: (
               {fieldId = false,
               calendarEventsRefs = false,
-              irrigationPlansRefs = false}) {
+              irrigationPlansRefs = false,
+              fieldPlantInstancesRefs = false}) {
             return PrefetchHooks(
               db: db,
               explicitlyWatchedTables: [
                 if (calendarEventsRefs) db.calendarEvents,
-                if (irrigationPlansRefs) db.irrigationPlans
+                if (irrigationPlansRefs) db.irrigationPlans,
+                if (fieldPlantInstancesRefs) db.fieldPlantInstances
               ],
               addJoins: <
                   T extends TableManagerState<
@@ -5649,6 +6665,19 @@ class $$FieldCropsTableTableManager extends RootTableManager<
                         referencedItemsForCurrentItem: (item,
                                 referencedItems) =>
                             referencedItems.where((e) => e.cropId == item.id),
+                        typedResults: items),
+                  if (fieldPlantInstancesRefs)
+                    await $_getPrefetchedData<FieldCrop, $FieldCropsTable,
+                            FieldPlantInstance>(
+                        currentTable: table,
+                        referencedTable: $$FieldCropsTableReferences
+                            ._fieldPlantInstancesRefsTable(db),
+                        managerFromTypedResult: (p0) =>
+                            $$FieldCropsTableReferences(db, table, p0)
+                                .fieldPlantInstancesRefs,
+                        referencedItemsForCurrentItem: (item,
+                                referencedItems) =>
+                            referencedItems.where((e) => e.cropId == item.id),
                         typedResults: items)
                 ];
               },
@@ -5669,7 +6698,10 @@ typedef $$FieldCropsTableProcessedTableManager = ProcessedTableManager<
     (FieldCrop, $$FieldCropsTableReferences),
     FieldCrop,
     PrefetchHooks Function(
-        {bool fieldId, bool calendarEventsRefs, bool irrigationPlansRefs})>;
+        {bool fieldId,
+        bool calendarEventsRefs,
+        bool irrigationPlansRefs,
+        bool fieldPlantInstancesRefs})>;
 typedef $$CalendarEventsTableCreateCompanionBuilder = CalendarEventsCompanion
     Function({
   required String id,
@@ -7598,6 +8630,564 @@ typedef $$CropGrowthStatesTableProcessedTableManager = ProcessedTableManager<
     ),
     CropGrowthState,
     PrefetchHooks Function()>;
+typedef $$FieldPlantInstancesTableCreateCompanionBuilder
+    = FieldPlantInstancesCompanion Function({
+  required String id,
+  required String fieldId,
+  Value<String?> cropId,
+  Value<int?> plantIndex,
+  required String cropName,
+  required double lat,
+  required double lng,
+  Value<String> healthStatus,
+  Value<String?> diseaseType,
+  Value<String?> diseasePhotoPath,
+  Value<String> diagnosisSource,
+  Value<String?> notes,
+  required DateTime plantedAt,
+  Value<DateTime?> healthChangedAt,
+  Value<String?> farmerUid,
+  required DateTime createdAt,
+  required DateTime updatedAt,
+  Value<DateTime?> deletedAt,
+  Value<int> rowid,
+});
+typedef $$FieldPlantInstancesTableUpdateCompanionBuilder
+    = FieldPlantInstancesCompanion Function({
+  Value<String> id,
+  Value<String> fieldId,
+  Value<String?> cropId,
+  Value<int?> plantIndex,
+  Value<String> cropName,
+  Value<double> lat,
+  Value<double> lng,
+  Value<String> healthStatus,
+  Value<String?> diseaseType,
+  Value<String?> diseasePhotoPath,
+  Value<String> diagnosisSource,
+  Value<String?> notes,
+  Value<DateTime> plantedAt,
+  Value<DateTime?> healthChangedAt,
+  Value<String?> farmerUid,
+  Value<DateTime> createdAt,
+  Value<DateTime> updatedAt,
+  Value<DateTime?> deletedAt,
+  Value<int> rowid,
+});
+
+final class $$FieldPlantInstancesTableReferences extends BaseReferences<
+    _$AppDatabase, $FieldPlantInstancesTable, FieldPlantInstance> {
+  $$FieldPlantInstancesTableReferences(
+      super.$_db, super.$_table, super.$_typedResult);
+
+  static $FieldsTable _fieldIdTable(_$AppDatabase db) => db.fields.createAlias(
+      $_aliasNameGenerator(db.fieldPlantInstances.fieldId, db.fields.id));
+
+  $$FieldsTableProcessedTableManager get fieldId {
+    final $_column = $_itemColumn<String>('field_id')!;
+
+    final manager = $$FieldsTableTableManager($_db, $_db.fields)
+        .filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_fieldIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: [item]));
+  }
+
+  static $FieldCropsTable _cropIdTable(_$AppDatabase db) =>
+      db.fieldCrops.createAlias($_aliasNameGenerator(
+          db.fieldPlantInstances.cropId, db.fieldCrops.id));
+
+  $$FieldCropsTableProcessedTableManager? get cropId {
+    final $_column = $_itemColumn<String>('crop_id');
+    if ($_column == null) return null;
+    final manager = $$FieldCropsTableTableManager($_db, $_db.fieldCrops)
+        .filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_cropIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: [item]));
+  }
+}
+
+class $$FieldPlantInstancesTableFilterComposer
+    extends Composer<_$AppDatabase, $FieldPlantInstancesTable> {
+  $$FieldPlantInstancesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get plantIndex => $composableBuilder(
+      column: $table.plantIndex, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get cropName => $composableBuilder(
+      column: $table.cropName, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get lat => $composableBuilder(
+      column: $table.lat, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get lng => $composableBuilder(
+      column: $table.lng, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get healthStatus => $composableBuilder(
+      column: $table.healthStatus, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get diseaseType => $composableBuilder(
+      column: $table.diseaseType, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get diseasePhotoPath => $composableBuilder(
+      column: $table.diseasePhotoPath,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get diagnosisSource => $composableBuilder(
+      column: $table.diagnosisSource,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get notes => $composableBuilder(
+      column: $table.notes, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get plantedAt => $composableBuilder(
+      column: $table.plantedAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get healthChangedAt => $composableBuilder(
+      column: $table.healthChangedAt,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get farmerUid => $composableBuilder(
+      column: $table.farmerUid, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get deletedAt => $composableBuilder(
+      column: $table.deletedAt, builder: (column) => ColumnFilters(column));
+
+  $$FieldsTableFilterComposer get fieldId {
+    final $$FieldsTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.fieldId,
+        referencedTable: $db.fields,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$FieldsTableFilterComposer(
+              $db: $db,
+              $table: $db.fields,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  $$FieldCropsTableFilterComposer get cropId {
+    final $$FieldCropsTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.cropId,
+        referencedTable: $db.fieldCrops,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$FieldCropsTableFilterComposer(
+              $db: $db,
+              $table: $db.fieldCrops,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$FieldPlantInstancesTableOrderingComposer
+    extends Composer<_$AppDatabase, $FieldPlantInstancesTable> {
+  $$FieldPlantInstancesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get plantIndex => $composableBuilder(
+      column: $table.plantIndex, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get cropName => $composableBuilder(
+      column: $table.cropName, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get lat => $composableBuilder(
+      column: $table.lat, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get lng => $composableBuilder(
+      column: $table.lng, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get healthStatus => $composableBuilder(
+      column: $table.healthStatus,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get diseaseType => $composableBuilder(
+      column: $table.diseaseType, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get diseasePhotoPath => $composableBuilder(
+      column: $table.diseasePhotoPath,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get diagnosisSource => $composableBuilder(
+      column: $table.diagnosisSource,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get notes => $composableBuilder(
+      column: $table.notes, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get plantedAt => $composableBuilder(
+      column: $table.plantedAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get healthChangedAt => $composableBuilder(
+      column: $table.healthChangedAt,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get farmerUid => $composableBuilder(
+      column: $table.farmerUid, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get deletedAt => $composableBuilder(
+      column: $table.deletedAt, builder: (column) => ColumnOrderings(column));
+
+  $$FieldsTableOrderingComposer get fieldId {
+    final $$FieldsTableOrderingComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.fieldId,
+        referencedTable: $db.fields,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$FieldsTableOrderingComposer(
+              $db: $db,
+              $table: $db.fields,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  $$FieldCropsTableOrderingComposer get cropId {
+    final $$FieldCropsTableOrderingComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.cropId,
+        referencedTable: $db.fieldCrops,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$FieldCropsTableOrderingComposer(
+              $db: $db,
+              $table: $db.fieldCrops,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$FieldPlantInstancesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $FieldPlantInstancesTable> {
+  $$FieldPlantInstancesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get plantIndex => $composableBuilder(
+      column: $table.plantIndex, builder: (column) => column);
+
+  GeneratedColumn<String> get cropName =>
+      $composableBuilder(column: $table.cropName, builder: (column) => column);
+
+  GeneratedColumn<double> get lat =>
+      $composableBuilder(column: $table.lat, builder: (column) => column);
+
+  GeneratedColumn<double> get lng =>
+      $composableBuilder(column: $table.lng, builder: (column) => column);
+
+  GeneratedColumn<String> get healthStatus => $composableBuilder(
+      column: $table.healthStatus, builder: (column) => column);
+
+  GeneratedColumn<String> get diseaseType => $composableBuilder(
+      column: $table.diseaseType, builder: (column) => column);
+
+  GeneratedColumn<String> get diseasePhotoPath => $composableBuilder(
+      column: $table.diseasePhotoPath, builder: (column) => column);
+
+  GeneratedColumn<String> get diagnosisSource => $composableBuilder(
+      column: $table.diagnosisSource, builder: (column) => column);
+
+  GeneratedColumn<String> get notes =>
+      $composableBuilder(column: $table.notes, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get plantedAt =>
+      $composableBuilder(column: $table.plantedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get healthChangedAt => $composableBuilder(
+      column: $table.healthChangedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get farmerUid =>
+      $composableBuilder(column: $table.farmerUid, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+
+  $$FieldsTableAnnotationComposer get fieldId {
+    final $$FieldsTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.fieldId,
+        referencedTable: $db.fields,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$FieldsTableAnnotationComposer(
+              $db: $db,
+              $table: $db.fields,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  $$FieldCropsTableAnnotationComposer get cropId {
+    final $$FieldCropsTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.cropId,
+        referencedTable: $db.fieldCrops,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$FieldCropsTableAnnotationComposer(
+              $db: $db,
+              $table: $db.fieldCrops,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$FieldPlantInstancesTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $FieldPlantInstancesTable,
+    FieldPlantInstance,
+    $$FieldPlantInstancesTableFilterComposer,
+    $$FieldPlantInstancesTableOrderingComposer,
+    $$FieldPlantInstancesTableAnnotationComposer,
+    $$FieldPlantInstancesTableCreateCompanionBuilder,
+    $$FieldPlantInstancesTableUpdateCompanionBuilder,
+    (FieldPlantInstance, $$FieldPlantInstancesTableReferences),
+    FieldPlantInstance,
+    PrefetchHooks Function({bool fieldId, bool cropId})> {
+  $$FieldPlantInstancesTableTableManager(
+      _$AppDatabase db, $FieldPlantInstancesTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$FieldPlantInstancesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$FieldPlantInstancesTableOrderingComposer(
+                  $db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$FieldPlantInstancesTableAnnotationComposer(
+                  $db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<String> fieldId = const Value.absent(),
+            Value<String?> cropId = const Value.absent(),
+            Value<int?> plantIndex = const Value.absent(),
+            Value<String> cropName = const Value.absent(),
+            Value<double> lat = const Value.absent(),
+            Value<double> lng = const Value.absent(),
+            Value<String> healthStatus = const Value.absent(),
+            Value<String?> diseaseType = const Value.absent(),
+            Value<String?> diseasePhotoPath = const Value.absent(),
+            Value<String> diagnosisSource = const Value.absent(),
+            Value<String?> notes = const Value.absent(),
+            Value<DateTime> plantedAt = const Value.absent(),
+            Value<DateTime?> healthChangedAt = const Value.absent(),
+            Value<String?> farmerUid = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<DateTime> updatedAt = const Value.absent(),
+            Value<DateTime?> deletedAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              FieldPlantInstancesCompanion(
+            id: id,
+            fieldId: fieldId,
+            cropId: cropId,
+            plantIndex: plantIndex,
+            cropName: cropName,
+            lat: lat,
+            lng: lng,
+            healthStatus: healthStatus,
+            diseaseType: diseaseType,
+            diseasePhotoPath: diseasePhotoPath,
+            diagnosisSource: diagnosisSource,
+            notes: notes,
+            plantedAt: plantedAt,
+            healthChangedAt: healthChangedAt,
+            farmerUid: farmerUid,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            deletedAt: deletedAt,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String id,
+            required String fieldId,
+            Value<String?> cropId = const Value.absent(),
+            Value<int?> plantIndex = const Value.absent(),
+            required String cropName,
+            required double lat,
+            required double lng,
+            Value<String> healthStatus = const Value.absent(),
+            Value<String?> diseaseType = const Value.absent(),
+            Value<String?> diseasePhotoPath = const Value.absent(),
+            Value<String> diagnosisSource = const Value.absent(),
+            Value<String?> notes = const Value.absent(),
+            required DateTime plantedAt,
+            Value<DateTime?> healthChangedAt = const Value.absent(),
+            Value<String?> farmerUid = const Value.absent(),
+            required DateTime createdAt,
+            required DateTime updatedAt,
+            Value<DateTime?> deletedAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              FieldPlantInstancesCompanion.insert(
+            id: id,
+            fieldId: fieldId,
+            cropId: cropId,
+            plantIndex: plantIndex,
+            cropName: cropName,
+            lat: lat,
+            lng: lng,
+            healthStatus: healthStatus,
+            diseaseType: diseaseType,
+            diseasePhotoPath: diseasePhotoPath,
+            diagnosisSource: diagnosisSource,
+            notes: notes,
+            plantedAt: plantedAt,
+            healthChangedAt: healthChangedAt,
+            farmerUid: farmerUid,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            deletedAt: deletedAt,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (
+                    e.readTable(table),
+                    $$FieldPlantInstancesTableReferences(db, table, e)
+                  ))
+              .toList(),
+          prefetchHooksCallback: ({fieldId = false, cropId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins: <
+                  T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic>>(state) {
+                if (fieldId) {
+                  state = state.withJoin(
+                    currentTable: table,
+                    currentColumn: table.fieldId,
+                    referencedTable:
+                        $$FieldPlantInstancesTableReferences._fieldIdTable(db),
+                    referencedColumn: $$FieldPlantInstancesTableReferences
+                        ._fieldIdTable(db)
+                        .id,
+                  ) as T;
+                }
+                if (cropId) {
+                  state = state.withJoin(
+                    currentTable: table,
+                    currentColumn: table.cropId,
+                    referencedTable:
+                        $$FieldPlantInstancesTableReferences._cropIdTable(db),
+                    referencedColumn: $$FieldPlantInstancesTableReferences
+                        ._cropIdTable(db)
+                        .id,
+                  ) as T;
+                }
+
+                return state;
+              },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ));
+}
+
+typedef $$FieldPlantInstancesTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $FieldPlantInstancesTable,
+    FieldPlantInstance,
+    $$FieldPlantInstancesTableFilterComposer,
+    $$FieldPlantInstancesTableOrderingComposer,
+    $$FieldPlantInstancesTableAnnotationComposer,
+    $$FieldPlantInstancesTableCreateCompanionBuilder,
+    $$FieldPlantInstancesTableUpdateCompanionBuilder,
+    (FieldPlantInstance, $$FieldPlantInstancesTableReferences),
+    FieldPlantInstance,
+    PrefetchHooks Function({bool fieldId, bool cropId})>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -7618,4 +9208,6 @@ class $AppDatabaseManager {
       $$SyncStateTableTableManager(_db, _db.syncState);
   $$CropGrowthStatesTableTableManager get cropGrowthStates =>
       $$CropGrowthStatesTableTableManager(_db, _db.cropGrowthStates);
+  $$FieldPlantInstancesTableTableManager get fieldPlantInstances =>
+      $$FieldPlantInstancesTableTableManager(_db, _db.fieldPlantInstances);
 }

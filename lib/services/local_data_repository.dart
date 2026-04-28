@@ -213,6 +213,10 @@ class LocalDataRepository {
               ..where((tbl) => tbl.cropId.isIn(cropIds)))
             .go();
       }
+      // v5: tarlanın tekil bitki kayıtlarını da temizle
+      await (_db.delete(_db.fieldPlantInstances)
+            ..where((tbl) => tbl.fieldId.equals(fieldId)))
+          .go();
       await (_db.delete(_db.irrigationPlans)
             ..where((tbl) => tbl.fieldId.equals(fieldId)))
           .go();
@@ -1651,5 +1655,164 @@ class LocalDataRepository {
       }
     } catch (_) {}
     return const [];
+  }
+
+  // ─────────────────────────────────────────────────────────────────
+  // FieldPlantInstances — per-bitki sağlık durumu + tekil bitki yerleştirme
+  // ─────────────────────────────────────────────────────────────────
+
+  /// Yeni bir tekil bitki kaydı oluşturur. Iki kullanım:
+  ///  • Standalone tekil bitki: cropId=null + plantIndex=null
+  ///  • Zone içi sağlık override: cropId=set + plantIndex=set
+  Future<String> insertPlantInstance({
+    required String fieldId,
+    String? cropId,
+    int? plantIndex,
+    required String cropName,
+    required double lat,
+    required double lng,
+    String healthStatus = 'healthy',
+  }) async {
+    final now = DateTime.now().toUtc();
+    final id = _newId('plant');
+    await _db.into(_db.fieldPlantInstances).insert(
+          FieldPlantInstancesCompanion(
+            id: Value(id),
+            fieldId: Value(fieldId),
+            cropId: Value(cropId),
+            plantIndex: Value(plantIndex),
+            cropName: Value(cropName),
+            lat: Value(lat),
+            lng: Value(lng),
+            healthStatus: Value(healthStatus),
+            farmerUid: Value(currentUid),
+            plantedAt: Value(now),
+            createdAt: Value(now),
+            updatedAt: Value(now),
+          ),
+        );
+    await _enqueueSyncJob(
+      entityType: 'field_plant_instances',
+      entityId: id,
+      operation: 'upsert',
+      payload: {
+        'id': id,
+        'field_id': fieldId,
+        'crop_id': cropId,
+        'plant_index': plantIndex,
+        'crop_name': cropName,
+        'lat': lat,
+        'lng': lng,
+        'health_status': healthStatus,
+        'updated_at': now.toIso8601String(),
+      },
+      updatedAt: now,
+    );
+    return id;
+  }
+
+  /// Mevcut bir bitki kaydının sağlık durumunu günceller. Hasta olarak
+  /// işaretlendiğinde aynı zamanda CalendarEvents'e bir 'scouting' kaydı
+  /// düşürür — Günlüklerim ekranında hastalık geçmişi görünür.
+  Future<void> setPlantHealth({
+    required String instanceId,
+    required String healthStatus,
+    String? diseaseType,
+    String? diseasePhotoPath,
+    String diagnosisSource = 'manual',
+    String? notes,
+  }) async {
+    final now = DateTime.now().toUtc();
+    final inst = await (_db.select(_db.fieldPlantInstances)
+          ..where((tbl) => tbl.id.equals(instanceId)))
+        .getSingleOrNull();
+    if (inst == null) return;
+
+    await (_db.update(_db.fieldPlantInstances)
+          ..where((tbl) => tbl.id.equals(instanceId)))
+        .write(FieldPlantInstancesCompanion(
+      healthStatus: Value(healthStatus),
+      diseaseType: Value(diseaseType),
+      diseasePhotoPath: Value(diseasePhotoPath),
+      diagnosisSource: Value(diagnosisSource),
+      notes: Value(notes),
+      healthChangedAt: Value(now),
+      updatedAt: Value(now),
+    ));
+
+    await _enqueueSyncJob(
+      entityType: 'field_plant_instances',
+      entityId: instanceId,
+      operation: 'upsert',
+      payload: {
+        'id': instanceId,
+        'field_id': inst.fieldId,
+        'health_status': healthStatus,
+        'disease_type': diseaseType,
+        'disease_photo_path': diseasePhotoPath,
+        'diagnosis_source': diagnosisSource,
+        'updated_at': now.toIso8601String(),
+      },
+      updatedAt: now,
+    );
+
+    // Hasta/ölü işaretlendiğinde aktivite günlüğüne 'scouting' düş
+    if (healthStatus == 'diseased' || healthStatus == 'dead') {
+      final note = healthStatus == 'dead'
+          ? 'Bitki ölü olarak işaretlendi'
+          : (diseaseType != null && diseaseType.isNotEmpty
+              ? 'Hastalık: $diseaseType'
+              : 'Hasta olarak işaretlendi');
+      await logActivity(
+        fieldId: inst.fieldId,
+        type: 'scouting',
+        cropId: inst.cropId,
+        note: note,
+        metadata: {
+          'plant_instance_id': instanceId,
+          'health_status': healthStatus,
+          if (diseaseType != null) 'disease_type': diseaseType,
+          if (diseasePhotoPath != null) 'photo_path': diseasePhotoPath,
+          'diagnosis_source': diagnosisSource,
+        },
+      );
+    }
+  }
+
+  /// Tarladaki tüm tekil bitki kayıtlarını canlı dinler (soft-delete'siz).
+  Stream<List<FieldPlantInstance>> watchPlantInstances(String fieldId) {
+    final query = _db.select(_db.fieldPlantInstances)
+      ..where((tbl) => tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull());
+    return query.watch();
+  }
+
+  /// Bir zone'a (cropId) bağlı tüm sağlık override'larını plantIndex ile
+  /// indekslenmiş haritada döner — marker render'ında hızlı lookup için.
+  Future<Map<int, FieldPlantInstance>> instancesForCrop(String cropId) async {
+    final rows = await (_db.select(_db.fieldPlantInstances)
+          ..where((tbl) =>
+              tbl.cropId.equals(cropId) &
+              tbl.plantIndex.isNotNull() &
+              tbl.deletedAt.isNull()))
+        .get();
+    return {for (final r in rows) r.plantIndex!: r};
+  }
+
+  /// Bir tekil bitki kaydını siler (soft-delete).
+  Future<void> deletePlantInstance(String instanceId) async {
+    final now = DateTime.now().toUtc();
+    await (_db.update(_db.fieldPlantInstances)
+          ..where((tbl) => tbl.id.equals(instanceId)))
+        .write(FieldPlantInstancesCompanion(
+      deletedAt: Value(now),
+      updatedAt: Value(now),
+    ));
+    await _enqueueSyncJob(
+      entityType: 'field_plant_instances',
+      entityId: instanceId,
+      operation: 'delete',
+      payload: {'id': instanceId},
+      updatedAt: now,
+    );
   }
 }

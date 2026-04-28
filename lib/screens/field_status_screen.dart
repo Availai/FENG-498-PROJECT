@@ -61,9 +61,7 @@ class FieldStatusScreen extends ConsumerWidget {
         data: (allFields) {
           final fields = fieldId == null
               ? allFields
-              : allFields
-                  .where((f) => f['id']?.toString() == fieldId)
-                  .toList();
+              : allFields.where((f) => f['id']?.toString() == fieldId).toList();
           if (fields.isEmpty) {
             return Center(
               child: Padding(
@@ -300,8 +298,8 @@ class _FieldStatusCard extends ConsumerWidget {
                     );
                   },
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 6, vertical: 2),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     child: Text(
                       'Tümü →',
                       style: AppText.xs(context).copyWith(

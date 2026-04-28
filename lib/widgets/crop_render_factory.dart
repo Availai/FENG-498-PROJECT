@@ -122,6 +122,8 @@ Widget buildCropMarkerWidget({
   required Color cropColor,
   required double maturityPercent,
   double harvestPulse = 0.0,
+  String? healthStatus, // 'healthy' | 'diseased' | 'dead' (null = no badge)
+  String? diseaseType, // tooltip / accessibility için
   VoidCallback? onTap,
 }) {
   return Builder(
@@ -239,6 +241,18 @@ Widget buildCropMarkerWidget({
                     alignment: Alignment.bottomCenter,
                     child: sprite,
                   ),
+                  // 4. Sağlık badge'i — hasta/ölü işaretlenmiş bitkilerde
+                  // sağ-üst köşede ünlem (kırmızı) veya X (siyah).
+                  if (healthStatus == 'diseased' ||
+                      healthStatus == 'dead')
+                    Positioned(
+                      top: 0,
+                      right: 0,
+                      child: _HealthBadge(
+                        status: healthStatus!,
+                        diameter: (spriteW * 0.32).clamp(10.0, 18.0),
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -256,4 +270,38 @@ Widget buildCropMarkerWidget({
       return marker;
     },
   );
+}
+
+/// Hasta/ölü bitkinin sağ-üst köşesine yapıştırılan küçük gösterge.
+/// Tasarım: kırmızı/siyah dolgulu daire + beyaz kenarlık + içinde ikon.
+/// Boyut zoom ile birlikte ölçeklenir (10–18px).
+class _HealthBadge extends StatelessWidget {
+  const _HealthBadge({required this.status, required this.diameter});
+
+  final String status;
+  final double diameter;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDead = status == 'dead';
+    final color = isDead ? const Color(0xFF1A1A1A) : const Color(0xFFD32F2F);
+    final icon = isDead ? Icons.close_rounded : Icons.priority_high_rounded;
+    return Container(
+      width: diameter,
+      height: diameter,
+      decoration: BoxDecoration(
+        color: color,
+        shape: BoxShape.circle,
+        border: Border.all(color: Colors.white, width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.45),
+            blurRadius: 4,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Icon(icon, color: Colors.white, size: diameter * 0.7),
+    );
+  }
 }
