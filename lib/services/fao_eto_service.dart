@@ -285,7 +285,7 @@ class FaoCropCoefficients {
       kcInit: 0.70,
       kcMid: 1.15,
       kcEnd: 0.40,
-      totalLengthDays: 235,
+      totalLengthDays: 210, // Kışlık buğday; diğer kaynaklarla hizalandı (VerifiedAgriDatabase: 210 gün)
       faoTableRef: 'FAO-56 Table 12 — Winter Wheat',
     ),
     'arpa': FaoCropCoefficients(
@@ -301,7 +301,7 @@ class FaoCropCoefficients {
       kcInit: 0.30,
       kcMid: 1.20,
       kcEnd: 0.60,
-      totalLengthDays: 150,
+      totalLengthDays: 130, // TAGEM Türkiye dane mısır: 120-130 gün; TurkiyeCropGuides ile hizalandı
       faoTableRef: 'FAO-56 Table 12 — Maize Grain',
     ),
     'çeltik': FaoCropCoefficients(

@@ -360,7 +360,10 @@ class _FieldStatusCard extends ConsumerWidget {
     String timeAgo = '';
     if (date is DateTime) {
       final diff = DateTime.now().difference(date);
-      if (diff.inDays >= 1) {
+      if (diff.isNegative) {
+        // Gelecek tarihli plan kaydı (auto_seed vb.) — gösterme
+        timeAgo = 'Planlandı';
+      } else if (diff.inDays >= 1) {
         timeAgo = '${diff.inDays} gün önce';
       } else if (diff.inHours >= 1) {
         timeAgo = '${diff.inHours} saat önce';

@@ -123,7 +123,7 @@ class SeasonSummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final pb = CropPlaybooks.resolveByName(cropName);
-    final daysSince = DateTime.now().difference(plantedDate).inDays;
+    final daysSince = DateTime.now().difference(plantedDate).inDays.clamp(0, 9999);
     final stage = pb?.bandForDay(daysSince)?.stage ?? 'Vejetatif';
     final daysToHarvest =
         harvestDays == null ? null : (harvestDays! - daysSince);
@@ -295,6 +295,7 @@ class SeasonSummaryCard extends StatelessWidget {
   static String _ago(DateTime? t) {
     if (t == null) return 'Henüz kayıt yok';
     final diff = DateTime.now().difference(t);
+    if (diff.isNegative) return 'Planlandı';
     if (diff.inMinutes < 60) return 'Az önce';
     if (diff.inHours < 24) return '${diff.inHours} saat önce';
     if (diff.inDays == 1) return 'Dün';

@@ -134,8 +134,8 @@ class VerifiedAgriDatabase {
         optimalTemp: 26,
         minTemp: 10,
         maxTemp: 35,
-        waterReqMmPerSeason: 600,
-        daysToHarvest: 120,
+        waterReqMmPerSeason: 700, // TAGEM: 700 mm/sezon (TurkiyeCropGuides ile hizalandı)
+        daysToHarvest: 130, // TAGEM dane mısır: 120-130 gün; 130 alındı
         plantDensityPerDekar: 7000,
         maxVisualHeight: 28.0,
         renderColor: Color(0xFF689F38),
@@ -200,7 +200,7 @@ class VerifiedAgriDatabase {
         optimalTemp: 25,
         minTemp: 10,
         maxTemp: 35,
-        waterReqMmPerSeason: 450,
+        waterReqMmPerSeason: 550, // TAGEM: 550 mm/sezon (TurkiyeCropGuides ile hizalandı)
         daysToHarvest: 120,
         plantDensityPerDekar: 5000,
         maxVisualHeight: 24.0,
@@ -380,8 +380,8 @@ class VerifiedAgriDatabase {
         optimalTemp: 24,
         minTemp: 10,
         maxTemp: 35,
-        waterReqMmPerSeason: 500,
-        daysToHarvest: 80,
+        waterReqMmPerSeason: 600, // TAGEM: 600 mm/sezon (TurkiyeCropGuides ile hizalandı)
+        daysToHarvest: 110, // Dikim→hasat: 110 gün (TurkiyeCropGuides ile hizalandı; 80 gün çiçek→hasat değildi)
         plantDensityPerDekar: 2500,
         maxVisualHeight: 14.0,
         renderColor: Colors.redAccent,

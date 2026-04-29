@@ -263,11 +263,13 @@ class TaskDirectiveService {
       }
 
       // Sulama mantığı — yağmur varsa ertele, aralık dolduysa emir ver
+      // daysSinceWater asla negatif olamaz: ekim tarihi henüz gelmemiş veya
+      // henüz sulama kaydı yoksa 0 başlangıç alınır.
       final daysSinceWater = lastWater == null
           ? (plantedDate != null
-              ? t.difference(plantedDate).inDays
+              ? t.difference(plantedDate).inDays.clamp(0, 9999)
               : waterInterval)
-          : t.difference(lastWater).inDays;
+          : t.difference(lastWater).inDays.clamp(0, 9999);
 
       if (rainNext48h >= 8) {
         // Önümüzdeki 2 günde ciddi yağış bekleniyor — sulamayı ertele.
@@ -985,7 +987,7 @@ class TaskDirectiveService {
           'diyerek kaydet — geçmiş ve sıradaki tarih buradan hesaplanacak.';
     }
 
-    final lastWaterDays = t.difference(lastWater).inDays;
+    final lastWaterDays = t.difference(lastWater).inDays.clamp(0, 9999);
     final lastWaterPart = lastWaterDays == 0
         ? 'Bugün sulamışsın.'
         : 'Son sulama $lastWaterDays gün önce.';

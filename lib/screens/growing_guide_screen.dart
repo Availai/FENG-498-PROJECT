@@ -691,9 +691,13 @@ class _CropHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final cropName = crop['name']?.toString() ?? 'Bitki';
     final cropId = crop['id']?.toString();
-    final daysSince = plantedDate == null
+    final rawDaysSince = plantedDate == null
         ? null
         : DateTime.now().difference(plantedDate!).inDays;
+    // Ekim tarihi gelecekte ise sıfır al — "-5. gün" görünmüyor.
+    final daysSince = rawDaysSince == null
+        ? null
+        : (rawDaysSince < 0 ? null : rawDaysSince);
     final growth = cropId == null ? null : growthMap[cropId];
     final stageLabel = _stageLabel(
         growth?.stageKey ?? progress?.activeStep?.title.toLowerCase());
@@ -827,7 +831,11 @@ class _LastActivityCard extends StatelessWidget {
     final date = last['date'];
     final dt =
         date is DateTime ? date : DateTime.tryParse(date?.toString() ?? '');
-    final daysAgo = dt == null ? null : DateTime.now().difference(dt).inDays;
+    final rawDaysAgo =
+        dt == null ? null : DateTime.now().difference(dt).inDays;
+    // Gelecek tarihli aktivite (auto_seed planı) — negatif gösterme.
+    final daysAgo =
+        rawDaysAgo == null || rawDaysAgo < 0 ? null : rawDaysAgo;
     final qty = last['quantity'] as num?;
     final unit = last['unit']?.toString() ?? '';
     final qtyText = qty == null ? '' : ' (${qty.toStringAsFixed(0)} $unit)';
