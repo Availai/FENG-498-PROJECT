@@ -124,6 +124,8 @@ Widget buildCropMarkerWidget({
   double harvestPulse = 0.0,
   String? healthStatus, // 'healthy' | 'diseased' | 'dead' (null = no badge)
   String? diseaseType, // tooltip / accessibility için
+  bool isHighlighted = false,
+  ValueChanged<bool>? onHover,
   VoidCallback? onTap,
 }) {
   return Builder(
@@ -243,8 +245,7 @@ Widget buildCropMarkerWidget({
                   ),
                   // 4. Sağlık badge'i — hasta/ölü işaretlenmiş bitkilerde
                   // sağ-üst köşede ünlem (kırmızı) veya X (siyah).
-                  if (healthStatus == 'diseased' ||
-                      healthStatus == 'dead')
+                  if (healthStatus == 'diseased' || healthStatus == 'dead')
                     Positioned(
                       top: 0,
                       right: 0,
@@ -260,14 +261,122 @@ Widget buildCropMarkerWidget({
         ),
       );
 
-      if (onTap != null) {
-        return GestureDetector(
-          onTap: onTap,
-          behavior: HitTestBehavior.opaque,
-          child: marker,
+      final highlightHalo = IgnorePointer(
+        child: AnimatedOpacity(
+          opacity: isHighlighted ? 1.0 : 0.0,
+          duration: const Duration(milliseconds: 120),
+          child: Container(
+            width: (spriteW * 1.25).clamp(30.0, 92.0),
+            height: (spriteH * 0.26).clamp(10.0, 28.0),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.all(
+                Radius.elliptical(
+                  (spriteW * 1.25).clamp(30.0, 92.0),
+                  (spriteH * 0.26).clamp(10.0, 28.0),
+                ),
+              ),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.9),
+                width: 2.0,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: cropColor.withValues(alpha: 0.65),
+                  blurRadius: 18,
+                  spreadRadius: 3,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      final labelBottom = (spriteH * 0.82).clamp(32.0, 108.0);
+      final highlightLabel = IgnorePointer(
+        child: AnimatedOpacity(
+          opacity: isHighlighted ? 1.0 : 0.0,
+          duration: const Duration(milliseconds: 120),
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 118),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: const Color(0xFF0D1811).withValues(alpha: 0.92),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: cropColor.withValues(alpha: 0.85),
+                width: 1.2,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.35),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Text(
+              cropName,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ),
+      );
+
+      final highlightedMarker = Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.bottomCenter,
+        children: [
+          Positioned(bottom: 1, child: highlightHalo),
+          AnimatedScale(
+            scale: isHighlighted ? 1.16 : 1.0,
+            duration: const Duration(milliseconds: 120),
+            curve: Curves.easeOutCubic,
+            alignment: Alignment.bottomCenter,
+            child: marker,
+          ),
+          if (cropName.trim().isNotEmpty)
+            Positioned(bottom: labelBottom, child: highlightLabel),
+        ],
+      );
+
+      if (onTap != null || onHover != null) {
+        final hitWidth = (spriteW * 0.62).clamp(24.0, 76.0);
+        final hitHeight = (spriteH * 0.96).clamp(32.0, 112.0);
+        final preciseHitTarget = Positioned(
+          bottom: 0,
+          child: SizedBox(
+            width: hitWidth,
+            height: hitHeight,
+            child: MouseRegion(
+              cursor:
+                  onTap == null ? MouseCursor.defer : SystemMouseCursors.click,
+              onEnter: (_) => onHover?.call(true),
+              onExit: (_) => onHover?.call(false),
+              child: GestureDetector(
+                onTap: onTap,
+                behavior: HitTestBehavior.opaque,
+                child: const SizedBox.expand(),
+              ),
+            ),
+          ),
+        );
+        return Stack(
+          clipBehavior: Clip.none,
+          alignment: Alignment.bottomCenter,
+          children: [
+            IgnorePointer(child: highlightedMarker),
+            preciseHitTarget,
+          ],
         );
       }
-      return marker;
+      return highlightedMarker;
     },
   );
 }

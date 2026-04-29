@@ -63,6 +63,8 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
   List<LatLng> _zoneDrawingPoints = [];
   AgriPlant? _pendingPlant;
   Map<String, dynamic>? _selectedCropForTooltip;
+  String? _hoveredPlantMarkerKey;
+  String? _selectedPlantMarkerKey;
 
   // ═══ Tekil bitki yerleştirme modu state ═══
   bool _isPlacingSinglePlantMode = false;
@@ -1640,6 +1642,37 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
   /// Bir crop zone marker'ına dokunulduğunda — DiseasePickerSheet açar.
   /// Var olan instance varsa onun durumu önceden seçili gelir; yoksa
   /// kullanıcı seçim yaptığında yeni instance oluşturulur.
+  bool _isPlantMarkerHighlighted(String key) {
+    return _hoveredPlantMarkerKey == key || _selectedPlantMarkerKey == key;
+  }
+
+  void _setHoveredPlantMarker(String key, bool isHovered) {
+    if (!mounted) return;
+    if (isHovered) {
+      if (_hoveredPlantMarkerKey == key) return;
+      setState(() => _hoveredPlantMarkerKey = key);
+      return;
+    }
+    if (_hoveredPlantMarkerKey == key) {
+      setState(() => _hoveredPlantMarkerKey = null);
+    }
+  }
+
+  void _selectPlantMarker(String key) {
+    if (_selectedPlantMarkerKey == key) return;
+    setState(() => _selectedPlantMarkerKey = key);
+  }
+
+  void _clearPlantMarkerSelection() {
+    if (_selectedPlantMarkerKey == null && _hoveredPlantMarkerKey == null) {
+      return;
+    }
+    setState(() {
+      _selectedPlantMarkerKey = null;
+      _hoveredPlantMarkerKey = null;
+    });
+  }
+
   Future<void> _onPlantMarkerTap({
     required Map<String, dynamic> crop,
     required int? plantIndex,
@@ -1712,6 +1745,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
   /// Hastalık/sağlık kaydı per-bitki olduğundan bos toprağa kayıt girilemez.
   void _onMapTapEmpty(LatLng point) {
     if (_isZoneDrawingMode || _isPlacingSinglePlantMode) return;
+    _clearPlantMarkerSelection();
     final polygon = _polygonPoints(widget.fieldData);
     final inside = polygon.length >= 3 &&
         _pointInPolygon(point.latitude, point.longitude, polygon);
@@ -2225,6 +2259,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
     // Tıklanabilir bölge poligonları (her biri hitValue ile crop'a bağlı)
     final zoneHitPolygons = <Polygon<Map<String, dynamic>>>[];
     final zoneMarkers = <Marker>[];
+    final highlightedPlantMarkers = <Marker>[];
     final greenhousePolygons = <Polygon>[];
     final greenhouseMarkers = <Marker>[];
     // Zone olmayan bitkiler için eski grid markerlar
@@ -2328,29 +2363,44 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
         for (int i = 0; i < positions.length; i++) {
           final pos = positions[i];
           final instance = cropOverrides[i];
-          zoneMarkers.add(Marker(
+          final plantIndex = i;
+          final markerKey = 'zone:${cropId ?? cropName}:$plantIndex';
+          final marker = Marker(
             point: pos,
             width: 140,
             height: 160,
             alignment: Alignment.topCenter,
-            child: AnimatedBuilder(
-              animation: _harvestPulseCtrl,
-              builder: (_, __) => buildCropMarkerWidget(
-                cropName: crop['name']?.toString() ?? '',
-                cropColor: color,
-                maturityPercent: maturity,
-                harvestPulse: _harvestPulseCtrl.value,
-                healthStatus: instance?.healthStatus,
-                diseaseType: instance?.diseaseType,
-                onTap: () => _onPlantMarkerTap(
-                  crop: crop,
-                  plantIndex: i,
-                  pos: pos,
-                  existing: instance,
+            child: KeyedSubtree(
+              key: ValueKey(markerKey),
+              child: AnimatedBuilder(
+                animation: _harvestPulseCtrl,
+                builder: (_, __) => buildCropMarkerWidget(
+                  cropName: crop['name']?.toString() ?? '',
+                  cropColor: color,
+                  maturityPercent: maturity,
+                  harvestPulse: _harvestPulseCtrl.value,
+                  healthStatus: instance?.healthStatus,
+                  diseaseType: instance?.diseaseType,
+                  isHighlighted: _isPlantMarkerHighlighted(markerKey),
+                  onHover: (hovering) =>
+                      _setHoveredPlantMarker(markerKey, hovering),
+                  onTap: () {
+                    _selectPlantMarker(markerKey);
+                    _onPlantMarkerTap(
+                      crop: crop,
+                      plantIndex: plantIndex,
+                      pos: pos,
+                      existing: instance,
+                    );
+                  },
                 ),
               ),
             ),
-          ));
+          );
+          (_selectedPlantMarkerKey == markerKey
+                  ? highlightedPlantMarkers
+                  : zoneMarkers)
+              .add(marker);
         }
       } else {
         gridCrops.add(crop);
@@ -2398,43 +2448,60 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
             : const <int, FieldPlantInstance>{};
         final instance = cropOverrides[i];
         final pos = positions[i];
-        markers.add(
-          Marker(
-            point: pos,
-            width: 140,
-            height: 160,
-            alignment: Alignment.topCenter,
+        final cropName = crop['name']?.toString() ?? '';
+        final plantIndex = i;
+        final markerKey = 'grid:${cropId ?? cropName}:$plantIndex';
+        final marker = Marker(
+          point: pos,
+          width: 140,
+          height: 160,
+          alignment: Alignment.topCenter,
+          child: KeyedSubtree(
+            key: ValueKey(markerKey),
             child: AnimatedBuilder(
               animation: _harvestPulseCtrl,
               builder: (_, __) => buildCropMarkerWidget(
-                cropName: crop['name']?.toString() ?? '',
+                cropName: cropName,
                 cropColor: _cropColor(crop),
                 maturityPercent: maturity,
                 harvestPulse: _harvestPulseCtrl.value,
                 healthStatus: instance?.healthStatus,
                 diseaseType: instance?.diseaseType,
-                onTap: () => _onPlantMarkerTap(
-                  crop: crop,
-                  plantIndex: i,
-                  pos: pos,
-                  existing: instance,
-                ),
+                isHighlighted: _isPlantMarkerHighlighted(markerKey),
+                onHover: (hovering) =>
+                    _setHoveredPlantMarker(markerKey, hovering),
+                onTap: () {
+                  _selectPlantMarker(markerKey);
+                  _onPlantMarkerTap(
+                    crop: crop,
+                    plantIndex: plantIndex,
+                    pos: pos,
+                    existing: instance,
+                  );
+                },
               ),
             ),
           ),
         );
+        (_selectedPlantMarkerKey == markerKey
+                ? highlightedPlantMarkers
+                : markers)
+            .add(marker);
       }
     }
 
     // Standalone tekil bitki marker'ları (cropId=null instance'lar) —
     // kullanıcının "Tekil Bitki Ekle" ile haritaya yerleştirdiği bitkiler.
     for (final inst in standaloneInstances) {
-      markers.add(
-        Marker(
-          point: LatLng(inst.lat, inst.lng),
-          width: 140,
-          height: 160,
-          alignment: Alignment.topCenter,
+      final pos = LatLng(inst.lat, inst.lng);
+      final markerKey = 'single:${inst.id}';
+      final marker = Marker(
+        point: pos,
+        width: 140,
+        height: 160,
+        alignment: Alignment.topCenter,
+        child: KeyedSubtree(
+          key: ValueKey(markerKey),
           child: AnimatedBuilder(
             animation: _harvestPulseCtrl,
             builder: (_, __) => buildCropMarkerWidget(
@@ -2444,19 +2511,27 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
               harvestPulse: _harvestPulseCtrl.value,
               healthStatus: inst.healthStatus,
               diseaseType: inst.diseaseType,
-              onTap: () => _onPlantMarkerTap(
-                crop: {
-                  'id': null,
-                  'name': inst.cropName,
-                },
-                plantIndex: null,
-                pos: LatLng(inst.lat, inst.lng),
-                existing: inst,
-              ),
+              isHighlighted: _isPlantMarkerHighlighted(markerKey),
+              onHover: (hovering) =>
+                  _setHoveredPlantMarker(markerKey, hovering),
+              onTap: () {
+                _selectPlantMarker(markerKey);
+                _onPlantMarkerTap(
+                  crop: {
+                    'id': null,
+                    'name': inst.cropName,
+                  },
+                  plantIndex: null,
+                  pos: pos,
+                  existing: inst,
+                );
+              },
             ),
           ),
         ),
       );
+      (_selectedPlantMarkerKey == markerKey ? highlightedPlantMarkers : markers)
+          .add(marker);
     }
 
     // ── Bölge çizme modu — çizilmekte olan polygon ──
@@ -2600,6 +2675,8 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
           if (greenhouseMarkers.isNotEmpty)
             MarkerLayer(markers: greenhouseMarkers),
           if (zoneMarkers.isNotEmpty) MarkerLayer(markers: zoneMarkers),
+          if (highlightedPlantMarkers.isNotEmpty)
+            MarkerLayer(markers: highlightedPlantMarkers),
           if (drawingMarkers.isNotEmpty) MarkerLayer(markers: drawingMarkers),
           if (cornerMarkers.isNotEmpty) MarkerLayer(markers: cornerMarkers),
         ],

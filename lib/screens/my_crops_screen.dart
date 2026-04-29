@@ -15,6 +15,45 @@ import '../theme/app_theme.dart';
 class MyCropsScreen extends ConsumerWidget {
   const MyCropsScreen({super.key});
 
+  static const double _fallbackPlannerLat = 39.0;
+  static const double _fallbackPlannerLng = 35.0;
+
+  Future<void> _openFieldPlanner(BuildContext context) async {
+    double initialLat = _fallbackPlannerLat;
+    double initialLng = _fallbackPlannerLng;
+    bool usedFallback = false;
+
+    try {
+      await ensureLocationPermission().timeout(const Duration(seconds: 6));
+      final pos = await getCurrentPosition().timeout(
+        const Duration(seconds: 8),
+      );
+      initialLat = pos.latitude;
+      initialLng = pos.longitude;
+    } catch (_) {
+      usedFallback = true;
+    }
+
+    if (!context.mounted) return;
+    Navigator.of(context).push(
+      AnimatedRoute.slideUp(
+        Field3DPlannerScreen(
+          initialLat: initialLat,
+          initialLng: initialLng,
+        ),
+      ),
+    );
+
+    if (usedFallback && context.mounted) {
+      AppToast.show(
+        context,
+        message:
+            'Konum alınamadı; harita Türkiye merkezinden açıldı. Tarlanı haritada bulup çizebilirsin.',
+        type: ToastType.warning,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final fieldsAsync = ref.watch(fieldMapsProvider);
@@ -39,27 +78,7 @@ class MyCropsScreen extends ConsumerWidget {
         padding: const EdgeInsets.only(bottom: 92),
         child: FloatingActionButton.extended(
           heroTag: 'calcBtn',
-          onPressed: () async {
-            try {
-              final pos = await getCurrentPosition();
-              if (context.mounted) {
-                Navigator.of(context).push(AnimatedRoute.slideUp(
-                  Field3DPlannerScreen(
-                    initialLat: pos.latitude,
-                    initialLng: pos.longitude,
-                  ),
-                ));
-              }
-            } catch (e) {
-              if (context.mounted) {
-                AppToast.show(
-                  context,
-                  message: 'Sinyal hatası: $e',
-                  type: ToastType.error,
-                );
-              }
-            }
-          },
+          onPressed: () => _openFieldPlanner(context),
           backgroundColor: AppColors.emerald,
           icon: const Icon(Icons.satellite_alt, color: Colors.white),
           label: Text('YENİ TARLA ÇİZ',
