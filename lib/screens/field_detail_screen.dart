@@ -1702,6 +1702,26 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
     );
   }
 
+  /// Normal modda boş bir alana dokunulduğunda — kullanıcıya bitkiye
+  /// dokunması veya tekil bitki ekleme moduna geçmesi gerektiğini hatırlat.
+  /// Hastalık/sağlık kaydı per-bitki olduğundan bos toprağa kayıt girilemez.
+  void _onMapTapEmpty(LatLng point) {
+    if (_isZoneDrawingMode || _isPlacingSinglePlantMode) return;
+    final polygon = _polygonPoints(widget.fieldData);
+    final inside = polygon.length >= 3 &&
+        _pointInPolygon(point.latitude, point.longitude, polygon);
+    AppToast.show(
+      context,
+      message: inside
+          ? 'Burada bitki yok. Hastalık kaydı için bir bitkiye dokunun '
+              'veya "Tarlayı Tara" butonuna uzun basıp tekil bitki ekleyin.'
+          : 'Tarla sınırları dışına dokundunuz. Hastalık kaydı için bir '
+              'bitkiye dokunun.',
+      type: ToastType.warning,
+      duration: const Duration(seconds: 3),
+    );
+  }
+
   /// Tekil bitki yerleştirme modunda map tap — TurkishCrop picker açıp
   /// seçilen bitki türü için yeni bir standalone instance oluşturur.
   Future<void> _onMapTapForSinglePlant(LatLng point) async {
@@ -2480,7 +2500,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
               ? (tapPos, point) => _onMapTapForZone(point)
               : _isPlacingSinglePlantMode
                   ? (tapPos, point) => _onMapTapForSinglePlant(point)
-                  : null,
+                  : (tapPos, point) => _onMapTapEmpty(point),
         ),
         children: [
           TileLayer(
