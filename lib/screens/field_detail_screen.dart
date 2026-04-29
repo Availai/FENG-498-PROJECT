@@ -29,10 +29,14 @@ import '../widgets/help_panel.dart';
 import '../widgets/zone_drawing_toolbar.dart';
 import '../widgets/crop_zone_tooltip.dart';
 import '../widgets/crop_render_factory.dart';
+import '../widgets/disease_picker_sheet.dart';
+import '../data/disease_types.dart';
 import 'cost_ledger_screen.dart';
+import 'disease_capture_screen.dart';
 import 'farm_journal_screen.dart';
 import 'growing_guide_screen.dart';
 import 'plant_zone_drawing_screen.dart';
+import 'turkish_crops_search_screen.dart';
 import '../widgets/animated_route.dart';
 import '../theme/app_theme.dart';
 
@@ -59,6 +63,9 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
   List<LatLng> _zoneDrawingPoints = [];
   AgriPlant? _pendingPlant;
   Map<String, dynamic>? _selectedCropForTooltip;
+
+  // ═══ Tekil bitki yerleştirme modu state ═══
+  bool _isPlacingSinglePlantMode = false;
 
   late AnimationController _animCtrl;
   late Animation<double> _uiFadeAnim;
@@ -504,6 +511,45 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
                 onUndo: _undoLastZonePoint,
                 onComplete: _completeZoneDrawing,
                 onCancel: _cancelZoneDrawing,
+              ),
+            ),
+
+          // 5c. Bottom — tekil bitki yerleştirme modu banner'ı + iptal
+          if (_isPlacingSinglePlantMode)
+            Positioned(
+              left: 16,
+              right: 16,
+              bottom: MediaQuery.of(context).padding.bottom + 20,
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF14241B),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.emerald, width: 1.2),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.eco_rounded,
+                        color: AppColors.emerald, size: 20),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text(
+                        'Tekil bitki yerleştirme aktif — boş bir noktaya dokun.',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () =>
+                          setState(() => _isPlacingSinglePlantMode = false),
+                      child: const Text('İptal',
+                          style: TextStyle(color: Colors.white)),
+                    ),
+                  ],
+                ),
               ),
             ),
 
@@ -1095,7 +1141,9 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           _buildNavBtn(Icons.radar_rounded, 'Tarlayı Tara', _showPlantPicker,
-              color: const Color(0xFF2ECC71), primary: true),
+              color: const Color(0xFF2ECC71),
+              primary: true,
+              onLongPress: _showPlacementMenu),
           _buildNavBtn(Icons.check_circle_outline_rounded, 'Aktivite',
               _showActivityQuickLog,
               color: const Color(0xFFF2B84B)),
@@ -1186,13 +1234,16 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
   }
 
   Widget _buildNavBtn(IconData icon, String text, VoidCallback onTap,
-      {required Color color, bool primary = false}) {
+      {required Color color,
+      bool primary = false,
+      VoidCallback? onLongPress}) {
     // Primary: doygun renk dolgulu; diğerleri: matte tonlu daire + renkli ikon.
     final Color bg = primary ? color : color.withValues(alpha: 0.14);
     final Color border = primary ? color : color.withValues(alpha: 0.38);
     final Color iconColor = primary ? const Color(0xFF0D1811) : color;
     return GestureDetector(
       onTap: onTap,
+      onLongPress: onLongPress,
       behavior: HitTestBehavior.opaque,
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -1577,6 +1628,184 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
     }
   }
 
+  // ═══════════════════════════════════════════════════════════════
+  // Tekil bitki yerleştirme + per-bitki sağlık takibi
+  // ═══════════════════════════════════════════════════════════════
+
+  /// Bir crop zone marker'ına dokunulduğunda — DiseasePickerSheet açar.
+  /// Var olan instance varsa onun durumu önceden seçili gelir; yoksa
+  /// kullanıcı seçim yaptığında yeni instance oluşturulur.
+  Future<void> _onPlantMarkerTap({
+    required Map<String, dynamic> crop,
+    required int? plantIndex,
+    required LatLng pos,
+    required FieldPlantInstance? existing,
+  }) async {
+    if (_isZoneDrawingMode || _isPlacingSinglePlantMode) return;
+
+    final fieldId = widget.fieldData['id']?.toString();
+    if (fieldId == null || fieldId.isEmpty) return;
+    final cropId = crop['id']?.toString();
+    final cropName = crop['name']?.toString() ?? 'Bitki';
+
+    final result = await DiseasePickerSheet.show(
+      context,
+      cropName: cropName,
+      currentStatus: existing?.healthStatus,
+      currentDiseaseType: existing?.diseaseType,
+      currentPhotoPath: existing?.diseasePhotoPath,
+      onCapturePhoto: () async {
+        final captured = await DiseaseCaptureScreen.show(
+          context,
+          cropName: cropName,
+          lat: pos.latitude,
+          lng: pos.longitude,
+        );
+        return captured?.photoPath;
+      },
+    );
+    if (result == null || !mounted) return;
+
+    final repo = ref.read(localDataRepositoryProvider);
+    String instanceId;
+    if (existing != null) {
+      instanceId = existing.id;
+    } else {
+      // Yeni instance oluştur — zone'a bağlı override
+      instanceId = await repo.insertPlantInstance(
+        fieldId: fieldId,
+        cropId: cropId,
+        plantIndex: plantIndex,
+        cropName: cropName,
+        lat: pos.latitude,
+        lng: pos.longitude,
+        healthStatus: result.status,
+      );
+    }
+
+    await repo.setPlantHealth(
+      instanceId: instanceId,
+      healthStatus: result.status,
+      diseaseType: result.diseaseType,
+      diseasePhotoPath: result.photoPath,
+    );
+
+    if (!mounted) return;
+    AppToast.show(
+      context,
+      message: result.status == DiseaseTypes.statusDiseased
+          ? 'Bitki hasta olarak işaretlendi.'
+          : result.status == DiseaseTypes.statusDead
+              ? 'Bitki ölü olarak işaretlendi.'
+              : 'Bitki sağlıklı olarak işaretlendi.',
+      type: ToastType.success,
+    );
+  }
+
+  /// Tekil bitki yerleştirme modunda map tap — TurkishCrop picker açıp
+  /// seçilen bitki türü için yeni bir standalone instance oluşturur.
+  Future<void> _onMapTapForSinglePlant(LatLng point) async {
+    if (!_isPlacingSinglePlantMode) return;
+
+    final polygon = _polygonPoints(widget.fieldData);
+    if (polygon.length >= 3 &&
+        !_pointInPolygon(point.latitude, point.longitude, polygon)) {
+      AppToast.show(
+        context,
+        message: 'Bu nokta tarla sınırları dışında.',
+        type: ToastType.warning,
+      );
+      return;
+    }
+
+    final fieldId = widget.fieldData['id']?.toString();
+    if (fieldId == null || fieldId.isEmpty) return;
+
+    final picked = await Navigator.of(context).push<TurkishCrop>(
+      MaterialPageRoute(
+        builder: (_) => const TurkishCropsSearchScreen(pickerMode: true),
+      ),
+    );
+    if (picked == null || !mounted) return;
+
+    await ref.read(localDataRepositoryProvider).insertPlantInstance(
+          fieldId: fieldId,
+          cropId: null,
+          plantIndex: null,
+          cropName: picked.nameTr,
+          lat: point.latitude,
+          lng: point.longitude,
+        );
+
+    if (!mounted) return;
+    setState(() => _isPlacingSinglePlantMode = false);
+    AppToast.show(
+      context,
+      message: '${picked.nameTr} eklendi.',
+      type: ToastType.success,
+    );
+  }
+
+  /// "Tarlayı Tara" butonuna uzun basıldığında açılan menü:
+  /// Zone çiz / Tekil bitki ekle.
+  void _showPlacementMenu() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 14),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              ListTile(
+                leading: const Icon(Icons.crop_free_rounded,
+                    color: AppColors.emerald),
+                title: const Text('Bölge Çiz'),
+                subtitle: const Text(
+                    'Bir alana toplu ekim — bitki seç ve çevresini çiz'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _showPlantPicker();
+                },
+              ),
+              const Divider(),
+              ListTile(
+                leading: const Icon(Icons.eco_rounded,
+                    color: AppColors.emeraldDark),
+                title: const Text('Tekil Bitki Ekle'),
+                subtitle: const Text(
+                    'Boş bir noktaya dokunarak tek bir bitki yerleştir'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  setState(() => _isPlacingSinglePlantMode = true);
+                  AppToast.show(
+                    context,
+                    message:
+                        'Bitkiyi yerleştirmek istediğin noktaya dokun.',
+                    type: ToastType.info,
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   void _onMapTapForZone(LatLng point) {
     if (!_isZoneDrawingMode) return;
 
@@ -1695,7 +1924,10 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
     );
   }
 
-  /// Bölgeye dokunulduğunda tooltip göster
+  /// Bölgeye dokunulduğunda tooltip göster.
+  /// Marker tap'leri artık `_onPlantMarkerTap`'e gidiyor; bu metot zone
+  /// polygon hit'lerinde tooltip göstermek için yedek olarak duruyor.
+  // ignore: unused_element
   void _onCropZoneTap(Map<String, dynamic> crop) {
     if (_isZoneDrawingMode) return;
     setState(() {
@@ -1928,6 +2160,25 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
       for (final state in growthRows) state.cropId: state,
     };
 
+    // ── Bitki sağlık override'ları + standalone tekil bitkiler ──
+    // Crop+plantIndex → instance map (zone marker'larının sağlığını boyamak için)
+    // Standalone (cropId=null) instance'lar → ayrı marker olarak çizilir.
+    final allInstances = fieldId == null || fieldId.isEmpty
+        ? const <FieldPlantInstance>[]
+        : ref.watch(fieldPlantInstancesProvider(fieldId)).valueOrNull ??
+            const <FieldPlantInstance>[];
+    final instancesByCrop = <String, Map<int, FieldPlantInstance>>{};
+    final standaloneInstances = <FieldPlantInstance>[];
+    for (final inst in allInstances) {
+      if (inst.cropId == null || inst.plantIndex == null) {
+        if (inst.cropId == null) standaloneInstances.add(inst);
+      } else {
+        instancesByCrop
+            .putIfAbsent(inst.cropId!, () => <int, FieldPlantInstance>{})[
+                inst.plantIndex!] = inst;
+      }
+    }
+
     const borderColor = Color(0xFF00E676);
 
     // Polygon bounds — kameranın sınırları ve initial fit için.
@@ -1985,7 +2236,14 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
         // Z-Index Sorting: Painter's Algorithm (Kuzeyden Güneye doğru sırala)
         positions.sort((a, b) => b.latitude.compareTo(a.latitude));
 
-        for (final pos in positions) {
+        final cropId = crop['id']?.toString();
+        final cropOverrides = (cropId != null)
+            ? instancesByCrop[cropId] ?? const <int, FieldPlantInstance>{}
+            : const <int, FieldPlantInstance>{};
+
+        for (int i = 0; i < positions.length; i++) {
+          final pos = positions[i];
+          final instance = cropOverrides[i];
           zoneMarkers.add(Marker(
             point: pos,
             width: 140,
@@ -1998,7 +2256,14 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
                 cropColor: color,
                 maturityPercent: maturity,
                 harvestPulse: _harvestPulseCtrl.value,
-                onTap: () => _onCropZoneTap(crop),
+                healthStatus: instance?.healthStatus,
+                diseaseType: instance?.diseaseType,
+                onTap: () => _onPlantMarkerTap(
+                  crop: crop,
+                  plantIndex: i,
+                  pos: pos,
+                  existing: instance,
+                ),
               ),
             ),
           ));
@@ -2043,9 +2308,15 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
           crop,
           growthState: growthByCrop[crop['id']?.toString()],
         );
+        final cropId = crop['id']?.toString();
+        final cropOverrides = (cropId != null)
+            ? instancesByCrop[cropId] ?? const <int, FieldPlantInstance>{}
+            : const <int, FieldPlantInstance>{};
+        final instance = cropOverrides[i];
+        final pos = positions[i];
         markers.add(
           Marker(
-            point: positions[i],
+            point: pos,
             width: 140,
             height: 160,
             alignment: Alignment.topCenter,
@@ -2056,12 +2327,52 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
                 cropColor: _cropColor(crop),
                 maturityPercent: maturity,
                 harvestPulse: _harvestPulseCtrl.value,
-                onTap: () => _onCropZoneTap(crop),
+                healthStatus: instance?.healthStatus,
+                diseaseType: instance?.diseaseType,
+                onTap: () => _onPlantMarkerTap(
+                  crop: crop,
+                  plantIndex: i,
+                  pos: pos,
+                  existing: instance,
+                ),
               ),
             ),
           ),
         );
       }
+    }
+
+    // Standalone tekil bitki marker'ları (cropId=null instance'lar) —
+    // kullanıcının "Tekil Bitki Ekle" ile haritaya yerleştirdiği bitkiler.
+    for (final inst in standaloneInstances) {
+      markers.add(
+        Marker(
+          point: LatLng(inst.lat, inst.lng),
+          width: 140,
+          height: 160,
+          alignment: Alignment.topCenter,
+          child: AnimatedBuilder(
+            animation: _harvestPulseCtrl,
+            builder: (_, __) => buildCropMarkerWidget(
+              cropName: inst.cropName,
+              cropColor: const Color(0xFF66BB6A),
+              maturityPercent: 0,
+              harvestPulse: _harvestPulseCtrl.value,
+              healthStatus: inst.healthStatus,
+              diseaseType: inst.diseaseType,
+              onTap: () => _onPlantMarkerTap(
+                crop: {
+                  'id': null,
+                  'name': inst.cropName,
+                },
+                plantIndex: null,
+                pos: LatLng(inst.lat, inst.lng),
+                existing: inst,
+              ),
+            ),
+          ),
+        ),
+      );
     }
 
     // ── Bölge çizme modu — çizilmekte olan polygon ──
@@ -2159,7 +2470,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
               ? CameraConstraint.containCenter(bounds: bounds)
               : const CameraConstraint.unconstrained(),
           interactionOptions: InteractionOptions(
-            flags: _isZoneDrawingMode
+            flags: (_isZoneDrawingMode || _isPlacingSinglePlantMode)
                 ? InteractiveFlag.pinchZoom | InteractiveFlag.drag
                 : InteractiveFlag.pinchZoom |
                     InteractiveFlag.drag |
@@ -2167,7 +2478,9 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
           ),
           onTap: _isZoneDrawingMode
               ? (tapPos, point) => _onMapTapForZone(point)
-              : null,
+              : _isPlacingSinglePlantMode
+                  ? (tapPos, point) => _onMapTapForSinglePlant(point)
+                  : null,
         ),
         children: [
           TileLayer(
