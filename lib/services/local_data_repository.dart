@@ -118,9 +118,10 @@ class LocalDataRepository {
     bool mirrorLegacy = true,
   }) async {
     final now = DateTime.now().toUtc();
-    final fieldId = (raw['id']?.toString().trim().isNotEmpty ?? false)
-        ? raw['id'].toString()
-        : _newId('field');
+    final isNewField = !(raw['id']?.toString().trim().isNotEmpty ?? false);
+    final fieldId = isNewField
+        ? _newId('field')
+        : raw['id'].toString();
     final createdAt = _parseTimestamp(raw['created_at']) ?? now;
 
     await _db.into(_db.fields).insertOnConflictUpdate(
@@ -141,6 +142,21 @@ class LocalDataRepository {
             deletedAt: const Value(null),
           ),
         );
+
+    // Yeni tarla oluşturulursa takvime ekim kaydı düş
+    if (isNewField) {
+      await _db.into(_db.calendarEvents).insert(
+            CalendarEventsCompanion.insert(
+              id: _newId('event'),
+              fieldId: Value(fieldId),
+              title: 'Tarla oluşturuldu',
+              eventType: 'planting',
+              eventDate: DateTime.now().toUtc(),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+    }
 
     if (enqueueSync) {
       await _enqueueSyncJob(
