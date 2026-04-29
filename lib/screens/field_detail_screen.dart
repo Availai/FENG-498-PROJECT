@@ -1218,6 +1218,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
         builder: (_) => CostLedgerScreen(
           fieldId: d['id']?.toString(),
           fieldName: d['name']?.toString(),
+          areaDekar: (d['area_dekar'] as num?)?.toDouble(),
         ),
       ),
     );

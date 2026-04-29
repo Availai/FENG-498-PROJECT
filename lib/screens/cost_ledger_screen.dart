@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:drift/drift.dart' show OrderingTerm;
 import '../data/app_database.dart';
 import '../data/fertilizer_prices.dart';
+import '../services/yield_calculation_service.dart';
 import '../services/api/epdk_prices_api.dart';
 import '../services/app_providers.dart';
 import '../services/pdf_export_service.dart';
@@ -22,8 +23,9 @@ import '../widgets/shimmer_loader.dart';
 class CostLedgerScreen extends ConsumerStatefulWidget {
   final String? fieldId;
   final String? fieldName;
+  final double? areaDekar;
 
-  const CostLedgerScreen({super.key, this.fieldId, this.fieldName});
+  const CostLedgerScreen({super.key, this.fieldId, this.fieldName, this.areaDekar});
 
   @override
   ConsumerState<CostLedgerScreen> createState() => _CostLedgerScreenState();
@@ -92,6 +94,8 @@ class _CostLedgerScreenState extends ConsumerState<CostLedgerScreen> {
           return Column(
             children: [
               _buildSummaryCard(total, list.length),
+              if (widget.areaDekar != null && widget.areaDekar! > 0)
+                _buildProfitCard(dekar: widget.areaDekar!, totalCost: total),
               _buildLivePricesCard(),
               Expanded(
                 child: list.isEmpty
@@ -144,6 +148,116 @@ class _CostLedgerScreenState extends ConsumerState<CostLedgerScreen> {
                     style: AppText.bodyDark(context).copyWith(fontSize: 13)),
               ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProfitCard({required double dekar, required double totalCost}) {
+    const defaultCrop = 'ayçiçeği';
+    const pricePerKg = 25.0;
+    final svc = YieldCalculationService();
+    final result = svc.hesapla(
+      bitkiTuru: defaultCrop,
+      dekar: dekar,
+      haftalikSuIhtiyaciMm: 40,
+      haftalikVerilenSuMm: 40,
+      maksSicaklikLimitC: 32,
+      asilanGunSayisi: 0,
+      gubreVerildiMi: true,
+      satisFiyatiPerKg: pricePerKg,
+      toplamMasrafTl: totalCost,
+    );
+    final rekolte = result.tahminiRekolte;
+    final gelir = rekolte * pricePerKg;
+    final netKar = result.tahminiKar;
+    final isProfitable = netKar >= 0;
+    final fmt = NumberFormat.currency(locale: 'tr_TR', symbol: '₺', decimalDigits: 0);
+
+    Widget row(String label, String value, IconData icon) => Padding(
+          padding: const EdgeInsets.only(bottom: 6),
+          child: Row(children: [
+            Icon(icon, color: Colors.white70, size: 14),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(label,
+                  style: AppText.bodyDark(context)
+                      .copyWith(fontSize: 12, color: Colors.white70)),
+            ),
+            Text(value,
+                style: AppText.bodyMd(context).copyWith(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700)),
+          ]),
+        );
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: isProfitable
+              ? const [Color(0xFF2E7D32), Color(0xFF1B5E20)]
+              : const [Color(0xFFD32F2F), Color(0xFFB71C1C)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: AppRadius.lg,
+        boxShadow: [
+          BoxShadow(
+            color: (isProfitable ? const Color(0xFF2E7D32) : const Color(0xFFD32F2F))
+                .withValues(alpha: 0.3),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.savings_rounded, color: Colors.white, size: 20),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('Tahmini Sezon Sonu Kârı',
+                    style: AppText.h3Dark(context).copyWith(fontSize: 15)),
+                Text('Varsayılan ürün: Ayçiçeği · ideal koşullar',
+                    style: AppText.bodyDark(context)
+                        .copyWith(fontSize: 11, color: Colors.white70)),
+              ]),
+            ),
+          ]),
+          const SizedBox(height: 12),
+          row('Tahmini Rekolte', '${rekolte.toStringAsFixed(0)} kg', Icons.grass_rounded),
+          row('Gelir (${pricePerKg.toStringAsFixed(0)} ₺/kg)', fmt.format(gelir),
+              Icons.trending_up_rounded),
+          row(
+            totalCost > 0 ? 'Toplam Masraf (Cüzdan)' : 'Toplam Masraf',
+            '− ${fmt.format(totalCost)}',
+            Icons.receipt_long_rounded,
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            child: Container(height: 1, color: Colors.white.withValues(alpha: 0.25)),
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Net Kâr', style: AppText.h3Dark(context).copyWith(fontSize: 14)),
+              Text(fmt.format(netKar),
+                  style: AppText.h2(context).copyWith(
+                      color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800)),
+            ],
           ),
         ],
       ),
