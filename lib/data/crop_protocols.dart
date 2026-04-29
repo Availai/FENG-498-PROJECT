@@ -34,6 +34,51 @@ enum IrrigationMethod {
   const IrrigationMethod(this.label, this.description, this.icon);
 }
 
+enum ProductionSystem {
+  openField(
+    'Açık Tarla',
+    'Türkiye’de yaygın klasik açık alan bitkisel üretim.',
+    Icons.landscape_rounded,
+    false,
+  ),
+  greenhouse(
+    'Örtüaltı / Sera',
+    'Kapalı veya yarı kapalı ortamda kontrollü bitkisel üretim.',
+    Icons.roofing_rounded,
+    true,
+  ),
+  goodAgriculture(
+    'İyi Tarım Uygulaması',
+    'Kayıt, izlenebilirlik ve kontrollü üretim esaslı sertifikalı üretim.',
+    Icons.verified_rounded,
+    false,
+  ),
+  organic(
+    'Organik Tarım',
+    'Organik üretim esaslarına göre kimyasal girdi kısıtlı üretim.',
+    Icons.eco_rounded,
+    false,
+  ),
+  dryFarming(
+    'Kuru Tarım',
+    'Yağışa dayalı, sulamanın sınırlı veya hiç olmadığı üretim.',
+    Icons.wb_sunny_rounded,
+    false,
+  );
+
+  final String label;
+  final String description;
+  final IconData icon;
+  final bool isGreenhouse;
+
+  const ProductionSystem(
+    this.label,
+    this.description,
+    this.icon,
+    this.isGreenhouse,
+  );
+}
+
 // ═══════════════════════════════════════════════════════════════════════
 // ÇİFTÇİ KONFİGÜRASYONU — kullanıcının tarlaya özel girişleri
 // ═══════════════════════════════════════════════════════════════════════
@@ -41,24 +86,52 @@ enum IrrigationMethod {
 class CropConfig {
   final SoilType soilType;
   final IrrigationMethod irrigationMethod;
+  final ProductionSystem productionSystem;
   final double areaDekar;
   final double rowSpacingCm; // sıra arası (cm)
   final double plantSpacingCm; // bitki arası (cm)
+  final int? targetPlantCount; // kullanıcının opsiyonel hedef bitki adedi
 
   const CropConfig({
     required this.soilType,
     required this.irrigationMethod,
+    this.productionSystem = ProductionSystem.openField,
     required this.areaDekar,
     required this.rowSpacingCm,
     required this.plantSpacingCm,
+    this.targetPlantCount,
   });
+
+  double get plantFootprintSqm => (rowSpacingCm / 100) * (plantSpacingCm / 100);
+
+  double? get targetAreaDekar {
+    final count = targetPlantCount;
+    if (count == null || count <= 0 || plantFootprintSqm <= 0) return null;
+    return (count * plantFootprintSqm) / 1000;
+  }
+
+  double get effectiveAreaDekar {
+    final target = targetAreaDekar;
+    if (target == null) return areaDekar;
+    return target.clamp(0.01, areaDekar).toDouble();
+  }
+
+  int get estimatedPlantCount {
+    final target = targetPlantCount;
+    if (target != null && target > 0) return target;
+    final footprint = plantFootprintSqm;
+    if (footprint <= 0 || areaDekar <= 0) return 0;
+    return ((areaDekar * 1000) / footprint).round();
+  }
 
   Map<String, dynamic> toJson() => {
         'soilType': soilType.name,
         'irrigationMethod': irrigationMethod.name,
+        'productionSystem': productionSystem.name,
         'areaDekar': areaDekar,
         'rowSpacingCm': rowSpacingCm,
         'plantSpacingCm': plantSpacingCm,
+        if (targetPlantCount != null) 'targetPlantCount': targetPlantCount,
       };
 
   factory CropConfig.fromJson(Map<String, dynamic> j) => CropConfig(
@@ -70,9 +143,14 @@ class CropConfig {
           (e) => e.name == j['irrigationMethod'],
           orElse: () => IrrigationMethod.furrow,
         ),
+        productionSystem: ProductionSystem.values.firstWhere(
+          (e) => e.name == j['productionSystem'],
+          orElse: () => ProductionSystem.openField,
+        ),
         areaDekar: (j['areaDekar'] as num?)?.toDouble() ?? 10.0,
         rowSpacingCm: (j['rowSpacingCm'] as num?)?.toDouble() ?? 70.0,
         plantSpacingCm: (j['plantSpacingCm'] as num?)?.toDouble() ?? 25.0,
+        targetPlantCount: (j['targetPlantCount'] as num?)?.toInt(),
       );
 }
 

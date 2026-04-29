@@ -1,4 +1,4 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 import 'dart:math';
 
 import 'package:drift/drift.dart';
@@ -559,7 +559,9 @@ class LocalDataRepository {
 
     for (final plan in irrigationPlans) {
       final fieldName = fieldNames[plan.fieldId];
-      if (fieldName == null) continue; // skip orphaned plans (field hard-deleted)
+      if (fieldName == null) {
+        continue; // skip orphaned plans (field hard-deleted)
+      }
       entries.add({
         'id': plan.id,
         'title': '$fieldName — Sulama',
@@ -852,6 +854,60 @@ class LocalDataRepository {
 
     await _regenerateIrrigationPlans(
         fieldId: existing.fieldId, referenceTime: now);
+    await _mirrorActiveFieldsToHive();
+  }
+
+  /// Ekim kurulumundaki aralık/sulama ayarlarını yeniden ekim gibi
+  /// davranmadan günceller. Kullanıcı toprak türü veya sulama yöntemini
+  /// düzeltirken ekim tarihi ve büyüme geçmişi korunur.
+  Future<void> updateCropSetup({
+    required String cropId,
+    int? waterIntervalDays,
+    double? rowSpacingCm,
+    double? plantSpacingCm,
+  }) async {
+    final now = DateTime.now().toUtc();
+    final existing = await (_db.select(_db.fieldCrops)
+          ..where((tbl) => tbl.id.equals(cropId)))
+        .getSingleOrNull();
+    if (existing == null) return;
+
+    await (_db.update(_db.fieldCrops)..where((tbl) => tbl.id.equals(cropId)))
+        .write(FieldCropsCompanion(
+      waterIntervalDays: waterIntervalDays == null
+          ? const Value.absent()
+          : Value(waterIntervalDays),
+      rowSpacingCm:
+          rowSpacingCm == null ? const Value.absent() : Value(rowSpacingCm),
+      plantSpacingCm:
+          plantSpacingCm == null ? const Value.absent() : Value(plantSpacingCm),
+      updatedAt: Value(now),
+    ));
+
+    await _enqueueSyncJob(
+      entityType: 'field_crops',
+      entityId: cropId,
+      operation: 'upsert',
+      payload: {
+        'id': cropId,
+        'field_id': existing.fieldId,
+        'name': existing.name,
+        'zone_start': existing.zoneStart,
+        'zone_end': existing.zoneEnd,
+        'row_spacing_cm': rowSpacingCm ?? existing.rowSpacingCm,
+        'plant_spacing_cm': plantSpacingCm ?? existing.plantSpacingCm,
+        'color_value': existing.colorValue,
+        'planted_date': existing.plantedDate,
+        'harvest_days': existing.harvestDays,
+        'water_interval_days': waterIntervalDays ?? existing.waterIntervalDays,
+        'zone_polygon_json': existing.zonePolygonJson,
+      },
+      updatedAt: now,
+    );
+
+    await _regenerateIrrigationPlans(
+        fieldId: existing.fieldId, referenceTime: now);
+    await _touchFieldUpdatedAt(existing.fieldId, now);
     await _mirrorActiveFieldsToHive();
   }
 
@@ -1464,18 +1520,15 @@ class LocalDataRepository {
     if (crop == null) return;
 
     final relatedPlans = await (_db.select(_db.irrigationPlans)
-          ..where(
-              (tbl) => tbl.cropId.equals(cropId) & tbl.deletedAt.isNull()))
+          ..where((tbl) => tbl.cropId.equals(cropId) & tbl.deletedAt.isNull()))
         .get();
     final relatedEvents = await (_db.select(_db.calendarEvents)
-          ..where(
-              (tbl) => tbl.cropId.equals(cropId) & tbl.deletedAt.isNull()))
+          ..where((tbl) => tbl.cropId.equals(cropId) & tbl.deletedAt.isNull()))
         .get();
 
     // 2. Atomik write transaction - yalnizca DB guncelleme/silme
     await _db.transaction(() async {
-      await (_db.update(_db.fieldCrops)
-            ..where((tbl) => tbl.id.equals(cropId)))
+      await (_db.update(_db.fieldCrops)..where((tbl) => tbl.id.equals(cropId)))
           .write(FieldCropsCompanion(
         updatedAt: Value(now),
         deletedAt: Value(now),

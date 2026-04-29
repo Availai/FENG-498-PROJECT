@@ -1234,9 +1234,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
   }
 
   Widget _buildNavBtn(IconData icon, String text, VoidCallback onTap,
-      {required Color color,
-      bool primary = false,
-      VoidCallback? onLongPress}) {
+      {required Color color, bool primary = false, VoidCallback? onLongPress}) {
     // Primary: doygun renk dolgulu; diğerleri: matte tonlu daire + renkli ikon.
     final Color bg = primary ? color : color.withValues(alpha: 0.14);
     final Color border = primary ? color : color.withValues(alpha: 0.38);
@@ -1401,7 +1399,8 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
           plantColor: plant.renderColor,
           fieldPolygon: polygon,
           existingZones: existingZones,
-          initialTargetDekar: selectedConfig?.areaDekar,
+          initialTargetDekar:
+              selectedConfig?.targetAreaDekar ?? selectedConfig?.areaDekar,
         ),
       ),
     );
@@ -1472,8 +1471,13 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
       metadata: {
         'setup_version': 1,
         'replant': isReplant,
-        if (config != null) 'area_dekar': config.areaDekar,
+        if (config != null) 'area_dekar': config.effectiveAreaDekar,
+        if (config != null) 'field_area_dekar': config.areaDekar,
         if (config != null) 'irrigation_method': config.irrigationMethod.name,
+        if (config != null) 'soil_type': config.soilType.name,
+        if (config != null) 'production_system': config.productionSystem.name,
+        if (config?.targetPlantCount != null)
+          'target_plant_count': config!.targetPlantCount,
         'water_interval_days': waterIntervalDays,
         'row_spacing_cm': rowSpacingCm,
         'plant_spacing_cm': plantSpacingCm,
@@ -1489,7 +1493,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
           plantedDate: DateTime.now(),
           harvestDays: plant.daysToHarvest,
           waterIntervalDays: waterIntervalDays,
-          areaDekar: config?.areaDekar,
+          areaDekar: config?.effectiveAreaDekar,
           irrigationMethod: config?.irrigationMethod,
         );
 
@@ -1803,8 +1807,8 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
               ),
               const Divider(),
               ListTile(
-                leading: const Icon(Icons.eco_rounded,
-                    color: AppColors.emeraldDark),
+                leading:
+                    const Icon(Icons.eco_rounded, color: AppColors.emeraldDark),
                 title: const Text('Tekil Bitki Ekle'),
                 subtitle: const Text(
                     'Boş bir noktaya dokunarak tek bir bitki yerleştir'),
@@ -1813,8 +1817,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
                   setState(() => _isPlacingSinglePlantMode = true);
                   AppToast.show(
                     context,
-                    message:
-                        'Bitkiyi yerleştirmek istediğin noktaya dokun.',
+                    message: 'Bitkiyi yerleştirmek istediğin noktaya dokun.',
                     type: ToastType.info,
                   );
                 },
@@ -2167,6 +2170,17 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
     return const [];
   }
 
+  LatLng _polygonCenter(List<LatLng> poly) {
+    if (poly.isEmpty) return const LatLng(39.0, 35.0);
+    double lat = 0;
+    double lng = 0;
+    for (final p in poly) {
+      lat += p.latitude;
+      lng += p.longitude;
+    }
+    return LatLng(lat / poly.length, lng / poly.length);
+  }
+
   Widget _build3DFieldMap(Map<String, dynamic> d) {
     final polygon = _polygonPoints(d);
     final center = _fieldCenter(d, polygon);
@@ -2193,9 +2207,8 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
       if (inst.cropId == null || inst.plantIndex == null) {
         if (inst.cropId == null) standaloneInstances.add(inst);
       } else {
-        instancesByCrop
-            .putIfAbsent(inst.cropId!, () => <int, FieldPlantInstance>{})[
-                inst.plantIndex!] = inst;
+        instancesByCrop.putIfAbsent(inst.cropId!,
+            () => <int, FieldPlantInstance>{})[inst.plantIndex!] = inst;
       }
     }
 
@@ -2211,6 +2224,8 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
     // Tıklanabilir bölge poligonları (her biri hitValue ile crop'a bağlı)
     final zoneHitPolygons = <Polygon<Map<String, dynamic>>>[];
     final zoneMarkers = <Marker>[];
+    final greenhousePolygons = <Polygon>[];
+    final greenhouseMarkers = <Marker>[];
     // Zone olmayan bitkiler için eski grid markerlar
     final gridCrops = <Map<String, dynamic>>[];
 
@@ -2220,6 +2235,14 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
 
       if (zonePoly.length >= 3) {
         final color = _cropColor(crop);
+        final cropName = crop['name']?.toString() ?? '';
+        final config = fieldId == null || fieldId.isEmpty
+            ? null
+            : CropProtocolService.loadConfig(
+                fieldId: fieldId,
+                cropName: cropName,
+              );
+        final targetCount = config?.targetPlantCount;
         // hitValue ile polygonu direkt crop'a bağlıyoruz — tıklama
         // marker'lara değil polygonun kendisine düşüyor.
         zoneHitPolygons.add(Polygon<Map<String, dynamic>>(
@@ -2230,18 +2253,58 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
           hitValue: crop,
         ));
 
+        if (config?.productionSystem.isGreenhouse == true) {
+          greenhousePolygons.add(Polygon(
+            points: zonePoly,
+            color: const Color(0xFFB3E5FC).withValues(alpha: 0.12),
+            borderColor: Colors.white.withValues(alpha: 0.85),
+            borderStrokeWidth: 6.0,
+          ));
+          greenhouseMarkers.add(Marker(
+            point: _polygonCenter(zonePoly),
+            width: 110,
+            height: 34,
+            child: IgnorePointer(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0D1811).withValues(alpha: 0.78),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.white70, width: 1.2),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.roofing_rounded,
+                        color: Color(0xFFB3E5FC), size: 15),
+                    SizedBox(width: 5),
+                    Text(
+                      'Sera',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ));
+        }
+
         // Bölgeyi tamamen dolduran marker ağı oluştur — dokunulabilir
         final maturity = _computeMaturityPercent(
           crop,
           growthState: growthByCrop[crop['id']?.toString()],
         );
-        final cropName = crop['name']?.toString() ?? '';
         final positions = plantPlacementInPolygon(
           polygon: zonePoly,
           cropName: cropName,
           rowSpacingCm: (crop['row_spacing_cm'] as num?)?.toDouble(),
           plantSpacingCm: (crop['plant_spacing_cm'] as num?)?.toDouble(),
-          maxCount: 35,
+          maxCount:
+              targetCount == null ? 35 : targetCount.clamp(1, 120).toInt(),
           minVisualSpacingM: 0.5,
         );
         if (positions.isEmpty) {
@@ -2531,6 +2594,10 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
               ],
             ),
           if (markers.isNotEmpty) MarkerLayer(markers: markers),
+          if (greenhousePolygons.isNotEmpty)
+            PolygonLayer(polygons: greenhousePolygons),
+          if (greenhouseMarkers.isNotEmpty)
+            MarkerLayer(markers: greenhouseMarkers),
           if (zoneMarkers.isNotEmpty) MarkerLayer(markers: zoneMarkers),
           if (drawingMarkers.isNotEmpty) MarkerLayer(markers: drawingMarkers),
           if (cornerMarkers.isNotEmpty) MarkerLayer(markers: cornerMarkers),
@@ -2615,6 +2682,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
         fieldCrops: _fieldCrops,
         fieldAreaDekar:
             (widget.fieldData['area_dekar'] as num?)?.toDouble() ?? 1.0,
+        onCropSetupChanged: _loadFieldCrops,
       ),
     );
   }
@@ -3121,6 +3189,7 @@ class _DirectivesModalContent extends ConsumerWidget {
     required this.latestSuitabilityReport,
     required this.fieldCrops,
     required this.fieldAreaDekar,
+    this.onCropSetupChanged,
   });
 
   final String fieldId;
@@ -3129,6 +3198,7 @@ class _DirectivesModalContent extends ConsumerWidget {
   final Map<String, dynamic>? latestSuitabilityReport;
   final List<Map<String, dynamic>> fieldCrops;
   final double fieldAreaDekar;
+  final Future<void> Function()? onCropSetupChanged;
 
   static DateTime? _parsePlantedDate(String? raw) {
     if (raw == null || raw.isEmpty) return null;
@@ -3326,8 +3396,11 @@ class _DirectivesModalContent extends ConsumerWidget {
         children: [
           const SizedBox(height: 8),
           Container(
-            width: 44, height: 4,
-            decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(2)),
+            width: 44,
+            height: 4,
+            decoration: BoxDecoration(
+                color: AppColors.border,
+                borderRadius: BorderRadius.circular(2)),
           ),
           const SizedBox(height: 14),
           // Yeşil hero başlık
@@ -3504,6 +3577,9 @@ class _DirectivesModalContent extends ConsumerWidget {
                     roadmaps.add(_CropRoadmapCard(
                       progress: progress,
                       fieldId: fieldId,
+                      crop: crop,
+                      fieldAreaDekar: fieldAreaDekar,
+                      onChanged: onCropSetupChanged,
                     ));
                   }
                 }
@@ -4086,19 +4162,29 @@ class _DirectiveCardState extends ConsumerState<_DirectiveCard> {
 // ═══════════════════════════════════════════════════════════════════════
 // YETİŞTİRME YOL HARİTASI KARTI — config-aware zengin UI
 // ═══════════════════════════════════════════════════════════════════════
-class _CropRoadmapCard extends StatefulWidget {
-  const _CropRoadmapCard({required this.progress, required this.fieldId});
+class _CropRoadmapCard extends ConsumerStatefulWidget {
+  const _CropRoadmapCard({
+    required this.progress,
+    required this.fieldId,
+    required this.crop,
+    required this.fieldAreaDekar,
+    this.onChanged,
+  });
 
   final CropProtocolProgress progress;
   final String fieldId;
+  final Map<String, dynamic> crop;
+  final double fieldAreaDekar;
+  final Future<void> Function()? onChanged;
 
   @override
-  State<_CropRoadmapCard> createState() => _CropRoadmapCardState();
+  ConsumerState<_CropRoadmapCard> createState() => _CropRoadmapCardState();
 }
 
-class _CropRoadmapCardState extends State<_CropRoadmapCard> {
+class _CropRoadmapCardState extends ConsumerState<_CropRoadmapCard> {
   bool _expanded = true;
   int? _expandedStep; // adım detayı açık mı (order değeri)
+  CropConfig? _configOverride;
 
   static const _accent = Color(0xFF00E676);
   static const _warn = Color(0xFFFF5252);
@@ -4109,6 +4195,77 @@ class _CropRoadmapCardState extends State<_CropRoadmapCard> {
   String _formatArea(double area) => area == area.roundToDouble()
       ? '${area.round()}'
       : area.toStringAsFixed(1);
+
+  static DateTime? _parsePlantedDate(String? raw) {
+    if (raw == null || raw.isEmpty) return null;
+    final parts = raw.split('.');
+    if (parts.length == 3) {
+      return DateTime.tryParse(
+        '${parts[2]}-${parts[1].padLeft(2, '0')}-${parts[0].padLeft(2, '0')}',
+      );
+    }
+    return DateTime.tryParse(raw);
+  }
+
+  Future<void> _editConfig() async {
+    final current = _configOverride ?? widget.progress.config;
+    final config = await showModalBottomSheet<CropConfig>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) => _CropSetupSheet(
+        protocol: widget.progress.protocol,
+        fieldAreaDekar: widget.fieldAreaDekar,
+        initialConfig: current,
+      ),
+    );
+    if (config == null || !mounted) return;
+
+    final cropId = widget.crop['id']?.toString();
+    final cropName =
+        widget.crop['name']?.toString() ?? widget.progress.protocol.displayName;
+    if (cropId == null || cropId.isEmpty) return;
+
+    await CropProtocolService.saveConfig(
+      fieldId: widget.fieldId,
+      cropName: cropName,
+      config: config,
+    );
+
+    final waterIntervalDays =
+        CropScheduleSeeder.intervalForMethod(config.irrigationMethod);
+    final repo = ref.read(localDataRepositoryProvider);
+    await repo.updateCropSetup(
+      cropId: cropId,
+      waterIntervalDays: waterIntervalDays,
+      rowSpacingCm: config.rowSpacingCm,
+      plantSpacingCm: config.plantSpacingCm,
+    );
+
+    await ref.read(cropScheduleSeederProvider).seedForCrop(
+          fieldId: widget.fieldId,
+          cropId: cropId,
+          cropName: cropName,
+          plantedDate:
+              _parsePlantedDate(widget.crop['planted_date']?.toString()) ??
+                  DateTime.now(),
+          harvestDays: (widget.crop['harvest_days'] as num?)?.toInt() ??
+              widget.progress.protocol.totalDays,
+          waterIntervalDays: waterIntervalDays,
+          areaDekar: config.effectiveAreaDekar,
+          irrigationMethod: config.irrigationMethod,
+        );
+
+    await ref.read(growthEngineProvider).recompute(cropId: cropId);
+    await widget.onChanged?.call();
+    if (!mounted) return;
+    setState(() => _configOverride = config);
+    AppToast.show(
+      context,
+      message: 'Kurulum bilgileri güncellendi',
+      type: ToastType.success,
+    );
+  }
 
   // Miktarı alana göre ölçekle ve okunabilir göster
   String _scaleToArea(String spec, double area) {
@@ -4136,7 +4293,7 @@ class _CropRoadmapCardState extends State<_CropRoadmapCard> {
   @override
   Widget build(BuildContext context) {
     final p = widget.progress;
-    final cfg = p.config;
+    final cfg = _configOverride ?? p.config;
 
     return Container(
       decoration: BoxDecoration(
@@ -4182,6 +4339,7 @@ class _CropRoadmapCardState extends State<_CropRoadmapCard> {
                           if (cfg != null)
                             Wrap(
                               spacing: 6,
+                              runSpacing: 6,
                               children: [
                                 _cfgChip(
                                     cfg.soilType.emoji, cfg.soilType.label),
@@ -4192,8 +4350,13 @@ class _CropRoadmapCardState extends State<_CropRoadmapCard> {
                                     cfg.irrigationMethod.label,
                                     isIcon: true,
                                     icon: cfg.irrigationMethod.icon),
+                                _cfgChip('🏛️', cfg.productionSystem.label,
+                                    isIcon: true,
+                                    icon: cfg.productionSystem.icon),
+                                _cfgChip('📐',
+                                    '${_formatArea(cfg.effectiveAreaDekar)} da'),
                                 _cfgChip(
-                                    '📐', '${_formatArea(cfg.areaDekar)} da'),
+                                    '🌱', '${cfg.estimatedPlantCount} bitki'),
                               ],
                             )
                           else
@@ -4204,6 +4367,12 @@ class _CropRoadmapCardState extends State<_CropRoadmapCard> {
                             ),
                         ],
                       ),
+                    ),
+                    IconButton(
+                      tooltip: 'Kurulumu düzenle',
+                      onPressed: _editConfig,
+                      icon: const Icon(Icons.tune_rounded,
+                          color: Color(0xFF00E676), size: 20),
                     ),
                     Icon(
                       _expanded
@@ -4258,7 +4427,7 @@ class _CropRoadmapCardState extends State<_CropRoadmapCard> {
                     isActive: isActive,
                     isOpen: isOpen,
                     config: cfg,
-                    area: cfg?.areaDekar ?? 1,
+                    area: cfg?.effectiveAreaDekar ?? 1,
                     accent: _accent,
                     warnColor: _warn,
                     tipColor: _tip,
@@ -4700,8 +4869,10 @@ class _CropSetupSheet extends StatefulWidget {
 class _CropSetupSheetState extends State<_CropSetupSheet> {
   late SoilType _soil;
   late IrrigationMethod _irrigation;
+  late ProductionSystem _productionSystem;
   late final TextEditingController _rowCtrl;
   late final TextEditingController _plantCtrl;
+  late final TextEditingController _plantCountCtrl;
 
   static const _bg = Color(0xFF0D1811);
   static const _accent = Color(0xFF00E676);
@@ -4713,18 +4884,23 @@ class _CropSetupSheetState extends State<_CropSetupSheet> {
     final cfg = widget.initialConfig;
     _soil = cfg?.soilType ?? SoilType.loamy;
     _irrigation = cfg?.irrigationMethod ?? IrrigationMethod.furrow;
+    _productionSystem = cfg?.productionSystem ?? ProductionSystem.openField;
     _rowCtrl = TextEditingController(
         text: (cfg?.rowSpacingCm ?? widget.protocol.defaultRowSpacingCm)
             .toStringAsFixed(0));
     _plantCtrl = TextEditingController(
         text: (cfg?.plantSpacingCm ?? widget.protocol.defaultPlantSpacingCm)
             .toStringAsFixed(0));
+    _plantCountCtrl = TextEditingController(
+      text: cfg?.targetPlantCount == null ? '' : '${cfg!.targetPlantCount}',
+    );
   }
 
   @override
   void dispose() {
     _rowCtrl.dispose();
     _plantCtrl.dispose();
+    _plantCountCtrl.dispose();
     super.dispose();
   }
 
@@ -4736,15 +4912,81 @@ class _CropSetupSheetState extends State<_CropSetupSheet> {
     // Alan tarladan otomatik geliyor — manuel input kaldırıldı.
     // Bir alt sınır koruyoruz ki bozuk poligon (0 da) hesabı patlatmasın.
     final area = widget.fieldAreaDekar.clamp(0.1, 10000).toDouble();
+    final plantCountRaw = _plantCountCtrl.text.trim();
+    final plantCount =
+        plantCountRaw.isEmpty ? null : int.tryParse(plantCountRaw);
+    if (plantCountRaw.isNotEmpty && (plantCount == null || plantCount <= 0)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Bitki adedi pozitif bir sayı olmalı.')),
+      );
+      return;
+    }
+    final cleanRow = row.clamp(20, 200).toDouble();
+    final cleanPlant = plant.clamp(5, 200).toDouble();
+    if (plantCount != null) {
+      final requiredDekar = _requiredDekarFor(
+        plantCount: plantCount,
+        rowSpacingCm: cleanRow,
+        plantSpacingCm: cleanPlant,
+      );
+      if (requiredDekar > area + 0.01) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '$plantCount bitki için yaklaşık ${requiredDekar.toStringAsFixed(2)} da gerekir. Tarlada ${area.toStringAsFixed(2)} da var.',
+            ),
+          ),
+        );
+        return;
+      }
+    }
     Navigator.pop(
       context,
       CropConfig(
         soilType: _soil,
         irrigationMethod: _irrigation,
+        productionSystem: _productionSystem,
         areaDekar: area,
-        rowSpacingCm: row.clamp(20, 200),
-        plantSpacingCm: plant.clamp(5, 200),
+        rowSpacingCm: cleanRow,
+        plantSpacingCm: cleanPlant,
+        targetPlantCount: plantCount,
       ),
+    );
+  }
+
+  double _requiredDekarFor({
+    required int plantCount,
+    required double rowSpacingCm,
+    required double plantSpacingCm,
+  }) {
+    final footprintSqm = (rowSpacingCm / 100) * (plantSpacingCm / 100);
+    return (plantCount * footprintSqm) / 1000;
+  }
+
+  int _estimatedCountForCurrentSpacing() {
+    final row = double.tryParse(_rowCtrl.text.trim()) ??
+        widget.protocol.defaultRowSpacingCm;
+    final plant = double.tryParse(_plantCtrl.text.trim()) ??
+        widget.protocol.defaultPlantSpacingCm;
+    final footprintSqm =
+        (row.clamp(20, 200) / 100) * (plant.clamp(5, 200) / 100);
+    if (footprintSqm <= 0) return 0;
+    return ((widget.fieldAreaDekar * 1000) / footprintSqm).round();
+  }
+
+  double? _targetDekarPreview() {
+    final plantCountRaw = _plantCountCtrl.text.trim();
+    if (plantCountRaw.isEmpty) return null;
+    final plantCount = int.tryParse(plantCountRaw);
+    if (plantCount == null || plantCount <= 0) return null;
+    final row = double.tryParse(_rowCtrl.text.trim()) ??
+        widget.protocol.defaultRowSpacingCm;
+    final plant = double.tryParse(_plantCtrl.text.trim()) ??
+        widget.protocol.defaultPlantSpacingCm;
+    return _requiredDekarFor(
+      plantCount: plantCount,
+      rowSpacingCm: row.clamp(20, 200).toDouble(),
+      plantSpacingCm: plant.clamp(5, 200).toDouble(),
     );
   }
 
@@ -4795,7 +5037,7 @@ class _CropSetupSheetState extends State<_CropSetupSheet> {
                       ),
                     ),
                     Text(
-                      'Bilgilerini gir — rehber sana özel hesaplansın',
+                      'Kurulum bilgisi bakım planını hesaplar; sulama kaydı oluşturmaz',
                       style: const TextStyle(
                         color: Colors.white54,
                         fontSize: 12,
@@ -4861,6 +5103,12 @@ class _CropSetupSheetState extends State<_CropSetupSheet> {
 
             // ── Sulama Yöntemi ──
             _sectionLabel('💧 Sulama Yöntemi'),
+            const SizedBox(height: 4),
+            const Text(
+              'Bu seçim nasıl sulanacağını ve takvim aralığını belirler; Tarlam Günlüğü’ne sulama yapılmış gibi kayıt düşmez.',
+              style:
+                  TextStyle(color: Colors.white54, fontSize: 11, height: 1.35),
+            ),
             const SizedBox(height: 8),
             ...IrrigationMethod.values.map((m) {
               final selected = _irrigation == m;
@@ -4896,6 +5144,63 @@ class _CropSetupSheetState extends State<_CropSetupSheet> {
                                     : FontWeight.w500,
                               )),
                           Text(m.description,
+                              style: const TextStyle(
+                                  color: Colors.white54, fontSize: 11)),
+                        ],
+                      ),
+                    ),
+                    if (selected)
+                      const Icon(Icons.check_circle_rounded,
+                          color: _accent, size: 20),
+                  ]),
+                ),
+              );
+            }),
+            const SizedBox(height: 20),
+
+            // ── Tarım Şekli ──
+            _sectionLabel('🏛️ Tarım Şekli'),
+            const SizedBox(height: 4),
+            const Text(
+              'Seçenekler T.C. Tarım ve Orman Bakanlığı destek/uygulama başlıkları esas alınarak sadeleştirildi.',
+              style:
+                  TextStyle(color: Colors.white54, fontSize: 11, height: 1.35),
+            ),
+            const SizedBox(height: 8),
+            ...ProductionSystem.values.map((system) {
+              final selected = _productionSystem == system;
+              return GestureDetector(
+                onTap: () => setState(() => _productionSystem = system),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: selected ? _accent.withValues(alpha: 0.15) : _card,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: selected ? _accent : Colors.white12,
+                      width: selected ? 1.5 : 1,
+                    ),
+                  ),
+                  child: Row(children: [
+                    Icon(system.icon,
+                        color: selected ? _accent : Colors.white38, size: 22),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(system.label,
+                              style: TextStyle(
+                                color: selected ? _accent : Colors.white,
+                                fontSize: 14,
+                                fontWeight: selected
+                                    ? FontWeight.w700
+                                    : FontWeight.w500,
+                              )),
+                          Text(system.description,
                               style: const TextStyle(
                                   color: Colors.white54, fontSize: 11)),
                         ],
@@ -4948,6 +5253,7 @@ class _CropSetupSheetState extends State<_CropSetupSheet> {
                   label: 'Sıra arası',
                   hint: widget.protocol.defaultRowSpacingCm.toStringAsFixed(0),
                   suffix: 'cm',
+                  onChanged: (_) => setState(() {}),
                 ),
               ),
               const SizedBox(width: 12),
@@ -4958,9 +5264,61 @@ class _CropSetupSheetState extends State<_CropSetupSheet> {
                   hint:
                       widget.protocol.defaultPlantSpacingCm.toStringAsFixed(0),
                   suffix: 'cm',
+                  onChanged: (_) => setState(() {}),
                 ),
               ),
             ]),
+            const SizedBox(height: 8),
+            const Text(
+              'Bu aralıklar ekim bölgesindeki bitki dizilimine, bitki sayısı hesabına ve sonraki bakım planına uygulanır.',
+              style:
+                  TextStyle(color: Colors.white54, fontSize: 11, height: 1.35),
+            ),
+            const SizedBox(height: 16),
+
+            // ── Opsiyonel hedef bitki adedi ──
+            _sectionLabel('🌱 Kaç Adet Ekeceksin?'),
+            const SizedBox(height: 8),
+            _inputField(
+              controller: _plantCountCtrl,
+              label: 'Bitki adedi',
+              hint: 'Boş bırakılabilir',
+              suffix: 'adet',
+              onChanged: (_) => setState(() {}),
+            ),
+            const SizedBox(height: 8),
+            Builder(builder: (_) {
+              final targetDekar = _targetDekarPreview();
+              final estimatedCount = _estimatedCountForCurrentSpacing();
+              final targetText = targetDekar == null
+                  ? 'Adet girmezsen tüm ekim alanı için yaklaşık $estimatedCount bitki hesaplanır.'
+                  : 'Bu adet için yaklaşık ${targetDekar.toStringAsFixed(2)} da ekim alanı gerekir.';
+              final overLimit =
+                  targetDekar != null && targetDekar > widget.fieldAreaDekar;
+              return Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: overLimit
+                      ? Colors.red.withValues(alpha: 0.10)
+                      : _accent.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: overLimit
+                        ? Colors.red.withValues(alpha: 0.35)
+                        : _accent.withValues(alpha: 0.20),
+                  ),
+                ),
+                child: Text(
+                  targetText,
+                  style: TextStyle(
+                    color: overLimit ? Colors.red.shade200 : Colors.white70,
+                    fontSize: 11,
+                    height: 1.35,
+                  ),
+                ),
+              );
+            }),
 
             // ── Ekme mevsimi ve bölge ipucu ──
             const SizedBox(height: 16),
@@ -5053,10 +5411,12 @@ class _CropSetupSheetState extends State<_CropSetupSheet> {
     required String label,
     required String hint,
     required String suffix,
+    ValueChanged<String>? onChanged,
   }) =>
       TextField(
         controller: controller,
         keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        onChanged: onChanged,
         style: const TextStyle(color: Colors.white, fontSize: 15),
         decoration: InputDecoration(
           labelText: label,

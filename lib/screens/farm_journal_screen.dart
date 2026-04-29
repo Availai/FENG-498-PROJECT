@@ -55,7 +55,10 @@ class _FarmJournalScreenState extends ConsumerState<FarmJournalScreen> {
                     !snap.hasData) {
                   return const Center(child: CircularProgressIndicator());
                 }
-                final entries = snap.data ?? const [];
+                final entries = (snap.data ?? const [])
+                    .where(
+                        (entry) => entry['source']?.toString() != 'auto_seed')
+                    .toList(growable: false);
                 if (entries.isEmpty) {
                   return _buildEmpty();
                 }
@@ -616,6 +619,10 @@ class _FarmJournalScreenState extends ConsumerState<FarmJournalScreen> {
         add('Kalite', meta?['quality_note']);
         break;
       case ActivityType.planting:
+        add('Toprak', _soilTypeLabel(meta?['soil_type']));
+        add('Sulama planı', _irrigationMethodLabel(meta?['irrigation_method']));
+        add('Tarım şekli', _productionSystemLabel(meta?['production_system']));
+        add('Adet hedefi', meta?['target_plant_count'], unit: 'bitki');
         add('Sıra arası', meta?['row_spacing_cm'], unit: 'cm');
         add('Bitki arası', meta?['plant_spacing_cm'], unit: 'cm');
         add('Sulama aralığı', meta?['water_interval_days'], unit: 'gün');
@@ -693,6 +700,53 @@ class _FarmJournalScreenState extends ConsumerState<FarmJournalScreen> {
         return 'Eşik aşıldı';
       case 'criticalNoChemical':
         return 'Kritik uyarı';
+      default:
+        return _stringValue(raw);
+    }
+  }
+
+  String? _soilTypeLabel(Object? raw) {
+    switch (raw?.toString()) {
+      case 'loamy':
+        return 'Tınlı';
+      case 'clay':
+        return 'Killi';
+      case 'sandy':
+        return 'Kumlu';
+      case 'volcanic':
+        return 'Volkanik';
+      default:
+        return _stringValue(raw);
+    }
+  }
+
+  String? _irrigationMethodLabel(Object? raw) {
+    switch (raw?.toString()) {
+      case 'drip':
+        return 'Damla sulama';
+      case 'furrow':
+        return 'Karık sulama';
+      case 'sprinkler':
+        return 'Yağmurlama';
+      case 'hand':
+        return 'El ile sulama';
+      default:
+        return _stringValue(raw);
+    }
+  }
+
+  String? _productionSystemLabel(Object? raw) {
+    switch (raw?.toString()) {
+      case 'openField':
+        return 'Açık tarla';
+      case 'greenhouse':
+        return 'Örtüaltı / sera';
+      case 'goodAgriculture':
+        return 'İyi tarım uygulaması';
+      case 'organic':
+        return 'Organik tarım';
+      case 'dryFarming':
+        return 'Kuru tarım';
       default:
         return _stringValue(raw);
     }
