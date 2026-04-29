@@ -65,6 +65,9 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
   Map<String, dynamic>? _selectedCropForTooltip;
   String? _hoveredPlantMarkerKey;
   String? _selectedPlantMarkerKey;
+  bool _isPlantMultiSelectMode = false;
+  final Map<String, _PlantDeleteTarget> _multiSelectedPlantTargets = {};
+  static const String _removedPlantStatus = 'removed';
 
   // ═══ Tekil bitki yerleştirme modu state ═══
   bool _isPlacingSinglePlantMode = false;
@@ -439,6 +442,14 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
         children: [
           // 1. Gerçek tarla haritası — yalnızca seçilen polygon'a kilitli
           Positioned.fill(child: _build3DFieldMap(d)),
+
+          if (_isPlantMultiSelectMode)
+            Positioned(
+              left: 12,
+              right: 12,
+              top: MediaQuery.of(context).padding.top + 68,
+              child: _buildPlantMultiSelectBar(),
+            ),
 
           // 2. Zoom kontrolleri
           Positioned(
@@ -1162,6 +1173,62 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
     );
   }
 
+  Widget _buildPlantMultiSelectBar() {
+    final count = _multiSelectedPlantTargets.length;
+    return Material(
+      color: Colors.transparent,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: const Color(0xFF14241B).withValues(alpha: 0.94),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.emerald, width: 1.2),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.35),
+              blurRadius: 14,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.playlist_add_check_rounded,
+                color: AppColors.emerald, size: 22),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                '$count bitki seçildi',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            TextButton(
+              onPressed: _clearPlantMultiSelection,
+              child: const Text('İptal'),
+            ),
+            const SizedBox(width: 4),
+            FilledButton.icon(
+              onPressed: count == 0 ? null : _deleteSelectedPlants,
+              style: FilledButton.styleFrom(
+                backgroundColor: Colors.red.shade600,
+                foregroundColor: Colors.white,
+                visualDensity: VisualDensity.compact,
+              ),
+              icon: const Icon(Icons.delete_outline_rounded, size: 18),
+              label: const Text('Sil'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _showActivityQuickLog() {
     final fieldId = widget.fieldData['id']?.toString();
     if (fieldId == null || fieldId.isEmpty) {
@@ -1643,7 +1710,9 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
   /// Var olan instance varsa onun durumu önceden seçili gelir; yoksa
   /// kullanıcı seçim yaptığında yeni instance oluşturulur.
   bool _isPlantMarkerHighlighted(String key) {
-    return _hoveredPlantMarkerKey == key || _selectedPlantMarkerKey == key;
+    return _hoveredPlantMarkerKey == key ||
+        _selectedPlantMarkerKey == key ||
+        _multiSelectedPlantTargets.containsKey(key);
   }
 
   void _setHoveredPlantMarker(String key, bool isHovered) {
@@ -1740,12 +1809,309 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
     );
   }
 
+  _PlantDeleteTarget _plantTargetForMarker({
+    required String markerKey,
+    required Map<String, dynamic> crop,
+    required int? plantIndex,
+    required LatLng pos,
+    required FieldPlantInstance? existing,
+  }) {
+    final cropId = crop['id']?.toString();
+    return _PlantDeleteTarget(
+      markerKey: markerKey,
+      cropId: cropId,
+      plantIndex: plantIndex,
+      cropName: crop['name']?.toString() ?? existing?.cropName ?? 'Bitki',
+      pos: pos,
+      existing: existing,
+      isStandalone: cropId == null,
+    );
+  }
+
+  Future<void> _handlePlantMarkerTap({
+    required String markerKey,
+    required Map<String, dynamic> crop,
+    required int? plantIndex,
+    required LatLng pos,
+    required FieldPlantInstance? existing,
+  }) async {
+    if (_isZoneDrawingMode || _isPlacingSinglePlantMode) return;
+
+    final target = _plantTargetForMarker(
+      markerKey: markerKey,
+      crop: crop,
+      plantIndex: plantIndex,
+      pos: pos,
+      existing: existing,
+    );
+
+    if (_isPlantMultiSelectMode) {
+      _togglePlantMultiSelection(target);
+      return;
+    }
+
+    _selectPlantMarker(markerKey);
+    final action = await _showPlantActionSheet(crop: crop, target: target);
+    if (action == null || !mounted) return;
+
+    switch (action) {
+      case _PlantAction.editHealth:
+        await _onPlantMarkerTap(
+          crop: crop,
+          plantIndex: plantIndex,
+          pos: pos,
+          existing: existing,
+        );
+        break;
+      case _PlantAction.deletePlant:
+        await _confirmDeletePlantTarget(target);
+        break;
+      case _PlantAction.deleteArea:
+        await _deleteCropZone(crop);
+        break;
+      case _PlantAction.multiSelect:
+        _togglePlantMultiSelection(target);
+        break;
+    }
+  }
+
+  void _handlePlantMarkerLongPress({
+    required String markerKey,
+    required Map<String, dynamic> crop,
+    required int? plantIndex,
+    required LatLng pos,
+    required FieldPlantInstance? existing,
+  }) {
+    if (_isZoneDrawingMode || _isPlacingSinglePlantMode) return;
+    _togglePlantMultiSelection(
+      _plantTargetForMarker(
+        markerKey: markerKey,
+        crop: crop,
+        plantIndex: plantIndex,
+        pos: pos,
+        existing: existing,
+      ),
+    );
+  }
+
+  Future<_PlantAction?> _showPlantActionSheet({
+    required Map<String, dynamic> crop,
+    required _PlantDeleteTarget target,
+  }) {
+    final cropId = crop['id']?.toString();
+    return showModalBottomSheet<_PlantAction>(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 14),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              ListTile(
+                leading:
+                    const Icon(Icons.eco_rounded, color: AppColors.emerald),
+                title: Text(target.cropName, style: AppText.h3(context)),
+                subtitle: Text(
+                  target.isStandalone ? 'Tekil bitki' : 'Ekim alanı bitkisi',
+                ),
+              ),
+              const Divider(),
+              ListTile(
+                leading: const Icon(Icons.healing_rounded,
+                    color: AppColors.emeraldDark),
+                title: const Text('Sağlık durumunu düzenle'),
+                onTap: () => Navigator.pop(ctx, _PlantAction.editHealth),
+              ),
+              ListTile(
+                leading:
+                    const Icon(Icons.delete_outline_rounded, color: Colors.red),
+                title: const Text('Bu bitkiyi sil'),
+                subtitle: Text(target.isStandalone
+                    ? 'Haritadan kaldırılır'
+                    : 'Bu alandaki yalnız bu bitki kaldırılır'),
+                onTap: () => Navigator.pop(ctx, _PlantAction.deletePlant),
+              ),
+              if (cropId != null && cropId.isNotEmpty)
+                ListTile(
+                  leading:
+                      const Icon(Icons.layers_clear_rounded, color: Colors.red),
+                  title: const Text('Bu ekim alanının tümünü sil'),
+                  subtitle: const Text(
+                    'Alan, takvim ve sulama planları birlikte kaldırılır',
+                  ),
+                  onTap: () => Navigator.pop(ctx, _PlantAction.deleteArea),
+                ),
+              ListTile(
+                leading: const Icon(Icons.playlist_add_check_rounded,
+                    color: AppColors.emerald),
+                title: const Text('Çoklu seçim başlat'),
+                subtitle: const Text('Birden fazla bitki seçip sil'),
+                onTap: () => Navigator.pop(ctx, _PlantAction.multiSelect),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _togglePlantMultiSelection(_PlantDeleteTarget target) {
+    setState(() {
+      _selectedPlantMarkerKey = null;
+      _isPlantMultiSelectMode = true;
+      if (_multiSelectedPlantTargets.containsKey(target.markerKey)) {
+        _multiSelectedPlantTargets.remove(target.markerKey);
+      } else {
+        _multiSelectedPlantTargets[target.markerKey] = target;
+      }
+      if (_multiSelectedPlantTargets.isEmpty) {
+        _isPlantMultiSelectMode = false;
+      }
+    });
+  }
+
+  void _clearPlantMultiSelection() {
+    if (!_isPlantMultiSelectMode && _multiSelectedPlantTargets.isEmpty) return;
+    setState(() {
+      _isPlantMultiSelectMode = false;
+      _multiSelectedPlantTargets.clear();
+    });
+  }
+
+  Future<void> _confirmDeletePlantTarget(_PlantDeleteTarget target) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Bitkiyi Sil'),
+        content: Text(
+          '"${target.cropName}" haritadan silinsin mi? Bu işlem çevrimdışı kuyruğa alınır.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('İptal'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Sil'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    await _deletePlantTarget(target);
+    if (!mounted) return;
+    setState(() {
+      _selectedPlantMarkerKey = null;
+      _multiSelectedPlantTargets.remove(target.markerKey);
+      if (_multiSelectedPlantTargets.isEmpty) {
+        _isPlantMultiSelectMode = false;
+      }
+    });
+    AppToast.show(
+      context,
+      message: '${target.cropName} silindi.',
+      type: ToastType.info,
+    );
+  }
+
+  Future<void> _deleteSelectedPlants() async {
+    final targets = _multiSelectedPlantTargets.values.toList(growable: false);
+    if (targets.isEmpty) return;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Seçili Bitkileri Sil'),
+        content: Text(
+          '${targets.length} bitki haritadan silinsin mi? Bu işlem çevrimdışı kuyruğa alınır.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('İptal'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Seçilileri Sil'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    for (final target in targets) {
+      await _deletePlantTarget(target);
+    }
+    if (!mounted) return;
+    setState(() {
+      _isPlantMultiSelectMode = false;
+      _multiSelectedPlantTargets.clear();
+      _selectedPlantMarkerKey = null;
+      _hoveredPlantMarkerKey = null;
+    });
+    AppToast.show(
+      context,
+      message: '${targets.length} bitki silindi.',
+      type: ToastType.info,
+    );
+  }
+
+  Future<void> _deletePlantTarget(_PlantDeleteTarget target) async {
+    final fieldId = widget.fieldData['id']?.toString();
+    if (fieldId == null || fieldId.isEmpty) return;
+    final repo = ref.read(localDataRepositoryProvider);
+
+    if (target.isStandalone) {
+      final existingId = target.existing?.id;
+      if (existingId == null) return;
+      await repo.deletePlantInstance(existingId);
+      return;
+    }
+
+    final cropId = target.cropId;
+    final plantIndex = target.plantIndex;
+    if (cropId == null || cropId.isEmpty || plantIndex == null) return;
+
+    final existingId = target.existing?.id;
+    if (existingId != null) {
+      await repo.setPlantHealth(
+        instanceId: existingId,
+        healthStatus: _removedPlantStatus,
+      );
+    } else {
+      await repo.insertPlantInstance(
+        fieldId: fieldId,
+        cropId: cropId,
+        plantIndex: plantIndex,
+        cropName: target.cropName,
+        lat: target.pos.latitude,
+        lng: target.pos.longitude,
+        healthStatus: _removedPlantStatus,
+      );
+    }
+  }
+
   /// Normal modda boş bir alana dokunulduğunda — kullanıcıya bitkiye
   /// dokunması veya tekil bitki ekleme moduna geçmesi gerektiğini hatırlat.
   /// Hastalık/sağlık kaydı per-bitki olduğundan bos toprağa kayıt girilemez.
   void _onMapTapEmpty(LatLng point) {
     if (_isZoneDrawingMode || _isPlacingSinglePlantMode) return;
     _clearPlantMarkerSelection();
+    _clearPlantMultiSelection();
     final polygon = _polygonPoints(widget.fieldData);
     final inside = polygon.length >= 3 &&
         _pointInPolygon(point.latitude, point.longitude, polygon);
@@ -2035,6 +2401,10 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
         if (!mounted) return;
         setState(() {
           _selectedCropForTooltip = null;
+          _selectedPlantMarkerKey = null;
+          _hoveredPlantMarkerKey = null;
+          _isPlantMultiSelectMode = false;
+          _multiSelectedPlantTargets.clear();
           _fieldCropsLoaded = true;
           _fieldCrops = _fieldCrops
               .where((item) => item['id']?.toString() != cropId)
@@ -2363,6 +2733,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
         for (int i = 0; i < positions.length; i++) {
           final pos = positions[i];
           final instance = cropOverrides[i];
+          if (instance?.healthStatus == _removedPlantStatus) continue;
           final plantIndex = i;
           final markerKey = 'zone:${cropId ?? cropName}:$plantIndex';
           final marker = Marker(
@@ -2385,19 +2756,27 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
                   onHover: (hovering) =>
                       _setHoveredPlantMarker(markerKey, hovering),
                   onTap: () {
-                    _selectPlantMarker(markerKey);
-                    _onPlantMarkerTap(
+                    _handlePlantMarkerTap(
+                      markerKey: markerKey,
                       crop: crop,
                       plantIndex: plantIndex,
                       pos: pos,
                       existing: instance,
                     );
                   },
+                  onLongPress: () => _handlePlantMarkerLongPress(
+                    markerKey: markerKey,
+                    crop: crop,
+                    plantIndex: plantIndex,
+                    pos: pos,
+                    existing: instance,
+                  ),
                 ),
               ),
             ),
           );
-          (_selectedPlantMarkerKey == markerKey
+          (_selectedPlantMarkerKey == markerKey ||
+                      _multiSelectedPlantTargets.containsKey(markerKey)
                   ? highlightedPlantMarkers
                   : zoneMarkers)
               .add(marker);
@@ -2447,6 +2826,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
             ? instancesByCrop[cropId] ?? const <int, FieldPlantInstance>{}
             : const <int, FieldPlantInstance>{};
         final instance = cropOverrides[i];
+        if (instance?.healthStatus == _removedPlantStatus) continue;
         final pos = positions[i];
         final cropName = crop['name']?.toString() ?? '';
         final plantIndex = i;
@@ -2471,19 +2851,27 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
                 onHover: (hovering) =>
                     _setHoveredPlantMarker(markerKey, hovering),
                 onTap: () {
-                  _selectPlantMarker(markerKey);
-                  _onPlantMarkerTap(
+                  _handlePlantMarkerTap(
+                    markerKey: markerKey,
                     crop: crop,
                     plantIndex: plantIndex,
                     pos: pos,
                     existing: instance,
                   );
                 },
+                onLongPress: () => _handlePlantMarkerLongPress(
+                  markerKey: markerKey,
+                  crop: crop,
+                  plantIndex: plantIndex,
+                  pos: pos,
+                  existing: instance,
+                ),
               ),
             ),
           ),
         );
-        (_selectedPlantMarkerKey == markerKey
+        (_selectedPlantMarkerKey == markerKey ||
+                    _multiSelectedPlantTargets.containsKey(markerKey)
                 ? highlightedPlantMarkers
                 : markers)
             .add(marker);
@@ -2515,8 +2903,8 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
               onHover: (hovering) =>
                   _setHoveredPlantMarker(markerKey, hovering),
               onTap: () {
-                _selectPlantMarker(markerKey);
-                _onPlantMarkerTap(
+                _handlePlantMarkerTap(
+                  markerKey: markerKey,
                   crop: {
                     'id': null,
                     'name': inst.cropName,
@@ -2526,11 +2914,24 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
                   existing: inst,
                 );
               },
+              onLongPress: () => _handlePlantMarkerLongPress(
+                markerKey: markerKey,
+                crop: {
+                  'id': null,
+                  'name': inst.cropName,
+                },
+                plantIndex: null,
+                pos: pos,
+                existing: inst,
+              ),
             ),
           ),
         ),
       );
-      (_selectedPlantMarkerKey == markerKey ? highlightedPlantMarkers : markers)
+      (_selectedPlantMarkerKey == markerKey ||
+                  _multiSelectedPlantTargets.containsKey(markerKey)
+              ? highlightedPlantMarkers
+              : markers)
           .add(marker);
     }
 
@@ -3014,6 +3415,33 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
     }
     return DateTime.tryParse(raw);
   }
+}
+
+enum _PlantAction {
+  editHealth,
+  deletePlant,
+  deleteArea,
+  multiSelect,
+}
+
+class _PlantDeleteTarget {
+  const _PlantDeleteTarget({
+    required this.markerKey,
+    required this.cropId,
+    required this.plantIndex,
+    required this.cropName,
+    required this.pos,
+    required this.existing,
+    required this.isStandalone,
+  });
+
+  final String markerKey;
+  final String? cropId;
+  final int? plantIndex;
+  final String cropName;
+  final LatLng pos;
+  final FieldPlantInstance? existing;
+  final bool isStandalone;
 }
 
 class _PlantPickerSheet extends StatefulWidget {

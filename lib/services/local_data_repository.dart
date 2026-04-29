@@ -119,9 +119,7 @@ class LocalDataRepository {
   }) async {
     final now = DateTime.now().toUtc();
     final isNewField = !(raw['id']?.toString().trim().isNotEmpty ?? false);
-    final fieldId = isNewField
-        ? _newId('field')
-        : raw['id'].toString();
+    final fieldId = isNewField ? _newId('field') : raw['id'].toString();
     final createdAt = _parseTimestamp(raw['created_at']) ?? now;
 
     await _db.into(_db.fields).insertOnConflictUpdate(
@@ -1541,6 +1539,9 @@ class LocalDataRepository {
     final relatedEvents = await (_db.select(_db.calendarEvents)
           ..where((tbl) => tbl.cropId.equals(cropId) & tbl.deletedAt.isNull()))
         .get();
+    final relatedPlantInstances = await (_db.select(_db.fieldPlantInstances)
+          ..where((tbl) => tbl.cropId.equals(cropId) & tbl.deletedAt.isNull()))
+        .get();
 
     // 2. Atomik write transaction - yalnizca DB guncelleme/silme
     await _db.transaction(() async {
@@ -1569,6 +1570,14 @@ class LocalDataRepository {
       await (_db.delete(_db.cropGrowthStates)
             ..where((tbl) => tbl.cropId.equals(cropId)))
           .go();
+
+      await (_db.update(_db.fieldPlantInstances)
+            ..where(
+                (tbl) => tbl.cropId.equals(cropId) & tbl.deletedAt.isNull()))
+          .write(FieldPlantInstancesCompanion(
+        updatedAt: Value(now),
+        deletedAt: Value(now),
+      ));
     });
 
     // 3. Transaction disari: sync outbox kayitlari (kilit riski yok)
@@ -1587,6 +1596,15 @@ class LocalDataRepository {
         entityId: event.id,
         operation: 'delete',
         payload: {'id': event.id, 'crop_id': cropId},
+        updatedAt: now,
+      );
+    }
+    for (final plant in relatedPlantInstances) {
+      await _enqueueSyncJob(
+        entityType: 'field_plant_instances',
+        entityId: plant.id,
+        operation: 'delete',
+        payload: {'id': plant.id, 'crop_id': cropId},
         updatedAt: now,
       );
     }

@@ -127,6 +127,7 @@ Widget buildCropMarkerWidget({
   bool isHighlighted = false,
   ValueChanged<bool>? onHover,
   VoidCallback? onTap,
+  VoidCallback? onLongPress,
 }) {
   return Builder(
     builder: (context) {
@@ -346,7 +347,7 @@ Widget buildCropMarkerWidget({
         ],
       );
 
-      if (onTap != null || onHover != null) {
+      if (onTap != null || onHover != null || onLongPress != null) {
         final hitWidth = (spriteW * 0.62).clamp(24.0, 76.0);
         final hitHeight = (spriteH * 0.96).clamp(32.0, 112.0);
         final preciseHitTarget = Positioned(
@@ -361,6 +362,7 @@ Widget buildCropMarkerWidget({
               onExit: (_) => onHover?.call(false),
               child: GestureDetector(
                 onTap: onTap,
+                onLongPress: onLongPress,
                 behavior: HitTestBehavior.opaque,
                 child: const SizedBox.expand(),
               ),
