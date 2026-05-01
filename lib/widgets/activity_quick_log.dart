@@ -142,20 +142,16 @@ class _ActivityQuickLogState extends ConsumerState<ActivityQuickLog> {
             ],
           ),
           const SizedBox(height: 8),
-          SizedBox(
-            height: 44,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: ActivityType.quickLogOrder.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 8),
-              itemBuilder: (_, i) {
-                final type = ActivityType.quickLogOrder[i];
-                return _QuickChip(
-                  type: type,
-                  onTap: () => _onChipTap(type),
-                );
-              },
-            ),
+          Column(
+            children: ActivityType.quickLogOrder
+                .map((type) => Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: _QuickChip(
+                        type: type,
+                        onTap: () => _onChipTap(type),
+                      ),
+                    ))
+                .toList(),
           ),
         ],
       ),
@@ -190,25 +186,35 @@ class _QuickChip extends StatelessWidget {
     return TapScale(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: color.withValues(alpha: 0.35)),
+          color: color.withValues(alpha: 0.10),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withValues(alpha: 0.30)),
         ),
         child: Row(
-          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(ActivityType.icon(type), size: 18, color: color),
-            const SizedBox(width: 6),
+            Container(
+              padding: const EdgeInsets.all(7),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.15),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(ActivityType.icon(type), size: 18, color: color),
+            ),
+            const SizedBox(width: 12),
             Text(
               ActivityType.actionLabel(type),
               style: TextStyle(
-                fontSize: 13,
+                fontSize: 14,
                 fontWeight: FontWeight.w600,
                 color: AppColors.textPrimary,
               ),
             ),
+            const Spacer(),
+            Icon(Icons.chevron_right_rounded,
+                size: 18, color: color.withValues(alpha: 0.55)),
           ],
         ),
       ),
