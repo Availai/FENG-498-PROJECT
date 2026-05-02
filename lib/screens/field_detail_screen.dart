@@ -1215,6 +1215,17 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
             ),
             const SizedBox(width: 4),
             FilledButton.icon(
+              onPressed: count == 0 ? null : _bulkSetHealth,
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.emeraldDark,
+                foregroundColor: Colors.white,
+                visualDensity: VisualDensity.compact,
+              ),
+              icon: const Icon(Icons.healing_rounded, size: 18),
+              label: const Text('Sağlık'),
+            ),
+            const SizedBox(width: 6),
+            FilledButton.icon(
               onPressed: count == 0 ? null : _deleteSelectedPlants,
               style: FilledButton.styleFrom(
                 backgroundColor: Colors.red.shade600,
@@ -1959,7 +1970,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
                 leading: const Icon(Icons.playlist_add_check_rounded,
                     color: AppColors.emerald),
                 title: const Text('Çoklu seçim başlat'),
-                subtitle: const Text('Birden fazla bitki seçip sil'),
+                subtitle: const Text('Birden fazla bitki seçip işlem yap'),
                 onTap: () => Navigator.pop(ctx, _PlantAction.multiSelect),
               ),
             ],
@@ -2068,6 +2079,68 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
       context,
       message: '${targets.length} bitki silindi.',
       type: ToastType.info,
+    );
+  }
+
+  Future<void> _bulkSetHealth() async {
+    final targets = _multiSelectedPlantTargets.values.toList(growable: false);
+    if (targets.isEmpty) return;
+
+    final count = targets.length;
+    final fieldId = widget.fieldData['id']?.toString();
+    if (fieldId == null || fieldId.isEmpty) return;
+
+    final result = await DiseasePickerSheet.show(
+      context,
+      cropName: '$count bitki',
+      onCapturePhoto: null,
+    );
+    if (result == null || !mounted) return;
+
+    final repo = ref.read(localDataRepositoryProvider);
+    for (final target in targets) {
+      String instanceId;
+      if (target.existing != null) {
+        instanceId = target.existing!.id;
+      } else if (!target.isStandalone &&
+          target.cropId != null &&
+          target.plantIndex != null) {
+        instanceId = await repo.insertPlantInstance(
+          fieldId: fieldId,
+          cropId: target.cropId,
+          plantIndex: target.plantIndex,
+          cropName: target.cropName,
+          lat: target.pos.latitude,
+          lng: target.pos.longitude,
+          healthStatus: result.status,
+        );
+      } else {
+        continue;
+      }
+      await repo.setPlantHealth(
+        instanceId: instanceId,
+        healthStatus: result.status,
+        diseaseType: result.diseaseType,
+        diseasePhotoPath: result.photoPath,
+      );
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _isPlantMultiSelectMode = false;
+      _multiSelectedPlantTargets.clear();
+      _selectedPlantMarkerKey = null;
+    });
+
+    final statusLabel = result.status == DiseaseTypes.statusDiseased
+        ? 'hasta'
+        : result.status == DiseaseTypes.statusDead
+            ? 'ölü'
+            : 'sağlıklı';
+    AppToast.show(
+      context,
+      message: '$count bitki $statusLabel olarak işaretlendi.',
+      type: ToastType.success,
     );
   }
 
