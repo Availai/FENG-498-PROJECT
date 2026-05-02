@@ -6,6 +6,7 @@ import '../services/app_providers.dart';
 import '../services/guide_engine.dart';
 import '../theme/app_theme.dart';
 import '../widgets/floating_toast.dart';
+import '../widgets/help_panel.dart';
 
 /// Tek "Bugünün Rehberi" ekranı — eski 5 paralel UI yüzeyini değiştirir.
 ///
@@ -47,6 +48,11 @@ class DailyGuideScreen extends ConsumerWidget {
             icon: const Icon(Icons.refresh_rounded),
             tooltip: 'Yenile',
             onPressed: () => ref.invalidate(fieldGuideProvider(fieldId)),
+          ),
+          IconButton(
+            icon: const Icon(Icons.help_outline_rounded),
+            tooltip: 'Yardım',
+            onPressed: () => HelpPanel.show(context, HelpContent.dailyGuide),
           ),
         ],
       ),

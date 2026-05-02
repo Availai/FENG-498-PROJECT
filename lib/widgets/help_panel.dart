@@ -60,7 +60,15 @@ class HelpContent {
         title: 'Tarla Kartları',
         description:
             'Kayıtlı tarım alanlarınızın kısa özetini gösterir. '
-            'Karta tıklayarak o tarlaya ait detaylar, ekim bilgisi ve sulama planına geçebilirsiniz.',
+            'Karta tıklayarak o tarlaya ait detaylar, ekim bilgisi ve günlük rehbere ulaşabilirsiniz.',
+      ),
+      HelpItem(
+        icon: Icons.assistant_rounded,
+        iconColor: Color(0xFF2E7D32),
+        title: 'Rehbere Git Bağlantısı',
+        description:
+            'Her tarla kartında uyarı sayısını gösteren "Rehber" düğmesi bulunur. '
+            'Düğmeye basarak o tarlaya ait "Bugünün Rehberi" ekranına doğrudan atlarsınız.',
       ),
       HelpItem(
         icon: Icons.refresh_rounded,
@@ -72,10 +80,10 @@ class HelpContent {
       HelpItem(
         icon: Icons.book_rounded,
         iconColor: Color(0xFF8D6E63),
-        title: 'Tarla Günlüğü',
+        title: 'Hızlı Aktivite Kaydı',
         description:
-            'Tarlanızdaki sulama, gübreleme gibi faaliyetleri not alabilirsiniz. '
-            'Ana ekrandaki kısa yoldan veya tarla detay sayfasından ulaşabilirsiniz.',
+            'Tarla kartındaki kayıt kısa yolundan sulama, gübreleme, ilaçlama ve hasat gibi '
+            'faaliyetleri anında not alın. Kaydettiğiniz her aktivite büyüme motorunu canlı olarak etkiler.',
       ),
     ],
   );
@@ -286,29 +294,49 @@ class HelpContent {
       HelpItem(
         icon: Icons.radar_rounded,
         iconColor: Color(0xFF00E676),
-        title: 'Tarlayı Tara',
+        title: 'Tarlayı Tara — Ekim Alanı',
         description:
             'Alt bardaki "Tarlayı Tara" düğmesi bitki seçiciyi açar. '
             '292 Türk bitkisi arasından seçim yapabilirsiniz; her bitki için toprak ve '
             'iklim uygunluk skoru hesaplanır. Seçtiğiniz bitki tarlaya bölge olarak eklenir.',
       ),
       HelpItem(
-        icon: Icons.touch_app_rounded,
+        icon: Icons.add_location_alt_rounded,
         iconColor: Color(0xFF43A047),
-        title: 'Bölgeye Tıklama',
+        title: 'Tekil Bitki Ekle (Uzun Bas)',
         description:
-            'Haritada daha önce eklediğiniz renkli bölgelere tıklayarak '
-            'o bölgeye ait bitki adı, ekim tarihi, olgunlaşma yüzdesi gibi bilgileri görebilirsiniz. '
-            'Açılan pencereden bölgeyi silebilirsiniz.',
+            '"Tarlayı Tara" düğmesine uzun basarsanız tekil bitki yerleştirme moduna girersiniz. '
+            'Haritada herhangi bir noktaya dokunarak 292 bitki arasından seçip o noktaya '
+            'bağımsız bir bitki markeri ekleyebilirsiniz. Bağımsız bitkiler ekim alanına bağlı değildir.',
       ),
       HelpItem(
-        icon: Icons.add_location_alt_rounded,
+        icon: Icons.healing_rounded,
         iconColor: Color(0xFF1976D2),
-        title: 'Bölge Çizme',
+        title: 'Bitki Sağlık Durumu',
         description:
-            '"Tarlayı Tara" ile bitki seçtikten sonra haritaya dokunarak köşe noktaları '
-            'işaretleyebilirsiniz. En az 3 nokta işaretleyip "Tamamla" ya basın. '
-            '"Geri Al" ile son noktayı silebilirsiniz.',
+            'Haritadaki herhangi bir bitki markerine dokunun. Açılan menüden "Sağlık durumunu düzenle" '
+            'seçeneğiyle o bitkiyi Sağlıklı, Hasta veya Ölü olarak işaretleyebilirsiniz. '
+            'Hasta bitkiler üzerinde turuncu uyarı rozeti görünür.',
+      ),
+      HelpItem(
+        icon: Icons.playlist_add_check_rounded,
+        iconColor: Color(0xFF00BCD4),
+        title: 'Çoklu Bitki Seçimi',
+        description:
+            'Herhangi bir bitki markerine uzun basarak çoklu seçim moduna girin — ya da '
+            'tek bitki menüsünden "Çoklu seçim başlat" seçin. Ardından diğer bitkilere '
+            'tek tek dokunarak seçime ekleyin. Üstte beliren HUD çubuğundaki '
+            '"Sağlık" düğmesiyle seçili tüm bitkilere aynı sağlık durumunu toplu atayabilir, '
+            '"Sil" düğmesiyle ise hepsini birden silebilirsiniz.',
+      ),
+      HelpItem(
+        icon: Icons.assistant_rounded,
+        iconColor: Color(0xFF2E7D32),
+        title: 'Günlük Rehber',
+        description:
+            'Üst bardaki "Rehber" düğmesi "Bugünün Rehberi" ekranını açar. '
+            'Bu ekranda tarlaya özel bugünün görevleri, hava uyarıları, bitki sağlığı durumu '
+            've uygulamalı tarım önerileri bir arada sunulur.',
       ),
       HelpItem(
         icon: Icons.stacked_line_chart_rounded,
@@ -321,37 +349,20 @@ class HelpContent {
       HelpItem(
         icon: Icons.event_note_rounded,
         iconColor: Color(0xFF8D6E63),
-        title: 'Günlük',
+        title: 'Günlük — Aktivite Kaydı',
         description:
-            'Bu tarlaya ait sulama, gübreleme, ilaçlama gibi faaliyetleri kayıt altına alın. '
-            'Geçmiş aktiviteler zaman sırasıyla listelenir.',
+            'Bu tarlaya ait sulama, gübreleme, ilaçlama ve hasat gibi faaliyetleri kayıt altına alın. '
+            'Her kayıt büyüme motorunu canlı olarak günceller: "Suladım" dediğinizde '
+            'su açığı göstergesi ve rehber önerisi anında değişir.',
       ),
       HelpItem(
         icon: Icons.account_balance_wallet_rounded,
         iconColor: Color(0xFF9C27B0),
         title: 'Cüzdan — Masraf Takibi',
         description:
-            'Bu tarlaya özel gelir ve masraf defteri. Tohum, gübre, yakıt, işçilik gibi '
+            'Bu tarlaya özel masraf defteri. Tohum, gübre, yakıt, işçilik gibi '
             'harcamaları girdikçe toplam masraf otomatik güncellenir. '
-            'Girdiğiniz her masraf, Tahmini Sezon Sonu Kârı hesabından anında düşülür — '
-            'yani kârınız gerçek harcamalarınıza göre anlık hesaplanır.',
-      ),
-      HelpItem(
-        icon: Icons.touch_app_rounded,
-        iconColor: Color(0xFFD32F2F),
-        title: 'Bölge Silme (Dokun-Sil)',
-        description:
-            'Haritada birden fazla ekim bölgeniz varsa, silmek istediğiniz bölgenin üzerine '
-            'doğrudan dokunun — sadece o bölge seçilir ve silme penceresi açılır. '
-            'Yanlışlıkla başka bölgeyi silmezsiniz.',
-      ),
-      HelpItem(
-        icon: Icons.checklist_rtl_rounded,
-        iconColor: Color(0xFF0288D1),
-        title: 'Görevler',
-        description:
-            'Tarla için yapılacaklar listesini ve sulama planını görüntüleyin. '
-            'Yaklaşan görevler ve hatırlatıcılar burada listelenir.',
+            'Tahmini Sezon Sonu Kârı masraf defteri ekranında hesaplanır.',
       ),
       HelpItem(
         icon: Icons.zoom_in_rounded,
@@ -364,10 +375,10 @@ class HelpContent {
     ],
   );
 
-  // 3D Tarla Planlayıcı — yeni alan çizme + kâr tahmini ekranı
+  // 3D Tarla Planlayıcı — yeni alan çizme ekranı
   static const HelpContent fieldPlanner = HelpContent(
     screenTitle: '3D Tarla Yerleşimi',
-    screenSubtitle: 'Yeni tarla çizin, haritayı kontrol edin ve kâr tahmininizi anlık görün.',
+    screenSubtitle: 'Yeni tarla çizin ve haritayı kontrol edin.',
     headerIcon: Icons.view_in_ar_rounded,
     headerColor: Color(0xFF1B5E20),
     items: [
@@ -404,22 +415,22 @@ class HelpContent {
             'haritayı işaretlediğiniz noktalara otomatik sığdırabilirsiniz.',
       ),
       HelpItem(
-        icon: Icons.trending_up_rounded,
+        icon: Icons.save_rounded,
         iconColor: Color(0xFF2E7D32),
-        title: 'Tahmini Sezon Sonu Kârı',
+        title: 'Tarlayı Kaydet',
         description:
-            'Tarla kaydedildikten sonra ekranda görünen kâr kartı, şu formülü kullanır: '
-            '(Tahmini Rekolte × Birim Fiyat) − Toplam Masraf = Net Kâr. '
-            'Yeşil renk kâr, kırmızı renk zarar anlamına gelir.',
+            'En az 3 köşe noktası işaretledikten sonra "Kaydet" düğmesiyle tarlayı sisteme ekleyin. '
+            'Kaydedilen tarla otomatik olarak takviminize işlenir ve tarla detay ekranından '
+            'yönetilmeye hazır hale gelir.',
       ),
       HelpItem(
         icon: Icons.receipt_long_rounded,
         iconColor: Color(0xFF9C27B0),
-        title: 'Masraflar Nereden Geliyor?',
+        title: 'Tahmini Kâr Nerede Görünür?',
         description:
-            'Toplam masraf artık sabit 1000 ₺ değil — Cüzdan (masraf defteri) ekranından '
-            'bu tarla için girdiğiniz tüm harcamaların toplamıdır. '
-            'Yeni bir masraf eklediğinizde kâr kartı anında güncellenir.',
+            'Kâr tahmini artık bu ekranda değil — Tarla Detay ekranından Cüzdan (masraf defteri) '
+            'bölümüne girdiğinizde hesaplanır. '
+            'Toplam masraf girişine göre Net Kâr = Rekolte Geliri − Toplam Masraf formülüyle gösterilir.',
       ),
       HelpItem(
         icon: Icons.science_rounded,
@@ -489,6 +500,79 @@ class HelpContent {
         description:
             'Gönderi türünü seçin: Hastalık Bildirimi, Soru veya Bilgi Paylaşımı. '
             'Anonim paylaşım da mümkündür — adınızı boş bırakın.',
+      ),
+    ],
+  );
+
+  // Bugünün Rehberi ekranı — GuideEngine çıktısı
+  static const HelpContent dailyGuide = HelpContent(
+    screenTitle: 'Bugünün Rehberi',
+    screenSubtitle: 'Tarlaya özel günlük görevler, uyarılar ve anlık durum göstergesi.',
+    headerIcon: Icons.assistant_rounded,
+    headerColor: Color(0xFF1A3D2B),
+    items: [
+      HelpItem(
+        icon: Icons.warning_amber_rounded,
+        iconColor: Color(0xFFD32F2F),
+        title: 'Uyarı Bannerları',
+        description:
+            'Ekranın üstünde kritik çevre uyarıları gösterilir: don riski, aşırı sıcak, '
+            'yağmur beklentisi, aşırı sulama ve ilaç bekleme süresi (REI). '
+            'Don ve aşırı yağmur kritik (kırmızı), diğerleri uyarı (sarı) ya da bilgi (mavi) olarak işaretlenir.',
+      ),
+      HelpItem(
+        icon: Icons.today_rounded,
+        iconColor: Color(0xFF2E7D32),
+        title: 'BUGÜN — Acil Görevler',
+        description:
+            'En fazla 3 acil görev kart olarak gösterilir: sulama, gübreleme, ilaçlama veya hasat. '
+            '"Yapıldı" düğmesine bastığınızda aktivite kaydedilir ve kart anında kaybolur. '
+            'Yağmur beklentisi ≥8mm ise sulama görevi otomatik "ertele" uyarısına dönüşür.',
+      ),
+      HelpItem(
+        icon: Icons.date_range_rounded,
+        iconColor: Color(0xFF0288D1),
+        title: 'BU HAFTA — Yaklaşan Görevler',
+        description:
+            'Bugünün dışında bu haftaya ait planlı görevler liste halinde sıralanır. '
+            'Her satırda görev tipi, tarih ve kısa açıklama yer alır. '
+            'Aynı görev "BUGÜN" kartında görünüyorsa bu hafta listesinde tekrarlanmaz.',
+      ),
+      HelpItem(
+        icon: Icons.monitor_heart_rounded,
+        iconColor: Color(0xFF7B1FA2),
+        title: 'DURUM Göstergesi',
+        description:
+            'Bitkinin anlık sağlığını tek bakışta görmek için dört gösterge: '
+            'Su açığı (mm), Azot stresi (%), Potasyum stresi (%) ve Hastalık baskısı. '
+            'Altında Verim Çarpanı yer alır — 1.0 = tam verim, düşükse eksik faktör var demektir.',
+      ),
+      HelpItem(
+        icon: Icons.lightbulb_rounded,
+        iconColor: Color(0xFFF9A825),
+        title: 'BİLMENİZ GEREKENLER — Öneriler',
+        description:
+            'Bitki türü, büyüme evresi ve hava koşullarına göre otomatik oluşturulan '
+            'pratik bilgiler: örneğin "Domates 28°C üstünde pollen ölümü yaşar" veya '
+            '"Çiçeklenme evresinde su açığı meyve dökülmesine neden olur." '
+            'Kapatılan öneri 7 gün boyunca tekrar gösterilmez.',
+      ),
+      HelpItem(
+        icon: Icons.refresh_rounded,
+        iconColor: Color(0xFF6B7280),
+        title: 'Canlı Güncelleme',
+        description:
+            '"Yapıldı" düğmesine bastıktan sonra rehber 1-2 saniye içinde yeniden hesaplanır — '
+            'manuel yenileme gerekmez. Hava tahmini de 10 dakikada bir otomatik güncellenir.',
+      ),
+      HelpItem(
+        icon: Icons.agriculture_rounded,
+        iconColor: Color(0xFF43A047),
+        title: 'Pestisit Bekleme Süresi (REI)',
+        description:
+            'İlaçlama kaydettikten sonra kullandığınız ilaca göre tarlaya yeniden giriş süresi '
+            '(REI) banner olarak gösterilir. Süre dolmadan tarlaya girmeyin; '
+            'banner süresi saatlik olarak geri sayar.',
       ),
     ],
   );
