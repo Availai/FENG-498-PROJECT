@@ -66,12 +66,88 @@ class FieldEnvData {
   });
 }
 
+/// 48 saatlik saatlik forecast — don/aşırı sıcak/aşırı yağmur tespiti için.
+class HourlyForecast {
+  /// Saatlik veriler — her giriş bir saat. İlk giriş "şu an"a en yakın saat.
+  final List<HourlySlot> slots;
+  final DateTime fetchedAt;
+
+  const HourlyForecast({required this.slots, required this.fetchedAt});
+
+  bool get isEmpty => slots.isEmpty;
+
+  /// Önümüzdeki [hours] saat içinde min sıcaklık (°C). Boşsa null.
+  double? minTempNext(int hours) {
+    if (slots.isEmpty) return null;
+    final n = slots.length < hours ? slots.length : hours;
+    double m = slots.first.tempC;
+    for (int i = 0; i < n; i++) {
+      if (slots[i].tempC < m) m = slots[i].tempC;
+    }
+    return m;
+  }
+
+  /// Önümüzdeki [hours] saat içinde max sıcaklık (°C). Boşsa null.
+  double? maxTempNext(int hours) {
+    if (slots.isEmpty) return null;
+    final n = slots.length < hours ? slots.length : hours;
+    double m = slots.first.tempC;
+    for (int i = 0; i < n; i++) {
+      if (slots[i].tempC > m) m = slots[i].tempC;
+    }
+    return m;
+  }
+
+  /// Önümüzdeki [hours] saat boyunca toplam yağmur (mm).
+  double rainSumNext(int hours) {
+    if (slots.isEmpty) return 0;
+    final n = slots.length < hours ? slots.length : hours;
+    double sum = 0;
+    for (int i = 0; i < n; i++) {
+      sum += slots[i].rainMm;
+    }
+    return sum;
+  }
+}
+
+class HourlySlot {
+  final DateTime hour;
+  final double tempC;
+  final double rainMm;
+  final double humidity;
+
+  const HourlySlot({
+    required this.hour,
+    required this.tempC,
+    required this.rainMm,
+    required this.humidity,
+  });
+
+  Map<String, dynamic> toJson() => {
+        't': hour.toIso8601String(),
+        'c': tempC,
+        'r': rainMm,
+        'h': humidity,
+      };
+
+  factory HourlySlot.fromJson(Map<String, dynamic> j) => HourlySlot(
+        hour: DateTime.tryParse(j['t']?.toString() ?? '') ?? DateTime.now(),
+        tempC: (j['c'] as num?)?.toDouble() ?? 0,
+        rainMm: (j['r'] as num?)?.toDouble() ?? 0,
+        humidity: (j['h'] as num?)?.toDouble() ?? 0,
+      );
+}
+
 class WeatherSoilService {
   const WeatherSoilService();
 
   static const _cacheBox = 'settingsBox';
   static const _cachePrefix = 'weather_cache_';
-  static const _cacheTtl = Duration(minutes: 30);
+  // Forecast 10 dakika cache: hava değişikliği rehbere hızlı yansır.
+  // Eski 30 dk değerinde yağmur tahmini değişince direktif geç fark ediyordu.
+  static const _cacheTtl = Duration(minutes: 10);
+  static const _hourlyCachePrefix = 'weather_hourly_cache_';
+  static const _hourlyCacheTtl = Duration(minutes: 30);
 
   static String _cacheKey(double lat, double lng) =>
       '$_cachePrefix${lat.toStringAsFixed(2)}_${lng.toStringAsFixed(2)}';
@@ -200,6 +276,84 @@ class WeatherSoilService {
       return null;
     }
   }
+
+  /// 48 saatlik saatlik forecast — Open-Meteo'dan doğrudan alınır.
+  /// Cache TTL: 30 dakika (saatlik veri günde 1-2 kez yeterli).
+  /// Don alarmı, aşırı yağmur, aşırı sıcak için kullanılır.
+  Future<HourlyForecast> fetchHourlyForecast({
+    required double latitude,
+    required double longitude,
+  }) async {
+    final box = Hive.isBoxOpen(_cacheBox) ? Hive.box(_cacheBox) : null;
+    final key = '$_hourlyCachePrefix${latitude.toStringAsFixed(2)}_${longitude.toStringAsFixed(2)}';
+
+    // Cache fresh mi?
+    if (box != null) {
+      final tsRaw = box.get('${key}_ts');
+      if (tsRaw is int) {
+        final age = DateTime.now().millisecondsSinceEpoch - tsRaw;
+        if (age < _hourlyCacheTtl.inMilliseconds) {
+          final raw = box.get(key);
+          if (raw is List) {
+            final slots = raw
+                .whereType<Map>()
+                .map((e) => HourlySlot.fromJson(Map<String, dynamic>.from(e)))
+                .toList();
+            return HourlyForecast(
+              slots: slots,
+              fetchedAt: DateTime.fromMillisecondsSinceEpoch(tsRaw),
+            );
+          }
+        }
+      }
+    }
+
+    try {
+      final uri = Uri.parse(
+        'https://api.open-meteo.com/v1/forecast'
+        '?latitude=$latitude&longitude=$longitude'
+        '&hourly=temperature_2m,precipitation,relative_humidity_2m'
+        '&forecast_days=2&timezone=auto',
+      );
+      final resp = await http.get(uri).timeout(const Duration(seconds: 6));
+      if (resp.statusCode != 200) return _emptyForecast();
+
+      final body = jsonDecode(resp.body) as Map<String, dynamic>;
+      final hourly = (body['hourly'] as Map?)?.cast<String, dynamic>() ?? {};
+      final times = (hourly['time'] as List?) ?? const [];
+      final temps = (hourly['temperature_2m'] as List?) ?? const [];
+      final rains = (hourly['precipitation'] as List?) ?? const [];
+      final hums = (hourly['relative_humidity_2m'] as List?) ?? const [];
+
+      final now = DateTime.now();
+      final slots = <HourlySlot>[];
+      for (int i = 0; i < times.length; i++) {
+        final t = DateTime.tryParse(times[i].toString());
+        if (t == null) continue;
+        // Sadece şu an ve sonrası
+        if (t.isBefore(now.subtract(const Duration(hours: 1)))) continue;
+        slots.add(HourlySlot(
+          hour: t,
+          tempC: i < temps.length ? (temps[i] as num).toDouble() : 0,
+          rainMm: i < rains.length ? (rains[i] as num).toDouble() : 0,
+          humidity: i < hums.length ? (hums[i] as num).toDouble() : 0,
+        ));
+        if (slots.length >= 48) break;
+      }
+
+      if (box != null && slots.isNotEmpty) {
+        await box.put(key, slots.map((s) => s.toJson()).toList());
+        await box.put('${key}_ts', DateTime.now().millisecondsSinceEpoch);
+      }
+
+      return HourlyForecast(slots: slots, fetchedAt: DateTime.now());
+    } catch (_) {
+      return _emptyForecast();
+    }
+  }
+
+  HourlyForecast _emptyForecast() =>
+      HourlyForecast(slots: const [], fetchedAt: DateTime.now());
 
   Future<FieldEnvData> fetchFieldEnv({
     required double latitude,

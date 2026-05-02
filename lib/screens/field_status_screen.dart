@@ -10,6 +10,7 @@ import '../theme/app_theme.dart';
 import '../widgets/animated_route.dart';
 import '../widgets/shimmer_loader.dart';
 import '../widgets/tap_scale.dart';
+import 'daily_guide_screen.dart';
 import 'farm_journal_screen.dart';
 import 'field_detail_screen.dart';
 
@@ -228,48 +229,20 @@ class _FieldStatusCard extends ConsumerWidget {
                   )),
             ],
 
-            // ── Direktifler (sonraki işlem + nasıl yapılır) ──
+            // ── Bugünün Rehberi linki ─────────────────────────────────
+            // Direktif listesi artık burada gösterilmiyor; tek "Bugünün
+            // Rehberi" ekranında alerts + today + thisWeek + insights
+            // tutarlı şekilde toplanır (çakışma yok).
             const SizedBox(height: 14),
             const Divider(height: 1),
             const SizedBox(height: 10),
-            Row(
-              children: [
-                Icon(Icons.task_alt, size: 16, color: Colors.teal.shade700),
-                const SizedBox(width: 6),
-                Text(
-                  'Sonraki İşlemler',
-                  style: AppText.label(context)
-                      .copyWith(color: Colors.teal.shade800),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            directivesAsync.when(
-              loading: () => const Padding(
-                padding: EdgeInsets.symmetric(vertical: 8),
-                child: Row(children: [
-                  SizedBox(
-                    width: 14,
-                    height: 14,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
-                  SizedBox(width: 8),
-                  Text('Yönergeler hesaplanıyor…',
-                      style: TextStyle(fontSize: 12)),
-                ]),
+            _GuideLinkCard(
+              fieldId: fieldId,
+              fieldName: fieldName,
+              alertCount: directivesAsync.maybeWhen(
+                data: (d) => d.where((x) => x.urgency >= 2).length,
+                orElse: () => 0,
               ),
-              error: (err, _) => Text(
-                'Yönergeler yüklenemedi: $err',
-                style: AppText.xs(context),
-              ),
-              // TaskDirectiveService boş liste döndürmez (idle direktifi var);
-              // bu yüzden boş data dalı buradan çıkarıldı.
-              data: (directives) {
-                final top = directives.take(4).toList();
-                return Column(
-                  children: top.map(_buildDirective).toList(),
-                );
-              },
             ),
 
             // ── Son Aktiviteler — kullanıcının kendi kayıtları (DB) ──
@@ -420,6 +393,7 @@ class _FieldStatusCard extends ConsumerWidget {
     );
   }
 
+  // ignore: unused_element
   Widget _buildDirective(FieldDirective d) {
     Color urgencyColor;
     IconData urgencyIcon;
@@ -678,5 +652,88 @@ class _CropProgressRow extends StatelessWidget {
       if (d != null && m != null && y != null) return DateTime(y, m, d);
     }
     return DateTime.tryParse(raw);
+  }
+}
+
+/// Tarla kartında gösterilen "Bugünün Rehberi" linki — direktif/alert sayısı
+/// rozet olarak görünür. Tıklanırsa tek `DailyGuideScreen` push olur.
+class _GuideLinkCard extends StatelessWidget {
+  final String fieldId;
+  final String fieldName;
+  final int alertCount;
+
+  const _GuideLinkCard({
+    required this.fieldId,
+    required this.fieldName,
+    required this.alertCount,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return TapScale(
+      onTap: () {
+        if (fieldId.isEmpty) return;
+        Navigator.of(context).push(MaterialPageRoute(
+          builder: (_) => DailyGuideScreen(
+            fieldId: fieldId,
+            fieldName: fieldName,
+          ),
+        ));
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        decoration: BoxDecoration(
+          gradient: AppGradients.emeraldCard,
+          borderRadius: AppRadius.sm,
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.lightbulb_rounded, color: Colors.white, size: 20),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Bugünün Rehberi',
+                    style: AppText.bodyMd(context).copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  Text(
+                    alertCount > 0
+                        ? '$alertCount acil iş seni bekliyor'
+                        : 'Bugünün önerileri ve uyarıları',
+                    style: AppText.xs(context).copyWith(
+                      color: Colors.white.withValues(alpha: 0.85),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (alertCount > 0)
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '$alertCount',
+                  style: AppText.xs(context).copyWith(
+                    color: AppColors.emeraldDark,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            const SizedBox(width: 6),
+            const Icon(Icons.arrow_forward_ios_rounded,
+                color: Colors.white, size: 14),
+          ],
+        ),
+      ),
+    );
   }
 }

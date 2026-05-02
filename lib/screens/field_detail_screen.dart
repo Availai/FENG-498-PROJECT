@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:latlong2/latlong.dart';
 import '../services/agri_service.dart';
 import 'crop_daily_plan_screen.dart';
+import 'daily_guide_screen.dart';
 import '../services/app_providers.dart';
 import '../services/crop_placement.dart';
 import '../services/crop_protocol_service.dart';
@@ -1531,7 +1532,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
       );
     }
 
-    await repo.logActivity(
+    await ref.read(activityLoggerProvider).log(
       fieldId: fieldId,
       type: ActivityType.planting,
       cropId: cropId,
@@ -2306,7 +2307,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
       );
     }
 
-    await repo.logActivity(
+    await ref.read(activityLoggerProvider).log(
       fieldId: fieldId,
       type: ActivityType.planting,
       cropId: cropId,
@@ -3118,54 +3119,33 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
   // ═══════════════════════════════════════════════════
   /// "Yapılacaklar" akıllı yönlendirme.
   ///
-  /// Tarlada `planted_date`'i girilmiş ve desteklenen (Ayçiçeği/Mısır/Domates)
-  /// bir bitki varsa kullanıcıyı doğrudan **Gün-Gün Rehber**'e götürür — orada
-  /// yönergeler, su muhasebesi, kurulum kontrolü ve yol haritası tek ekranda.
-  /// Henüz ekim yapılmamışsa eski "kurulum planı" modalı açılır.
+  /// Tek "Bugünün Rehberi" ekranını açar. Eski bottom-sheet modal + 5 paralel
+  /// UI yüzeyi yerine tek `DailyGuideScreen` — alerts/today/thisWeek/insights
+  /// tek tutarlı yerden gelir. Aktivite kaydedildikçe canlı güncellenir.
   void _showDetailModal() {
     final fieldId = widget.fieldData['id']?.toString() ?? '';
+    if (fieldId.isEmpty) {
+      AppToast.show(context,
+          message: 'Rehber açmak için tarla kimliği bulunamadı.',
+          type: ToastType.warning);
+      return;
+    }
+    // Açılış öncesi ekinler için recompute — ilk açılışta stale durmasın.
     for (final crop in _fieldCrops) {
       final cropId = crop['id']?.toString();
       if (cropId != null && cropId.isNotEmpty) {
         ref.read(growthEngineProvider).recompute(cropId: cropId);
       }
     }
-
-    final guideCrops = _fieldCrops.where((c) {
-      if (!SupportedCrops.isSupported(c['name']?.toString())) return false;
-      return _parseDmYDate(c['planted_date']?.toString()) != null;
-    }).toList(growable: false);
-
-    if (guideCrops.length == 1) {
-      _openCropGuide(guideCrops.single);
-      return;
-    }
-
-    if (guideCrops.length > 1) {
-      _showGuideCropPicker(guideCrops);
-      return;
-    }
-
-    // Henüz uygun bir ekim yok → kurulum planı modalı.
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (_) => _DirectivesModalContent(
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => DailyGuideScreen(
         fieldId: fieldId,
-        fieldData: Map<String, dynamic>.from(
-          widget.fieldData as Map<dynamic, dynamic>,
-        ),
-        analysis: _analysis,
-        latestSuitabilityReport: _latestSuitabilityReport,
-        fieldCrops: _fieldCrops,
-        fieldAreaDekar:
-            (widget.fieldData['area_dekar'] as num?)?.toDouble() ?? 1.0,
-        onCropSetupChanged: _loadFieldCrops,
+        fieldName: widget.fieldData['name']?.toString(),
       ),
-    );
+    ));
   }
 
+  // ignore: unused_element
   void _openCropGuide(Map<String, dynamic> crop) {
     final fieldId = widget.fieldData['id']?.toString() ?? '';
     final cropId = crop['id']?.toString();
@@ -3187,6 +3167,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
     ));
   }
 
+  // ignore: unused_element
   Future<void> _showGuideCropPicker(
     List<Map<String, dynamic>> guideCrops,
   ) async {
@@ -3687,6 +3668,7 @@ class _PlantPickerSheetState extends State<_PlantPickerSheet> {
 // Aktivite stream'i (watchActivityLog) sayesinde her "Suladım/Gübreledim"
 // kaydı yönergeleri anında tazeler — canlı çiftçi kaynağı.
 // ═══════════════════════════════════════════════════════════════════════
+// ignore: unused_element
 class _DirectivesModalContent extends ConsumerWidget {
   const _DirectivesModalContent({
     required this.fieldId,
@@ -3695,6 +3677,7 @@ class _DirectivesModalContent extends ConsumerWidget {
     required this.latestSuitabilityReport,
     required this.fieldCrops,
     required this.fieldAreaDekar,
+    // ignore: unused_element_parameter
     this.onCropSetupChanged,
   });
 

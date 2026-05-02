@@ -1,0 +1,48 @@
+{
+  "_comment": "Pestisit Re-Entry Interval (REI) — ilaçlamadan sonra sahaya kaç saat girilemez. Kaynak: EPA + Türkiye Tarım Bakanlığı Bitki Koruma Ürünleri Kılavuzu (özet). Eksik bir pestisit için 'default' kullanılır.",
+  "default": 24,
+
+  "mancozeb": 24,
+  "maneb": 24,
+  "metalaksil": 12,
+  "bakır oksiklorid": 12,
+  "bakır sülfat": 12,
+  "kükürt": 4,
+  "azoksistrobin": 4,
+  "tebuconazole": 12,
+  "propikonazol": 12,
+  "klorotalonil": 12,
+
+  "thiamethoxam": 12,
+  "imidaklorprid": 12,
+  "asetamiprid": 12,
+  "deltametrin": 12,
+  "lambda-sihalotrin": 24,
+  "klorpirifos": 24,
+  "abamektin": 12,
+  "spinosad": 4,
+  "bacillus thuringiensis": 4,
+
+  "glifosat": 4,
+  "glyphosate": 4,
+  "2,4-d": 48,
+  "metribuzin": 12,
+  "pendimetalin": 24,
+
+  "_aliases": {
+    "comment": "UI'da kullanıcının yazdığı isimler buradan eşlenir; tam isim önce aranır, sonra alias.",
+    "ridomil": "metalaksil",
+    "antracol": "propineb",
+    "topas": "penconazol",
+    "decis": "deltametrin",
+    "confidor": "imidaklorprid",
+    "actara": "thiamethoxam",
+    "match": "lufenuron",
+    "round-up": "glyphosate",
+    "roundup": "glyphosate"
+  },
+
+  "propineb": 24,
+  "penconazol": 12,
+  "lufenuron": 12
+}

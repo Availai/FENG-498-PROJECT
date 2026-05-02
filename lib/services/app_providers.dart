@@ -22,6 +22,8 @@ import 'growth_engine.dart';
 import 'weather_soil_service.dart';
 import 'backend_service.dart';
 import 'disease_diagnosis_service.dart';
+import 'activity_logger.dart';
+import 'guide_engine.dart';
 import 'api/sync_api_client.dart';
 
 final appDatabaseProvider = Provider<AppDatabase>((ref) {
@@ -38,6 +40,16 @@ final localDataRepositoryProvider = Provider<LocalDataRepository>((ref) {
 /// AppDatabase üstünde çalışır; UI katmanı `watch(cropId)` ile canlı okur.
 final growthEngineProvider = Provider<GrowthEngine>((ref) {
   return GrowthEngine(ref.watch(appDatabaseProvider));
+});
+
+/// `logActivity` + `GrowthEngine.recompute` zincirlemesini tek yerde tutar.
+/// UI tarafı doğrudan `localDataRepository.logActivity` yerine bu provider'ı
+/// kullanmalı — böylece recompute hiçbir yerde unutulmaz.
+final activityLoggerProvider = Provider<ActivityLogger>((ref) {
+  return ActivityLogger(
+    repository: ref.watch(localDataRepositoryProvider),
+    growthEngine: ref.watch(growthEngineProvider),
+  );
 });
 
 /// Bitki tarlaya eklendiğinde sezonluk sulama/gübreleme/ilaçlama programını
@@ -171,6 +183,64 @@ final diseaseDiagnosisServiceProvider = Provider<DiseaseDiagnosisService>((_) {
 /// katmanı sadece `generate()` çıktısını render eder.
 final taskDirectiveServiceProvider = Provider<TaskDirectiveService>((ref) {
   return const TaskDirectiveService();
+});
+
+/// Birleşik rehber motoru — TaskDirective + alerts + insights tek çıktıda.
+/// UI katmanı `fieldGuideProvider`'ı dinler; doğrudan motor erişimi nadirdir.
+final guideEngineProvider = Provider<GuideEngine>((ref) {
+  return const GuideEngine();
+});
+
+/// Tarla bazında canlı rehber sonucu — `GuideResult` döner. Aktivite log,
+/// growth states, scheduled events ve hava forecast değişikliklerinde
+/// otomatik invalidate olur (Riverpod stream watcher davranışı).
+final fieldGuideProvider = FutureProvider.family
+    .autoDispose<GuideResult, String>((ref, fieldId) async {
+  final repo = ref.watch(localDataRepositoryProvider);
+  final activities = await ref.watch(fieldActivityLogProvider(fieldId).future);
+  final scheduled = await ref.watch(
+    fieldScheduledAutoSeedProvider(fieldId).future,
+  );
+  final growthList = await ref.watch(
+    fieldGrowthStatesProvider(fieldId).future,
+  );
+
+  // GrowthState[] → Map<cropId, GrowthSnapshot>
+  final growthMap = <String, GrowthSnapshot>{};
+  for (final g in growthList) {
+    growthMap[g.cropId] = GrowthSnapshot(
+      stageKey: g.currentStageKey,
+      stageProgress: g.stageProgress,
+      accumulatedGdd: g.accumulatedGdd,
+      waterDeficitMm: g.waterDeficitMm,
+      nStressIdx: g.nStressIdx,
+      diseasePressure: g.diseasePressure,
+      yieldMultiplier: g.yieldMultiplier,
+    );
+  }
+
+  final fieldMap = await repo.loadFieldById(fieldId);
+  final crops = await repo.loadFieldCrops(fieldId);
+
+  // Saatlik forecast — koordinat varsa
+  HourlyForecast? hourly;
+  final lat = (fieldMap?['latitude'] as num?)?.toDouble();
+  final lng = (fieldMap?['longitude'] as num?)?.toDouble();
+  if (lat != null && lng != null) {
+    try {
+      hourly = await ref
+          .watch(weatherSoilServiceProvider)
+          .fetchHourlyForecast(latitude: lat, longitude: lng);
+    } catch (_) {}
+  }
+
+  return ref.read(guideEngineProvider).generate(
+        fieldCrops: crops,
+        activities: activities,
+        scheduledEvents: scheduled,
+        growthStates: growthMap,
+        hourly: hourly,
+      );
 });
 
 final fieldStateServiceProvider = Provider<FieldStateService>((ref) {

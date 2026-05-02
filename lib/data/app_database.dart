@@ -106,7 +106,12 @@ class CropGrowthStates extends Table {
   RealColumn get waterDeficitMm => real().withDefault(const Constant(0))();
 
   /// Azot (N) stresi 0..1 — gübreleme eksikliğinin kümülatif etkisi.
+  /// 7-day moving average ile yumuşatılır → günlük oynaklık bastırılır.
   RealColumn get nStressIdx => real().withDefault(const Constant(0))();
+
+  /// Potasyum (K) stresi 0..1 — NPK gübre tipinden K oranı toplanarak
+  /// hesaplanır. Çiçek/meyve evrelerinde verim çarpanı düşürür. (v6)
+  RealColumn get kStressIdx => real().withDefault(const Constant(0))();
 
   /// Hastalık baskısı 0..1 — yağmur + eksik ilaçlama kombinasyonu.
   RealColumn get diseasePressure => real().withDefault(const Constant(0))();
@@ -239,7 +244,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -271,6 +276,10 @@ class AppDatabase extends _$AppDatabase {
             if (from < 5) {
               // v5: Per-bitki sağlık takibi + tekil bitki yerleştirme.
               await m.createTable(fieldPlantInstances);
+            }
+            if (from < 6) {
+              // v6: K (potasyum) stresi kolonu — NPK ayrımı için.
+              await m.addColumn(cropGrowthStates, cropGrowthStates.kStressIdx);
             }
           } catch (e, st) {
             debugPrint('Drift migration $from→$to hata: $e\n$st');

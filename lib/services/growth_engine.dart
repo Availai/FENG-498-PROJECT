@@ -251,12 +251,20 @@ class GrowthEngine {
           }
           break;
         case ActivityType.fertilizing:
+          final fertType = metadata['fertilizer_type']?.toString() ?? '';
+          final kFactor = _kFactorFromFertilizerType(fertType);
           if (qty != null && rec != null && rec > 0) {
             // Oran: uygulanan/önerilen — eksikse 1'den küçük, fazlaysa büyük.
-            delta.fertRatios.add((qty / rec).clamp(0.0, 2.0));
+            final ratio = (qty / rec).clamp(0.0, 2.0);
+            delta.fertRatios.add(ratio);
+            // K oranı: gübre tipine göre faktörlendirilir.
+            // kFactor=0 (üre) → K verilmedi sayılır (0.0)
+            // kFactor=1 (kompoze) → K oranı = N oranı
+            delta.kRatios.add(ratio * kFactor);
           } else if (qty != null && qty > 0) {
             // Önerilen yoksa "yapıldı" kabul et (rec=qty varsayımı).
             delta.fertRatios.add(1.0);
+            delta.kRatios.add(1.0 * kFactor);
           }
           break;
         case ActivityType.spraying:
@@ -274,6 +282,7 @@ class GrowthEngine {
     double accGdd = 0.0;
     double waterDeficit = 0.0;
     double nStress = 0.0;
+    double kStress = 0.0;
     double disease = 0.0;
 
     // Playbook'tan günlük sulama ihtiyacı (weeklyMm / 7).
@@ -307,16 +316,31 @@ class GrowthEngine {
       // Deficit günlük 5%'lik doğal iyileşme ile sönümlenir (yağmur/nem).
       waterDeficit = math.max(0.0, waterDeficit * 0.95 + todayDeficit * 0.4);
 
-      // Azot stresi — fertRatios[ortalama] düşükse artar; yüksekse azalır.
+      // Azot stresi — 7-day moving average ile yumuşatılır.
+      // Hedef setpoint: ratio düşükse stres artar, yüksekse düşer.
+      // Smoothing katsayısı 0.14 ≈ 1/7 → ani değişiklikler bastırılır.
+      double targetN = nStress;
       if (delta != null && delta.fertRatios.isNotEmpty) {
         final avgRatio =
             delta.fertRatios.reduce((a, b) => a + b) / delta.fertRatios.length;
-        nStress = (nStress - (avgRatio - 0.8).clamp(-0.5, 0.5) * 0.15)
-            .clamp(0.0, 1.0);
+        targetN = (1.0 - avgRatio).clamp(0.0, 1.0);
       } else if (band != null && band.stage.contains('Olgun') == false) {
-        // Vejetatif/çiçeklenme gününde gübre yok — çok hafif artış.
-        nStress = math.min(1.0, nStress + 0.0015);
+        targetN = math.min(1.0, nStress + 0.05);
       }
+      nStress = (0.86 * nStress + 0.14 * targetN).clamp(0.0, 1.0);
+
+      // K (potasyum) stresi — kRatios üzerinden, çiçek/meyve evresinde kritik.
+      double targetK = kStress;
+      if (delta != null && delta.kRatios.isNotEmpty) {
+        final avgKRatio =
+            delta.kRatios.reduce((a, b) => a + b) / delta.kRatios.length;
+        targetK = (1.0 - avgKRatio).clamp(0.0, 1.0);
+      } else if (band != null &&
+          (band.stage.contains('Çiçek') || band.stage.contains('Meyve'))) {
+        // Kritik evre + K verilmedi → hedef stres yükselir
+        targetK = math.min(1.0, kStress + 0.04);
+      }
+      kStress = (0.86 * kStress + 0.14 * targetK).clamp(0.0, 1.0);
 
       // Hastalık baskısı — aktivitede yağış metaverisi yok, yaklaşık modelle:
       // her "vejetatif+" günde ilaçsız geçirilen gün başına hafif artış;
@@ -350,9 +374,12 @@ class GrowthEngine {
     final height = _estimateHeight(key, overallProgress) * (1 - disease * 0.3);
 
     // ── Verim çarpanı — tüm streslerin kümülatif etkisi ───────────────
+    // K stresi N kadar baskın değil (0.15) ama meyve/tane kalitesinde
+    // anlamlı: yetersiz K = küçük meyve, düşük şeker.
     final yieldMul = (1.0 -
             0.03 * math.sqrt(waterDeficit / 10.0) -
             0.20 * nStress -
+            0.15 * kStress -
             0.30 * disease)
         .clamp(0.5, 1.15);
 
@@ -366,6 +393,7 @@ class GrowthEngine {
       stageProgress: Value(stageProgress),
       waterDeficitMm: Value(waterDeficit),
       nStressIdx: Value(nStress),
+      kStressIdx: Value(kStress),
       diseasePressure: Value(disease),
       heightCm: Value(height),
       biomassRel: Value(biomass),
@@ -507,6 +535,20 @@ class _StageBand {
 class _DayDelta {
   double waterMmApplied = 0.0;
   double waterMmRecommended = 0.0;
-  final List<double> fertRatios = [];
+  final List<double> fertRatios = [];   // N karşılığı uygulama oranları
+  final List<double> kRatios = [];      // K karşılığı uygulama oranları
   bool sprayingDone = false;
+}
+
+/// Gübre tipinden K oranı (0..1). 0 = K içermez (üre/DAP), 1 = tam K (potas/kompoze).
+/// Bilinmeyen tipte default 1.0 (kompoze varsayımı) — geriye dönük uyumlu.
+double _kFactorFromFertilizerType(String type) {
+  if (type.isEmpty) return 1.0;
+  final t = type.toLowerCase();
+  if (t.contains('üre') || t.contains('urea')) return 0.0;
+  if (t.contains('amonyum sülfat') || t.contains('amonyum nitrat')) return 0.0;
+  if (t.contains('dap')) return 0.0;
+  if (t.contains('tsp') || t.contains('triple')) return 0.0;
+  if (t.contains('kcl') || t.contains('potas') || t.contains('0-0-')) return 1.0;
+  return 1.0; // kompoze / NPK / bilinmeyen
 }

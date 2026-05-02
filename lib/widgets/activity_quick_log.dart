@@ -45,9 +45,11 @@ Future<bool> showActivityQuickLogSheet({
   );
   if (detail == null) return false;
 
-  final repo = ref.read(localDataRepositoryProvider);
+  // ActivityLogger wrapper: logActivity + recompute zincirini garantili
+  // tek noktadan yapar — eskiden burada manuel recompute çağrılıyordu.
+  final logger = ref.read(activityLoggerProvider);
   try {
-    await repo.logActivity(
+    await logger.log(
       fieldId: fieldId,
       type: type,
       cropId: detail.cropId ?? cropId,
@@ -59,10 +61,6 @@ Future<bool> showActivityQuickLogSheet({
       recommendedQuantity: detail.recommendedQuantity,
       metadata: detail.metadata,
     );
-    final loggedCropId = detail.cropId ?? cropId;
-    if (loggedCropId != null && loggedCropId.isNotEmpty) {
-      await ref.read(growthEngineProvider).recompute(cropId: loggedCropId);
-    }
     if (context.mounted) {
       HapticService.instance.success();
       AppToast.show(

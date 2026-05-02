@@ -3804,6 +3804,14 @@ class $CropGrowthStatesTable extends CropGrowthStates
       type: DriftSqlType.double,
       requiredDuringInsert: false,
       defaultValue: const Constant(0));
+  static const VerificationMeta _kStressIdxMeta =
+      const VerificationMeta('kStressIdx');
+  @override
+  late final GeneratedColumn<double> kStressIdx = GeneratedColumn<double>(
+      'k_stress_idx', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
   static const VerificationMeta _diseasePressureMeta =
       const VerificationMeta('diseasePressure');
   @override
@@ -3858,6 +3866,7 @@ class $CropGrowthStatesTable extends CropGrowthStates
         stageProgress,
         waterDeficitMm,
         nStressIdx,
+        kStressIdx,
         diseasePressure,
         heightCm,
         biomassRel,
@@ -3923,6 +3932,12 @@ class $CropGrowthStatesTable extends CropGrowthStates
           nStressIdx.isAcceptableOrUnknown(
               data['n_stress_idx']!, _nStressIdxMeta));
     }
+    if (data.containsKey('k_stress_idx')) {
+      context.handle(
+          _kStressIdxMeta,
+          kStressIdx.isAcceptableOrUnknown(
+              data['k_stress_idx']!, _kStressIdxMeta));
+    }
     if (data.containsKey('disease_pressure')) {
       context.handle(
           _diseasePressureMeta,
@@ -3984,6 +3999,8 @@ class $CropGrowthStatesTable extends CropGrowthStates
           DriftSqlType.double, data['${effectivePrefix}water_deficit_mm'])!,
       nStressIdx: attachedDatabase.typeMapping
           .read(DriftSqlType.double, data['${effectivePrefix}n_stress_idx'])!,
+      kStressIdx: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}k_stress_idx'])!,
       diseasePressure: attachedDatabase.typeMapping.read(
           DriftSqlType.double, data['${effectivePrefix}disease_pressure'])!,
       heightCm: attachedDatabase.typeMapping
@@ -4027,7 +4044,12 @@ class CropGrowthState extends DataClass implements Insertable<CropGrowthState> {
   final double waterDeficitMm;
 
   /// Azot (N) stresi 0..1 — gübreleme eksikliğinin kümülatif etkisi.
+  /// 7-day moving average ile yumuşatılır → günlük oynaklık bastırılır.
   final double nStressIdx;
+
+  /// Potasyum (K) stresi 0..1 — NPK gübre tipinden K oranı toplanarak
+  /// hesaplanır. Çiçek/meyve evrelerinde verim çarpanı düşürür. (v6)
+  final double kStressIdx;
 
   /// Hastalık baskısı 0..1 — yağmur + eksik ilaçlama kombinasyonu.
   final double diseasePressure;
@@ -4051,6 +4073,7 @@ class CropGrowthState extends DataClass implements Insertable<CropGrowthState> {
       required this.stageProgress,
       required this.waterDeficitMm,
       required this.nStressIdx,
+      required this.kStressIdx,
       required this.diseasePressure,
       required this.heightCm,
       required this.biomassRel,
@@ -4068,6 +4091,7 @@ class CropGrowthState extends DataClass implements Insertable<CropGrowthState> {
     map['stage_progress'] = Variable<double>(stageProgress);
     map['water_deficit_mm'] = Variable<double>(waterDeficitMm);
     map['n_stress_idx'] = Variable<double>(nStressIdx);
+    map['k_stress_idx'] = Variable<double>(kStressIdx);
     map['disease_pressure'] = Variable<double>(diseasePressure);
     map['height_cm'] = Variable<double>(heightCm);
     map['biomass_rel'] = Variable<double>(biomassRel);
@@ -4087,6 +4111,7 @@ class CropGrowthState extends DataClass implements Insertable<CropGrowthState> {
       stageProgress: Value(stageProgress),
       waterDeficitMm: Value(waterDeficitMm),
       nStressIdx: Value(nStressIdx),
+      kStressIdx: Value(kStressIdx),
       diseasePressure: Value(diseasePressure),
       heightCm: Value(heightCm),
       biomassRel: Value(biomassRel),
@@ -4108,6 +4133,7 @@ class CropGrowthState extends DataClass implements Insertable<CropGrowthState> {
       stageProgress: serializer.fromJson<double>(json['stageProgress']),
       waterDeficitMm: serializer.fromJson<double>(json['waterDeficitMm']),
       nStressIdx: serializer.fromJson<double>(json['nStressIdx']),
+      kStressIdx: serializer.fromJson<double>(json['kStressIdx']),
       diseasePressure: serializer.fromJson<double>(json['diseasePressure']),
       heightCm: serializer.fromJson<double>(json['heightCm']),
       biomassRel: serializer.fromJson<double>(json['biomassRel']),
@@ -4128,6 +4154,7 @@ class CropGrowthState extends DataClass implements Insertable<CropGrowthState> {
       'stageProgress': serializer.toJson<double>(stageProgress),
       'waterDeficitMm': serializer.toJson<double>(waterDeficitMm),
       'nStressIdx': serializer.toJson<double>(nStressIdx),
+      'kStressIdx': serializer.toJson<double>(kStressIdx),
       'diseasePressure': serializer.toJson<double>(diseasePressure),
       'heightCm': serializer.toJson<double>(heightCm),
       'biomassRel': serializer.toJson<double>(biomassRel),
@@ -4146,6 +4173,7 @@ class CropGrowthState extends DataClass implements Insertable<CropGrowthState> {
           double? stageProgress,
           double? waterDeficitMm,
           double? nStressIdx,
+          double? kStressIdx,
           double? diseasePressure,
           double? heightCm,
           double? biomassRel,
@@ -4161,6 +4189,7 @@ class CropGrowthState extends DataClass implements Insertable<CropGrowthState> {
         stageProgress: stageProgress ?? this.stageProgress,
         waterDeficitMm: waterDeficitMm ?? this.waterDeficitMm,
         nStressIdx: nStressIdx ?? this.nStressIdx,
+        kStressIdx: kStressIdx ?? this.kStressIdx,
         diseasePressure: diseasePressure ?? this.diseasePressure,
         heightCm: heightCm ?? this.heightCm,
         biomassRel: biomassRel ?? this.biomassRel,
@@ -4187,6 +4216,8 @@ class CropGrowthState extends DataClass implements Insertable<CropGrowthState> {
           : this.waterDeficitMm,
       nStressIdx:
           data.nStressIdx.present ? data.nStressIdx.value : this.nStressIdx,
+      kStressIdx:
+          data.kStressIdx.present ? data.kStressIdx.value : this.kStressIdx,
       diseasePressure: data.diseasePressure.present
           ? data.diseasePressure.value
           : this.diseasePressure,
@@ -4214,6 +4245,7 @@ class CropGrowthState extends DataClass implements Insertable<CropGrowthState> {
           ..write('stageProgress: $stageProgress, ')
           ..write('waterDeficitMm: $waterDeficitMm, ')
           ..write('nStressIdx: $nStressIdx, ')
+          ..write('kStressIdx: $kStressIdx, ')
           ..write('diseasePressure: $diseasePressure, ')
           ..write('heightCm: $heightCm, ')
           ..write('biomassRel: $biomassRel, ')
@@ -4234,6 +4266,7 @@ class CropGrowthState extends DataClass implements Insertable<CropGrowthState> {
       stageProgress,
       waterDeficitMm,
       nStressIdx,
+      kStressIdx,
       diseasePressure,
       heightCm,
       biomassRel,
@@ -4252,6 +4285,7 @@ class CropGrowthState extends DataClass implements Insertable<CropGrowthState> {
           other.stageProgress == this.stageProgress &&
           other.waterDeficitMm == this.waterDeficitMm &&
           other.nStressIdx == this.nStressIdx &&
+          other.kStressIdx == this.kStressIdx &&
           other.diseasePressure == this.diseasePressure &&
           other.heightCm == this.heightCm &&
           other.biomassRel == this.biomassRel &&
@@ -4269,6 +4303,7 @@ class CropGrowthStatesCompanion extends UpdateCompanion<CropGrowthState> {
   final Value<double> stageProgress;
   final Value<double> waterDeficitMm;
   final Value<double> nStressIdx;
+  final Value<double> kStressIdx;
   final Value<double> diseasePressure;
   final Value<double> heightCm;
   final Value<double> biomassRel;
@@ -4285,6 +4320,7 @@ class CropGrowthStatesCompanion extends UpdateCompanion<CropGrowthState> {
     this.stageProgress = const Value.absent(),
     this.waterDeficitMm = const Value.absent(),
     this.nStressIdx = const Value.absent(),
+    this.kStressIdx = const Value.absent(),
     this.diseasePressure = const Value.absent(),
     this.heightCm = const Value.absent(),
     this.biomassRel = const Value.absent(),
@@ -4302,6 +4338,7 @@ class CropGrowthStatesCompanion extends UpdateCompanion<CropGrowthState> {
     this.stageProgress = const Value.absent(),
     this.waterDeficitMm = const Value.absent(),
     this.nStressIdx = const Value.absent(),
+    this.kStressIdx = const Value.absent(),
     this.diseasePressure = const Value.absent(),
     this.heightCm = const Value.absent(),
     this.biomassRel = const Value.absent(),
@@ -4323,6 +4360,7 @@ class CropGrowthStatesCompanion extends UpdateCompanion<CropGrowthState> {
     Expression<double>? stageProgress,
     Expression<double>? waterDeficitMm,
     Expression<double>? nStressIdx,
+    Expression<double>? kStressIdx,
     Expression<double>? diseasePressure,
     Expression<double>? heightCm,
     Expression<double>? biomassRel,
@@ -4340,6 +4378,7 @@ class CropGrowthStatesCompanion extends UpdateCompanion<CropGrowthState> {
       if (stageProgress != null) 'stage_progress': stageProgress,
       if (waterDeficitMm != null) 'water_deficit_mm': waterDeficitMm,
       if (nStressIdx != null) 'n_stress_idx': nStressIdx,
+      if (kStressIdx != null) 'k_stress_idx': kStressIdx,
       if (diseasePressure != null) 'disease_pressure': diseasePressure,
       if (heightCm != null) 'height_cm': heightCm,
       if (biomassRel != null) 'biomass_rel': biomassRel,
@@ -4359,6 +4398,7 @@ class CropGrowthStatesCompanion extends UpdateCompanion<CropGrowthState> {
       Value<double>? stageProgress,
       Value<double>? waterDeficitMm,
       Value<double>? nStressIdx,
+      Value<double>? kStressIdx,
       Value<double>? diseasePressure,
       Value<double>? heightCm,
       Value<double>? biomassRel,
@@ -4375,6 +4415,7 @@ class CropGrowthStatesCompanion extends UpdateCompanion<CropGrowthState> {
       stageProgress: stageProgress ?? this.stageProgress,
       waterDeficitMm: waterDeficitMm ?? this.waterDeficitMm,
       nStressIdx: nStressIdx ?? this.nStressIdx,
+      kStressIdx: kStressIdx ?? this.kStressIdx,
       diseasePressure: diseasePressure ?? this.diseasePressure,
       heightCm: heightCm ?? this.heightCm,
       biomassRel: biomassRel ?? this.biomassRel,
@@ -4412,6 +4453,9 @@ class CropGrowthStatesCompanion extends UpdateCompanion<CropGrowthState> {
     if (nStressIdx.present) {
       map['n_stress_idx'] = Variable<double>(nStressIdx.value);
     }
+    if (kStressIdx.present) {
+      map['k_stress_idx'] = Variable<double>(kStressIdx.value);
+    }
     if (diseasePressure.present) {
       map['disease_pressure'] = Variable<double>(diseasePressure.value);
     }
@@ -4447,6 +4491,7 @@ class CropGrowthStatesCompanion extends UpdateCompanion<CropGrowthState> {
           ..write('stageProgress: $stageProgress, ')
           ..write('waterDeficitMm: $waterDeficitMm, ')
           ..write('nStressIdx: $nStressIdx, ')
+          ..write('kStressIdx: $kStressIdx, ')
           ..write('diseasePressure: $diseasePressure, ')
           ..write('heightCm: $heightCm, ')
           ..write('biomassRel: $biomassRel, ')
@@ -8318,6 +8363,7 @@ typedef $$CropGrowthStatesTableCreateCompanionBuilder
   Value<double> stageProgress,
   Value<double> waterDeficitMm,
   Value<double> nStressIdx,
+  Value<double> kStressIdx,
   Value<double> diseasePressure,
   Value<double> heightCm,
   Value<double> biomassRel,
@@ -8336,6 +8382,7 @@ typedef $$CropGrowthStatesTableUpdateCompanionBuilder
   Value<double> stageProgress,
   Value<double> waterDeficitMm,
   Value<double> nStressIdx,
+  Value<double> kStressIdx,
   Value<double> diseasePressure,
   Value<double> heightCm,
   Value<double> biomassRel,
@@ -8380,6 +8427,9 @@ class $$CropGrowthStatesTableFilterComposer
 
   ColumnFilters<double> get nStressIdx => $composableBuilder(
       column: $table.nStressIdx, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get kStressIdx => $composableBuilder(
+      column: $table.kStressIdx, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<double> get diseasePressure => $composableBuilder(
       column: $table.diseasePressure,
@@ -8440,6 +8490,9 @@ class $$CropGrowthStatesTableOrderingComposer
   ColumnOrderings<double> get nStressIdx => $composableBuilder(
       column: $table.nStressIdx, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<double> get kStressIdx => $composableBuilder(
+      column: $table.kStressIdx, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<double> get diseasePressure => $composableBuilder(
       column: $table.diseasePressure,
       builder: (column) => ColumnOrderings(column));
@@ -8495,6 +8548,9 @@ class $$CropGrowthStatesTableAnnotationComposer
   GeneratedColumn<double> get nStressIdx => $composableBuilder(
       column: $table.nStressIdx, builder: (column) => column);
 
+  GeneratedColumn<double> get kStressIdx => $composableBuilder(
+      column: $table.kStressIdx, builder: (column) => column);
+
   GeneratedColumn<double> get diseasePressure => $composableBuilder(
       column: $table.diseasePressure, builder: (column) => column);
 
@@ -8549,6 +8605,7 @@ class $$CropGrowthStatesTableTableManager extends RootTableManager<
             Value<double> stageProgress = const Value.absent(),
             Value<double> waterDeficitMm = const Value.absent(),
             Value<double> nStressIdx = const Value.absent(),
+            Value<double> kStressIdx = const Value.absent(),
             Value<double> diseasePressure = const Value.absent(),
             Value<double> heightCm = const Value.absent(),
             Value<double> biomassRel = const Value.absent(),
@@ -8566,6 +8623,7 @@ class $$CropGrowthStatesTableTableManager extends RootTableManager<
             stageProgress: stageProgress,
             waterDeficitMm: waterDeficitMm,
             nStressIdx: nStressIdx,
+            kStressIdx: kStressIdx,
             diseasePressure: diseasePressure,
             heightCm: heightCm,
             biomassRel: biomassRel,
@@ -8583,6 +8641,7 @@ class $$CropGrowthStatesTableTableManager extends RootTableManager<
             Value<double> stageProgress = const Value.absent(),
             Value<double> waterDeficitMm = const Value.absent(),
             Value<double> nStressIdx = const Value.absent(),
+            Value<double> kStressIdx = const Value.absent(),
             Value<double> diseasePressure = const Value.absent(),
             Value<double> heightCm = const Value.absent(),
             Value<double> biomassRel = const Value.absent(),
@@ -8600,6 +8659,7 @@ class $$CropGrowthStatesTableTableManager extends RootTableManager<
             stageProgress: stageProgress,
             waterDeficitMm: waterDeficitMm,
             nStressIdx: nStressIdx,
+            kStressIdx: kStressIdx,
             diseasePressure: diseasePressure,
             heightCm: heightCm,
             biomassRel: biomassRel,
