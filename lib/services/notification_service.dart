@@ -5,6 +5,8 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:http/http.dart' as http;
 
+import 'guide_engine.dart';
+
 /// FCM + Local notification service.
 /// Fulfills: "Proactive Notification Engine: FCM-based push notifications
 /// for extreme weather events" (Proposal Section 6.1.1).
@@ -286,6 +288,64 @@ class NotificationService {
       );
     } catch (e) {
       debugPrint('Notification error: $e');
+    }
+  }
+
+  /// GuideResult tabanlı akıllı bildirimler — üç katman:
+  ///
+  /// 1. Yağmur nedeniyle sulama ertelendiyse → "Sulamana gerek yok" bildirimi.
+  /// 2. Kritik uyarılar (don / aşırı sıcak) → hemen bildir.
+  /// 3. Bugünkü görev özeti → yağmur yoksa toplu bildir.
+  ///
+  /// [notificationIdSeed] farklı tarlalar için ID çakışmasını önler.
+  /// Her katman için ayrı ID aralığı: 5000-x yağmur, 5100-x kritik, 5200-x görev.
+  static Future<void> sendGuideNotifications(
+    GuideResult result,
+    String fieldName, {
+    int notificationIdSeed = 0,
+  }) async {
+    try {
+      // 1. Yağmur bekleniyor → sulama ertele
+      final rainAlert = result.alerts
+          .where((a) => a.kind == AlertKind.rainExpected)
+          .firstOrNull;
+      if (rainAlert != null) {
+        final mm = rainAlert.message.contains('mm')
+            ? rainAlert.message.split('mm').first.split(' ').last
+            : '';
+        await show(
+          id: 5000 + notificationIdSeed,
+          title: '💧 Sulamana Gerek Yok — $fieldName',
+          body: mm.isNotEmpty
+              ? 'Bugün $mm mm yağmur bekleniyor. Sulama yarına ertelendi.'
+              : rainAlert.message,
+        );
+      }
+
+      // 2. Kritik uyarılar (don / aşırı sıcak)
+      for (final alert in result.alerts) {
+        if (alert.severity != AlertSeverity.critical) continue;
+        await show(
+          id: 5100 + alert.kind.index + notificationIdSeed,
+          title: '${alert.icon} ${alert.title} — $fieldName',
+          body: alert.message,
+        );
+      }
+
+      // 3. Bugünkü görev özeti (yağmur yoksa — zaten yukarıda sulama bildirildi)
+      if (result.today.isNotEmpty && rainAlert == null) {
+        final labels =
+            result.today.take(2).map((t) => t.headline).join(' • ');
+        final extra =
+            result.today.length > 2 ? ' +${result.today.length - 2}' : '';
+        await show(
+          id: 5200 + notificationIdSeed,
+          title: '🌱 $fieldName — Bugün ${result.today.length} görev',
+          body: '$labels$extra',
+        );
+      }
+    } catch (_) {
+      // Bildirimler best-effort; uygulama akışını engelleme.
     }
   }
 

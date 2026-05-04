@@ -234,6 +234,42 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
         );
       } catch (_) {}
     }();
+
+    // Aynı 3 saatlik pencerede tarla bazlı rehber bildirimleri de gönder.
+    _triggerGuideAlertsIfDue();
+  }
+
+  /// Her tarla için GuideEngine'i çalıştırır; yağmur/görev/don bildirimlerini
+  /// iletir. 6 saatte bir rate-limit uygulanır (hava kontrolünden bağımsız).
+  void _triggerGuideAlertsIfDue() {
+    final settingsBox = Hive.box('settingsBox');
+    final lastStr = settingsBox.get('last_guide_notify_at') as String?;
+    final last = lastStr != null ? DateTime.tryParse(lastStr) : null;
+    final now = DateTime.now().toUtc();
+    if (last != null && now.difference(last).inHours < 6) return;
+
+    () async {
+      try {
+        final fields = ref.read(fieldMapsProvider).asData?.value ?? [];
+        for (int i = 0; i < fields.length; i++) {
+          final field = fields[i];
+          final fieldId = field['id']?.toString();
+          final fieldName = field['name']?.toString() ?? 'Tarla';
+          if (fieldId == null || fieldId.isEmpty) continue;
+          try {
+            final result = await ref
+                .read(fieldGuideProvider(fieldId).future)
+                .timeout(const Duration(seconds: 15));
+            await NotificationService.sendGuideNotifications(
+              result,
+              fieldName,
+              notificationIdSeed: (i + 1) * 100,
+            );
+          } catch (_) {}
+        }
+        await settingsBox.put('last_guide_notify_at', now.toIso8601String());
+      } catch (_) {}
+    }();
   }
 
   @override

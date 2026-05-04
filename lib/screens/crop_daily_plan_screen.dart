@@ -10,7 +10,6 @@ import '../services/crop_protocol_service.dart';
 import '../services/daily_guide_engine.dart';
 import '../theme/app_theme.dart';
 import '../widgets/activity_quick_log.dart';
-import '../widgets/floating_toast.dart';
 import '../widgets/particle_background.dart';
 import '../widgets/season_summary_card.dart';
 import '../widgets/tap_scale.dart';

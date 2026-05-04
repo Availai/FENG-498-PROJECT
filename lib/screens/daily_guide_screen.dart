@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/activity_types.dart';
 import '../services/app_providers.dart';
 import '../services/guide_engine.dart';
+import '../services/notification_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/floating_toast.dart';
 import '../widgets/help_panel.dart';
@@ -29,10 +30,29 @@ class DailyGuideScreen extends ConsumerWidget {
     this.fieldName,
   });
 
+  // Oturum + gün bazlı dedup: aynı tarla için günde en fazla bir kez bildirim.
+  static final _notifiedKeys = <String>{};
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final guideAsync = ref.watch(fieldGuideProvider(fieldId));
     final growthAsync = ref.watch(fieldGrowthStatesProvider(fieldId));
+
+    // Rehber sonucu her değiştiğinde bildirim gönder (günde 1 kez / tarla).
+    ref.listen(fieldGuideProvider(fieldId), (_, next) {
+      next.whenData((result) {
+        final today = DateTime.now();
+        final key =
+            '$fieldId-${today.year}${today.month.toString().padLeft(2,'0')}${today.day.toString().padLeft(2,'0')}';
+        if (_notifiedKeys.contains(key)) return;
+        _notifiedKeys.add(key);
+        NotificationService.sendGuideNotifications(
+          result,
+          fieldName ?? 'Tarla',
+          notificationIdSeed: fieldId.hashCode.abs() % 100,
+        );
+      });
+    });
 
     return Scaffold(
       backgroundColor: AppColors.bg,
