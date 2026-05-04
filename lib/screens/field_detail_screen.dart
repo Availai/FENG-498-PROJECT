@@ -2238,10 +2238,9 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
     AppToast.show(
       context,
       message: inside
-          ? 'Burada bitki yok. Hastalık kaydı için bir bitkiye dokunun '
-              'veya "Tarlayı Tara" butonuna uzun basıp tekil bitki ekleyin.'
-          : 'Tarla sınırları dışına dokundunuz. Hastalık kaydı için bir '
-              'bitkiye dokunun.',
+          ? 'Burada herhangi bir bitki yok. Bir bitkiye dokunarak aktivite kaydı yapabilirsiniz.'
+          : 'Tarla sınırları dışına dokundunuz. İşlem yapmak için tarla '
+              'içindeki bir bitkiye dokunun.',
       type: ToastType.warning,
       duration: const Duration(seconds: 3),
     );
