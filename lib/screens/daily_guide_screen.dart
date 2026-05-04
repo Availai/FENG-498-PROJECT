@@ -49,6 +49,7 @@ class DailyGuideScreen extends ConsumerWidget {
         NotificationService.sendGuideNotifications(
           result,
           fieldName ?? 'Tarla',
+          fieldId: fieldId,
           notificationIdSeed: fieldId.hashCode.abs() % 100,
         );
       });

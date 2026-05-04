@@ -182,6 +182,7 @@ class CropProtocolService {
     required String fieldId,
     required Map<String, dynamic> crop,
     required List<Map<String, dynamic>> activities,
+    String? fieldName,
     DateTime? now,
   }) async {
     final progress = computeProgress(
@@ -198,6 +199,10 @@ class CropProtocolService {
     final key = _stateKey(fieldId, cropId, progress.protocol.cropKey);
     final lastNotifiedOrder = (box.get(key) as int?) ?? 0;
 
+    final payload = fieldName != null
+        ? jsonEncode({'type': 'guide', 'fieldId': fieldId, 'fieldName': fieldName})
+        : null;
+
     if (progress.isFinished) {
       if (lastNotifiedOrder != -1) {
         await NotificationService.show(
@@ -205,6 +210,7 @@ class CropProtocolService {
           title:
               '${progress.protocol.emoji} ${progress.protocol.displayName} — Yetiştirme tamamlandı!',
           body: 'Tüm adımlar tamamlandı. Hasadın bereketli olsun.',
+          payload: payload,
         );
         await box.put(key, -1);
       }
@@ -219,6 +225,7 @@ class CropProtocolService {
         title: '${progress.protocol.emoji} ${progress.protocol.displayName} — '
             'Adım ${step.order}/${progress.totalCount}: ${step.stageEmoji}',
         body: '${step.title}. Detay için Görevler sekmesine bakın.',
+        payload: payload,
       );
       await box.put(key, activeOrder);
     }

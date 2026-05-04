@@ -110,18 +110,23 @@ class FrostAlarmService {
     required double lat,
     required double lon,
     String? fieldName,
+    String? fieldId,
   }) async {
     final result = await check(lat: lat, lon: lon);
     if (!result.shouldAlert) return;
     final title = fieldName != null
         ? 'Zirai Don Alarmı - $fieldName'
         : 'Zirai Don Alarmı';
+    final payload = (fieldId != null && fieldId.isNotEmpty)
+        ? '{"type":"guide","fieldId":"$fieldId","fieldName":"${fieldName ?? ''}"}'
+        : null;
     try {
       await NotificationService.show(
         id: 3001,
         title: title,
         body: result.message +
             (result.actionHint != null ? ' ${result.actionHint}' : ''),
+        payload: payload,
       );
     } catch (_) {}
   }

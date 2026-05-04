@@ -369,6 +369,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
               fieldId: fieldId,
               crop: crop,
               activities: activities,
+              fieldName: widget.fieldData['name']?.toString(),
             );
           }
         },
@@ -1589,6 +1590,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
             '${resolvedProtocol.emoji} ${resolvedProtocol.displayName} eklendi',
         body:
             '${resolvedProtocol.displayName} yetiştirmek için detaylı yönergeye Görevler\'den ulaşabilirsiniz.',
+        payload: _fieldNotifPayload(fieldId, widget.fieldData['name']?.toString()),
       );
       // İlk adım bildirimini de ata — son yüklenen aktivite/ekin verisiyle.
       final latestCrops = await repo.loadFieldCrops(fieldId);
@@ -1605,6 +1607,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
           fieldId: fieldId,
           crop: addedCrop,
           activities: activities,
+          fieldName: widget.fieldData['name']?.toString(),
         );
       }
     }
@@ -2224,6 +2227,10 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
       );
     }
   }
+
+  /// Bildirim payload'ı — `type:"field"` tarla harita ekranına gider.
+  static String _fieldNotifPayload(String fieldId, String? fieldName) =>
+      jsonEncode({'type': 'field', 'fieldId': fieldId, 'fieldName': fieldName ?? ''});
 
   /// Normal modda boş bir alana dokunulduğunda — kullanıcıya bitkiye
   /// dokunması veya tekil bitki ekleme moduna geçmesi gerektiğini hatırlat.

@@ -6,8 +6,12 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
+import 'dart:convert';
+
 import 'data/app_database.dart';
 import 'firebase_options.dart';
+import 'screens/daily_guide_screen.dart';
+import 'screens/field_detail_screen.dart';
 import 'screens/navigation_screen.dart';
 import 'screens/auth_screen.dart';
 import 'services/notification_service.dart';
@@ -130,12 +134,55 @@ Future<AppDatabase> _bootstrap() async {
   return database;
 }
 
-class SmartAgriApp extends StatelessWidget {
+class SmartAgriApp extends StatefulWidget {
   const SmartAgriApp({super.key});
+
+  /// Bildirime tıklandığında `NotificationService` bu key üzerinden gezinir.
+  static final navigatorKey = GlobalKey<NavigatorState>();
+
+  @override
+  State<SmartAgriApp> createState() => _SmartAgriAppState();
+}
+
+class _SmartAgriAppState extends State<SmartAgriApp> {
+  @override
+  void initState() {
+    super.initState();
+    // Bildirime tıklanınca payload decode et → ilgili ekrana git.
+    NotificationService.onNotificationTap = (payload) {
+      try {
+        final data = jsonDecode(payload) as Map<String, dynamic>;
+        final type = data['type']?.toString() ?? 'guide';
+        final fieldId = data['fieldId']?.toString() ?? '';
+        final fieldName = data['fieldName']?.toString();
+        if (fieldId.isEmpty) return;
+
+        final nav = SmartAgriApp.navigatorKey.currentState;
+        if (nav == null) return;
+
+        if (type == 'field') {
+          // Tarla haritası ekranı — fieldData async yüklenir.
+          nav.push(MaterialPageRoute(
+            builder: (_) => _NotificationFieldLaunchPage(
+              fieldId: fieldId,
+              fieldName: fieldName,
+            ),
+          ));
+        } else {
+          // 'guide' ve diğer tipler → DailyGuideScreen
+          nav.push(MaterialPageRoute(
+            builder: (_) =>
+                DailyGuideScreen(fieldId: fieldId, fieldName: fieldName),
+          ));
+        }
+      } catch (_) {}
+    };
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: SmartAgriApp.navigatorKey,
       debugShowCheckedModeBanner: false,
       title: 'Smart Agri',
       locale: const Locale('tr', 'TR'),
@@ -214,6 +261,68 @@ class _AuthGateState extends ConsumerState<_AuthGate> {
         }
         return const AuthScreen();
       },
+    );
+  }
+}
+
+/// Bildirime tıklandığında fieldId'den fieldData'yı async yükler,
+/// ardından FieldDetailScreen'e geçer. Yükleme sırasında spinner gösterir;
+/// hata/veri-yok durumunda DailyGuideScreen'e düşer.
+class _NotificationFieldLaunchPage extends ConsumerStatefulWidget {
+  final String fieldId;
+  final String? fieldName;
+
+  const _NotificationFieldLaunchPage({
+    required this.fieldId,
+    this.fieldName,
+  });
+
+  @override
+  ConsumerState<_NotificationFieldLaunchPage> createState() =>
+      _NotificationFieldLaunchPageState();
+}
+
+class _NotificationFieldLaunchPageState
+    extends ConsumerState<_NotificationFieldLaunchPage> {
+  @override
+  void initState() {
+    super.initState();
+    _navigate();
+  }
+
+  Future<void> _navigate() async {
+    try {
+      final repo = ref.read(localDataRepositoryProvider);
+      final fieldData = await repo.loadFieldById(widget.fieldId);
+      if (!mounted) return;
+      if (fieldData != null) {
+        Navigator.of(context).pushReplacement(MaterialPageRoute(
+          builder: (_) => FieldDetailScreen(fieldData: fieldData),
+        ));
+      } else {
+        _fallback();
+      }
+    } catch (_) {
+      if (mounted) _fallback();
+    }
+  }
+
+  void _fallback() {
+    Navigator.of(context).pushReplacement(MaterialPageRoute(
+      builder: (_) => DailyGuideScreen(
+        fieldId: widget.fieldId,
+        fieldName: widget.fieldName,
+      ),
+    ));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      backgroundColor: Color(0xFF0D1F13),
+      body: Center(
+        child: CircularProgressIndicator(color: Color(0xFF00E676)),
+      ),
     );
   }
 }

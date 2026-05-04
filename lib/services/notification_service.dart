@@ -41,6 +41,10 @@ class NotificationService {
   static const _channelName = 'Tarım Uyarıları';
   static const _channelDesc = 'Hava durumu ve tarımsal uyarılar';
 
+  /// Bildirime tıklandığında çağrılır. `main.dart` tarafından atanır;
+  /// circular import olmadan navigasyon sağlar.
+  static void Function(String payload)? onNotificationTap;
+
   // ── Init ─────────────────────────────────────────────────────────────────
 
   static Future<void> initialize() async {
@@ -53,7 +57,25 @@ class NotificationService {
     );
     await _plugin.initialize(
       const InitializationSettings(android: androidInit, iOS: iosInit),
+      onDidReceiveNotificationResponse: (response) {
+        final payload = response.payload;
+        if (payload != null && payload.isNotEmpty) {
+          onNotificationTap?.call(payload);
+        }
+      },
     );
+
+    // Uygulama kapalıyken bildirime tıklanarak açıldıysa payload'ı işle.
+    final launchDetails = await _plugin.getNotificationAppLaunchDetails();
+    if (launchDetails?.didNotificationLaunchApp == true) {
+      final payload = launchDetails!.notificationResponse?.payload;
+      if (payload != null && payload.isNotEmpty) {
+        // Navigator henüz hazır değil; bir sonraki frame'e ertele.
+        Future.delayed(const Duration(milliseconds: 600), () {
+          onNotificationTap?.call(payload);
+        });
+      }
+    }
 
     // Create Android notification channel
     if (Platform.isAndroid) {
@@ -92,6 +114,25 @@ class NotificationService {
 
       // Subscribe to topic for broadcast alerts
       await messaging.subscribeToTopic('agri_alerts');
+
+      // FCM: uygulama arka planda iken bildirime tıklandı (resume)
+      FirebaseMessaging.onMessageOpenedApp.listen((msg) {
+        final payload = msg.data['payload']?.toString();
+        if (payload != null && payload.isNotEmpty) {
+          onNotificationTap?.call(payload);
+        }
+      });
+
+      // FCM: uygulama tamamen kapalıyken bildirime tıklandı (terminated)
+      final initial = await messaging.getInitialMessage();
+      if (initial != null) {
+        final payload = initial.data['payload']?.toString();
+        if (payload != null && payload.isNotEmpty) {
+          Future.delayed(const Duration(milliseconds: 600), () {
+            onNotificationTap?.call(payload);
+          });
+        }
+      }
     } catch (_) {
       // FCM may not be configured on all platforms; local notifications still work
     }
@@ -269,6 +310,7 @@ class NotificationService {
     int id = 0,
     required String title,
     required String body,
+    String? payload,
   }) async {
     try {
       final androidDetails = AndroidNotificationDetails(
@@ -285,6 +327,7 @@ class NotificationService {
         title,
         body,
         NotificationDetails(android: androidDetails, iOS: iosDetails),
+        payload: payload,
       );
     } catch (e) {
       debugPrint('Notification error: $e');
@@ -302,8 +345,14 @@ class NotificationService {
   static Future<void> sendGuideNotifications(
     GuideResult result,
     String fieldName, {
+    String? fieldId,
     int notificationIdSeed = 0,
   }) async {
+    // Bildirime tıklandığında DailyGuideScreen'e gidilecek payload.
+    final payload = fieldId != null && fieldId.isNotEmpty
+        ? jsonEncode({'type': 'guide', 'fieldId': fieldId, 'fieldName': fieldName})
+        : null;
+
     try {
       // 1. Yağmur bekleniyor → sulama ertele
       final rainAlert = result.alerts
@@ -319,6 +368,7 @@ class NotificationService {
           body: mm.isNotEmpty
               ? 'Bugün $mm mm yağmur bekleniyor. Sulama yarına ertelendi.'
               : rainAlert.message,
+          payload: payload,
         );
       }
 
@@ -329,6 +379,7 @@ class NotificationService {
           id: 5100 + alert.kind.index + notificationIdSeed,
           title: '${alert.icon} ${alert.title} — $fieldName',
           body: alert.message,
+          payload: payload,
         );
       }
 
@@ -342,6 +393,7 @@ class NotificationService {
           id: 5200 + notificationIdSeed,
           title: '🌱 $fieldName — Bugün ${result.today.length} görev',
           body: '$labels$extra',
+          payload: payload,
         );
       }
     } catch (_) {

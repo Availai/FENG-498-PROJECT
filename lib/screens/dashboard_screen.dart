@@ -263,6 +263,7 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
             await NotificationService.sendGuideNotifications(
               result,
               fieldName,
+              fieldId: fieldId,
               notificationIdSeed: (i + 1) * 100,
             );
           } catch (_) {}
