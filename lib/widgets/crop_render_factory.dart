@@ -97,13 +97,13 @@ String? _spriteCropKey(String cropName) => null;
 double _getScaleMultiplier(GrowthPhase phase) {
   switch (phase) {
     case GrowthPhase.seedling:
-      return 0.55;
+      return 0.66;
     case GrowthPhase.growing:
-      return 0.8;
+      return 0.9;
     case GrowthPhase.mature:
-      return 1.0;
+      return 1.08;
     case GrowthPhase.harvest:
-      return 1.08; // Hasat: hafif büyütme, abartıya kaçmadan
+      return 1.16;
   }
 }
 
@@ -175,15 +175,13 @@ Widget buildCropMarkerWidget({
       // Harita zoom seviyesine göre büyüme çarpanı
       // zoom 18 referans alınarak (2^(zoom-18)), crop'lar harita büyüklüğüne kitlenir.
       double zoomScale = math.pow(2.0, currentZoom - 18.0).toDouble();
-      zoomScale = zoomScale.clamp(
-          0.2, 2.5); // Maximum scale sınırlandırıldı ki aşırı abartı durmasın
+      zoomScale = zoomScale.clamp(0.24, 2.7).toDouble();
 
       final phase = getGrowthPhase(maturityPercent);
       final phaseScale = _getScaleMultiplier(phase);
 
-      const double baseWidth =
-          42; // Görselde çok devasa durduğu için yarıya indirdim
-      const double baseHeight = 48;
+      const double baseWidth = 54;
+      const double baseHeight = 62;
 
       final double spriteW = baseWidth * phaseScale * zoomScale;
       final double spriteH = baseHeight * phaseScale * zoomScale;
@@ -240,25 +238,25 @@ Widget buildCropMarkerWidget({
           child: child,
           builder: (_, yaw, layerChild) {
             final rearRatio = ((-math.cos(yaw)).clamp(0.0, 1.0)).toDouble();
-            final brightness = 1.0 - (rearRatio * 0.34);
-            final saturation = 1.0 - (rearRatio * 0.22);
+            final brightness = 1.08 - (rearRatio * 0.24);
+            final saturation = 1.12 - (rearRatio * 0.12);
             final filteredChild = ColorFiltered(
               colorFilter: ColorFilter.matrix([
                 brightness * saturation,
                 0,
                 0,
                 0,
-                rearRatio * 18,
+                4 + rearRatio * 10,
                 0,
                 brightness,
                 0,
                 0,
-                rearRatio * 10,
+                6 + rearRatio * 8,
                 0,
                 0,
                 brightness * saturation,
                 0,
-                -rearRatio * 8,
+                2 - rearRatio * 4,
                 0,
                 0,
                 0,

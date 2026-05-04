@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -81,6 +82,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
   late AnimationController _harvestPulseCtrl;
 
   final MapController _mapController = MapController();
+  double _fieldViewAngleDegrees = 0.0;
 
   @override
   void initState() {
@@ -1590,7 +1592,8 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
             '${resolvedProtocol.emoji} ${resolvedProtocol.displayName} eklendi',
         body:
             '${resolvedProtocol.displayName} yetiştirmek için detaylı yönergeye Görevler\'den ulaşabilirsiniz.',
-        payload: _fieldNotifPayload(fieldId, widget.fieldData['name']?.toString()),
+        payload:
+            _fieldNotifPayload(fieldId, widget.fieldData['name']?.toString()),
       );
       // İlk adım bildirimini de ata — son yüklenen aktivite/ekin verisiyle.
       final latestCrops = await repo.loadFieldCrops(fieldId);
@@ -2230,7 +2233,8 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
 
   /// Bildirim payload'ı — `type:"field"` tarla harita ekranına gider.
   static String _fieldNotifPayload(String fieldId, String? fieldName) =>
-      jsonEncode({'type': 'field', 'fieldId': fieldId, 'fieldName': fieldName ?? ''});
+      jsonEncode(
+          {'type': 'field', 'fieldId': fieldId, 'fieldName': fieldName ?? ''});
 
   /// Normal modda boş bir alana dokunulduğunda — kullanıcıya bitkiye
   /// dokunması veya tekil bitki ekleme moduna geçmesi gerektiğini hatırlat.
@@ -2703,6 +2707,53 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
     return LatLng(lat / poly.length, lng / poly.length);
   }
 
+  double _normalizeFieldViewAngle(double degrees) {
+    final normalized = degrees % 360.0;
+    return normalized < 0 ? normalized + 360.0 : normalized;
+  }
+
+  double _angleDistance(double a, double b) {
+    final raw =
+        (_normalizeFieldViewAngle(a) - _normalizeFieldViewAngle(b)).abs();
+    return raw > 180.0 ? 360.0 - raw : raw;
+  }
+
+  void _onFieldMapPositionChanged(MapCamera camera, bool hasGesture) {
+    if (!hasGesture) return;
+    final rotation = _normalizeFieldViewAngle(camera.rotation);
+    if (_angleDistance(rotation, _fieldViewAngleDegrees) < 0.5) return;
+    setState(() => _fieldViewAngleDegrees = rotation);
+  }
+
+  double _fieldViewDepth(LatLng point, LatLng center) {
+    final latScale = 111320.0;
+    final lngScale = latScale *
+        math
+            .cos(center.latitude * math.pi / 180.0)
+            .abs()
+            .clamp(0.2, 1.0)
+            .toDouble();
+    final x = (point.longitude - center.longitude) * lngScale;
+    final y = (point.latitude - center.latitude) * latScale;
+    final angleRad = _fieldViewAngleDegrees * math.pi / 180.0;
+    return (y * math.cos(angleRad)) - (x * math.sin(angleRad));
+  }
+
+  void _sortPositionsForFieldView(List<LatLng> positions, LatLng center) {
+    positions.sort(
+      (a, b) =>
+          _fieldViewDepth(b, center).compareTo(_fieldViewDepth(a, center)),
+    );
+  }
+
+  void _sortMarkersForFieldView(List<Marker> markers, LatLng center) {
+    markers.sort(
+      (a, b) => _fieldViewDepth(b.point, center).compareTo(
+        _fieldViewDepth(a.point, center),
+      ),
+    );
+  }
+
   Widget _build3DFieldMap(Map<String, dynamic> d) {
     final polygon = _polygonPoints(d);
     final center = _fieldCenter(d, polygon);
@@ -2733,6 +2784,11 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
             () => <int, FieldPlantInstance>{})[inst.plantIndex!] = inst;
       }
     }
+    standaloneInstances.sort(
+      (a, b) => _fieldViewDepth(LatLng(b.lat, b.lng), center).compareTo(
+        _fieldViewDepth(LatLng(a.lat, a.lng), center),
+      ),
+    );
 
     const borderColor = Color(0xFF00E676);
 
@@ -2840,7 +2896,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
         }
 
         // Z-Index Sorting: Painter's Algorithm (Kuzeyden Güneye doğru sırala)
-        positions.sort((a, b) => b.latitude.compareTo(a.latitude));
+        _sortPositionsForFieldView(positions, center);
 
         final cropId = crop['id']?.toString();
         final cropOverrides = (cropId != null)
@@ -2855,8 +2911,8 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
           final markerKey = 'zone:${cropId ?? cropName}:$plantIndex';
           final marker = Marker(
             point: pos,
-            width: 140,
-            height: 160,
+            width: 180,
+            height: 220,
             alignment: Alignment.topCenter,
             child: KeyedSubtree(
               key: ValueKey(markerKey),
@@ -2917,7 +2973,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
         maxCount: 30,
         minVisualSpacingM: 0.5,
       );
-      positions.sort((a, b) => b.latitude.compareTo(a.latitude));
+      _sortPositionsForFieldView(positions, center);
 
       // Fallback: polygon çok küçükse ya da yerleştirme boş dönerse merkeze tek marker
       if (positions.isEmpty) {
@@ -2951,8 +3007,8 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
         final markerKey = 'grid:${cropId ?? cropName}:$plantIndex';
         final marker = Marker(
           point: pos,
-          width: 140,
-          height: 160,
+          width: 180,
+          height: 220,
           alignment: Alignment.topCenter,
           child: KeyedSubtree(
             key: ValueKey(markerKey),
@@ -3004,8 +3060,8 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
       final markerKey = 'single:${inst.id}';
       final marker = Marker(
         point: pos,
-        width: 140,
-        height: 160,
+        width: 180,
+        height: 220,
         alignment: Alignment.topCenter,
         child: KeyedSubtree(
           key: ValueKey(markerKey),
@@ -3124,6 +3180,9 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
         ),
       );
     }
+    _sortMarkersForFieldView(markers, center);
+    _sortMarkersForFieldView(zoneMarkers, center);
+    _sortMarkersForFieldView(highlightedPlantMarkers, center);
 
     return Transform(
       transform: Matrix4.identity()
@@ -3137,6 +3196,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
         options: MapOptions(
           initialCenter: center,
           initialZoom: 18.0,
+          initialRotation: _fieldViewAngleDegrees,
           minZoom: 16,
           maxZoom: 21,
           initialCameraFit: bounds != null
@@ -3153,8 +3213,13 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
                 ? InteractiveFlag.pinchZoom | InteractiveFlag.drag
                 : InteractiveFlag.pinchZoom |
                     InteractiveFlag.drag |
-                    InteractiveFlag.doubleTapZoom,
+                    InteractiveFlag.doubleTapZoom |
+                    InteractiveFlag.rotate,
+            enableMultiFingerGestureRace:
+                !_isZoneDrawingMode && !_isPlacingSinglePlantMode,
+            rotationThreshold: 8.0,
           ),
+          onPositionChanged: _onFieldMapPositionChanged,
           onTap: _isZoneDrawingMode
               ? (tapPos, point) => _onMapTapForZone(point)
               : _isPlacingSinglePlantMode
@@ -3189,16 +3254,19 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
                 ...drawingPolygons,
               ],
             ),
-          if (markers.isNotEmpty) MarkerLayer(markers: markers),
+          if (markers.isNotEmpty) MarkerLayer(markers: markers, rotate: true),
           if (greenhousePolygons.isNotEmpty)
             PolygonLayer(polygons: greenhousePolygons),
           if (greenhouseMarkers.isNotEmpty)
-            MarkerLayer(markers: greenhouseMarkers),
-          if (zoneMarkers.isNotEmpty) MarkerLayer(markers: zoneMarkers),
+            MarkerLayer(markers: greenhouseMarkers, rotate: true),
+          if (zoneMarkers.isNotEmpty)
+            MarkerLayer(markers: zoneMarkers, rotate: true),
           if (highlightedPlantMarkers.isNotEmpty)
-            MarkerLayer(markers: highlightedPlantMarkers),
-          if (drawingMarkers.isNotEmpty) MarkerLayer(markers: drawingMarkers),
-          if (cornerMarkers.isNotEmpty) MarkerLayer(markers: cornerMarkers),
+            MarkerLayer(markers: highlightedPlantMarkers, rotate: true),
+          if (drawingMarkers.isNotEmpty)
+            MarkerLayer(markers: drawingMarkers, rotate: true),
+          if (cornerMarkers.isNotEmpty)
+            MarkerLayer(markers: cornerMarkers, rotate: true),
         ],
       ),
     );
