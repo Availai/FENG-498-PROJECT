@@ -276,6 +276,7 @@ class _QuickLogSheetState extends State<_QuickLogSheet> {
   final _trapAverageCtrl = TextEditingController();
   final _diseasePercentCtrl = TextEditingController();
   String? _selectedCropId;
+  bool _cropError = false;
   String? _ipmPestKey;
   String _method = 'Damla sulama';
 
@@ -441,6 +442,7 @@ class _QuickLogSheetState extends State<_QuickLogSheet> {
                   }).toList(),
                   onChanged: (value) => setState(() {
                     _selectedCropId = value;
+                    _cropError = false;
                     // Bitki değişti → playbook seçimleri sıfırla.
                     _pickedFertilizer = null;
                     _pickedPesticide = null;
@@ -450,11 +452,22 @@ class _QuickLogSheetState extends State<_QuickLogSheet> {
                   decoration: InputDecoration(
                     hintText: 'Ürün seç',
                     filled: true,
-                    fillColor: AppColors.surface,
+                    fillColor: _cropError
+                        ? AppColors.error.withValues(alpha: 0.08)
+                        : AppColors.surface,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: AppColors.border),
+                      borderSide: BorderSide(
+                        color: _cropError ? AppColors.error : AppColors.border,
+                      ),
                     ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: _cropError ? AppColors.error : AppColors.border,
+                      ),
+                    ),
+                    errorText: _cropError ? 'Devam etmek için bir ürün seçin' : null,
                   ),
                 ),
                 const SizedBox(height: 14),
@@ -554,6 +567,10 @@ class _QuickLogSheetState extends State<_QuickLogSheet> {
   }
 
   void _save() {
+    if (_selectableCrops.isNotEmpty && _selectedCropId == null) {
+      setState(() => _cropError = true);
+      return;
+    }
     final qty = double.tryParse(_qtyCtrl.text.replaceAll(',', '.'));
     final extraQty = double.tryParse(_extraQtyCtrl.text.replaceAll(',', '.'));
     final ipmDecision = _currentIpmDecision();
