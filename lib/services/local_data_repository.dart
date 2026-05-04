@@ -614,6 +614,13 @@ class LocalDataRepository {
     String? unit,
     double? recommendedQuantity,
     String source = 'manual',
+    // v8 — aktivite kapsamı + plant scope + alt-tip + foto + not.
+    // Hepsi opsiyonel; çağıranların eski imzası geriye dönük çalışır.
+    String? targetScope,
+    String? plantInstanceId,
+    String? subtype,
+    String? photoPath,
+    String? noteText,
   }) async {
     final now = DateTime.now().toUtc();
     final id = _newId('event');
@@ -633,6 +640,11 @@ class LocalDataRepository {
             quantity: Value(quantity),
             unit: Value(unit),
             recommendedQuantity: Value(recommendedQuantity),
+            targetScope: Value(targetScope),
+            plantInstanceId: Value(plantInstanceId),
+            subtype: Value(subtype),
+            photoPath: Value(photoPath),
+            noteText: Value(noteText),
           ),
         );
 
@@ -651,6 +663,11 @@ class LocalDataRepository {
         'quantity': quantity,
         'unit': unit,
         'recommended_quantity': recommendedQuantity,
+        'target_scope': targetScope,
+        'plant_instance_id': plantInstanceId,
+        'subtype': subtype,
+        'photo_path': photoPath,
+        'note_text': noteText,
       },
       updatedAt: now,
     );
@@ -673,6 +690,12 @@ class LocalDataRepository {
     double? recommendedQuantity,
     Map<String, dynamic>? metadata,
     DateTime? at,
+    // v8 — aktivite kapsamı + plant scope + alt-tip + foto.
+    // `scope` null geçilirse cropId/plantInstanceId varlığına göre türetilir.
+    ActivityScope? scope,
+    String? plantInstanceId,
+    String? subtype,
+    String? photoPath,
   }) async {
     final field = await (_db.select(_db.fields)
           ..where((tbl) => tbl.id.equals(fieldId))
@@ -681,12 +704,20 @@ class LocalDataRepository {
     final fieldName = field?.name ?? 'Tarla';
     final title = _composeActivityTitle(fieldName, type);
     final meta = <String, dynamic>{...?metadata};
-    if (note != null && note.trim().isNotEmpty) meta['note'] = note.trim();
+    final trimmedNote = note?.trim();
+    if (trimmedNote != null && trimmedNote.isNotEmpty) {
+      meta['note'] = trimmedNote;
+    }
     if (quantity != null) meta['quantity'] = quantity;
     if (quantityUnit != null) meta['quantity_unit'] = quantityUnit;
     if (recommendedQuantity != null) {
       meta['recommended_quantity'] = recommendedQuantity;
     }
+    // Scope geçilmediyse parametrelerden makul varsayılan türet.
+    final effectiveScope = scope ??
+        (plantInstanceId != null
+            ? ActivityScope.plant
+            : (cropId != null ? ActivityScope.zone : ActivityScope.field));
     await addCalendarEvent(
       fieldId: fieldId,
       cropId: cropId,
@@ -697,6 +728,13 @@ class LocalDataRepository {
       quantity: quantity,
       unit: quantityUnit,
       recommendedQuantity: recommendedQuantity,
+      targetScope: effectiveScope.name,
+      plantInstanceId: plantInstanceId,
+      subtype: subtype,
+      photoPath: photoPath,
+      noteText: (trimmedNote != null && trimmedNote.isNotEmpty)
+          ? trimmedNote
+          : null,
     );
 
     // Sulama log'u → bekleyen sulama planını "tamamlandı" olarak işaretle.
@@ -1924,6 +1962,104 @@ class LocalDataRepository {
   Stream<List<FieldPlantInstance>> watchPlantInstances(String fieldId) {
     final query = _db.select(_db.fieldPlantInstances)
       ..where((tbl) => tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull());
+    return query.watch();
+  }
+
+  /// Tekil bitki için yeni bir durum gözlemi ekler — PlantConditionEvents
+  /// tablosuna audit log satırı düşer ve FieldPlantInstances.lastObservedAt
+  /// güncellenir. v9 / MVP-1: lokal-only (sync outbox'a düşmez).
+  Future<void> logPlantCondition({
+    required String plantInstanceId,
+    required String fieldId,
+    String? cropId,
+    required String condition,
+    String sourceType = 'manual',
+    String? notes,
+    String? photoPath,
+    DateTime? observedAt,
+  }) async {
+    final now = DateTime.now().toUtc();
+    final at = (observedAt ?? now).toUtc();
+    final id = _newId('pcond');
+    await _db.into(_db.plantConditionEvents).insert(
+          PlantConditionEventsCompanion(
+            id: Value(id),
+            plantInstanceId: Value(plantInstanceId),
+            fieldId: Value(fieldId),
+            cropId: Value(cropId),
+            condition: Value(condition),
+            sourceType: Value(sourceType),
+            notes: Value(notes),
+            photoPath: Value(photoPath),
+            observedAt: Value(at),
+            farmerUid: Value(currentUid),
+            createdAt: Value(now),
+            updatedAt: Value(now),
+          ),
+        );
+    // FieldPlantInstance.lastObservedAt'ı güncel tut — geçmiş paneli ve
+    // tavsiye motoru "son N gün" pencereleri bu alandan filtreler.
+    await (_db.update(_db.fieldPlantInstances)
+          ..where((tbl) => tbl.id.equals(plantInstanceId)))
+        .write(FieldPlantInstancesCompanion(
+      lastObservedAt: Value(at),
+      updatedAt: Value(now),
+    ));
+  }
+
+  /// Tekil bitki için aktif durum bayrak listesini değiştirir
+  /// (FieldPlantInstances.conditionFlagsJson). Liste set semantiği taşır;
+  /// duplicate'ler ayıklanır, sıra korunmaz. Boş liste null'a çevrilir.
+  ///
+  /// Bu metot sadece "şu anki durum" snapshot'ını yazar. Geçmiş için
+  /// [logPlantCondition] çağırılması gerekir; iki çağrı genelde birlikte
+  /// kullanılır (UI chip seçimi → her yeni bayrak için bir log + son liste).
+  Future<void> setPlantConditionFlags({
+    required String plantInstanceId,
+    required List<String> flags,
+  }) async {
+    final now = DateTime.now().toUtc();
+    final cleaned = flags.map((f) => f.trim()).where((f) => f.isNotEmpty).toSet().toList();
+    final json = cleaned.isEmpty ? null : jsonEncode(cleaned);
+    final inst = await (_db.select(_db.fieldPlantInstances)
+          ..where((tbl) => tbl.id.equals(plantInstanceId)))
+        .getSingleOrNull();
+    if (inst == null) return;
+    await (_db.update(_db.fieldPlantInstances)
+          ..where((tbl) => tbl.id.equals(plantInstanceId)))
+        .write(FieldPlantInstancesCompanion(
+      conditionFlagsJson: Value(json),
+      lastObservedAt: Value(now),
+      updatedAt: Value(now),
+    ));
+    await _enqueueSyncJob(
+      entityType: 'field_plant_instances',
+      entityId: plantInstanceId,
+      operation: 'upsert',
+      payload: {
+        'id': plantInstanceId,
+        'field_id': inst.fieldId,
+        'condition_flags': cleaned,
+        'last_observed_at': now.toIso8601String(),
+        'updated_at': now.toIso8601String(),
+      },
+      updatedAt: now,
+    );
+  }
+
+  /// Bir tekil bitkinin durum gözlem geçmişini canlı dinler — yeni → eski.
+  /// UI'daki "Durum geçmişi" paneli ve kural motorunun son-N-gün pencereleri
+  /// bu stream'den okur.
+  Stream<List<PlantConditionEvent>> watchPlantConditionHistory(
+    String plantInstanceId, {
+    int limit = 100,
+  }) {
+    final query = _db.select(_db.plantConditionEvents)
+      ..where((tbl) =>
+          tbl.plantInstanceId.equals(plantInstanceId) &
+          tbl.deletedAt.isNull())
+      ..orderBy([(t) => OrderingTerm.desc(t.observedAt)])
+      ..limit(limit);
     return query.watch();
   }
 

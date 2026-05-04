@@ -1512,6 +1512,36 @@ class $CalendarEventsTable extends CalendarEvents
   late final GeneratedColumn<double> recommendedQuantity =
       GeneratedColumn<double>('recommended_quantity', aliasedName, true,
           type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _targetScopeMeta =
+      const VerificationMeta('targetScope');
+  @override
+  late final GeneratedColumn<String> targetScope = GeneratedColumn<String>(
+      'target_scope', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _plantInstanceIdMeta =
+      const VerificationMeta('plantInstanceId');
+  @override
+  late final GeneratedColumn<String> plantInstanceId = GeneratedColumn<String>(
+      'plant_instance_id', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _subtypeMeta =
+      const VerificationMeta('subtype');
+  @override
+  late final GeneratedColumn<String> subtype = GeneratedColumn<String>(
+      'subtype', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _photoPathMeta =
+      const VerificationMeta('photoPath');
+  @override
+  late final GeneratedColumn<String> photoPath = GeneratedColumn<String>(
+      'photo_path', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _noteTextMeta =
+      const VerificationMeta('noteText');
+  @override
+  late final GeneratedColumn<String> noteText = GeneratedColumn<String>(
+      'note_text', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _createdAtMeta =
       const VerificationMeta('createdAt');
   @override
@@ -1543,6 +1573,11 @@ class $CalendarEventsTable extends CalendarEvents
         quantity,
         unit,
         recommendedQuantity,
+        targetScope,
+        plantInstanceId,
+        subtype,
+        photoPath,
+        noteText,
         createdAt,
         updatedAt,
         deletedAt
@@ -1612,6 +1647,30 @@ class $CalendarEventsTable extends CalendarEvents
           recommendedQuantity.isAcceptableOrUnknown(
               data['recommended_quantity']!, _recommendedQuantityMeta));
     }
+    if (data.containsKey('target_scope')) {
+      context.handle(
+          _targetScopeMeta,
+          targetScope.isAcceptableOrUnknown(
+              data['target_scope']!, _targetScopeMeta));
+    }
+    if (data.containsKey('plant_instance_id')) {
+      context.handle(
+          _plantInstanceIdMeta,
+          plantInstanceId.isAcceptableOrUnknown(
+              data['plant_instance_id']!, _plantInstanceIdMeta));
+    }
+    if (data.containsKey('subtype')) {
+      context.handle(_subtypeMeta,
+          subtype.isAcceptableOrUnknown(data['subtype']!, _subtypeMeta));
+    }
+    if (data.containsKey('photo_path')) {
+      context.handle(_photoPathMeta,
+          photoPath.isAcceptableOrUnknown(data['photo_path']!, _photoPathMeta));
+    }
+    if (data.containsKey('note_text')) {
+      context.handle(_noteTextMeta,
+          noteText.isAcceptableOrUnknown(data['note_text']!, _noteTextMeta));
+    }
     if (data.containsKey('created_at')) {
       context.handle(_createdAtMeta,
           createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
@@ -1659,6 +1718,16 @@ class $CalendarEventsTable extends CalendarEvents
           .read(DriftSqlType.string, data['${effectivePrefix}unit']),
       recommendedQuantity: attachedDatabase.typeMapping.read(
           DriftSqlType.double, data['${effectivePrefix}recommended_quantity']),
+      targetScope: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}target_scope']),
+      plantInstanceId: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}plant_instance_id']),
+      subtype: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}subtype']),
+      photoPath: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}photo_path']),
+      noteText: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}note_text']),
       createdAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
       updatedAt: attachedDatabase.typeMapping
@@ -1695,6 +1764,26 @@ class CalendarEvent extends DataClass implements Insertable<CalendarEvent> {
   /// Direktif motorunun aynı anda önerdiği miktar — eksik/fazla oranını
   /// hesaplamak için. Null ise öneri-dışı manuel kayıt. (v4)
   final double? recommendedQuantity;
+
+  /// Aktivite kapsamı: 'field' | 'zone' | 'plant'. null → field varsayılır. (v8)
+  final String? targetScope;
+
+  /// Tekil bitkiye iliştirilen aktivite — FieldPlantInstances.id ile eşleşir.
+  /// FK constraint yok (Drift forward-reference riskinden kaçınmak için);
+  /// referans bütünlüğü uygulama katmanında korunur. (v8)
+  final String? plantInstanceId;
+
+  /// Aktivite alt-tipi: 'disease_observation' | 'pest_observation' |
+  /// 'hoeing' | 'thinning' | 'note'. eventType ile birlikte kullanılır;
+  /// alt-tip null ise eventType tek başına yeterlidir. (v8)
+  final String? subtype;
+
+  /// Aktivite fotoğrafı yerel yolu (app docs altında, WebP). (v8)
+  final String? photoPath;
+
+  /// Çiftçi serbest metin notu — subtype='note' kayıtlarında zorunlu,
+  /// diğer aktivitelerde opsiyonel açıklama. (v8)
+  final String? noteText;
   final DateTime createdAt;
   final DateTime updatedAt;
   final DateTime? deletedAt;
@@ -1710,6 +1799,11 @@ class CalendarEvent extends DataClass implements Insertable<CalendarEvent> {
       this.quantity,
       this.unit,
       this.recommendedQuantity,
+      this.targetScope,
+      this.plantInstanceId,
+      this.subtype,
+      this.photoPath,
+      this.noteText,
       required this.createdAt,
       required this.updatedAt,
       this.deletedAt});
@@ -1738,6 +1832,21 @@ class CalendarEvent extends DataClass implements Insertable<CalendarEvent> {
     }
     if (!nullToAbsent || recommendedQuantity != null) {
       map['recommended_quantity'] = Variable<double>(recommendedQuantity);
+    }
+    if (!nullToAbsent || targetScope != null) {
+      map['target_scope'] = Variable<String>(targetScope);
+    }
+    if (!nullToAbsent || plantInstanceId != null) {
+      map['plant_instance_id'] = Variable<String>(plantInstanceId);
+    }
+    if (!nullToAbsent || subtype != null) {
+      map['subtype'] = Variable<String>(subtype);
+    }
+    if (!nullToAbsent || photoPath != null) {
+      map['photo_path'] = Variable<String>(photoPath);
+    }
+    if (!nullToAbsent || noteText != null) {
+      map['note_text'] = Variable<String>(noteText);
     }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
@@ -1769,6 +1878,21 @@ class CalendarEvent extends DataClass implements Insertable<CalendarEvent> {
       recommendedQuantity: recommendedQuantity == null && nullToAbsent
           ? const Value.absent()
           : Value(recommendedQuantity),
+      targetScope: targetScope == null && nullToAbsent
+          ? const Value.absent()
+          : Value(targetScope),
+      plantInstanceId: plantInstanceId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(plantInstanceId),
+      subtype: subtype == null && nullToAbsent
+          ? const Value.absent()
+          : Value(subtype),
+      photoPath: photoPath == null && nullToAbsent
+          ? const Value.absent()
+          : Value(photoPath),
+      noteText: noteText == null && nullToAbsent
+          ? const Value.absent()
+          : Value(noteText),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
       deletedAt: deletedAt == null && nullToAbsent
@@ -1793,6 +1917,11 @@ class CalendarEvent extends DataClass implements Insertable<CalendarEvent> {
       unit: serializer.fromJson<String?>(json['unit']),
       recommendedQuantity:
           serializer.fromJson<double?>(json['recommendedQuantity']),
+      targetScope: serializer.fromJson<String?>(json['targetScope']),
+      plantInstanceId: serializer.fromJson<String?>(json['plantInstanceId']),
+      subtype: serializer.fromJson<String?>(json['subtype']),
+      photoPath: serializer.fromJson<String?>(json['photoPath']),
+      noteText: serializer.fromJson<String?>(json['noteText']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
@@ -1813,6 +1942,11 @@ class CalendarEvent extends DataClass implements Insertable<CalendarEvent> {
       'quantity': serializer.toJson<double?>(quantity),
       'unit': serializer.toJson<String?>(unit),
       'recommendedQuantity': serializer.toJson<double?>(recommendedQuantity),
+      'targetScope': serializer.toJson<String?>(targetScope),
+      'plantInstanceId': serializer.toJson<String?>(plantInstanceId),
+      'subtype': serializer.toJson<String?>(subtype),
+      'photoPath': serializer.toJson<String?>(photoPath),
+      'noteText': serializer.toJson<String?>(noteText),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'deletedAt': serializer.toJson<DateTime?>(deletedAt),
@@ -1831,6 +1965,11 @@ class CalendarEvent extends DataClass implements Insertable<CalendarEvent> {
           Value<double?> quantity = const Value.absent(),
           Value<String?> unit = const Value.absent(),
           Value<double?> recommendedQuantity = const Value.absent(),
+          Value<String?> targetScope = const Value.absent(),
+          Value<String?> plantInstanceId = const Value.absent(),
+          Value<String?> subtype = const Value.absent(),
+          Value<String?> photoPath = const Value.absent(),
+          Value<String?> noteText = const Value.absent(),
           DateTime? createdAt,
           DateTime? updatedAt,
           Value<DateTime?> deletedAt = const Value.absent()}) =>
@@ -1849,6 +1988,13 @@ class CalendarEvent extends DataClass implements Insertable<CalendarEvent> {
         recommendedQuantity: recommendedQuantity.present
             ? recommendedQuantity.value
             : this.recommendedQuantity,
+        targetScope: targetScope.present ? targetScope.value : this.targetScope,
+        plantInstanceId: plantInstanceId.present
+            ? plantInstanceId.value
+            : this.plantInstanceId,
+        subtype: subtype.present ? subtype.value : this.subtype,
+        photoPath: photoPath.present ? photoPath.value : this.photoPath,
+        noteText: noteText.present ? noteText.value : this.noteText,
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
         deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
@@ -1870,6 +2016,14 @@ class CalendarEvent extends DataClass implements Insertable<CalendarEvent> {
       recommendedQuantity: data.recommendedQuantity.present
           ? data.recommendedQuantity.value
           : this.recommendedQuantity,
+      targetScope:
+          data.targetScope.present ? data.targetScope.value : this.targetScope,
+      plantInstanceId: data.plantInstanceId.present
+          ? data.plantInstanceId.value
+          : this.plantInstanceId,
+      subtype: data.subtype.present ? data.subtype.value : this.subtype,
+      photoPath: data.photoPath.present ? data.photoPath.value : this.photoPath,
+      noteText: data.noteText.present ? data.noteText.value : this.noteText,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
@@ -1890,6 +2044,11 @@ class CalendarEvent extends DataClass implements Insertable<CalendarEvent> {
           ..write('quantity: $quantity, ')
           ..write('unit: $unit, ')
           ..write('recommendedQuantity: $recommendedQuantity, ')
+          ..write('targetScope: $targetScope, ')
+          ..write('plantInstanceId: $plantInstanceId, ')
+          ..write('subtype: $subtype, ')
+          ..write('photoPath: $photoPath, ')
+          ..write('noteText: $noteText, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('deletedAt: $deletedAt')
@@ -1910,6 +2069,11 @@ class CalendarEvent extends DataClass implements Insertable<CalendarEvent> {
       quantity,
       unit,
       recommendedQuantity,
+      targetScope,
+      plantInstanceId,
+      subtype,
+      photoPath,
+      noteText,
       createdAt,
       updatedAt,
       deletedAt);
@@ -1928,6 +2092,11 @@ class CalendarEvent extends DataClass implements Insertable<CalendarEvent> {
           other.quantity == this.quantity &&
           other.unit == this.unit &&
           other.recommendedQuantity == this.recommendedQuantity &&
+          other.targetScope == this.targetScope &&
+          other.plantInstanceId == this.plantInstanceId &&
+          other.subtype == this.subtype &&
+          other.photoPath == this.photoPath &&
+          other.noteText == this.noteText &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
           other.deletedAt == this.deletedAt);
@@ -1945,6 +2114,11 @@ class CalendarEventsCompanion extends UpdateCompanion<CalendarEvent> {
   final Value<double?> quantity;
   final Value<String?> unit;
   final Value<double?> recommendedQuantity;
+  final Value<String?> targetScope;
+  final Value<String?> plantInstanceId;
+  final Value<String?> subtype;
+  final Value<String?> photoPath;
+  final Value<String?> noteText;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<DateTime?> deletedAt;
@@ -1961,6 +2135,11 @@ class CalendarEventsCompanion extends UpdateCompanion<CalendarEvent> {
     this.quantity = const Value.absent(),
     this.unit = const Value.absent(),
     this.recommendedQuantity = const Value.absent(),
+    this.targetScope = const Value.absent(),
+    this.plantInstanceId = const Value.absent(),
+    this.subtype = const Value.absent(),
+    this.photoPath = const Value.absent(),
+    this.noteText = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.deletedAt = const Value.absent(),
@@ -1978,6 +2157,11 @@ class CalendarEventsCompanion extends UpdateCompanion<CalendarEvent> {
     this.quantity = const Value.absent(),
     this.unit = const Value.absent(),
     this.recommendedQuantity = const Value.absent(),
+    this.targetScope = const Value.absent(),
+    this.plantInstanceId = const Value.absent(),
+    this.subtype = const Value.absent(),
+    this.photoPath = const Value.absent(),
+    this.noteText = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
     this.deletedAt = const Value.absent(),
@@ -2000,6 +2184,11 @@ class CalendarEventsCompanion extends UpdateCompanion<CalendarEvent> {
     Expression<double>? quantity,
     Expression<String>? unit,
     Expression<double>? recommendedQuantity,
+    Expression<String>? targetScope,
+    Expression<String>? plantInstanceId,
+    Expression<String>? subtype,
+    Expression<String>? photoPath,
+    Expression<String>? noteText,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<DateTime>? deletedAt,
@@ -2018,6 +2207,11 @@ class CalendarEventsCompanion extends UpdateCompanion<CalendarEvent> {
       if (unit != null) 'unit': unit,
       if (recommendedQuantity != null)
         'recommended_quantity': recommendedQuantity,
+      if (targetScope != null) 'target_scope': targetScope,
+      if (plantInstanceId != null) 'plant_instance_id': plantInstanceId,
+      if (subtype != null) 'subtype': subtype,
+      if (photoPath != null) 'photo_path': photoPath,
+      if (noteText != null) 'note_text': noteText,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (deletedAt != null) 'deleted_at': deletedAt,
@@ -2037,6 +2231,11 @@ class CalendarEventsCompanion extends UpdateCompanion<CalendarEvent> {
       Value<double?>? quantity,
       Value<String?>? unit,
       Value<double?>? recommendedQuantity,
+      Value<String?>? targetScope,
+      Value<String?>? plantInstanceId,
+      Value<String?>? subtype,
+      Value<String?>? photoPath,
+      Value<String?>? noteText,
       Value<DateTime>? createdAt,
       Value<DateTime>? updatedAt,
       Value<DateTime?>? deletedAt,
@@ -2053,6 +2252,11 @@ class CalendarEventsCompanion extends UpdateCompanion<CalendarEvent> {
       quantity: quantity ?? this.quantity,
       unit: unit ?? this.unit,
       recommendedQuantity: recommendedQuantity ?? this.recommendedQuantity,
+      targetScope: targetScope ?? this.targetScope,
+      plantInstanceId: plantInstanceId ?? this.plantInstanceId,
+      subtype: subtype ?? this.subtype,
+      photoPath: photoPath ?? this.photoPath,
+      noteText: noteText ?? this.noteText,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       deletedAt: deletedAt ?? this.deletedAt,
@@ -2096,6 +2300,21 @@ class CalendarEventsCompanion extends UpdateCompanion<CalendarEvent> {
     if (recommendedQuantity.present) {
       map['recommended_quantity'] = Variable<double>(recommendedQuantity.value);
     }
+    if (targetScope.present) {
+      map['target_scope'] = Variable<String>(targetScope.value);
+    }
+    if (plantInstanceId.present) {
+      map['plant_instance_id'] = Variable<String>(plantInstanceId.value);
+    }
+    if (subtype.present) {
+      map['subtype'] = Variable<String>(subtype.value);
+    }
+    if (photoPath.present) {
+      map['photo_path'] = Variable<String>(photoPath.value);
+    }
+    if (noteText.present) {
+      map['note_text'] = Variable<String>(noteText.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -2125,6 +2344,11 @@ class CalendarEventsCompanion extends UpdateCompanion<CalendarEvent> {
           ..write('quantity: $quantity, ')
           ..write('unit: $unit, ')
           ..write('recommendedQuantity: $recommendedQuantity, ')
+          ..write('targetScope: $targetScope, ')
+          ..write('plantInstanceId: $plantInstanceId, ')
+          ..write('subtype: $subtype, ')
+          ..write('photoPath: $photoPath, ')
+          ..write('noteText: $noteText, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('deletedAt: $deletedAt, ')
@@ -4648,6 +4872,24 @@ class $FieldPlantInstancesTable extends FieldPlantInstances
   late final GeneratedColumn<DateTime> healthChangedAt =
       GeneratedColumn<DateTime>('health_changed_at', aliasedName, true,
           type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _conditionFlagsJsonMeta =
+      const VerificationMeta('conditionFlagsJson');
+  @override
+  late final GeneratedColumn<String> conditionFlagsJson =
+      GeneratedColumn<String>('condition_flags_json', aliasedName, true,
+          type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _phenologyStageKeyMeta =
+      const VerificationMeta('phenologyStageKey');
+  @override
+  late final GeneratedColumn<String> phenologyStageKey =
+      GeneratedColumn<String>('phenology_stage_key', aliasedName, true,
+          type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _lastObservedAtMeta =
+      const VerificationMeta('lastObservedAt');
+  @override
+  late final GeneratedColumn<DateTime> lastObservedAt =
+      GeneratedColumn<DateTime>('last_observed_at', aliasedName, true,
+          type: DriftSqlType.dateTime, requiredDuringInsert: false);
   static const VerificationMeta _farmerUidMeta =
       const VerificationMeta('farmerUid');
   @override
@@ -4688,6 +4930,9 @@ class $FieldPlantInstancesTable extends FieldPlantInstances
         notes,
         plantedAt,
         healthChangedAt,
+        conditionFlagsJson,
+        phenologyStageKey,
+        lastObservedAt,
         farmerUid,
         createdAt,
         updatedAt,
@@ -4782,6 +5027,24 @@ class $FieldPlantInstancesTable extends FieldPlantInstances
           healthChangedAt.isAcceptableOrUnknown(
               data['health_changed_at']!, _healthChangedAtMeta));
     }
+    if (data.containsKey('condition_flags_json')) {
+      context.handle(
+          _conditionFlagsJsonMeta,
+          conditionFlagsJson.isAcceptableOrUnknown(
+              data['condition_flags_json']!, _conditionFlagsJsonMeta));
+    }
+    if (data.containsKey('phenology_stage_key')) {
+      context.handle(
+          _phenologyStageKeyMeta,
+          phenologyStageKey.isAcceptableOrUnknown(
+              data['phenology_stage_key']!, _phenologyStageKeyMeta));
+    }
+    if (data.containsKey('last_observed_at')) {
+      context.handle(
+          _lastObservedAtMeta,
+          lastObservedAt.isAcceptableOrUnknown(
+              data['last_observed_at']!, _lastObservedAtMeta));
+    }
     if (data.containsKey('farmer_uid')) {
       context.handle(_farmerUidMeta,
           farmerUid.isAcceptableOrUnknown(data['farmer_uid']!, _farmerUidMeta));
@@ -4839,6 +5102,12 @@ class $FieldPlantInstancesTable extends FieldPlantInstances
           .read(DriftSqlType.dateTime, data['${effectivePrefix}planted_at'])!,
       healthChangedAt: attachedDatabase.typeMapping.read(
           DriftSqlType.dateTime, data['${effectivePrefix}health_changed_at']),
+      conditionFlagsJson: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}condition_flags_json']),
+      phenologyStageKey: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}phenology_stage_key']),
+      lastObservedAt: attachedDatabase.typeMapping.read(
+          DriftSqlType.dateTime, data['${effectivePrefix}last_observed_at']),
       farmerUid: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}farmer_uid']),
       createdAt: attachedDatabase.typeMapping
@@ -4880,6 +5149,18 @@ class FieldPlantInstance extends DataClass
   final String? notes;
   final DateTime plantedAt;
   final DateTime? healthChangedAt;
+
+  /// Çoklu nüans bayrağı JSON — ['water_stress','nutrient_deficiency','flowering'].
+  /// healthStatus üç-değerli kaba durumu tutarken bu liste niteliksel
+  /// detayları taşır; tavsiye motoru her ikisini de okur. (v8)
+  final String? conditionFlagsJson;
+
+  /// Tekil bitki için fenoloji evresi override'ı. null ise zone'un
+  /// CropGrowthStates.currentStageKey değerinden miras alınır. (v8)
+  final String? phenologyStageKey;
+
+  /// Son kullanıcı/AI gözlem tarihi — durum geçmişi sıralaması için. (v8)
+  final DateTime? lastObservedAt;
   final String? farmerUid;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -4899,6 +5180,9 @@ class FieldPlantInstance extends DataClass
       this.notes,
       required this.plantedAt,
       this.healthChangedAt,
+      this.conditionFlagsJson,
+      this.phenologyStageKey,
+      this.lastObservedAt,
       this.farmerUid,
       required this.createdAt,
       required this.updatedAt,
@@ -4931,6 +5215,15 @@ class FieldPlantInstance extends DataClass
     map['planted_at'] = Variable<DateTime>(plantedAt);
     if (!nullToAbsent || healthChangedAt != null) {
       map['health_changed_at'] = Variable<DateTime>(healthChangedAt);
+    }
+    if (!nullToAbsent || conditionFlagsJson != null) {
+      map['condition_flags_json'] = Variable<String>(conditionFlagsJson);
+    }
+    if (!nullToAbsent || phenologyStageKey != null) {
+      map['phenology_stage_key'] = Variable<String>(phenologyStageKey);
+    }
+    if (!nullToAbsent || lastObservedAt != null) {
+      map['last_observed_at'] = Variable<DateTime>(lastObservedAt);
     }
     if (!nullToAbsent || farmerUid != null) {
       map['farmer_uid'] = Variable<String>(farmerUid);
@@ -4969,6 +5262,15 @@ class FieldPlantInstance extends DataClass
       healthChangedAt: healthChangedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(healthChangedAt),
+      conditionFlagsJson: conditionFlagsJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(conditionFlagsJson),
+      phenologyStageKey: phenologyStageKey == null && nullToAbsent
+          ? const Value.absent()
+          : Value(phenologyStageKey),
+      lastObservedAt: lastObservedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastObservedAt),
       farmerUid: farmerUid == null && nullToAbsent
           ? const Value.absent()
           : Value(farmerUid),
@@ -4998,6 +5300,11 @@ class FieldPlantInstance extends DataClass
       notes: serializer.fromJson<String?>(json['notes']),
       plantedAt: serializer.fromJson<DateTime>(json['plantedAt']),
       healthChangedAt: serializer.fromJson<DateTime?>(json['healthChangedAt']),
+      conditionFlagsJson:
+          serializer.fromJson<String?>(json['conditionFlagsJson']),
+      phenologyStageKey:
+          serializer.fromJson<String?>(json['phenologyStageKey']),
+      lastObservedAt: serializer.fromJson<DateTime?>(json['lastObservedAt']),
       farmerUid: serializer.fromJson<String?>(json['farmerUid']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
@@ -5022,6 +5329,9 @@ class FieldPlantInstance extends DataClass
       'notes': serializer.toJson<String?>(notes),
       'plantedAt': serializer.toJson<DateTime>(plantedAt),
       'healthChangedAt': serializer.toJson<DateTime?>(healthChangedAt),
+      'conditionFlagsJson': serializer.toJson<String?>(conditionFlagsJson),
+      'phenologyStageKey': serializer.toJson<String?>(phenologyStageKey),
+      'lastObservedAt': serializer.toJson<DateTime?>(lastObservedAt),
       'farmerUid': serializer.toJson<String?>(farmerUid),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
@@ -5044,6 +5354,9 @@ class FieldPlantInstance extends DataClass
           Value<String?> notes = const Value.absent(),
           DateTime? plantedAt,
           Value<DateTime?> healthChangedAt = const Value.absent(),
+          Value<String?> conditionFlagsJson = const Value.absent(),
+          Value<String?> phenologyStageKey = const Value.absent(),
+          Value<DateTime?> lastObservedAt = const Value.absent(),
           Value<String?> farmerUid = const Value.absent(),
           DateTime? createdAt,
           DateTime? updatedAt,
@@ -5067,6 +5380,14 @@ class FieldPlantInstance extends DataClass
         healthChangedAt: healthChangedAt.present
             ? healthChangedAt.value
             : this.healthChangedAt,
+        conditionFlagsJson: conditionFlagsJson.present
+            ? conditionFlagsJson.value
+            : this.conditionFlagsJson,
+        phenologyStageKey: phenologyStageKey.present
+            ? phenologyStageKey.value
+            : this.phenologyStageKey,
+        lastObservedAt:
+            lastObservedAt.present ? lastObservedAt.value : this.lastObservedAt,
         farmerUid: farmerUid.present ? farmerUid.value : this.farmerUid,
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
@@ -5098,6 +5419,15 @@ class FieldPlantInstance extends DataClass
       healthChangedAt: data.healthChangedAt.present
           ? data.healthChangedAt.value
           : this.healthChangedAt,
+      conditionFlagsJson: data.conditionFlagsJson.present
+          ? data.conditionFlagsJson.value
+          : this.conditionFlagsJson,
+      phenologyStageKey: data.phenologyStageKey.present
+          ? data.phenologyStageKey.value
+          : this.phenologyStageKey,
+      lastObservedAt: data.lastObservedAt.present
+          ? data.lastObservedAt.value
+          : this.lastObservedAt,
       farmerUid: data.farmerUid.present ? data.farmerUid.value : this.farmerUid,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
@@ -5122,6 +5452,9 @@ class FieldPlantInstance extends DataClass
           ..write('notes: $notes, ')
           ..write('plantedAt: $plantedAt, ')
           ..write('healthChangedAt: $healthChangedAt, ')
+          ..write('conditionFlagsJson: $conditionFlagsJson, ')
+          ..write('phenologyStageKey: $phenologyStageKey, ')
+          ..write('lastObservedAt: $lastObservedAt, ')
           ..write('farmerUid: $farmerUid, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -5131,25 +5464,29 @@ class FieldPlantInstance extends DataClass
   }
 
   @override
-  int get hashCode => Object.hash(
-      id,
-      fieldId,
-      cropId,
-      plantIndex,
-      cropName,
-      lat,
-      lng,
-      healthStatus,
-      diseaseType,
-      diseasePhotoPath,
-      diagnosisSource,
-      notes,
-      plantedAt,
-      healthChangedAt,
-      farmerUid,
-      createdAt,
-      updatedAt,
-      deletedAt);
+  int get hashCode => Object.hashAll([
+        id,
+        fieldId,
+        cropId,
+        plantIndex,
+        cropName,
+        lat,
+        lng,
+        healthStatus,
+        diseaseType,
+        diseasePhotoPath,
+        diagnosisSource,
+        notes,
+        plantedAt,
+        healthChangedAt,
+        conditionFlagsJson,
+        phenologyStageKey,
+        lastObservedAt,
+        farmerUid,
+        createdAt,
+        updatedAt,
+        deletedAt
+      ]);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -5168,6 +5505,9 @@ class FieldPlantInstance extends DataClass
           other.notes == this.notes &&
           other.plantedAt == this.plantedAt &&
           other.healthChangedAt == this.healthChangedAt &&
+          other.conditionFlagsJson == this.conditionFlagsJson &&
+          other.phenologyStageKey == this.phenologyStageKey &&
+          other.lastObservedAt == this.lastObservedAt &&
           other.farmerUid == this.farmerUid &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
@@ -5189,6 +5529,9 @@ class FieldPlantInstancesCompanion extends UpdateCompanion<FieldPlantInstance> {
   final Value<String?> notes;
   final Value<DateTime> plantedAt;
   final Value<DateTime?> healthChangedAt;
+  final Value<String?> conditionFlagsJson;
+  final Value<String?> phenologyStageKey;
+  final Value<DateTime?> lastObservedAt;
   final Value<String?> farmerUid;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
@@ -5209,6 +5552,9 @@ class FieldPlantInstancesCompanion extends UpdateCompanion<FieldPlantInstance> {
     this.notes = const Value.absent(),
     this.plantedAt = const Value.absent(),
     this.healthChangedAt = const Value.absent(),
+    this.conditionFlagsJson = const Value.absent(),
+    this.phenologyStageKey = const Value.absent(),
+    this.lastObservedAt = const Value.absent(),
     this.farmerUid = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -5230,6 +5576,9 @@ class FieldPlantInstancesCompanion extends UpdateCompanion<FieldPlantInstance> {
     this.notes = const Value.absent(),
     required DateTime plantedAt,
     this.healthChangedAt = const Value.absent(),
+    this.conditionFlagsJson = const Value.absent(),
+    this.phenologyStageKey = const Value.absent(),
+    this.lastObservedAt = const Value.absent(),
     this.farmerUid = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
@@ -5258,6 +5607,9 @@ class FieldPlantInstancesCompanion extends UpdateCompanion<FieldPlantInstance> {
     Expression<String>? notes,
     Expression<DateTime>? plantedAt,
     Expression<DateTime>? healthChangedAt,
+    Expression<String>? conditionFlagsJson,
+    Expression<String>? phenologyStageKey,
+    Expression<DateTime>? lastObservedAt,
     Expression<String>? farmerUid,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
@@ -5279,6 +5631,10 @@ class FieldPlantInstancesCompanion extends UpdateCompanion<FieldPlantInstance> {
       if (notes != null) 'notes': notes,
       if (plantedAt != null) 'planted_at': plantedAt,
       if (healthChangedAt != null) 'health_changed_at': healthChangedAt,
+      if (conditionFlagsJson != null)
+        'condition_flags_json': conditionFlagsJson,
+      if (phenologyStageKey != null) 'phenology_stage_key': phenologyStageKey,
+      if (lastObservedAt != null) 'last_observed_at': lastObservedAt,
       if (farmerUid != null) 'farmer_uid': farmerUid,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -5302,6 +5658,9 @@ class FieldPlantInstancesCompanion extends UpdateCompanion<FieldPlantInstance> {
       Value<String?>? notes,
       Value<DateTime>? plantedAt,
       Value<DateTime?>? healthChangedAt,
+      Value<String?>? conditionFlagsJson,
+      Value<String?>? phenologyStageKey,
+      Value<DateTime?>? lastObservedAt,
       Value<String?>? farmerUid,
       Value<DateTime>? createdAt,
       Value<DateTime>? updatedAt,
@@ -5322,6 +5681,9 @@ class FieldPlantInstancesCompanion extends UpdateCompanion<FieldPlantInstance> {
       notes: notes ?? this.notes,
       plantedAt: plantedAt ?? this.plantedAt,
       healthChangedAt: healthChangedAt ?? this.healthChangedAt,
+      conditionFlagsJson: conditionFlagsJson ?? this.conditionFlagsJson,
+      phenologyStageKey: phenologyStageKey ?? this.phenologyStageKey,
+      lastObservedAt: lastObservedAt ?? this.lastObservedAt,
       farmerUid: farmerUid ?? this.farmerUid,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -5375,6 +5737,15 @@ class FieldPlantInstancesCompanion extends UpdateCompanion<FieldPlantInstance> {
     if (healthChangedAt.present) {
       map['health_changed_at'] = Variable<DateTime>(healthChangedAt.value);
     }
+    if (conditionFlagsJson.present) {
+      map['condition_flags_json'] = Variable<String>(conditionFlagsJson.value);
+    }
+    if (phenologyStageKey.present) {
+      map['phenology_stage_key'] = Variable<String>(phenologyStageKey.value);
+    }
+    if (lastObservedAt.present) {
+      map['last_observed_at'] = Variable<DateTime>(lastObservedAt.value);
+    }
     if (farmerUid.present) {
       map['farmer_uid'] = Variable<String>(farmerUid.value);
     }
@@ -5410,6 +5781,659 @@ class FieldPlantInstancesCompanion extends UpdateCompanion<FieldPlantInstance> {
           ..write('notes: $notes, ')
           ..write('plantedAt: $plantedAt, ')
           ..write('healthChangedAt: $healthChangedAt, ')
+          ..write('conditionFlagsJson: $conditionFlagsJson, ')
+          ..write('phenologyStageKey: $phenologyStageKey, ')
+          ..write('lastObservedAt: $lastObservedAt, ')
+          ..write('farmerUid: $farmerUid, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $PlantConditionEventsTable extends PlantConditionEvents
+    with TableInfo<$PlantConditionEventsTable, PlantConditionEvent> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PlantConditionEventsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _plantInstanceIdMeta =
+      const VerificationMeta('plantInstanceId');
+  @override
+  late final GeneratedColumn<String> plantInstanceId = GeneratedColumn<String>(
+      'plant_instance_id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _fieldIdMeta =
+      const VerificationMeta('fieldId');
+  @override
+  late final GeneratedColumn<String> fieldId = GeneratedColumn<String>(
+      'field_id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _cropIdMeta = const VerificationMeta('cropId');
+  @override
+  late final GeneratedColumn<String> cropId = GeneratedColumn<String>(
+      'crop_id', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _conditionMeta =
+      const VerificationMeta('condition');
+  @override
+  late final GeneratedColumn<String> condition = GeneratedColumn<String>(
+      'condition', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _sourceTypeMeta =
+      const VerificationMeta('sourceType');
+  @override
+  late final GeneratedColumn<String> sourceType = GeneratedColumn<String>(
+      'source_type', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant('manual'));
+  static const VerificationMeta _notesMeta = const VerificationMeta('notes');
+  @override
+  late final GeneratedColumn<String> notes = GeneratedColumn<String>(
+      'notes', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _photoPathMeta =
+      const VerificationMeta('photoPath');
+  @override
+  late final GeneratedColumn<String> photoPath = GeneratedColumn<String>(
+      'photo_path', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _observedAtMeta =
+      const VerificationMeta('observedAt');
+  @override
+  late final GeneratedColumn<DateTime> observedAt = GeneratedColumn<DateTime>(
+      'observed_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _farmerUidMeta =
+      const VerificationMeta('farmerUid');
+  @override
+  late final GeneratedColumn<String> farmerUid = GeneratedColumn<String>(
+      'farmer_uid', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _updatedAtMeta =
+      const VerificationMeta('updatedAt');
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+      'updated_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _deletedAtMeta =
+      const VerificationMeta('deletedAt');
+  @override
+  late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
+      'deleted_at', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        plantInstanceId,
+        fieldId,
+        cropId,
+        condition,
+        sourceType,
+        notes,
+        photoPath,
+        observedAt,
+        farmerUid,
+        createdAt,
+        updatedAt,
+        deletedAt
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'plant_condition_events';
+  @override
+  VerificationContext validateIntegrity(
+      Insertable<PlantConditionEvent> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('plant_instance_id')) {
+      context.handle(
+          _plantInstanceIdMeta,
+          plantInstanceId.isAcceptableOrUnknown(
+              data['plant_instance_id']!, _plantInstanceIdMeta));
+    } else if (isInserting) {
+      context.missing(_plantInstanceIdMeta);
+    }
+    if (data.containsKey('field_id')) {
+      context.handle(_fieldIdMeta,
+          fieldId.isAcceptableOrUnknown(data['field_id']!, _fieldIdMeta));
+    } else if (isInserting) {
+      context.missing(_fieldIdMeta);
+    }
+    if (data.containsKey('crop_id')) {
+      context.handle(_cropIdMeta,
+          cropId.isAcceptableOrUnknown(data['crop_id']!, _cropIdMeta));
+    }
+    if (data.containsKey('condition')) {
+      context.handle(_conditionMeta,
+          condition.isAcceptableOrUnknown(data['condition']!, _conditionMeta));
+    } else if (isInserting) {
+      context.missing(_conditionMeta);
+    }
+    if (data.containsKey('source_type')) {
+      context.handle(
+          _sourceTypeMeta,
+          sourceType.isAcceptableOrUnknown(
+              data['source_type']!, _sourceTypeMeta));
+    }
+    if (data.containsKey('notes')) {
+      context.handle(
+          _notesMeta, notes.isAcceptableOrUnknown(data['notes']!, _notesMeta));
+    }
+    if (data.containsKey('photo_path')) {
+      context.handle(_photoPathMeta,
+          photoPath.isAcceptableOrUnknown(data['photo_path']!, _photoPathMeta));
+    }
+    if (data.containsKey('observed_at')) {
+      context.handle(
+          _observedAtMeta,
+          observedAt.isAcceptableOrUnknown(
+              data['observed_at']!, _observedAtMeta));
+    } else if (isInserting) {
+      context.missing(_observedAtMeta);
+    }
+    if (data.containsKey('farmer_uid')) {
+      context.handle(_farmerUidMeta,
+          farmerUid.isAcceptableOrUnknown(data['farmer_uid']!, _farmerUidMeta));
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(_updatedAtMeta,
+          updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(_deletedAtMeta,
+          deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  PlantConditionEvent map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PlantConditionEvent(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      plantInstanceId: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}plant_instance_id'])!,
+      fieldId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}field_id'])!,
+      cropId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}crop_id']),
+      condition: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}condition'])!,
+      sourceType: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}source_type'])!,
+      notes: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}notes']),
+      photoPath: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}photo_path']),
+      observedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}observed_at'])!,
+      farmerUid: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}farmer_uid']),
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+      updatedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
+      deletedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}deleted_at']),
+    );
+  }
+
+  @override
+  $PlantConditionEventsTable createAlias(String alias) {
+    return $PlantConditionEventsTable(attachedDatabase, alias);
+  }
+}
+
+class PlantConditionEvent extends DataClass
+    implements Insertable<PlantConditionEvent> {
+  final String id;
+  final String plantInstanceId;
+  final String fieldId;
+  final String? cropId;
+
+  /// 'healthy' | 'disease_symptom' | 'pest_risk' | 'water_stress' |
+  /// 'nutrient_deficiency' | 'stunted' | 'flowering' | 'grain_filling' |
+  /// 'near_harvest' | 'dead' | 'removed_by_user'
+  final String condition;
+
+  /// 'manual' | 'auto' | 'ai'
+  final String sourceType;
+  final String? notes;
+  final String? photoPath;
+  final DateTime observedAt;
+  final String? farmerUid;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final DateTime? deletedAt;
+  const PlantConditionEvent(
+      {required this.id,
+      required this.plantInstanceId,
+      required this.fieldId,
+      this.cropId,
+      required this.condition,
+      required this.sourceType,
+      this.notes,
+      this.photoPath,
+      required this.observedAt,
+      this.farmerUid,
+      required this.createdAt,
+      required this.updatedAt,
+      this.deletedAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['plant_instance_id'] = Variable<String>(plantInstanceId);
+    map['field_id'] = Variable<String>(fieldId);
+    if (!nullToAbsent || cropId != null) {
+      map['crop_id'] = Variable<String>(cropId);
+    }
+    map['condition'] = Variable<String>(condition);
+    map['source_type'] = Variable<String>(sourceType);
+    if (!nullToAbsent || notes != null) {
+      map['notes'] = Variable<String>(notes);
+    }
+    if (!nullToAbsent || photoPath != null) {
+      map['photo_path'] = Variable<String>(photoPath);
+    }
+    map['observed_at'] = Variable<DateTime>(observedAt);
+    if (!nullToAbsent || farmerUid != null) {
+      map['farmer_uid'] = Variable<String>(farmerUid);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt);
+    }
+    return map;
+  }
+
+  PlantConditionEventsCompanion toCompanion(bool nullToAbsent) {
+    return PlantConditionEventsCompanion(
+      id: Value(id),
+      plantInstanceId: Value(plantInstanceId),
+      fieldId: Value(fieldId),
+      cropId:
+          cropId == null && nullToAbsent ? const Value.absent() : Value(cropId),
+      condition: Value(condition),
+      sourceType: Value(sourceType),
+      notes:
+          notes == null && nullToAbsent ? const Value.absent() : Value(notes),
+      photoPath: photoPath == null && nullToAbsent
+          ? const Value.absent()
+          : Value(photoPath),
+      observedAt: Value(observedAt),
+      farmerUid: farmerUid == null && nullToAbsent
+          ? const Value.absent()
+          : Value(farmerUid),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
+    );
+  }
+
+  factory PlantConditionEvent.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PlantConditionEvent(
+      id: serializer.fromJson<String>(json['id']),
+      plantInstanceId: serializer.fromJson<String>(json['plantInstanceId']),
+      fieldId: serializer.fromJson<String>(json['fieldId']),
+      cropId: serializer.fromJson<String?>(json['cropId']),
+      condition: serializer.fromJson<String>(json['condition']),
+      sourceType: serializer.fromJson<String>(json['sourceType']),
+      notes: serializer.fromJson<String?>(json['notes']),
+      photoPath: serializer.fromJson<String?>(json['photoPath']),
+      observedAt: serializer.fromJson<DateTime>(json['observedAt']),
+      farmerUid: serializer.fromJson<String?>(json['farmerUid']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'plantInstanceId': serializer.toJson<String>(plantInstanceId),
+      'fieldId': serializer.toJson<String>(fieldId),
+      'cropId': serializer.toJson<String?>(cropId),
+      'condition': serializer.toJson<String>(condition),
+      'sourceType': serializer.toJson<String>(sourceType),
+      'notes': serializer.toJson<String?>(notes),
+      'photoPath': serializer.toJson<String?>(photoPath),
+      'observedAt': serializer.toJson<DateTime>(observedAt),
+      'farmerUid': serializer.toJson<String?>(farmerUid),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
+    };
+  }
+
+  PlantConditionEvent copyWith(
+          {String? id,
+          String? plantInstanceId,
+          String? fieldId,
+          Value<String?> cropId = const Value.absent(),
+          String? condition,
+          String? sourceType,
+          Value<String?> notes = const Value.absent(),
+          Value<String?> photoPath = const Value.absent(),
+          DateTime? observedAt,
+          Value<String?> farmerUid = const Value.absent(),
+          DateTime? createdAt,
+          DateTime? updatedAt,
+          Value<DateTime?> deletedAt = const Value.absent()}) =>
+      PlantConditionEvent(
+        id: id ?? this.id,
+        plantInstanceId: plantInstanceId ?? this.plantInstanceId,
+        fieldId: fieldId ?? this.fieldId,
+        cropId: cropId.present ? cropId.value : this.cropId,
+        condition: condition ?? this.condition,
+        sourceType: sourceType ?? this.sourceType,
+        notes: notes.present ? notes.value : this.notes,
+        photoPath: photoPath.present ? photoPath.value : this.photoPath,
+        observedAt: observedAt ?? this.observedAt,
+        farmerUid: farmerUid.present ? farmerUid.value : this.farmerUid,
+        createdAt: createdAt ?? this.createdAt,
+        updatedAt: updatedAt ?? this.updatedAt,
+        deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+      );
+  PlantConditionEvent copyWithCompanion(PlantConditionEventsCompanion data) {
+    return PlantConditionEvent(
+      id: data.id.present ? data.id.value : this.id,
+      plantInstanceId: data.plantInstanceId.present
+          ? data.plantInstanceId.value
+          : this.plantInstanceId,
+      fieldId: data.fieldId.present ? data.fieldId.value : this.fieldId,
+      cropId: data.cropId.present ? data.cropId.value : this.cropId,
+      condition: data.condition.present ? data.condition.value : this.condition,
+      sourceType:
+          data.sourceType.present ? data.sourceType.value : this.sourceType,
+      notes: data.notes.present ? data.notes.value : this.notes,
+      photoPath: data.photoPath.present ? data.photoPath.value : this.photoPath,
+      observedAt:
+          data.observedAt.present ? data.observedAt.value : this.observedAt,
+      farmerUid: data.farmerUid.present ? data.farmerUid.value : this.farmerUid,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PlantConditionEvent(')
+          ..write('id: $id, ')
+          ..write('plantInstanceId: $plantInstanceId, ')
+          ..write('fieldId: $fieldId, ')
+          ..write('cropId: $cropId, ')
+          ..write('condition: $condition, ')
+          ..write('sourceType: $sourceType, ')
+          ..write('notes: $notes, ')
+          ..write('photoPath: $photoPath, ')
+          ..write('observedAt: $observedAt, ')
+          ..write('farmerUid: $farmerUid, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+      id,
+      plantInstanceId,
+      fieldId,
+      cropId,
+      condition,
+      sourceType,
+      notes,
+      photoPath,
+      observedAt,
+      farmerUid,
+      createdAt,
+      updatedAt,
+      deletedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PlantConditionEvent &&
+          other.id == this.id &&
+          other.plantInstanceId == this.plantInstanceId &&
+          other.fieldId == this.fieldId &&
+          other.cropId == this.cropId &&
+          other.condition == this.condition &&
+          other.sourceType == this.sourceType &&
+          other.notes == this.notes &&
+          other.photoPath == this.photoPath &&
+          other.observedAt == this.observedAt &&
+          other.farmerUid == this.farmerUid &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.deletedAt == this.deletedAt);
+}
+
+class PlantConditionEventsCompanion
+    extends UpdateCompanion<PlantConditionEvent> {
+  final Value<String> id;
+  final Value<String> plantInstanceId;
+  final Value<String> fieldId;
+  final Value<String?> cropId;
+  final Value<String> condition;
+  final Value<String> sourceType;
+  final Value<String?> notes;
+  final Value<String?> photoPath;
+  final Value<DateTime> observedAt;
+  final Value<String?> farmerUid;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<DateTime?> deletedAt;
+  final Value<int> rowid;
+  const PlantConditionEventsCompanion({
+    this.id = const Value.absent(),
+    this.plantInstanceId = const Value.absent(),
+    this.fieldId = const Value.absent(),
+    this.cropId = const Value.absent(),
+    this.condition = const Value.absent(),
+    this.sourceType = const Value.absent(),
+    this.notes = const Value.absent(),
+    this.photoPath = const Value.absent(),
+    this.observedAt = const Value.absent(),
+    this.farmerUid = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  PlantConditionEventsCompanion.insert({
+    required String id,
+    required String plantInstanceId,
+    required String fieldId,
+    this.cropId = const Value.absent(),
+    required String condition,
+    this.sourceType = const Value.absent(),
+    this.notes = const Value.absent(),
+    this.photoPath = const Value.absent(),
+    required DateTime observedAt,
+    this.farmerUid = const Value.absent(),
+    required DateTime createdAt,
+    required DateTime updatedAt,
+    this.deletedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  })  : id = Value(id),
+        plantInstanceId = Value(plantInstanceId),
+        fieldId = Value(fieldId),
+        condition = Value(condition),
+        observedAt = Value(observedAt),
+        createdAt = Value(createdAt),
+        updatedAt = Value(updatedAt);
+  static Insertable<PlantConditionEvent> custom({
+    Expression<String>? id,
+    Expression<String>? plantInstanceId,
+    Expression<String>? fieldId,
+    Expression<String>? cropId,
+    Expression<String>? condition,
+    Expression<String>? sourceType,
+    Expression<String>? notes,
+    Expression<String>? photoPath,
+    Expression<DateTime>? observedAt,
+    Expression<String>? farmerUid,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<DateTime>? deletedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (plantInstanceId != null) 'plant_instance_id': plantInstanceId,
+      if (fieldId != null) 'field_id': fieldId,
+      if (cropId != null) 'crop_id': cropId,
+      if (condition != null) 'condition': condition,
+      if (sourceType != null) 'source_type': sourceType,
+      if (notes != null) 'notes': notes,
+      if (photoPath != null) 'photo_path': photoPath,
+      if (observedAt != null) 'observed_at': observedAt,
+      if (farmerUid != null) 'farmer_uid': farmerUid,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  PlantConditionEventsCompanion copyWith(
+      {Value<String>? id,
+      Value<String>? plantInstanceId,
+      Value<String>? fieldId,
+      Value<String?>? cropId,
+      Value<String>? condition,
+      Value<String>? sourceType,
+      Value<String?>? notes,
+      Value<String?>? photoPath,
+      Value<DateTime>? observedAt,
+      Value<String?>? farmerUid,
+      Value<DateTime>? createdAt,
+      Value<DateTime>? updatedAt,
+      Value<DateTime?>? deletedAt,
+      Value<int>? rowid}) {
+    return PlantConditionEventsCompanion(
+      id: id ?? this.id,
+      plantInstanceId: plantInstanceId ?? this.plantInstanceId,
+      fieldId: fieldId ?? this.fieldId,
+      cropId: cropId ?? this.cropId,
+      condition: condition ?? this.condition,
+      sourceType: sourceType ?? this.sourceType,
+      notes: notes ?? this.notes,
+      photoPath: photoPath ?? this.photoPath,
+      observedAt: observedAt ?? this.observedAt,
+      farmerUid: farmerUid ?? this.farmerUid,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (plantInstanceId.present) {
+      map['plant_instance_id'] = Variable<String>(plantInstanceId.value);
+    }
+    if (fieldId.present) {
+      map['field_id'] = Variable<String>(fieldId.value);
+    }
+    if (cropId.present) {
+      map['crop_id'] = Variable<String>(cropId.value);
+    }
+    if (condition.present) {
+      map['condition'] = Variable<String>(condition.value);
+    }
+    if (sourceType.present) {
+      map['source_type'] = Variable<String>(sourceType.value);
+    }
+    if (notes.present) {
+      map['notes'] = Variable<String>(notes.value);
+    }
+    if (photoPath.present) {
+      map['photo_path'] = Variable<String>(photoPath.value);
+    }
+    if (observedAt.present) {
+      map['observed_at'] = Variable<DateTime>(observedAt.value);
+    }
+    if (farmerUid.present) {
+      map['farmer_uid'] = Variable<String>(farmerUid.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PlantConditionEventsCompanion(')
+          ..write('id: $id, ')
+          ..write('plantInstanceId: $plantInstanceId, ')
+          ..write('fieldId: $fieldId, ')
+          ..write('cropId: $cropId, ')
+          ..write('condition: $condition, ')
+          ..write('sourceType: $sourceType, ')
+          ..write('notes: $notes, ')
+          ..write('photoPath: $photoPath, ')
+          ..write('observedAt: $observedAt, ')
           ..write('farmerUid: $farmerUid, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -5436,6 +6460,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $CropGrowthStatesTable(this);
   late final $FieldPlantInstancesTable fieldPlantInstances =
       $FieldPlantInstancesTable(this);
+  late final $PlantConditionEventsTable plantConditionEvents =
+      $PlantConditionEventsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -5449,7 +6475,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         syncJobs,
         syncState,
         cropGrowthStates,
-        fieldPlantInstances
+        fieldPlantInstances,
+        plantConditionEvents
       ];
 }
 
@@ -6826,6 +7853,11 @@ typedef $$CalendarEventsTableCreateCompanionBuilder = CalendarEventsCompanion
   Value<double?> quantity,
   Value<String?> unit,
   Value<double?> recommendedQuantity,
+  Value<String?> targetScope,
+  Value<String?> plantInstanceId,
+  Value<String?> subtype,
+  Value<String?> photoPath,
+  Value<String?> noteText,
   required DateTime createdAt,
   required DateTime updatedAt,
   Value<DateTime?> deletedAt,
@@ -6844,6 +7876,11 @@ typedef $$CalendarEventsTableUpdateCompanionBuilder = CalendarEventsCompanion
   Value<double?> quantity,
   Value<String?> unit,
   Value<double?> recommendedQuantity,
+  Value<String?> targetScope,
+  Value<String?> plantInstanceId,
+  Value<String?> subtype,
+  Value<String?> photoPath,
+  Value<String?> noteText,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
   Value<DateTime?> deletedAt,
@@ -6921,6 +7958,22 @@ class $$CalendarEventsTableFilterComposer
   ColumnFilters<double> get recommendedQuantity => $composableBuilder(
       column: $table.recommendedQuantity,
       builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get targetScope => $composableBuilder(
+      column: $table.targetScope, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get plantInstanceId => $composableBuilder(
+      column: $table.plantInstanceId,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get subtype => $composableBuilder(
+      column: $table.subtype, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get photoPath => $composableBuilder(
+      column: $table.photoPath, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get noteText => $composableBuilder(
+      column: $table.noteText, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnFilters(column));
@@ -7010,6 +8063,22 @@ class $$CalendarEventsTableOrderingComposer
       column: $table.recommendedQuantity,
       builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get targetScope => $composableBuilder(
+      column: $table.targetScope, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get plantInstanceId => $composableBuilder(
+      column: $table.plantInstanceId,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get subtype => $composableBuilder(
+      column: $table.subtype, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get photoPath => $composableBuilder(
+      column: $table.photoPath, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get noteText => $composableBuilder(
+      column: $table.noteText, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnOrderings(column));
 
@@ -7096,6 +8165,21 @@ class $$CalendarEventsTableAnnotationComposer
   GeneratedColumn<double> get recommendedQuantity => $composableBuilder(
       column: $table.recommendedQuantity, builder: (column) => column);
 
+  GeneratedColumn<String> get targetScope => $composableBuilder(
+      column: $table.targetScope, builder: (column) => column);
+
+  GeneratedColumn<String> get plantInstanceId => $composableBuilder(
+      column: $table.plantInstanceId, builder: (column) => column);
+
+  GeneratedColumn<String> get subtype =>
+      $composableBuilder(column: $table.subtype, builder: (column) => column);
+
+  GeneratedColumn<String> get photoPath =>
+      $composableBuilder(column: $table.photoPath, builder: (column) => column);
+
+  GeneratedColumn<String> get noteText =>
+      $composableBuilder(column: $table.noteText, builder: (column) => column);
+
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
@@ -7181,6 +8265,11 @@ class $$CalendarEventsTableTableManager extends RootTableManager<
             Value<double?> quantity = const Value.absent(),
             Value<String?> unit = const Value.absent(),
             Value<double?> recommendedQuantity = const Value.absent(),
+            Value<String?> targetScope = const Value.absent(),
+            Value<String?> plantInstanceId = const Value.absent(),
+            Value<String?> subtype = const Value.absent(),
+            Value<String?> photoPath = const Value.absent(),
+            Value<String?> noteText = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
             Value<DateTime?> deletedAt = const Value.absent(),
@@ -7198,6 +8287,11 @@ class $$CalendarEventsTableTableManager extends RootTableManager<
             quantity: quantity,
             unit: unit,
             recommendedQuantity: recommendedQuantity,
+            targetScope: targetScope,
+            plantInstanceId: plantInstanceId,
+            subtype: subtype,
+            photoPath: photoPath,
+            noteText: noteText,
             createdAt: createdAt,
             updatedAt: updatedAt,
             deletedAt: deletedAt,
@@ -7215,6 +8309,11 @@ class $$CalendarEventsTableTableManager extends RootTableManager<
             Value<double?> quantity = const Value.absent(),
             Value<String?> unit = const Value.absent(),
             Value<double?> recommendedQuantity = const Value.absent(),
+            Value<String?> targetScope = const Value.absent(),
+            Value<String?> plantInstanceId = const Value.absent(),
+            Value<String?> subtype = const Value.absent(),
+            Value<String?> photoPath = const Value.absent(),
+            Value<String?> noteText = const Value.absent(),
             required DateTime createdAt,
             required DateTime updatedAt,
             Value<DateTime?> deletedAt = const Value.absent(),
@@ -7232,6 +8331,11 @@ class $$CalendarEventsTableTableManager extends RootTableManager<
             quantity: quantity,
             unit: unit,
             recommendedQuantity: recommendedQuantity,
+            targetScope: targetScope,
+            plantInstanceId: plantInstanceId,
+            subtype: subtype,
+            photoPath: photoPath,
+            noteText: noteText,
             createdAt: createdAt,
             updatedAt: updatedAt,
             deletedAt: deletedAt,
@@ -8772,6 +9876,9 @@ typedef $$FieldPlantInstancesTableCreateCompanionBuilder
   Value<String?> notes,
   required DateTime plantedAt,
   Value<DateTime?> healthChangedAt,
+  Value<String?> conditionFlagsJson,
+  Value<String?> phenologyStageKey,
+  Value<DateTime?> lastObservedAt,
   Value<String?> farmerUid,
   required DateTime createdAt,
   required DateTime updatedAt,
@@ -8794,6 +9901,9 @@ typedef $$FieldPlantInstancesTableUpdateCompanionBuilder
   Value<String?> notes,
   Value<DateTime> plantedAt,
   Value<DateTime?> healthChangedAt,
+  Value<String?> conditionFlagsJson,
+  Value<String?> phenologyStageKey,
+  Value<DateTime?> lastObservedAt,
   Value<String?> farmerUid,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
@@ -8882,6 +9992,18 @@ class $$FieldPlantInstancesTableFilterComposer
 
   ColumnFilters<DateTime> get healthChangedAt => $composableBuilder(
       column: $table.healthChangedAt,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get conditionFlagsJson => $composableBuilder(
+      column: $table.conditionFlagsJson,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get phenologyStageKey => $composableBuilder(
+      column: $table.phenologyStageKey,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get lastObservedAt => $composableBuilder(
+      column: $table.lastObservedAt,
       builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get farmerUid => $composableBuilder(
@@ -8986,6 +10108,18 @@ class $$FieldPlantInstancesTableOrderingComposer
       column: $table.healthChangedAt,
       builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get conditionFlagsJson => $composableBuilder(
+      column: $table.conditionFlagsJson,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get phenologyStageKey => $composableBuilder(
+      column: $table.phenologyStageKey,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get lastObservedAt => $composableBuilder(
+      column: $table.lastObservedAt,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<String> get farmerUid => $composableBuilder(
       column: $table.farmerUid, builder: (column) => ColumnOrderings(column));
 
@@ -9084,6 +10218,15 @@ class $$FieldPlantInstancesTableAnnotationComposer
   GeneratedColumn<DateTime> get healthChangedAt => $composableBuilder(
       column: $table.healthChangedAt, builder: (column) => column);
 
+  GeneratedColumn<String> get conditionFlagsJson => $composableBuilder(
+      column: $table.conditionFlagsJson, builder: (column) => column);
+
+  GeneratedColumn<String> get phenologyStageKey => $composableBuilder(
+      column: $table.phenologyStageKey, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get lastObservedAt => $composableBuilder(
+      column: $table.lastObservedAt, builder: (column) => column);
+
   GeneratedColumn<String> get farmerUid =>
       $composableBuilder(column: $table.farmerUid, builder: (column) => column);
 
@@ -9177,6 +10320,9 @@ class $$FieldPlantInstancesTableTableManager extends RootTableManager<
             Value<String?> notes = const Value.absent(),
             Value<DateTime> plantedAt = const Value.absent(),
             Value<DateTime?> healthChangedAt = const Value.absent(),
+            Value<String?> conditionFlagsJson = const Value.absent(),
+            Value<String?> phenologyStageKey = const Value.absent(),
+            Value<DateTime?> lastObservedAt = const Value.absent(),
             Value<String?> farmerUid = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
@@ -9198,6 +10344,9 @@ class $$FieldPlantInstancesTableTableManager extends RootTableManager<
             notes: notes,
             plantedAt: plantedAt,
             healthChangedAt: healthChangedAt,
+            conditionFlagsJson: conditionFlagsJson,
+            phenologyStageKey: phenologyStageKey,
+            lastObservedAt: lastObservedAt,
             farmerUid: farmerUid,
             createdAt: createdAt,
             updatedAt: updatedAt,
@@ -9219,6 +10368,9 @@ class $$FieldPlantInstancesTableTableManager extends RootTableManager<
             Value<String?> notes = const Value.absent(),
             required DateTime plantedAt,
             Value<DateTime?> healthChangedAt = const Value.absent(),
+            Value<String?> conditionFlagsJson = const Value.absent(),
+            Value<String?> phenologyStageKey = const Value.absent(),
+            Value<DateTime?> lastObservedAt = const Value.absent(),
             Value<String?> farmerUid = const Value.absent(),
             required DateTime createdAt,
             required DateTime updatedAt,
@@ -9240,6 +10392,9 @@ class $$FieldPlantInstancesTableTableManager extends RootTableManager<
             notes: notes,
             plantedAt: plantedAt,
             healthChangedAt: healthChangedAt,
+            conditionFlagsJson: conditionFlagsJson,
+            phenologyStageKey: phenologyStageKey,
+            lastObservedAt: lastObservedAt,
             farmerUid: farmerUid,
             createdAt: createdAt,
             updatedAt: updatedAt,
@@ -9314,6 +10469,307 @@ typedef $$FieldPlantInstancesTableProcessedTableManager = ProcessedTableManager<
     (FieldPlantInstance, $$FieldPlantInstancesTableReferences),
     FieldPlantInstance,
     PrefetchHooks Function({bool fieldId, bool cropId})>;
+typedef $$PlantConditionEventsTableCreateCompanionBuilder
+    = PlantConditionEventsCompanion Function({
+  required String id,
+  required String plantInstanceId,
+  required String fieldId,
+  Value<String?> cropId,
+  required String condition,
+  Value<String> sourceType,
+  Value<String?> notes,
+  Value<String?> photoPath,
+  required DateTime observedAt,
+  Value<String?> farmerUid,
+  required DateTime createdAt,
+  required DateTime updatedAt,
+  Value<DateTime?> deletedAt,
+  Value<int> rowid,
+});
+typedef $$PlantConditionEventsTableUpdateCompanionBuilder
+    = PlantConditionEventsCompanion Function({
+  Value<String> id,
+  Value<String> plantInstanceId,
+  Value<String> fieldId,
+  Value<String?> cropId,
+  Value<String> condition,
+  Value<String> sourceType,
+  Value<String?> notes,
+  Value<String?> photoPath,
+  Value<DateTime> observedAt,
+  Value<String?> farmerUid,
+  Value<DateTime> createdAt,
+  Value<DateTime> updatedAt,
+  Value<DateTime?> deletedAt,
+  Value<int> rowid,
+});
+
+class $$PlantConditionEventsTableFilterComposer
+    extends Composer<_$AppDatabase, $PlantConditionEventsTable> {
+  $$PlantConditionEventsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get plantInstanceId => $composableBuilder(
+      column: $table.plantInstanceId,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get fieldId => $composableBuilder(
+      column: $table.fieldId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get cropId => $composableBuilder(
+      column: $table.cropId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get condition => $composableBuilder(
+      column: $table.condition, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get sourceType => $composableBuilder(
+      column: $table.sourceType, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get notes => $composableBuilder(
+      column: $table.notes, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get photoPath => $composableBuilder(
+      column: $table.photoPath, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get observedAt => $composableBuilder(
+      column: $table.observedAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get farmerUid => $composableBuilder(
+      column: $table.farmerUid, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get deletedAt => $composableBuilder(
+      column: $table.deletedAt, builder: (column) => ColumnFilters(column));
+}
+
+class $$PlantConditionEventsTableOrderingComposer
+    extends Composer<_$AppDatabase, $PlantConditionEventsTable> {
+  $$PlantConditionEventsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get plantInstanceId => $composableBuilder(
+      column: $table.plantInstanceId,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get fieldId => $composableBuilder(
+      column: $table.fieldId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get cropId => $composableBuilder(
+      column: $table.cropId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get condition => $composableBuilder(
+      column: $table.condition, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get sourceType => $composableBuilder(
+      column: $table.sourceType, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get notes => $composableBuilder(
+      column: $table.notes, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get photoPath => $composableBuilder(
+      column: $table.photoPath, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get observedAt => $composableBuilder(
+      column: $table.observedAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get farmerUid => $composableBuilder(
+      column: $table.farmerUid, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get deletedAt => $composableBuilder(
+      column: $table.deletedAt, builder: (column) => ColumnOrderings(column));
+}
+
+class $$PlantConditionEventsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $PlantConditionEventsTable> {
+  $$PlantConditionEventsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get plantInstanceId => $composableBuilder(
+      column: $table.plantInstanceId, builder: (column) => column);
+
+  GeneratedColumn<String> get fieldId =>
+      $composableBuilder(column: $table.fieldId, builder: (column) => column);
+
+  GeneratedColumn<String> get cropId =>
+      $composableBuilder(column: $table.cropId, builder: (column) => column);
+
+  GeneratedColumn<String> get condition =>
+      $composableBuilder(column: $table.condition, builder: (column) => column);
+
+  GeneratedColumn<String> get sourceType => $composableBuilder(
+      column: $table.sourceType, builder: (column) => column);
+
+  GeneratedColumn<String> get notes =>
+      $composableBuilder(column: $table.notes, builder: (column) => column);
+
+  GeneratedColumn<String> get photoPath =>
+      $composableBuilder(column: $table.photoPath, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get observedAt => $composableBuilder(
+      column: $table.observedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get farmerUid =>
+      $composableBuilder(column: $table.farmerUid, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+}
+
+class $$PlantConditionEventsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $PlantConditionEventsTable,
+    PlantConditionEvent,
+    $$PlantConditionEventsTableFilterComposer,
+    $$PlantConditionEventsTableOrderingComposer,
+    $$PlantConditionEventsTableAnnotationComposer,
+    $$PlantConditionEventsTableCreateCompanionBuilder,
+    $$PlantConditionEventsTableUpdateCompanionBuilder,
+    (
+      PlantConditionEvent,
+      BaseReferences<_$AppDatabase, $PlantConditionEventsTable,
+          PlantConditionEvent>
+    ),
+    PlantConditionEvent,
+    PrefetchHooks Function()> {
+  $$PlantConditionEventsTableTableManager(
+      _$AppDatabase db, $PlantConditionEventsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PlantConditionEventsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$PlantConditionEventsTableOrderingComposer(
+                  $db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$PlantConditionEventsTableAnnotationComposer(
+                  $db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<String> plantInstanceId = const Value.absent(),
+            Value<String> fieldId = const Value.absent(),
+            Value<String?> cropId = const Value.absent(),
+            Value<String> condition = const Value.absent(),
+            Value<String> sourceType = const Value.absent(),
+            Value<String?> notes = const Value.absent(),
+            Value<String?> photoPath = const Value.absent(),
+            Value<DateTime> observedAt = const Value.absent(),
+            Value<String?> farmerUid = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<DateTime> updatedAt = const Value.absent(),
+            Value<DateTime?> deletedAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              PlantConditionEventsCompanion(
+            id: id,
+            plantInstanceId: plantInstanceId,
+            fieldId: fieldId,
+            cropId: cropId,
+            condition: condition,
+            sourceType: sourceType,
+            notes: notes,
+            photoPath: photoPath,
+            observedAt: observedAt,
+            farmerUid: farmerUid,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            deletedAt: deletedAt,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String id,
+            required String plantInstanceId,
+            required String fieldId,
+            Value<String?> cropId = const Value.absent(),
+            required String condition,
+            Value<String> sourceType = const Value.absent(),
+            Value<String?> notes = const Value.absent(),
+            Value<String?> photoPath = const Value.absent(),
+            required DateTime observedAt,
+            Value<String?> farmerUid = const Value.absent(),
+            required DateTime createdAt,
+            required DateTime updatedAt,
+            Value<DateTime?> deletedAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              PlantConditionEventsCompanion.insert(
+            id: id,
+            plantInstanceId: plantInstanceId,
+            fieldId: fieldId,
+            cropId: cropId,
+            condition: condition,
+            sourceType: sourceType,
+            notes: notes,
+            photoPath: photoPath,
+            observedAt: observedAt,
+            farmerUid: farmerUid,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            deletedAt: deletedAt,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$PlantConditionEventsTableProcessedTableManager
+    = ProcessedTableManager<
+        _$AppDatabase,
+        $PlantConditionEventsTable,
+        PlantConditionEvent,
+        $$PlantConditionEventsTableFilterComposer,
+        $$PlantConditionEventsTableOrderingComposer,
+        $$PlantConditionEventsTableAnnotationComposer,
+        $$PlantConditionEventsTableCreateCompanionBuilder,
+        $$PlantConditionEventsTableUpdateCompanionBuilder,
+        (
+          PlantConditionEvent,
+          BaseReferences<_$AppDatabase, $PlantConditionEventsTable,
+              PlantConditionEvent>
+        ),
+        PlantConditionEvent,
+        PrefetchHooks Function()>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -9336,4 +10792,6 @@ class $AppDatabaseManager {
       $$CropGrowthStatesTableTableManager(_db, _db.cropGrowthStates);
   $$FieldPlantInstancesTableTableManager get fieldPlantInstances =>
       $$FieldPlantInstancesTableTableManager(_db, _db.fieldPlantInstances);
+  $$PlantConditionEventsTableTableManager get plantConditionEvents =>
+      $$PlantConditionEventsTableTableManager(_db, _db.plantConditionEvents);
 }

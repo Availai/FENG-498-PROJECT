@@ -64,9 +64,13 @@ double _facingDegrees(String? directionKey) {
   };
 }
 
-double _facingYawRadians(String? directionKey) {
+double _facingYawForCameraRadians(
+  String? directionKey,
+  double cameraRotationDegrees,
+) {
   final degrees = _facingDegrees(directionKey);
-  final delta = ((degrees - 180.0 + 540.0) % 360.0) - 180.0;
+  final screenDegrees = (degrees + cameraRotationDegrees) % 360.0;
+  final delta = ((screenDegrees - 180.0 + 540.0) % 360.0) - 180.0;
   return delta * math.pi / 180.0;
 }
 
@@ -171,6 +175,7 @@ Widget buildCropMarkerWidget({
     builder: (context) {
       final camera = MapCamera.maybeOf(context);
       final currentZoom = camera?.zoom ?? 18.0;
+      final currentRotation = camera?.rotation ?? 0.0;
 
       // Harita zoom seviyesine göre büyüme çarpanı
       // zoom 18 referans alınarak (2^(zoom-18)), crop'lar harita büyüklüğüne kitlenir.
@@ -228,7 +233,8 @@ Widget buildCropMarkerWidget({
       }
 
       final sprite = buildSpriteImage();
-      final facingYaw = _facingYawRadians(facingDirection);
+      final facingYaw =
+          _facingYawForCameraRadians(facingDirection, currentRotation);
 
       Widget orientLayer(Widget child) {
         return TweenAnimationBuilder<double>(
@@ -336,8 +342,26 @@ Widget buildCropMarkerWidget({
       };
       final harvestMarkerScale =
           phase == GrowthPhase.harvest ? 1.0 + (harvestPulse * 0.03) : 1.0;
+      final plantedDrop = (spriteH * 0.035).clamp(1.0, 4.0).toDouble();
+      final rootContactW = (spriteW * 0.10).clamp(2.0, 6.0).toDouble();
+      final rootContactH = (spriteH * 0.09).clamp(5.0, 12.0).toDouble();
+      final rootContact = Container(
+        width: rootContactW,
+        height: rootContactH,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(rootContactW),
+          gradient: const LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xFF5F7F32),
+              Color(0xFF6B5A2B),
+            ],
+          ),
+        ),
+      );
 
-      // Marker sadece bitki PNG'sini çizer; zemin gölgesi/toprak lekesi eklenmez.
+      // Kucuk kok ucu bitkinin tabanini her zoom ve bakis acisinda zemine kilitler.
       final marker = Semantics(
         label: cropName.trim().isEmpty ? null : '$cropName$statusSemantics',
         child: SizedBox.expand(
@@ -346,13 +370,23 @@ Widget buildCropMarkerWidget({
             child: SizedBox(
               width: spriteW,
               height: spriteH,
-              child: Align(
+              child: Stack(
+                clipBehavior: Clip.none,
                 alignment: Alignment.bottomCenter,
-                child: Transform.scale(
-                  scale: harvestMarkerScale,
-                  alignment: Alignment.bottomCenter,
-                  child: orientedSprite,
-                ),
+                children: [
+                  Positioned(bottom: 0, child: rootContact),
+                  Positioned(
+                    bottom: 0,
+                    child: Transform.translate(
+                      offset: Offset(0, plantedDrop),
+                      child: Transform.scale(
+                        scale: harvestMarkerScale,
+                        alignment: Alignment.bottomCenter,
+                        child: orientedSprite,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),

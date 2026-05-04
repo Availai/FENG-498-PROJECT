@@ -76,6 +76,26 @@ class CalendarEvents extends Table {
   /// Direktif motorunun aynı anda önerdiği miktar — eksik/fazla oranını
   /// hesaplamak için. Null ise öneri-dışı manuel kayıt. (v4)
   RealColumn get recommendedQuantity => real().nullable()();
+
+  /// Aktivite kapsamı: 'field' | 'zone' | 'plant'. null → field varsayılır. (v8)
+  TextColumn get targetScope => text().nullable()();
+
+  /// Tekil bitkiye iliştirilen aktivite — FieldPlantInstances.id ile eşleşir.
+  /// FK constraint yok (Drift forward-reference riskinden kaçınmak için);
+  /// referans bütünlüğü uygulama katmanında korunur. (v8)
+  TextColumn get plantInstanceId => text().nullable()();
+
+  /// Aktivite alt-tipi: 'disease_observation' | 'pest_observation' |
+  /// 'hoeing' | 'thinning' | 'note'. eventType ile birlikte kullanılır;
+  /// alt-tip null ise eventType tek başına yeterlidir. (v8)
+  TextColumn get subtype => text().nullable()();
+
+  /// Aktivite fotoğrafı yerel yolu (app docs altında, WebP). (v8)
+  TextColumn get photoPath => text().nullable()();
+
+  /// Çiftçi serbest metin notu — subtype='note' kayıtlarında zorunlu,
+  /// diğer aktivitelerde opsiyonel açıklama. (v8)
+  TextColumn get noteText => text().nullable()();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
   DateTimeColumn get deletedAt => dateTime().nullable()();
@@ -201,6 +221,47 @@ class FieldPlantInstances extends Table {
   TextColumn get notes => text().nullable()();
   DateTimeColumn get plantedAt => dateTime()();
   DateTimeColumn get healthChangedAt => dateTime().nullable()();
+
+  /// Çoklu nüans bayrağı JSON — ['water_stress','nutrient_deficiency','flowering'].
+  /// healthStatus üç-değerli kaba durumu tutarken bu liste niteliksel
+  /// detayları taşır; tavsiye motoru her ikisini de okur. (v8)
+  TextColumn get conditionFlagsJson => text().nullable()();
+
+  /// Tekil bitki için fenoloji evresi override'ı. null ise zone'un
+  /// CropGrowthStates.currentStageKey değerinden miras alınır. (v8)
+  TextColumn get phenologyStageKey => text().nullable()();
+
+  /// Son kullanıcı/AI gözlem tarihi — durum geçmişi sıralaması için. (v8)
+  DateTimeColumn get lastObservedAt => dateTime().nullable()();
+  TextColumn get farmerUid => text().nullable()();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+  DateTimeColumn get deletedAt => dateTime().nullable()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+/// Tekil bitki bazında durum gözlem geçmişi — audit log.
+/// FieldPlantInstances 1:1 "şu anki durum" satırı tutarken bu tablo
+/// "hangi tarihte hangi durum kaydedildi" sorusunu cevaplar. UI'daki durum
+/// geçmişi paneli ve tavsiye motorunun "son N gün" pencereleri buradan okur.
+class PlantConditionEvents extends Table {
+  TextColumn get id => text()();
+  TextColumn get plantInstanceId => text()();
+  TextColumn get fieldId => text()();
+  TextColumn get cropId => text().nullable()();
+
+  /// 'healthy' | 'disease_symptom' | 'pest_risk' | 'water_stress' |
+  /// 'nutrient_deficiency' | 'stunted' | 'flowering' | 'grain_filling' |
+  /// 'near_harvest' | 'dead' | 'removed_by_user'
+  TextColumn get condition => text()();
+
+  /// 'manual' | 'auto' | 'ai'
+  TextColumn get sourceType => text().withDefault(const Constant('manual'))();
+  TextColumn get notes => text().nullable()();
+  TextColumn get photoPath => text().nullable()();
+  DateTimeColumn get observedAt => dateTime()();
   TextColumn get farmerUid => text().nullable()();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
@@ -242,13 +303,14 @@ class SyncState extends Table {
     SyncState,
     CropGrowthStates,
     FieldPlantInstances,
+    PlantConditionEvents,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -289,6 +351,28 @@ class AppDatabase extends _$AppDatabase {
               // v7: Bitki yön bilgisi — güneş maruziyeti ve mikro-iklim için.
               await customStatement(
                   'ALTER TABLE field_crops ADD COLUMN facing_direction TEXT;');
+            }
+            if (from < 8) {
+              // v8: aktivite kapsamı + tekil-bitki scope + alt-tip + foto + not.
+              await m.addColumn(
+                  calendarEvents, calendarEvents.targetScope);
+              await m.addColumn(
+                  calendarEvents, calendarEvents.plantInstanceId);
+              await m.addColumn(calendarEvents, calendarEvents.subtype);
+              await m.addColumn(calendarEvents, calendarEvents.photoPath);
+              await m.addColumn(calendarEvents, calendarEvents.noteText);
+              // v8: tekil bitki nüans bayrakları + fenoloji override + son
+              // gözlem zamanı.
+              await m.addColumn(fieldPlantInstances,
+                  fieldPlantInstances.conditionFlagsJson);
+              await m.addColumn(fieldPlantInstances,
+                  fieldPlantInstances.phenologyStageKey);
+              await m.addColumn(
+                  fieldPlantInstances, fieldPlantInstances.lastObservedAt);
+            }
+            if (from < 9) {
+              // v9: tekil bitki durum gözlem geçmişi tablosu.
+              await m.createTable(plantConditionEvents);
             }
           } catch (e, st) {
             debugPrint('Drift migration $from→$to hata: $e\n$st');
