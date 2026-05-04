@@ -1,3 +1,4 @@
+import 'sunflower_source_refs.dart';
 import 'supported_crops.dart';
 
 enum IpmDecisionStatus {
@@ -136,8 +137,15 @@ class IpmScoutingWindow {
 class SunflowerIpmRules {
   SunflowerIpmRules._();
 
-  static const sourceRef =
-      'TAGEM Ayçiçeği Entegre Mücadele Teknik Talimatı, 2022';
+  static const sourceRefs = [
+    SunflowerSources.tagemIpm2022,
+    SunflowerSources.bkuDatabase,
+  ];
+  static const meadowMothSourceRefs = [
+    SunflowerSources.tagemIpm2022,
+    SunflowerSources.meadowMothInstruction,
+    SunflowerSources.bkuDatabase,
+  ];
   static const cropKey = 'aycicegi';
 
   static const rules = <CropIpmRule>[
@@ -155,7 +163,7 @@ class SunflowerIpmRules {
           'Sonbahar sürümü ve ilkbahar başından itibaren yabancı ot temizliği önceliklidir.',
       chemicalGate:
           'Eşik aşılmadan kimyasal önerilmez; eşik aşılırsa etiket ve il/ilçe teknik önerisi esas alınır.',
-      sourceRefs: [sourceRef],
+      sourceRefs: sourceRefs,
     ),
     CropIpmRule(
       cropKey: cropKey,
@@ -172,7 +180,7 @@ class SunflowerIpmRules {
           'Baharda iyi toprak işleme ile kışlayan pupalar azaltılır.',
       chemicalGate:
           'Yalnız eşik doğrulanırsa kontrollü kimyasal kapısı açılır.',
-      sourceRefs: [sourceRef],
+      sourceRefs: sourceRefs,
     ),
     CropIpmRule(
       cropKey: cropKey,
@@ -189,7 +197,7 @@ class SunflowerIpmRules {
           'Mücadele gerekirse en geç üçüncü dönem larvalara karşı planlanır; erken gözlem esastır.',
       chemicalGate:
           'Eşik altında kimyasal yok; eşik aşılırsa etiket ve teknik öneri ile ilerlenir.',
-      sourceRefs: [sourceRef],
+      sourceRefs: meadowMothSourceRefs,
     ),
     CropIpmRule(
       cropKey: cropKey,
@@ -206,7 +214,7 @@ class SunflowerIpmRules {
           'Ekim öncesi derin sürüm ve Asteraceae yabancı ot temizliği önceliklidir.',
       chemicalGate:
           'Sadece tuzak artışı kimyasal için yeterli değildir; bitki kontrolünde eşik doğrulanmalıdır.',
-      sourceRefs: [sourceRef],
+      sourceRefs: sourceRefs,
     ),
     CropIpmRule(
       cropKey: cropKey,
@@ -223,7 +231,7 @@ class SunflowerIpmRules {
           'Geçmiş bulaşık tarlada münavebe, yabancı ot temizliği ve şubat-mart sürümü uygulanır.',
       chemicalGate:
           'Eşik aşılmadan kimyasal önerilmez; geçmiş yoğun bulaşıklık resmi teknik destekle değerlendirilir.',
-      sourceRefs: [sourceRef],
+      sourceRefs: sourceRefs,
     ),
     CropIpmRule(
       cropKey: cropKey,
@@ -241,7 +249,7 @@ class SunflowerIpmRules {
           'Sertifikalı ilaçlı tohum, tolerant çeşit, yabancı ot savaşı, hastalıklı bitki ve artıkların imhası, ağır bulaşık alanda uzun münavebe.',
       chemicalGate:
           'Yeşil aksam ilaç kapısı açılmaz; %30 üstünde resmi teknik destek ve tarla sürümü uyarısı verilir.',
-      sourceRefs: [sourceRef],
+      sourceRefs: sourceRefs,
     ),
   ];
 

@@ -4,6 +4,17 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('Ayçiçeği IPM kararları', () {
+    test('tüm ayçiçeği IPM kuralları kaynak referansı taşır', () {
+      for (final rule in SunflowerIpmRules.rules) {
+        expect(rule.sourceRefs, isNotEmpty, reason: rule.pestKey);
+        expect(
+          rule.sourceRefs.any((source) => source.contains('TAGEM')),
+          isTrue,
+          reason: rule.pestKey,
+        );
+      }
+    });
+
     test('bozkurt eşik altı ve üstü kararlarını ayırır', () {
       final below = IpmDecisionService.evaluate(
         const IpmObservationInput(

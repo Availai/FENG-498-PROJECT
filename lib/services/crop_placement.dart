@@ -1,72 +1,75 @@
 import 'dart:math' as math;
 import 'package:latlong2/latlong.dart';
-import 'package:maps_toolkit/maps_toolkit.dart' as toolkit;
 import '../data/crop_spacing.dart';
+
+const int defaultVisualPlantLimit = 160;
+const int hardVisualPlantLimit = 320;
+const double defaultMinVisualSpacingM = 1.25;
 
 /// Poligon içinde, tarlanın ilk kenarına paralel satırlar halinde,
 /// bitki için girilen gerçek sıra × bitki aralığına (cm) uyan coğrafi
-/// noktalar üretir.
+/// temsili noktalar üretir.
 ///
 /// - [polygon]: ekim bölgesi sınırı (en az 3 nokta)
 /// - [cropName]: bitki adı — [spacingFor] tablosundan varsayılan aralık için
 /// - [rowSpacingCm]: sıra arası cm (kullanıcının girdiği değer önceliklidir)
 /// - [plantSpacingCm]: bitki arası cm (kullanıcının girdiği değer önceliklidir)
-/// - [maxCount]: render başına üst sınır; gerçek yoğunluk fazlaysa aralıklar
-///   orantılı büyütülür (grid korunur, seyrelir).
-/// - [minVisualSpacingM]: marker çakışmasını engellemek için alt sınır (metre).
-///   Gerçekçi görünüm için düşük tutulmalı; varsayılan 0.5m.
+/// - [exactCount]: kullanıcının hedeflediği gerçek bitki adedi. Harita bu adedi
+///   bire bir çizmez; alana yayılmış temsili marker yoğunluğu hesaplar.
+/// - [maxCount]: render tavanı. Gerçek bitki hesabından bağımsızdır.
+/// - [minVisualSpacingM]: marker çakışmasını önleyen görsel alt sınır.
 List<LatLng> plantPlacementInPolygon({
   required List<LatLng> polygon,
   required String cropName,
   double? rowSpacingCm,
   double? plantSpacingCm,
-  int maxCount = 45,
-  double minVisualSpacingM = 0.5,
+  int? exactCount,
+  int maxCount = defaultVisualPlantLimit,
+  double minVisualSpacingM = defaultMinVisualSpacingM,
 }) {
   if (polygon.length < 3 || maxCount <= 0) return const [];
+  final safeMax = maxCount.clamp(1, hardVisualPlantLimit).toInt();
 
   final defaultSpacing = spacingFor(cropName);
   // Kullanıcı değeri her zaman önce gelir; yoksa tablo varsayılanı kullan.
-  final spacing = CropSpacing(
-    (rowSpacingCm != null && rowSpacingCm > 0)
-        ? rowSpacingCm
-        : defaultSpacing.rowCm,
-    (plantSpacingCm != null && plantSpacingCm > 0)
-        ? plantSpacingCm
-        : defaultSpacing.plantCm,
-  );
+  final rowCm = (rowSpacingCm != null && rowSpacingCm > 0)
+      ? rowSpacingCm
+      : defaultSpacing.rowCm;
+  final plantCm = (plantSpacingCm != null && plantSpacingCm > 0)
+      ? plantSpacingCm
+      : defaultSpacing.plantCm;
 
-  // ── 1. Poligon alanı ve naif yoğunluktan ölçek çarpanı
-  final toolkitPts =
-      polygon.map((p) => toolkit.LatLng(p.latitude, p.longitude)).toList();
-  final areaSqm = toolkit.SphericalUtil.computeArea(toolkitPts).toDouble();
-  final cellArea = spacing.rowM * spacing.plantM;
-  final rawDensity = cellArea > 0 ? (areaSqm / cellArea).floor() : 0;
-  // maxCount'u aşan yoğunluğu orantılı seyrelterek agronomik oran koru.
-  final scale = rawDensity > maxCount ? math.sqrt(rawDensity / maxCount) : 1.0;
+  final rowM = rowCm / 100.0;
+  final plantM = plantCm / 100.0;
+  if (rowM <= 0 || plantM <= 0) return const [];
 
-  // Gerçek agronomik aralıklar — kullanıcı cm girişinden doğrudan hesaplanır.
-  final agroRowM = spacing.rowM * scale;
-  final agroPlantM = spacing.plantM * scale;
+  final areaSqm = polygonAreaSqm(polygon);
+  final rawCapacity =
+      areaSqm > 0 ? math.max(1, (areaSqm / (rowM * plantM)).floor()) : safeMax;
+  final requestedCount =
+      exactCount != null && exactCount > 0 ? exactCount : rawCapacity;
+  final visibleTarget = math.min(requestedCount, safeMax);
+  if (visibleTarget <= 0) return const [];
 
-  // Görsel minimum: sadece marker çakışmasını önler, agronomik oranı bozmaz.
-  final visualBoost = math.max(
-    1.0,
-    math.max(
-      minVisualSpacingM / agroRowM,
-      minVisualSpacingM / agroPlantM,
-    ),
-  );
-  final effRowM = agroRowM * visualBoost;
-  final effPlantM = agroPlantM * visualBoost;
+  // Gerçek yoğunluk yüksekse marker aralığını orantılı büyütürüz. Böylece
+  // ilk satırda kesmek yerine tüm poligona yayılmış temsili bir görünüm kalır.
+  final countScale =
+      math.sqrt(rawCapacity / visibleTarget).clamp(1.0, double.infinity);
+  final visualScale = minVisualSpacingM <= 0
+      ? 1.0
+      : math.max(minVisualSpacingM / rowM, minVisualSpacingM / plantM);
+  final spacingScale =
+      math.max(1.0, math.max(countScale.toDouble(), visualScale));
+  final effRowM = rowM * spacingScale;
+  final effPlantM = plantM * spacingScale;
 
-  // ── 2. Sıra yönü = ilk kenarın yönü
+  // ── 1. Sıra yönü = ilk kenarın yönü
   final origin = polygon[0];
   final dLat = polygon[1].latitude - polygon[0].latitude;
   final dLng = polygon[1].longitude - polygon[0].longitude;
   final rowAngle = math.atan2(dLat, dLng); // east=0 radian
 
-  // ── 3. Merkez enlemde 1 m kaç derece — sabit dönüşüm (küçük tarlalar için yeterli)
+  // ── 2. Merkez enlemde 1 m kaç derece
   double cLat = 0;
   for (final p in polygon) {
     cLat += p.latitude;
@@ -74,9 +77,10 @@ List<LatLng> plantPlacementInPolygon({
   cLat /= polygon.length;
 
   const mPerDegLat = 111320.0;
-  final mPerDegLng = 111320.0 * math.cos(cLat * math.pi / 180.0);
+  final rawMPerDegLng = 111320.0 * math.cos(cLat * math.pi / 180.0);
+  final mPerDegLng = rawMPerDegLng.abs() < 1e-6 ? 1e-6 : rawMPerDegLng;
 
-  // ── 4. Rotasyon helper'ları (lat/lng düzleminde, kısa mesafeler için kabul edilebilir)
+  // ── 3. Rotasyon helper'ları
   LatLng rotate(LatLng p, double a) {
     final y = (p.latitude - origin.latitude);
     final x = (p.longitude - origin.longitude);
@@ -98,13 +102,11 @@ List<LatLng> plantPlacementInPolygon({
     if (p.longitude > maxLng) maxLng = p.longitude;
   }
 
-  // ── 5. Döndürülmüş düzlemde satır = X ekseni (longitude), sıra = Y ekseni (latitude)
-  //     row spacing → latitude aralığı;  plant spacing → longitude aralığı
+  // ── 4. Adım büyüklükleri — agronomik oran korunur, görsel yoğunluk seyreltilir.
   final latStep = effRowM / mPerDegLat;
   final lngStep = effPlantM / mPerDegLng;
   if (latStep <= 0 || lngStep <= 0) return const [];
 
-  // Satırları ve bitkileri kenarlardan half-step içeriden başlat
   final rows = ((maxLat - minLat) / latStep).floor();
   final cols = ((maxLng - minLng) / lngStep).floor();
 
@@ -116,14 +118,45 @@ List<LatLng> plantPlacementInPolygon({
       final lng = minLng + lngStep * (c + 0.5);
       if (lng > maxLng) break;
       if (_pointInPolygon(lat, lng, rotatedPoly)) {
-        // Orijinal yöne geri döndür
         final p = rotate(LatLng(lat, lng), rowAngle);
         result.add(p);
-        if (result.length >= maxCount) return result;
+        if (result.length >= visibleTarget) return result;
       }
     }
   }
   return result;
+}
+
+/// Verilen alan (m²), sıra arası (cm) ve bitki arası (cm) değerlerinden
+/// kaç bitki sığacağını hesaplar. Görsel render'dan bağımsız saf hesap.
+int estimatePlantCount({
+  required double areaSqm,
+  required double rowSpacingCm,
+  required double plantSpacingCm,
+}) {
+  final rowM = rowSpacingCm / 100.0;
+  final plantM = plantSpacingCm / 100.0;
+  if (rowM <= 0 || plantM <= 0 || areaSqm <= 0) return 0;
+  return (areaSqm / (rowM * plantM)).floor();
+}
+
+double polygonAreaSqm(List<LatLng> polygon) {
+  if (polygon.length < 3) return 0;
+  final avgLat =
+      polygon.map((p) => p.latitude).reduce((a, b) => a + b) / polygon.length;
+  const metersPerDegLat = 111320.0;
+  final metersPerDegLng = 111320.0 * math.cos(avgLat * math.pi / 180.0);
+  double sum = 0;
+  for (var i = 0; i < polygon.length; i++) {
+    final a = polygon[i];
+    final b = polygon[(i + 1) % polygon.length];
+    final ax = a.longitude * metersPerDegLng;
+    final ay = a.latitude * metersPerDegLat;
+    final bx = b.longitude * metersPerDegLng;
+    final by = b.latitude * metersPerDegLat;
+    sum += ax * by - bx * ay;
+  }
+  return sum.abs() / 2.0;
 }
 
 bool _pointInPolygon(double lat, double lng, List<LatLng> polygon) {

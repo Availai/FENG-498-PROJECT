@@ -1,3 +1,5 @@
+import '../data/activity_types.dart';
+import '../data/supported_crops.dart';
 import 'local_data_repository.dart';
 import 'growth_engine.dart';
 
@@ -31,6 +33,10 @@ class ActivityLogger {
     double? recommendedQuantity,
     Map<String, dynamic>? metadata,
     DateTime? at,
+    ActivityScope? scope,
+    String? plantInstanceId,
+    String? subtype,
+    String? photoPath,
   }) async {
     await _repo.logActivity(
       fieldId: fieldId,
@@ -42,15 +48,33 @@ class ActivityLogger {
       recommendedQuantity: recommendedQuantity,
       metadata: metadata,
       at: at,
+      scope: scope,
+      plantInstanceId: plantInstanceId,
+      subtype: subtype,
+      photoPath: photoPath,
     );
 
     if (cropId != null && cropId.isNotEmpty) {
-      try {
-        await _engine.recompute(cropId: cropId);
-      } catch (_) {
-        // Recompute başarısız olursa aktivite kaydı yine de korunur;
-        // bir sonraki açılışta tekrar denenecek.
-      }
+      await _safeRecompute(cropId);
+      return;
+    }
+
+    final crops = await _repo.loadFieldCrops(fieldId);
+    for (final crop in crops) {
+      final id = crop['id']?.toString();
+      final name = crop['name']?.toString();
+      if (id == null || id.isEmpty) continue;
+      if (SupportedCrops.canonicalName(name) != 'Ayçiçeği') continue;
+      await _safeRecompute(id);
+    }
+  }
+
+  Future<void> _safeRecompute(String cropId) async {
+    try {
+      await _engine.recompute(cropId: cropId);
+    } catch (_) {
+      // Recompute başarısız olursa aktivite kaydı yine de korunur;
+      // bir sonraki açılışta tekrar denenecek.
     }
   }
 }

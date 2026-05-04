@@ -342,52 +342,17 @@ Widget buildCropMarkerWidget({
       };
       final harvestMarkerScale =
           phase == GrowthPhase.harvest ? 1.0 + (harvestPulse * 0.03) : 1.0;
-      final plantedDrop = (spriteH * 0.035).clamp(1.0, 4.0).toDouble();
-      final rootContactW = (spriteW * 0.10).clamp(2.0, 6.0).toDouble();
-      final rootContactH = (spriteH * 0.09).clamp(5.0, 12.0).toDouble();
-      final rootContact = Container(
-        width: rootContactW,
-        height: rootContactH,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(rootContactW),
-          gradient: const LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFF5F7F32),
-              Color(0xFF6B5A2B),
-            ],
-          ),
-        ),
-      );
 
-      // Kucuk kok ucu bitkinin tabanini her zoom ve bakis acisinda zemine kilitler.
+      // PNG sprite — taban (bottom-center) tam zemine oturur. Gölge/kök yok.
       final marker = Semantics(
         label: cropName.trim().isEmpty ? null : '$cropName$statusSemantics',
         child: SizedBox.expand(
           child: Align(
             alignment: Alignment.bottomCenter,
-            child: SizedBox(
-              width: spriteW,
-              height: spriteH,
-              child: Stack(
-                clipBehavior: Clip.none,
-                alignment: Alignment.bottomCenter,
-                children: [
-                  Positioned(bottom: 0, child: rootContact),
-                  Positioned(
-                    bottom: 0,
-                    child: Transform.translate(
-                      offset: Offset(0, plantedDrop),
-                      child: Transform.scale(
-                        scale: harvestMarkerScale,
-                        alignment: Alignment.bottomCenter,
-                        child: orientedSprite,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+            child: Transform.scale(
+              scale: harvestMarkerScale,
+              alignment: Alignment.bottomCenter,
+              child: orientedSprite,
             ),
           ),
         ),

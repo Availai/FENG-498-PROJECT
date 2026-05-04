@@ -62,6 +62,114 @@ class ClearOnActivity {
   });
 }
 
+enum RecommendationGate {
+  actionable,
+  observeFirst,
+  blocked,
+}
+
+extension RecommendationGateLabel on RecommendationGate {
+  String get label {
+    switch (this) {
+      case RecommendationGate.actionable:
+        return 'Uygulanabilir';
+      case RecommendationGate.observeFirst:
+        return 'Önce gözlem';
+      case RecommendationGate.blocked:
+        return 'Kilitli';
+    }
+  }
+}
+
+@immutable
+class RecommendationEvidence {
+  final String label;
+  final String value;
+
+  const RecommendationEvidence({
+    required this.label,
+    required this.value,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'label': label,
+        'value': value,
+      };
+}
+
+@immutable
+class RecommendationCommand {
+  final String activityType;
+  final String? subtype;
+  final double? quantity;
+  final String? quantityUnit;
+  final double? recommendedQuantity;
+  final String? note;
+  final String? buttonLabel;
+  final Map<String, dynamic> metadata;
+
+  const RecommendationCommand({
+    required this.activityType,
+    this.subtype,
+    this.quantity,
+    this.quantityUnit,
+    this.recommendedQuantity,
+    this.note,
+    this.buttonLabel,
+    this.metadata = const {},
+  });
+}
+
+/// Tavsiyenin uygulanması için önerilen zaman penceresi. UI üstte küçük bir
+/// chip olarak gösterir; saat aralığı verilmediyse `descriptor` cümlesi
+/// (örn. "rüzgâr <4 m/s sakin saatlerde") tek başına yeterlidir.
+@immutable
+class RecommendationTiming {
+  /// Tavsiyenin uygulanmasının uygun olduğu pencerenin başlangıcı (yerel).
+  final DateTime? windowStart;
+
+  /// Pencerenin bitişi.
+  final DateTime? windowEnd;
+
+  /// Pencere için kısa Türkçe açıklama; UI rozetinin metni.
+  final String descriptor;
+
+  /// Pencere bilgisi nereden geldi: 'forecast' | 'agronomic' | 'guideline'.
+  final String source;
+
+  const RecommendationTiming({
+    this.windowStart,
+    this.windowEnd,
+    required this.descriptor,
+    this.source = 'agronomic',
+  });
+
+  bool get hasWindow => windowStart != null && windowEnd != null;
+}
+
+/// `RecommendationCommand.metadata` için stabil anahtar sabitleri.
+/// Üretici/tüketici aynı string'lere bağlanır; typo'yu önler.
+class RecommendationMetadataKeys {
+  RecommendationMetadataKeys._();
+
+  /// Pestisit kategorisi ipucu — örn. "piretroid grubu insektisit".
+  /// Marka adı/dozu YOK; kullanıcı BKÜ etiketine yönlendirilir.
+  static const productCategoryHint = 'product_category_hint';
+
+  /// İlaçlama sonrası hasat öncesi bekleme (sadece bilgi notu).
+  static const preHarvestIntervalHint = 'phi_hint';
+
+  /// Yağmur/rüzgâr güvenlik penceresi (saat).
+  static const safetyWindowHours = 'safety_window_hours';
+
+  /// Sulama: hesaplanan litre cinsi tavsiye.
+  static const effectiveWaterMm = 'effective_water_mm';
+  static const effectiveWaterLiters = 'effective_water_liters';
+
+  /// IPM eşiği için scouting öncesi kapı işareti.
+  static const ipmGate = 'ipm_gate';
+}
+
 /// Deterministik kural setlerinin ürettiği tek bir tavsiye kaydı.
 ///
 /// `ruleKey` dedup için stabil olmalı: sürüm bilgisini ('v1') anahtarın
@@ -83,12 +191,36 @@ class Recommendation {
   /// Çiftçinin alacağı somut aksiyon — fiil ve miktar içermeli.
   final String actionHint;
 
+  /// Uygulama güvenlik kapısı. Özellikle ilaç tavsiyesinde gözlem/eşik/BKÜ
+  /// doğrulanmadan kimyasal uygulama komutu açılmaz.
+  final RecommendationGate gate;
+
+  /// Tavsiyeyi üretirken kullanılan ölçümler ve karar girdileri.
+  final List<RecommendationEvidence> evidence;
+
+  /// Kullanıcı butona bastığında loglanacak aktivite komutu.
+  final RecommendationCommand? command;
+
+  /// Kuralın dayandığı teknik/resmi kaynaklar. UI kısa rozet gösterir; tam
+  /// metin aktivite metadata'sına veya debug çıktısına taşınabilir.
+  final List<String> sourceRefs;
+
   /// Bu aktivitelerden biri pencerede gerçekleşirse tavsiye expire olur.
   final List<ClearOnActivity> clearOnActivities;
 
   /// Aynı ruleKey için bu süre boyunca yeniden tetiklenme bastırılır.
   /// 0 → her hesaplamada yeniden gösterilebilir.
   final int cooldownHours;
+
+  /// Tavsiyenin uygulanması için ideal zaman penceresi (opsiyonel).
+  /// UI küçük bir rozet gösterir; null ise rozet çizilmez.
+  final RecommendationTiming? timing;
+
+  /// Bu tavsiye, listede başka tavsiyelerin tamamlanmasına bağlı ise
+  /// onların `ruleKey` kümesi. Cascade gate motoru: bağımlı bir kuralın
+  /// `executed/observed` durumu yoksa bu tavsiye `gate: blocked` olarak
+  /// gösterilir, kullanıcı önce gözlem yapmaya yönlendirilir.
+  final List<String> dependsOn;
 
   const Recommendation({
     required this.ruleKey,
@@ -98,8 +230,14 @@ class Recommendation {
     required this.reasonText,
     this.reasonBullets = const [],
     required this.actionHint,
+    this.gate = RecommendationGate.actionable,
+    this.evidence = const [],
+    this.command,
+    this.sourceRefs = const [],
     this.clearOnActivities = const [],
     this.cooldownHours = 24,
+    this.timing,
+    this.dependsOn = const [],
   });
 
   /// Severity için Türkçe etiket — UI'da rozet metninde kullanılır.

@@ -70,6 +70,9 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
   bool _isPlantMultiSelectMode = false;
   final Map<String, _PlantDeleteTarget> _multiSelectedPlantTargets = {};
   static const String _removedPlantStatus = 'removed';
+  static const int _maxZonePlantMarkers = defaultVisualPlantLimit;
+  static const int _maxGridPlantMarkers = 120;
+  static const double _minCropMarkerSpacingM = defaultMinVisualSpacingM;
 
   // ═══ Tekil bitki yerleştirme modu state ═══
   bool _isPlacingSinglePlantMode = false;
@@ -2754,6 +2757,40 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
     );
   }
 
+  Widget _buildFieldCropMarker({
+    required String cropName,
+    required Color cropColor,
+    required double maturityPercent,
+    required String markerKey,
+    String? healthStatus,
+    String? diseaseType,
+    String? facingDirection,
+    required VoidCallback onTap,
+    required VoidCallback onLongPress,
+  }) {
+    Widget marker({required double harvestPulse}) => buildCropMarkerWidget(
+          cropName: cropName,
+          cropColor: cropColor,
+          maturityPercent: maturityPercent,
+          harvestPulse: harvestPulse,
+          healthStatus: healthStatus,
+          diseaseType: diseaseType,
+          isHighlighted: _isPlantMarkerHighlighted(markerKey),
+          facingDirection: facingDirection,
+          onHover: (hovering) => _setHoveredPlantMarker(markerKey, hovering),
+          onTap: onTap,
+          onLongPress: onLongPress,
+        );
+
+    if (maturityPercent < 90) {
+      return marker(harvestPulse: 0);
+    }
+    return AnimatedBuilder(
+      animation: _harvestPulseCtrl,
+      builder: (_, __) => marker(harvestPulse: _harvestPulseCtrl.value),
+    );
+  }
+
   Widget _build3DFieldMap(Map<String, dynamic> d) {
     final polygon = _polygonPoints(d);
     final center = _fieldCenter(d, polygon);
@@ -2882,9 +2919,10 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
           cropName: cropName,
           rowSpacingCm: (crop['row_spacing_cm'] as num?)?.toDouble(),
           plantSpacingCm: (crop['plant_spacing_cm'] as num?)?.toDouble(),
-          maxCount:
-              targetCount == null ? 35 : targetCount.clamp(1, 120).toInt(),
-          minVisualSpacingM: 0.5,
+          // Gerçek adet ayrı tutulur; haritada temsili ve sınırlı marker çizilir.
+          exactCount: targetCount,
+          maxCount: _maxZonePlantMarkers,
+          minVisualSpacingM: _minCropMarkerSpacingM,
         );
         if (positions.isEmpty) {
           double cLat = 0, cLng = 0;
@@ -2916,35 +2954,29 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
             alignment: Alignment.topCenter,
             child: KeyedSubtree(
               key: ValueKey(markerKey),
-              child: AnimatedBuilder(
-                animation: _harvestPulseCtrl,
-                builder: (_, __) => buildCropMarkerWidget(
-                  cropName: crop['name']?.toString() ?? '',
-                  cropColor: color,
-                  maturityPercent: maturity,
-                  harvestPulse: _harvestPulseCtrl.value,
-                  healthStatus: instance?.healthStatus,
-                  diseaseType: instance?.diseaseType,
-                  isHighlighted: _isPlantMarkerHighlighted(markerKey),
-                  facingDirection: crop['facing_direction']?.toString(),
-                  onHover: (hovering) =>
-                      _setHoveredPlantMarker(markerKey, hovering),
-                  onTap: () {
-                    _handlePlantMarkerTap(
-                      markerKey: markerKey,
-                      crop: crop,
-                      plantIndex: plantIndex,
-                      pos: pos,
-                      existing: instance,
-                    );
-                  },
-                  onLongPress: () => _handlePlantMarkerLongPress(
+              child: _buildFieldCropMarker(
+                cropName: crop['name']?.toString() ?? '',
+                cropColor: color,
+                maturityPercent: maturity,
+                markerKey: markerKey,
+                healthStatus: instance?.healthStatus,
+                diseaseType: instance?.diseaseType,
+                facingDirection: crop['facing_direction']?.toString(),
+                onTap: () {
+                  _handlePlantMarkerTap(
                     markerKey: markerKey,
                     crop: crop,
                     plantIndex: plantIndex,
                     pos: pos,
                     existing: instance,
-                  ),
+                  );
+                },
+                onLongPress: () => _handlePlantMarkerLongPress(
+                  markerKey: markerKey,
+                  crop: crop,
+                  plantIndex: plantIndex,
+                  pos: pos,
+                  existing: instance,
                 ),
               ),
             ),
@@ -2970,8 +3002,8 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
         rowSpacingCm: (gridCrops.first['row_spacing_cm'] as num?)?.toDouble(),
         plantSpacingCm:
             (gridCrops.first['plant_spacing_cm'] as num?)?.toDouble(),
-        maxCount: 30,
-        minVisualSpacingM: 0.5,
+        maxCount: _maxGridPlantMarkers,
+        minVisualSpacingM: _minCropMarkerSpacingM,
       );
       _sortPositionsForFieldView(positions, center);
 
@@ -3012,35 +3044,29 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
           alignment: Alignment.topCenter,
           child: KeyedSubtree(
             key: ValueKey(markerKey),
-            child: AnimatedBuilder(
-              animation: _harvestPulseCtrl,
-              builder: (_, __) => buildCropMarkerWidget(
-                cropName: cropName,
-                cropColor: _cropColor(crop),
-                maturityPercent: maturity,
-                harvestPulse: _harvestPulseCtrl.value,
-                healthStatus: instance?.healthStatus,
-                diseaseType: instance?.diseaseType,
-                isHighlighted: _isPlantMarkerHighlighted(markerKey),
-                facingDirection: crop['facing_direction']?.toString(),
-                onHover: (hovering) =>
-                    _setHoveredPlantMarker(markerKey, hovering),
-                onTap: () {
-                  _handlePlantMarkerTap(
-                    markerKey: markerKey,
-                    crop: crop,
-                    plantIndex: plantIndex,
-                    pos: pos,
-                    existing: instance,
-                  );
-                },
-                onLongPress: () => _handlePlantMarkerLongPress(
+            child: _buildFieldCropMarker(
+              cropName: cropName,
+              cropColor: _cropColor(crop),
+              maturityPercent: maturity,
+              markerKey: markerKey,
+              healthStatus: instance?.healthStatus,
+              diseaseType: instance?.diseaseType,
+              facingDirection: crop['facing_direction']?.toString(),
+              onTap: () {
+                _handlePlantMarkerTap(
                   markerKey: markerKey,
                   crop: crop,
                   plantIndex: plantIndex,
                   pos: pos,
                   existing: instance,
-                ),
+                );
+              },
+              onLongPress: () => _handlePlantMarkerLongPress(
+                markerKey: markerKey,
+                crop: crop,
+                plantIndex: plantIndex,
+                pos: pos,
+                existing: instance,
               ),
             ),
           ),
@@ -3065,31 +3091,15 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
         alignment: Alignment.topCenter,
         child: KeyedSubtree(
           key: ValueKey(markerKey),
-          child: AnimatedBuilder(
-            animation: _harvestPulseCtrl,
-            builder: (_, __) => buildCropMarkerWidget(
-              cropName: inst.cropName,
-              cropColor: const Color(0xFF66BB6A),
-              maturityPercent: 0,
-              harvestPulse: _harvestPulseCtrl.value,
-              healthStatus: inst.healthStatus,
-              diseaseType: inst.diseaseType,
-              isHighlighted: _isPlantMarkerHighlighted(markerKey),
-              onHover: (hovering) =>
-                  _setHoveredPlantMarker(markerKey, hovering),
-              onTap: () {
-                _handlePlantMarkerTap(
-                  markerKey: markerKey,
-                  crop: {
-                    'id': null,
-                    'name': inst.cropName,
-                  },
-                  plantIndex: null,
-                  pos: pos,
-                  existing: inst,
-                );
-              },
-              onLongPress: () => _handlePlantMarkerLongPress(
+          child: _buildFieldCropMarker(
+            cropName: inst.cropName,
+            cropColor: const Color(0xFF66BB6A),
+            maturityPercent: 0,
+            markerKey: markerKey,
+            healthStatus: inst.healthStatus,
+            diseaseType: inst.diseaseType,
+            onTap: () {
+              _handlePlantMarkerTap(
                 markerKey: markerKey,
                 crop: {
                   'id': null,
@@ -3098,7 +3108,17 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
                 plantIndex: null,
                 pos: pos,
                 existing: inst,
-              ),
+              );
+            },
+            onLongPress: () => _handlePlantMarkerLongPress(
+              markerKey: markerKey,
+              crop: {
+                'id': null,
+                'name': inst.cropName,
+              },
+              plantIndex: null,
+              pos: pos,
+              existing: inst,
             ),
           ),
         ),
@@ -4651,6 +4671,8 @@ class _DirectiveCardState extends ConsumerState<_DirectiveCard> {
 
   String _shortSource(String source) {
     final s = source.toLowerCase();
+    if (s.contains('bku') || s.contains('bitki koruma')) return 'BKÜ';
+    if (s.contains('fao')) return 'FAO-56';
     if (s.contains('tagem')) return 'TAGEM';
     if (s.contains('tarım ve orman') || s.contains('tarim ve orman')) {
       return 'Tarım ve Orman';

@@ -344,6 +344,16 @@ class LocalDataRepository {
     return crops.map(_cropToMap).toList();
   }
 
+  /// Tarladaki ürün/zon kayıtlarını canlı dinler — soft-delete'siz, ekim
+  /// tarihine göre eski → yeni. Canlı tavsiye motoru ürün düzenlemesinde
+  /// (su aralığı, ekim tarihi, polygon) anında yenilensin diye kullanır.
+  Stream<List<Map<String, dynamic>>> watchFieldCrops(String fieldId) {
+    final query = _db.select(_db.fieldCrops)
+      ..where((tbl) => tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull())
+      ..orderBy([(tbl) => OrderingTerm.asc(tbl.createdAt)]);
+    return query.watch().map((rows) => rows.map(_cropToMap).toList());
+  }
+
   /// Akıllı Sulama Programı: backend'den gelen 7 günlük planı yerel Drift'e
   /// yazar ve outbox'a sync job ekler. Aynı tarlanın eski (silinmemiş)
   /// kayıtları tombstone ile soft-delete edilir.
@@ -2045,6 +2055,19 @@ class LocalDataRepository {
       },
       updatedAt: now,
     );
+  }
+
+  /// Tarladaki tüm bitki durum gözlemlerini (PlantConditionEvents) canlı
+  /// dinler — yeni gözlem girildiğinde tavsiye motoru anında yenilenir.
+  Stream<List<PlantConditionEvent>> watchPlantConditionEventsForField(
+    String fieldId, {
+    int limit = 200,
+  }) {
+    final query = _db.select(_db.plantConditionEvents)
+      ..where((tbl) => tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull())
+      ..orderBy([(t) => OrderingTerm.desc(t.observedAt)])
+      ..limit(limit);
+    return query.watch();
   }
 
   /// Bir tekil bitkinin durum gözlem geçmişini canlı dinler — yeni → eski.

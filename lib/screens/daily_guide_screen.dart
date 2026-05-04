@@ -5,6 +5,7 @@ import '../data/activity_types.dart';
 import '../services/app_providers.dart';
 import '../services/guide_engine.dart';
 import '../services/notification_service.dart';
+import '../services/rules/recommendation.dart';
 import '../theme/app_theme.dart';
 import '../widgets/floating_toast.dart';
 import '../widgets/help_panel.dart';
@@ -113,86 +114,53 @@ class DailyGuideScreen extends ConsumerWidget {
     GuideResult result,
     AsyncValue<List<dynamic>> growthAsync,
   ) {
-    final recommendationsAsync =
-        ref.watch(fieldRecommendationsProvider(fieldId));
-    if (result.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.check_circle_outline,
-                  size: 64, color: AppColors.emerald),
-              const SizedBox(height: 16),
-              Text('Şu an yapılacak bir şey yok',
-                  style: AppText.h3(context), textAlign: TextAlign.center),
-              const SizedBox(height: 8),
-              Text(
-                'Bitkilerin yolunda. Aktivite kaydı yaptıkça rehber tazelenir.',
-                style: AppText.body(context),
-                textAlign: TextAlign.center,
-              ),
-            ],
+    final liveTodosAsync = ref.watch(fieldLiveTodosProvider(fieldId));
+
+    return RefreshIndicator(
+      onRefresh: () async {
+        ref.read(recomputeNowProvider(fieldId))();
+        ref.invalidate(fieldGuideProvider(fieldId));
+        // Yeni futures resolve olana kadar bekle — kullanıcı spinner görür.
+        await ref.read(fieldLiveTodosProvider(fieldId).future);
+      },
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          // Son güncelleme çubuğu — kullanıcı tavsiyenin ne zaman hesaplandığını görür.
+          _FreshnessBar(
+            asyncValue: liveTodosAsync,
+            onRefresh: () => ref.read(recomputeNowProvider(fieldId))(),
           ),
-        ),
-      );
-    }
+          // Alerts banner
+          if (result.alerts.isNotEmpty) ...[
+            for (final alert in result.alerts) _AlertBanner(alert: alert),
+            const SizedBox(height: 8),
+          ],
 
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        // Alerts banner
-        if (result.alerts.isNotEmpty) ...[
-          for (final alert in result.alerts) _AlertBanner(alert: alert),
-          const SizedBox(height: 8),
-        ],
-
-        // ÜRÜN TAVSİYELERİ — deterministik kural motoru çıktısı
-        // (şu an: ayçiçeği için 5 kural; ileride mısır/buğday için genişler)
-        recommendationsAsync.maybeWhen(
+          liveTodosAsync.maybeWhen(
           data: (recs) {
-            if (recs.isEmpty) return const SizedBox.shrink();
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _SectionHeader(label: 'ÜRÜN TAVSİYELERİ', count: recs.length),
-                for (final r in recs)
-                  RecommendationCard(
-                    recommendation: r,
-                    onShown: () {
-                      // Cooldown başlat — aynı ruleKey + target kombinasyonu
-                      // pencerede tekrar üst sıraya çıkmaz.
-                      ref
-                          .read(recommendationLedgerProvider)
-                          .markShown(ruleKey: r.ruleKey, target: r.target);
-                    },
-                  ),
-                const SizedBox(height: 16),
-              ],
+            if (recs.isEmpty && result.isEmpty) {
+              return const _EmptyGuideState();
+            }
+            return _LiveTodoSections(
+              recommendations: recs,
+              onShown: (r) {
+                ref
+                    .read(recommendationLedgerProvider)
+                    .markShown(ruleKey: r.ruleKey, target: r.target);
+              },
+              onLogged: () {
+                ref.invalidate(fieldLiveTodosProvider(fieldId));
+                ref.invalidate(fieldGuideProvider(fieldId));
+              },
             );
           },
+          loading: () => const Padding(
+            padding: EdgeInsets.symmetric(vertical: 16),
+            child: Center(child: CircularProgressIndicator()),
+          ),
           orElse: () => const SizedBox.shrink(),
         ),
-
-        // BUGÜN
-        if (result.today.isNotEmpty) ...[
-          _SectionHeader(label: 'BUGÜN', count: result.today.length),
-          for (final task in result.today)
-            _TodayCard(
-              task: task,
-              fieldId: fieldId,
-              onLogged: () => ref.invalidate(fieldGuideProvider(fieldId)),
-            ),
-          const SizedBox(height: 16),
-        ],
-
-        // BU HAFTA
-        if (result.thisWeek.isNotEmpty) ...[
-          _SectionHeader(label: 'BU HAFTA', count: result.thisWeek.length),
-          _ThisWeekList(tasks: result.thisWeek),
-          const SizedBox(height: 16),
-        ],
 
         // DURUM (tek bakış)
         growthAsync.maybeWhen(
@@ -202,13 +170,200 @@ class DailyGuideScreen extends ConsumerWidget {
           orElse: () => const SizedBox.shrink(),
         ),
 
-        // BİLMENİZ GEREKENLER
-        if (result.insights.isNotEmpty) ...[
+          // BİLMENİZ GEREKENLER
+          if (result.insights.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            _SectionHeader(label: 'BİLMENİZ GEREKENLER', count: null),
+            for (final insight in result.insights)
+              _InsightCard(insight: insight),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Üst çubuk — tavsiye listesinin "ne zaman hesaplandığı" + manuel yenile.
+/// AsyncValue.loading durumunda küçük bir progress, ready durumunda
+/// "şimdi hesaplandı" mesajı; manuel yenile butonu kullanılabilir.
+class _FreshnessBar extends StatelessWidget {
+  final AsyncValue<List<Recommendation>> asyncValue;
+  final VoidCallback onRefresh;
+
+  const _FreshnessBar({
+    required this.asyncValue,
+    required this.onRefresh,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isLoading = asyncValue.isLoading || asyncValue.isRefreshing;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        children: [
+          if (isLoading)
+            const SizedBox(
+              width: 14,
+              height: 14,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          else
+            const Icon(
+              Icons.bolt_rounded,
+              size: 14,
+              color: AppColors.emerald,
+            ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              isLoading
+                  ? 'Tavsiyeler yenileniyor...'
+                  : 'Canlı — her aktivite/değişiklikten sonra otomatik güncellenir',
+              style: AppText.xs(context).copyWith(
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          InkWell(
+            onTap: onRefresh,
+            borderRadius: AppRadius.sm,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.refresh_rounded,
+                      size: 14, color: AppColors.emeraldDark),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Yenile',
+                    style: AppText.xs(context).copyWith(
+                      color: AppColors.emeraldDark,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LiveTodoSections extends StatelessWidget {
+  final List<Recommendation> recommendations;
+  final ValueChanged<Recommendation> onShown;
+  final VoidCallback onLogged;
+
+  const _LiveTodoSections({
+    required this.recommendations,
+    required this.onShown,
+    required this.onLogged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (recommendations.isEmpty) return const SizedBox.shrink();
+    final urgent = recommendations
+        .where((r) => r.severity == AlertSeverity.critical)
+        .toList();
+    final today = recommendations
+        .where((r) =>
+            r.severity == AlertSeverity.warning &&
+            r.gate == RecommendationGate.actionable)
+        .toList();
+    final week = recommendations
+        .where((r) =>
+            r.severity == AlertSeverity.info &&
+            r.gate == RecommendationGate.actionable)
+        .toList();
+    final watch = recommendations
+        .where((r) =>
+            r.gate != RecommendationGate.actionable &&
+            r.severity != AlertSeverity.critical)
+        .toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (urgent.isNotEmpty) ...[
+          _SectionHeader(label: 'ACİL', count: urgent.length),
+          for (final r in urgent)
+            RecommendationCard(
+              recommendation: r,
+              onShown: () => onShown(r),
+              onLogged: onLogged,
+            ),
           const SizedBox(height: 16),
-          _SectionHeader(label: 'BİLMENİZ GEREKENLER', count: null),
-          for (final insight in result.insights) _InsightCard(insight: insight),
+        ],
+        if (today.isNotEmpty) ...[
+          _SectionHeader(label: 'BUGÜN', count: today.length),
+          for (final r in today)
+            RecommendationCard(
+              recommendation: r,
+              onShown: () => onShown(r),
+              onLogged: onLogged,
+            ),
+          const SizedBox(height: 16),
+        ],
+        if (week.isNotEmpty) ...[
+          _SectionHeader(label: 'BU HAFTA', count: week.length),
+          for (final r in week)
+            RecommendationCard(
+              recommendation: r,
+              onShown: () => onShown(r),
+              onLogged: onLogged,
+            ),
+          const SizedBox(height: 16),
+        ],
+        if (watch.isNotEmpty) ...[
+          _SectionHeader(label: 'İZLE', count: watch.length),
+          for (final r in watch)
+            RecommendationCard(
+              recommendation: r,
+              onShown: () => onShown(r),
+              onLogged: onLogged,
+            ),
+          const SizedBox(height: 16),
         ],
       ],
+    );
+  }
+}
+
+class _EmptyGuideState extends StatelessWidget {
+  const _EmptyGuideState();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.check_circle_outline,
+            size: 64,
+            color: AppColors.emerald,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Şu an yapılacak bir şey yok',
+            style: AppText.h3(context),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Bitkilerin yolunda. Aktivite kaydı yaptıkça rehber tazelenir.',
+            style: AppText.body(context),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
     );
   }
 }

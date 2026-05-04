@@ -24,6 +24,14 @@ class RuleEvaluationContext {
   /// Saatlik hava tahmini. null → çevrimdışı; yağmur/sıcak kontrolleri
   /// "veri yok → kuralı tetikleme" olarak defansif davranır.
   final HourlyForecast? hourly;
+
+  /// Son bilinen çevre/toprak snapshot'ı. Canlı servis, cache veya son
+  /// uygunluk raporu kaynaklı olabilir; null alanlar bilinmeyen veridir.
+  final RuleEnvironmentSnapshot? environment;
+
+  /// Ürünün bu tarladaki alanı, tahmini bitki sayısı ve su dengesi.
+  final RuleFieldStateSnapshot? fieldState;
+
   final DateTime now;
 
   const RuleEvaluationContext({
@@ -33,6 +41,8 @@ class RuleEvaluationContext {
     this.recentActivities = const [],
     this.plantInstances = const [],
     this.hourly,
+    this.environment,
+    this.fieldState,
     required this.now,
   });
 
@@ -62,6 +72,92 @@ class RuleEvaluationContext {
     }
     return null;
   }
+}
+
+@immutable
+class RuleEnvironmentSnapshot {
+  final double? temperatureC;
+  final double? humidityPct;
+  final double? windSpeedMs;
+  final double? weeklyRainMm;
+  final double? soilMoisture; // 0..1
+  final double? soilTempC;
+  final double? soilPh;
+  final double? nitrogenKgDekar;
+  final double? phosphorusKgDekar;
+  final double? potassiumKgDekar;
+  final DateTime? fetchedAt;
+  final String source;
+
+  const RuleEnvironmentSnapshot({
+    this.temperatureC,
+    this.humidityPct,
+    this.windSpeedMs,
+    this.weeklyRainMm,
+    this.soilMoisture,
+    this.soilTempC,
+    this.soilPh,
+    this.nitrogenKgDekar,
+    this.phosphorusKgDekar,
+    this.potassiumKgDekar,
+    this.fetchedAt,
+    this.source = 'bilinmiyor',
+  });
+
+  bool get hasWeather =>
+      temperatureC != null || humidityPct != null || weeklyRainMm != null;
+
+  bool get hasSoil =>
+      soilMoisture != null || soilTempC != null || soilPh != null;
+
+  bool get hasNpk =>
+      nitrogenKgDekar != null ||
+      phosphorusKgDekar != null ||
+      potassiumKgDekar != null;
+
+  bool get isDrySoil => soilMoisture != null && soilMoisture! < 0.22;
+  bool get isWetSoil => soilMoisture != null && soilMoisture! > 0.42;
+  bool get isColdSoil => soilTempC != null && soilTempC! < 10;
+  bool get isHotDryAir =>
+      (temperatureC != null && temperatureC! >= 32) ||
+      (humidityPct != null && humidityPct! <= 30);
+}
+
+@immutable
+class RuleFieldStateSnapshot {
+  final double areaDekar;
+  final double areaSqm;
+  final int estimatedPlantCount;
+  final double weeklyWaterMm;
+  final double weeklyWaterLiters;
+  final double weeklyWaterTargetMm;
+  final double seasonalWaterMm;
+  final double seasonalWaterLiters;
+  final DateTime? lastWateredAt;
+  final DateTime? lastFertilizedAt;
+  final DateTime? lastSprayedAt;
+
+  const RuleFieldStateSnapshot({
+    required this.areaDekar,
+    required this.areaSqm,
+    required this.estimatedPlantCount,
+    required this.weeklyWaterMm,
+    required this.weeklyWaterLiters,
+    required this.weeklyWaterTargetMm,
+    required this.seasonalWaterMm,
+    required this.seasonalWaterLiters,
+    this.lastWateredAt,
+    this.lastFertilizedAt,
+    this.lastSprayedAt,
+  });
+
+  double get weeklyWaterRatio =>
+      weeklyWaterTargetMm <= 0 ? 0 : weeklyWaterMm / weeklyWaterTargetMm;
+
+  double get weeklyWaterMissingMm =>
+      weeklyWaterTargetMm <= 0 ? 0 : (weeklyWaterTargetMm - weeklyWaterMm);
+
+  bool get waterBehind => weeklyWaterTargetMm > 0 && weeklyWaterRatio < 0.70;
 }
 
 @immutable

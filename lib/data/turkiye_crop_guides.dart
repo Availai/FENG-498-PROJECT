@@ -5,6 +5,8 @@
 /// yakın bilgi gösterebilmesi için kullanılır.
 library;
 
+import 'sunflower_source_refs.dart';
+
 class GuideStage {
   final String title;
   final String timing;
@@ -277,8 +279,11 @@ class TurkiyeCropGuides {
       summary:
           'Ayçiçeği Türkiye’de özellikle Trakya, Marmara, İç Anadolu, Konya ve Adana havzalarında yetiştirilen stratejik yağlı tohum bitkisidir. Derin köklüdür; kuraklığa mısıra göre daha dayanıklıdır fakat tabla oluşumu ve çiçeklenme döneminde susuz bırakılırsa verim hızla düşer.',
       sourceRefs: [
-        'TAGEM Ayçiçeği Entegre Mücadele Teknik Talimatı, 2022',
-        'Trakya Tarımsal Araştırma Enstitüsü Ayçiçeği Tarımı notları',
+        SunflowerSources.tagemTechnicalSpec,
+        SunflowerSources.tagemIpm2022,
+        SunflowerSources.trakyaYalcinKaya,
+        SunflowerSources.trakyaSamiSuzer,
+        SunflowerSources.bkuDatabase,
       ],
       sowingWindow: 'Mart sonu-Mayıs; ana hedef toprak 8-10 °C üstü',
       harvestWindow: 'Ağustos-Eylül; tabla arkası sararıp daneler sertleşince',

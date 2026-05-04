@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive/hive.dart';
@@ -8,6 +6,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../data/app_database.dart';
 import '../data/turkish_crops_repository.dart';
 import 'crop_scoring_service.dart';
+import 'api/soilgrids_api.dart';
 import 'local_data_repository.dart';
 import 'repositories/calendar_repository.dart';
 import 'repositories/field_repository.dart';
@@ -26,10 +25,13 @@ import 'backend_service.dart';
 import 'disease_diagnosis_service.dart';
 import 'activity_logger.dart';
 import 'guide_engine.dart';
+import 'live_todo_service.dart';
+import 'soil_fertilization_service.dart';
 import 'rules/crop_rule_set.dart';
 import 'rules/recommendation.dart';
 import 'rules/recommendation_ledger.dart';
 import 'rules/sunflower_rules.dart';
+import 'rules/wheat_rules.dart';
 import 'api/sync_api_client.dart';
 
 final appDatabaseProvider = Provider<AppDatabase>((ref) {
@@ -179,6 +181,22 @@ final fieldPlantInstancesProvider = StreamProvider.family
   return ref.watch(localDataRepositoryProvider).watchPlantInstances(fieldId);
 });
 
+/// Tarladaki bitki durum gözlemleri (PlantConditionEvents) — yeni gözlem
+/// girildiğinde [fieldLiveTodosProvider] anında yenilensin diye expose edilir.
+final fieldPlantConditionEventsProvider = StreamProvider.family
+    .autoDispose<List<PlantConditionEvent>, String>((ref, fieldId) {
+  return ref
+      .watch(localDataRepositoryProvider)
+      .watchPlantConditionEventsForField(fieldId);
+});
+
+/// Tarla ürünleri canlı stream — su aralığı / dikim tarihi / polygon
+/// düzenlemesi sonrası tavsiye motoru anında yenilensin diye eklendi.
+final fieldCropsStreamProvider = StreamProvider.family
+    .autoDispose<List<Map<String, dynamic>>, String>((ref, fieldId) {
+  return ref.watch(localDataRepositoryProvider).watchFieldCrops(fieldId);
+});
+
 /// Bitki hastalığı teşhis servisi — şimdilik stub. AI eklendiğinde tek
 /// satır değişikliği ile `GeminiDiseaseDiagnosisService(...)` döndürülecek.
 final diseaseDiagnosisServiceProvider = Provider<DiseaseDiagnosisService>((_) {
@@ -296,6 +314,7 @@ final fieldScheduledAutoSeedProvider = StreamProvider.family
 final cropRuleSetsProvider = Provider<List<CropRuleSet>>((ref) {
   return const [
     SunflowerRules(),
+    WheatRules(),
   ];
 });
 
@@ -305,194 +324,232 @@ final recommendationLedgerProvider = Provider<RecommendationLedger>((ref) {
   return RecommendationLedger(Hive.box(RecommendationLedger.boxName));
 });
 
-/// Tarla bazında ayçiçeği (ve gelecekte eklenecek) deterministik tavsiyeleri.
-/// `fieldGuideProvider` ile aynı stream'leri dinler → aktivite logu yazılınca,
-/// büyüme yeniden hesaplanınca, hava verisi tazelenince otomatik invalidate.
-///
-/// Akış:
-///   1. Aktivite/growth/plant instances/forecast topla
-///   2. Her ekin için match eden RuleSet → evaluate → Recommendation listesi
-///   3. Ledger ile cooldown filtresi uygula
-///   4. Severity'ye göre sırala (acil → önemli → bilgi)
-final fieldRecommendationsProvider = FutureProvider.family
+final liveDecisionContextBuilderProvider =
+    Provider<LiveDecisionContextBuilder>((ref) {
+  return const LiveDecisionContextBuilder();
+});
+
+final liveTodoServiceProvider = Provider<LiveTodoService>((ref) {
+  return const LiveTodoService();
+});
+
+/// Tarla bazında tek canlı yapılacaklar listesi. Eski direktifler,
+/// ayçiçeği kural seti, aktivite sonrası temizleme, çevre/toprak bağlamı ve
+/// güvenlik kapıları burada tek `Recommendation` listesine birleşir.
+final fieldLiveTodosProvider = FutureProvider.family
     .autoDispose<List<Recommendation>, String>((ref, fieldId) async {
   final repo = ref.watch(localDataRepositoryProvider);
   final ruleSets = ref.watch(cropRuleSetsProvider);
   final ledger = ref.watch(recommendationLedgerProvider);
-  if (ruleSets.isEmpty) return const [];
 
-  final crops = await repo.loadFieldCrops(fieldId);
-  if (crops.isEmpty) return const [];
-
+  // Ürün kayıtları stream'den geliyor — su aralığı/dikim tarihi düzenlemesi
+  // sonrası provider anında yenilenir.
+  final crops = await ref.watch(fieldCropsStreamProvider(fieldId).future);
   final activities = await ref.watch(fieldActivityLogProvider(fieldId).future);
-  final growthList =
-      await ref.watch(fieldGrowthStatesProvider(fieldId).future);
+  final scheduled = await ref.watch(
+    fieldScheduledAutoSeedProvider(fieldId).future,
+  );
+  final growthList = await ref.watch(fieldGrowthStatesProvider(fieldId).future);
   final plantInstances =
       await ref.watch(fieldPlantInstancesProvider(fieldId).future);
+  // Bitki durum gözlemleri (scouting → eşik onayı kaskadı) için stream
+  // izlenir. İçeriği LiveDecisionContext'te kullanmıyoruz (recentActivities
+  // CalendarEvents üzerinden yeterli), ama yeni gözlem eklendiğinde
+  // tavsiyeler hemen yenilensin diye watch ediliyor.
+  await ref.watch(fieldPlantConditionEventsProvider(fieldId).future);
 
-  // GrowthState[] → Map<cropId, GrowthSnapshot>
-  final growthMap = <String, GrowthSnapshot>{};
-  for (final g in growthList) {
-    growthMap[g.cropId] = GrowthSnapshot(
-      stageKey: g.currentStageKey,
-      stageProgress: g.stageProgress,
-      accumulatedGdd: g.accumulatedGdd,
-      waterDeficitMm: g.waterDeficitMm,
-      nStressIdx: g.nStressIdx,
-      diseasePressure: g.diseasePressure,
-      yieldMultiplier: g.yieldMultiplier,
-    );
-  }
+  final now = DateTime.now();
 
-  // Activity log → ActivityRecord (yeni → eski)
-  final actRecords = <ActivityRecord>[];
-  for (final a in activities) {
-    final dateRaw = a['date'];
-    DateTime? at;
-    if (dateRaw is DateTime) {
-      at = dateRaw;
-    } else if (dateRaw is String) {
-      at = DateTime.tryParse(dateRaw);
-    }
-    if (at == null) continue;
-    actRecords.add(ActivityRecord(
-      type: a['type']?.toString() ?? '',
-      subtype: a['subtype']?.toString(),
-      at: at,
-      plantInstanceId: a['plant_instance_id']?.toString(),
-      quantity: (a['quantity'] as num?)?.toDouble(),
-    ));
-  }
-  actRecords.sort((a, b) => b.at.compareTo(a.at));
-
-  // Plant instances → snapshot
-  final plantSnaps = <PlantInstanceSnapshot>[];
-  for (final p in plantInstances) {
-    final flags = <String>[];
-    final raw = p.conditionFlagsJson;
-    if (raw != null && raw.isNotEmpty) {
-      try {
-        final decoded = jsonDecode(raw);
-        if (decoded is List) {
-          for (final v in decoded) {
-            if (v is String && v.isNotEmpty) flags.add(v);
-          }
-        }
-      } catch (_) {}
-    }
-    plantSnaps.add(PlantInstanceSnapshot(
-      id: p.id,
-      cropId: p.cropId,
-      healthStatus: p.healthStatus,
-      conditionFlags: flags,
-    ));
-  }
+  final fieldMap = await repo.loadFieldById(fieldId);
+  final fieldStateRows = fieldMap == null
+      ? const <CropFieldState>[]
+      : ref.read(fieldStateServiceProvider).compute(
+            field: fieldMap,
+            fieldCrops: crops,
+            activities: activities,
+            now: now,
+          );
 
   // Saatlik forecast — koordinat varsa
   HourlyForecast? hourly;
-  final fieldMap = await repo.loadFieldById(fieldId);
   final lat = (fieldMap?['latitude'] as num?)?.toDouble();
   final lng = (fieldMap?['longitude'] as num?)?.toDouble();
+  final weatherService = ref.watch(weatherSoilServiceProvider);
   if (lat != null && lng != null) {
     try {
-      hourly = await ref
-          .watch(weatherSoilServiceProvider)
-          .fetchHourlyForecast(latitude: lat, longitude: lng);
+      hourly = await weatherService.fetchHourlyForecast(
+        latitude: lat,
+        longitude: lng,
+      );
     } catch (_) {}
   }
 
-  final now = DateTime.now();
-  final out = <Recommendation>[];
+  final environment = await _buildRuleEnvironmentSnapshot(
+    repo: repo,
+    fieldId: fieldId,
+    fieldMap: fieldMap,
+    hourly: hourly,
+    weatherService: weatherService,
+  );
 
-  for (final crop in crops) {
-    final cropId = crop['id']?.toString();
-    final cropName = crop['name']?.toString() ?? '';
-    if (cropId == null || cropId.isEmpty) continue;
-
-    // Bu ekine match eden ilk RuleSet'i çalıştır.
-    CropRuleSet? matched;
-    for (final rs in ruleSets) {
-      if (rs.matches(cropName)) {
-        matched = rs;
-        break;
-      }
-    }
-    if (matched == null) continue;
-
-    final plantedRaw = crop['planted_date']?.toString();
-    DateTime? planted;
-    if (plantedRaw != null && plantedRaw.isNotEmpty) {
-      planted = DateTime.tryParse(plantedRaw);
-      if (planted == null) {
-        final parts = plantedRaw.split('.');
-        if (parts.length == 3) {
-          planted = DateTime.tryParse(
-              '${parts[2]}-${parts[1].padLeft(2, '0')}-${parts[0].padLeft(2, '0')}');
-        }
-      }
-    }
-
-    final ctx = RuleEvaluationContext(
-      fieldId: fieldId,
-      crop: FieldCropSnapshot(
-        id: cropId,
-        name: cropName,
-        plantedDate: planted,
-      ),
-      growth: growthMap[cropId],
-      recentActivities: actRecords,
-      plantInstances: plantSnaps,
-      hourly: hourly,
-      now: now,
-    );
-
-    final recs = matched.evaluate(ctx);
-    for (final r in recs) {
-      // Cooldown'da mı?
-      if (ledger.isOnCooldown(
-        ruleKey: r.ruleKey,
-        target: r.target,
-        cooldownHours: r.cooldownHours,
+  final context = ref.read(liveDecisionContextBuilderProvider).build(
+        fieldId: fieldId,
+        fieldCrops: crops,
+        activities: activities,
+        scheduledEvents: scheduled,
+        growthRows: growthList,
+        plantRows: plantInstances,
+        fieldStateRows: fieldStateRows,
+        ruleSets: ruleSets,
+        hourly: hourly,
+        environment: environment,
+        ledger: ledger,
         now: now,
-      )) {
-        continue;
-      }
-      // ClearOnActivity — son aktivite penceresinde varsa tavsiye expire.
-      bool cleared = false;
-      for (final clear in r.clearOnActivities) {
-        for (final a in actRecords) {
-          if (a.type != clear.activityType) continue;
-          if (clear.subtype != null && a.subtype != clear.subtype) continue;
-          // Tekil bitki hedefi varsa aktivite de aynı bitkide olmalı.
-          if (r.target.plantInstanceId != null &&
-              a.plantInstanceId != r.target.plantInstanceId) {
-            continue;
-          }
-          final hours = now.difference(a.at).inMinutes / 60.0;
-          if (hours <= clear.withinHours) {
-            cleared = true;
-            break;
-          }
-        }
-        if (cleared) break;
-      }
-      if (cleared) continue;
-      out.add(r);
-    }
-  }
-
-  // Severity'ye göre sırala — critical en üste.
-  int order(AlertSeverity s) {
-    switch (s) {
-      case AlertSeverity.critical:
-        return 0;
-      case AlertSeverity.warning:
-        return 1;
-      case AlertSeverity.info:
-        return 2;
-    }
-  }
-
-  out.sort((a, b) => order(a.severity).compareTo(order(b.severity)));
-  return out;
+      );
+  return ref.read(liveTodoServiceProvider).generate(context);
 });
+
+/// Geriye uyumluluk: eski ekranlar aynı provider adını kullanmaya devam eder.
+final fieldRecommendationsProvider = FutureProvider.family
+    .autoDispose<List<Recommendation>, String>((ref, fieldId) {
+  return ref.watch(fieldLiveTodosProvider(fieldId).future);
+});
+
+/// "Şimdi yenile" aksiyonu — kullanıcı pull-to-refresh yaptığında veya
+/// koordinat/parametre düzenlemesinden sonra UI bunu çağırır.
+/// `fieldLiveTodosProvider`'ı geçersiz kılar; tüm bağlı stream'ler tazelenir.
+final recomputeNowProvider =
+    Provider.family<void Function(), String>((ref, fieldId) {
+  return () => ref.invalidate(fieldLiveTodosProvider(fieldId));
+});
+
+Future<RuleEnvironmentSnapshot?> _buildRuleEnvironmentSnapshot({
+  required LocalDataRepository repo,
+  required String fieldId,
+  required Map<String, dynamic>? fieldMap,
+  required HourlyForecast? hourly,
+  required WeatherSoilService weatherService,
+}) async {
+  final latest = await repo.loadLatestSuitabilityReport(fieldId);
+  final report = _mapValue(latest?['report']);
+  final weatherSnapshot = _mapValue(report?['weather_snapshot']);
+  final soilSnapshot = _mapValue(report?['soil_snapshot']);
+
+  final lat = (fieldMap?['latitude'] as num?)?.toDouble();
+  final lng = (fieldMap?['longitude'] as num?)?.toDouble();
+  DashboardConditions? conditions;
+  Map<String, double>? satelliteSoil;
+  SoilProfile? soilProfile;
+
+  final sources = <String>[];
+  if (weatherSnapshot != null || soilSnapshot != null) {
+    sources.add('son analiz');
+  }
+
+  if (lat != null && lng != null) {
+    conditions = weatherService.readCachedConditions(
+      latitude: lat,
+      longitude: lng,
+    );
+    if (conditions != null && !conditions.isEmpty) {
+      sources.add('hava önbelleği');
+    }
+
+    final liveConditionsFuture = weatherService
+        .fetchDashboardConditions(latitude: lat, longitude: lng)
+        .timeout(const Duration(seconds: 5))
+        .then<DashboardConditions?>((live) => live.isEmpty ? null : live)
+        .catchError((_) => null);
+    final satelliteFuture = BackendService.satelliteSoil(lat: lat, lng: lng)
+        .timeout(const Duration(seconds: 6))
+        .catchError((_) => null);
+    final soilProfileFuture = SoilGridsApi.fetchProfile(lat: lat, lon: lng)
+        .timeout(const Duration(seconds: 6))
+        .then<SoilProfile?>((profile) => profile)
+        .catchError((_) => null);
+
+    await Future.wait<void>([
+      liveConditionsFuture.then((live) {
+        if (live != null) {
+          conditions = live;
+          sources.add('anlık hava');
+        }
+      }),
+      satelliteFuture.then((soil) {
+        if (soil != null) {
+          satelliteSoil = soil;
+          sources.add('uydu toprak');
+        }
+      }),
+      soilProfileFuture.then((profile) {
+        if (profile != null) {
+          soilProfile = profile;
+          sources.add('toprak profili');
+        }
+      }),
+    ]);
+  }
+
+  final profileForNpk = soilProfile;
+  final npk = profileForNpk == null
+      ? null
+      : SoilFertilizationService.estimateNpk(profileForNpk);
+  final firstHourly =
+      hourly?.slots.isNotEmpty == true ? hourly!.slots.first : null;
+
+  final snapshot = RuleEnvironmentSnapshot(
+    temperatureC: conditions?.temperatureC ??
+        _firstDouble(weatherSnapshot, const ['temp', 'temperature_c']) ??
+        firstHourly?.tempC,
+    humidityPct: conditions?.humidity?.toDouble() ??
+        _firstDouble(weatherSnapshot, const ['humidity', 'humidity_pct']) ??
+        firstHourly?.humidity,
+    windSpeedMs: conditions?.windSpeedMs ??
+        _firstDouble(weatherSnapshot, const ['wind']),
+    weeklyRainMm: _firstDouble(
+      weatherSnapshot,
+      const ['total_weekly_rain', 'weekly_rain_mm', 'weekly_rain'],
+    ),
+    soilMoisture: satelliteSoil?['moisture'] ??
+        satelliteSoil?['soil_moisture'] ??
+        _firstDouble(soilSnapshot, const ['soil_moisture', 'moisture']),
+    soilTempC: satelliteSoil?['soil_temp_c'] ??
+        _firstDouble(soilSnapshot, const ['soil_temp_c', 'soil_temp']),
+    soilPh: soilProfile?.phReal ??
+        conditions?.phH2O ??
+        _firstDouble(soilSnapshot, const ['ph', 'soil_ph', 'ph_h2o']),
+    nitrogenKgDekar: npk?.nitrogenKgDekar ??
+        _firstDouble(soilSnapshot, const ['nitrogen_kg_dekar', 'n_kg_dekar']),
+    phosphorusKgDekar: npk?.phosphorusKgDekar ??
+        _firstDouble(soilSnapshot, const ['phosphorus_kg_dekar', 'p_kg_dekar']),
+    potassiumKgDekar: npk?.potassiumKgDekar ??
+        _firstDouble(soilSnapshot, const ['potassium_kg_dekar', 'k_kg_dekar']),
+    fetchedAt: DateTime.now(),
+    source:
+        sources.isEmpty ? 'çevrimdışı varsayım' : sources.toSet().join(', '),
+  );
+
+  if (!snapshot.hasWeather && !snapshot.hasSoil && !snapshot.hasNpk) {
+    return null;
+  }
+  return snapshot;
+}
+
+Map<String, dynamic>? _mapValue(Object? value) {
+  if (value is Map<String, dynamic>) return value;
+  if (value is Map) return Map<String, dynamic>.from(value);
+  return null;
+}
+
+double? _firstDouble(Map<String, dynamic>? map, List<String> keys) {
+  if (map == null) return null;
+  for (final key in keys) {
+    final value = map[key];
+    if (value is num) return value.toDouble();
+    if (value is String) {
+      final parsed = double.tryParse(value.replaceAll(',', '.'));
+      if (parsed != null) return parsed;
+    }
+  }
+  return null;
+}
