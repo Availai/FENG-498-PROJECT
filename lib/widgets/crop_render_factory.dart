@@ -198,18 +198,32 @@ Widget buildCropMarkerWidget({
           : assetPath;
 
       Widget buildSpriteImage() {
+        final devicePixelRatio =
+            MediaQuery.maybeDevicePixelRatioOf(context) ?? 1.0;
+        final cacheW =
+            (spriteW * devicePixelRatio).round().clamp(24, 512).toInt();
+        final cacheH =
+            (spriteH * devicePixelRatio).round().clamp(24, 768).toInt();
         return Image.asset(
           pngPath,
           width: spriteW,
           height: spriteH,
           fit: BoxFit.contain,
+          cacheWidth: cacheW,
+          cacheHeight: cacheH,
           filterQuality: FilterQuality.high,
+          isAntiAlias: true,
+          gaplessPlayback: true,
           errorBuilder: (_, __, ___) => Image.asset(
             jpgPath,
             width: spriteW,
             height: spriteH,
             fit: BoxFit.contain,
+            cacheWidth: cacheW,
+            cacheHeight: cacheH,
             filterQuality: FilterQuality.high,
+            isAntiAlias: true,
+            gaplessPlayback: true,
             errorBuilder: (_, __, ___) => const SizedBox.shrink(),
           ),
         );
@@ -315,175 +329,32 @@ Widget buildCropMarkerWidget({
             )
           : orientLayer(sprite);
 
-      final double shadowW = spriteW * 0.7;
-      final double shadowH = spriteH * 0.12;
-      // Gölgeleri çok yumuşattık çünkü overlap olunca kapkara oluyorlardı.
-      final double shadowAlpha =
-          phase == GrowthPhase.harvest ? 0.18 + (harvestPulse * 0.05) : 0.12;
+      final statusSemantics = switch (healthStatus) {
+        'diseased' => diseaseType?.trim().isNotEmpty == true
+            ? ', hastalık belirtisi: $diseaseType'
+            : ', hastalık belirtisi var',
+        'dead' => ', bitki cansız',
+        _ => '',
+      };
+      final harvestMarkerScale =
+          phase == GrowthPhase.harvest ? 1.0 + (harvestPulse * 0.03) : 1.0;
 
-      final groundShadow = Container(
-        width: shadowW,
-        height: shadowH,
-        decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: shadowAlpha),
-          borderRadius: BorderRadius.all(Radius.elliptical(shadowW, shadowH)),
-        ),
-      );
-
-      // "Kazılmış toprak" dairesi — bitkinin toprağa ekildiği izlenim için
-      // radial gradient: merkez koyu toprak, kenar fade-out
-      final double soilW = spriteW * 0.85;
-      final double soilH = spriteH * 0.22;
-      final soilDisc = Container(
-        width: soilW,
-        height: soilH,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.all(Radius.elliptical(soilW, soilH)),
-          gradient: RadialGradient(
-            center: Alignment.center,
-            radius: 0.55,
-            colors: [
-              const Color(0xFF3E2A17).withValues(alpha: 0.55),
-              const Color(0xFF5B3A21).withValues(alpha: 0.35),
-              const Color(0xFF5B3A21).withValues(alpha: 0.0),
-            ],
-            stops: const [0.0, 0.55, 1.0],
-          ),
-        ),
-      );
-      final showGroundContact = currentZoom >= 16.0;
-      final double rootLockW = spriteW * 0.24;
-      final double rootLockH = (spriteH * 0.055).clamp(2.0, 8.0);
-      final double rootPinW = (spriteW * 0.055).clamp(2.0, 4.5);
-      final double rootPinH = (spriteH * 0.16).clamp(7.0, 18.0);
-      final rootPin = Container(
-        width: rootPinW,
-        height: rootPinH,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(rootPinW),
-          gradient: const LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFF6E6A22),
-              Color(0xFF5B3A1F),
-              Color(0xFF2D1A0F),
-            ],
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.22),
-              blurRadius: 2,
-              offset: const Offset(0, 1),
-            ),
-          ],
-        ),
-      );
-      final double rootMoundW = spriteW * 0.36;
-      final double rootMoundH = (spriteH * 0.09).clamp(4.0, 12.0);
-      final rootMound = Container(
-        width: rootMoundW,
-        height: rootMoundH,
-        decoration: BoxDecoration(
-          borderRadius:
-              BorderRadius.all(Radius.elliptical(rootMoundW, rootMoundH)),
-          gradient: RadialGradient(
-            center: Alignment.center,
-            radius: 0.72,
-            colors: [
-              const Color(0xFF2D1A0F).withValues(alpha: 0.82),
-              const Color(0xFF4A2D18).withValues(alpha: 0.56),
-              const Color(0xFF4A2D18).withValues(alpha: 0.0),
-            ],
-            stops: const [0.0, 0.58, 1.0],
-          ),
-        ),
-      );
-      final rootLock = Container(
-        width: rootLockW,
-        height: rootLockH,
-        decoration: BoxDecoration(
-          borderRadius:
-              BorderRadius.all(Radius.elliptical(rootLockW, rootLockH)),
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              const Color(0xFF6B4728).withValues(alpha: 0.0),
-              const Color(0xFF4A2D18).withValues(alpha: 0.62),
-              const Color(0xFF2D1A0F).withValues(alpha: 0.82),
-            ],
-            stops: const [0.0, 0.45, 1.0],
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.16),
-              blurRadius: 3,
-              offset: const Offset(0, 1),
-            ),
-          ],
-        ),
-      );
-
-      // PNG bitki: TABANI marker'ın alt kenarına yapışır. Dış Marker
-      // `Alignment.topCenter` ile bu kenar lat/lng zeminine oturur.
-      final marker = Transform(
-        transform: Matrix4.identity()..rotateX(0.95),
-        alignment: Alignment.bottomCenter,
+      // Marker sadece bitki PNG'sini çizer; zemin gölgesi/toprak lekesi eklenmez.
+      final marker = Semantics(
+        label: cropName.trim().isEmpty ? null : '$cropName$statusSemantics',
         child: SizedBox.expand(
           child: Align(
             alignment: Alignment.bottomCenter,
             child: SizedBox(
               width: spriteW,
               height: spriteH,
-              child: Stack(
-                clipBehavior: Clip.none,
+              child: Align(
                 alignment: Alignment.bottomCenter,
-                children: [
-                  // 1. Toprak dairesi (zemin) — bitkinin altına denk gelir
-                  if (showGroundContact)
-                    Positioned(
-                      bottom: 0,
-                      child: soilDisc,
-                    ),
-                  // 2. Gölge: toprağın üstünde hafif kararma
-                  if (showGroundContact)
-                    Positioned(
-                      bottom: 0,
-                      child: groundShadow,
-                    ),
-                  // 3. Bitki: tabanı zemin çizgisinde
-                  Align(
-                    alignment: Alignment.bottomCenter,
-                    child: orientedSprite,
-                  ),
-                  if (showGroundContact)
-                    Positioned(
-                      bottom: 0,
-                      child: rootPin,
-                    ),
-                  if (showGroundContact)
-                    Positioned(
-                      bottom: 0,
-                      child: rootMound,
-                    ),
-                  if (showGroundContact)
-                    Positioned(
-                      bottom: rootMoundH * 0.24,
-                      child: rootLock,
-                    ),
-                  // 4. Sağlık badge'i — hasta/ölü işaretlenmiş bitkilerde
-                  // sağ-üst köşede ünlem (kırmızı) veya X (siyah).
-                  if (healthStatus == 'diseased' || healthStatus == 'dead')
-                    Positioned(
-                      top: 0,
-                      right: 0,
-                      child: _HealthBadge(
-                        status: healthStatus!,
-                        diameter: (spriteW * 0.32).clamp(10.0, 18.0),
-                      ),
-                    ),
-                ],
+                child: Transform.scale(
+                  scale: harvestMarkerScale,
+                  alignment: Alignment.bottomCenter,
+                  child: orientedSprite,
+                ),
               ),
             ),
           ),
@@ -609,38 +480,4 @@ Widget buildCropMarkerWidget({
       return highlightedMarker;
     },
   );
-}
-
-/// Hasta/ölü bitkinin sağ-üst köşesine yapıştırılan küçük gösterge.
-/// Tasarım: kırmızı/siyah dolgulu daire + beyaz kenarlık + içinde ikon.
-/// Boyut zoom ile birlikte ölçeklenir (10–18px).
-class _HealthBadge extends StatelessWidget {
-  const _HealthBadge({required this.status, required this.diameter});
-
-  final String status;
-  final double diameter;
-
-  @override
-  Widget build(BuildContext context) {
-    final isDead = status == 'dead';
-    final color = isDead ? const Color(0xFF1A1A1A) : const Color(0xFFD32F2F);
-    final icon = isDead ? Icons.close_rounded : Icons.priority_high_rounded;
-    return Container(
-      width: diameter,
-      height: diameter,
-      decoration: BoxDecoration(
-        color: color,
-        shape: BoxShape.circle,
-        border: Border.all(color: Colors.white, width: 1.5),
-        boxShadow: [
-          BoxShadow(
-            color: color.withValues(alpha: 0.45),
-            blurRadius: 4,
-            offset: const Offset(0, 1),
-          ),
-        ],
-      ),
-      child: Icon(icon, color: Colors.white, size: diameter * 0.7),
-    );
-  }
 }
