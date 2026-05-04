@@ -23,7 +23,8 @@
       "Bash(backend/venv/Scripts/python.exe -c \"import sys; sys.path.insert\\(0,'backend'\\); from main import app; print\\('OK', len\\(app.routes\\), 'routes'\\)\")",
       "Bash(flutter test *)",
       "Bash(grep -v \"//\")",
-      "Bash(git stash *)"
+      "Bash(git stash *)",
+      "Bash(xargs grep *)"
     ]
   }
 }

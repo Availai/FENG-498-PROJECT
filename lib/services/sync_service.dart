@@ -243,6 +243,7 @@ class SyncService {
     }
 
     final p = item.payload;
+    final hasFacingDirection = p.containsKey('facing_direction');
     await db.into(db.fieldCrops).insertOnConflictUpdate(FieldCropsCompanion(
           id: Value(item.entityId),
           fieldId: Value((p['field_id'] ?? existing?.fieldId ?? '').toString()),
@@ -265,6 +266,9 @@ class SyncService {
               7),
           zonePolygonJson: Value(
               p['zone_polygon_json']?.toString() ?? existing?.zonePolygonJson),
+          facingDirection: hasFacingDirection
+              ? Value(p['facing_direction']?.toString())
+              : Value(existing?.facingDirection),
           createdAt: Value(existing?.createdAt ?? item.updatedAt),
           updatedAt: Value(item.updatedAt),
           deletedAt: const Value(null),

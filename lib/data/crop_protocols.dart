@@ -80,6 +80,26 @@ enum ProductionSystem {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
+// BİTKİ YÖN BİLGİSİ — hangi yöne baktığı (güneş maruziyeti için)
+// ═══════════════════════════════════════════════════════════════════════
+
+enum PlantFacingDirection {
+  north('Kuzey', 'K', '↑'),
+  northeast('Kuzeydoğu', 'KD', '↗'),
+  east('Doğu', 'D', '→'),
+  southeast('Güneydoğu', 'GD', '↘'),
+  south('Güney', 'G', '↓'),
+  southwest('Güneybatı', 'GB', '↙'),
+  west('Batı', 'B', '←'),
+  northwest('Kuzeybatı', 'KB', '↖');
+
+  final String label;
+  final String shortLabel;
+  final String arrow;
+  const PlantFacingDirection(this.label, this.shortLabel, this.arrow);
+}
+
+// ═══════════════════════════════════════════════════════════════════════
 // ÇİFTÇİ KONFİGÜRASYONU — kullanıcının tarlaya özel girişleri
 // ═══════════════════════════════════════════════════════════════════════
 
@@ -91,6 +111,7 @@ class CropConfig {
   final double rowSpacingCm; // sıra arası (cm)
   final double plantSpacingCm; // bitki arası (cm)
   final int? targetPlantCount; // kullanıcının opsiyonel hedef bitki adedi
+  final PlantFacingDirection? facingDirection; // bitkinin baktığı yön
 
   const CropConfig({
     required this.soilType,
@@ -100,6 +121,7 @@ class CropConfig {
     required this.rowSpacingCm,
     required this.plantSpacingCm,
     this.targetPlantCount,
+    this.facingDirection,
   });
 
   double get plantFootprintSqm => (rowSpacingCm / 100) * (plantSpacingCm / 100);
@@ -132,6 +154,7 @@ class CropConfig {
         'rowSpacingCm': rowSpacingCm,
         'plantSpacingCm': plantSpacingCm,
         if (targetPlantCount != null) 'targetPlantCount': targetPlantCount,
+        if (facingDirection != null) 'facingDirection': facingDirection!.name,
       };
 
   factory CropConfig.fromJson(Map<String, dynamic> j) => CropConfig(
@@ -151,6 +174,12 @@ class CropConfig {
         rowSpacingCm: (j['rowSpacingCm'] as num?)?.toDouble() ?? 70.0,
         plantSpacingCm: (j['plantSpacingCm'] as num?)?.toDouble() ?? 25.0,
         targetPlantCount: (j['targetPlantCount'] as num?)?.toInt(),
+        facingDirection: j['facingDirection'] == null
+            ? null
+            : PlantFacingDirection.values.firstWhere(
+                (e) => e.name == j['facingDirection'],
+                orElse: () => PlantFacingDirection.south,
+              ),
       );
 }
 

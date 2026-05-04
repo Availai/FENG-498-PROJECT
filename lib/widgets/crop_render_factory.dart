@@ -44,6 +44,42 @@ GrowthPhase getGrowthPhase(double maturityPercent) {
   return GrowthPhase.harvest;
 }
 
+double _facingDegrees(String? directionKey) {
+  final raw = directionKey?.trim();
+  if (raw == null || raw.isEmpty) return 180.0;
+  if (raw.startsWith('deg:')) {
+    final parsed = double.tryParse(raw.substring(4));
+    if (parsed != null) return parsed % 360.0;
+  }
+  return switch (directionKey) {
+    'north' => 0.0,
+    'northeast' => 45.0,
+    'east' => 90.0,
+    'southeast' => 135.0,
+    'south' => 180.0,
+    'southwest' => 225.0,
+    'west' => 270.0,
+    'northwest' => 315.0,
+    _ => 180.0,
+  };
+}
+
+double _facingYawRadians(String? directionKey) {
+  final degrees = _facingDegrees(directionKey);
+  final delta = ((degrees - 180.0 + 540.0) % 360.0) - 180.0;
+  return delta * math.pi / 180.0;
+}
+
+bool _usesLayeredFacing(String cropName, String assetPath) {
+  final name = cropName.toLowerCase();
+  final asset = assetPath.toLowerCase();
+  return asset.contains('aycicegi') ||
+      asset.contains('sunflower') ||
+      name.contains('aycicek') ||
+      name.contains('aycicegi') ||
+      name.contains('sunflower');
+}
+
 // ignore: unused_element
 String _stageKeyForMaturity(double maturityPercent) {
   if (maturityPercent < 12) return 'cimlenme';
@@ -128,6 +164,8 @@ Widget buildCropMarkerWidget({
   ValueChanged<bool>? onHover,
   VoidCallback? onTap,
   VoidCallback? onLongPress,
+  String?
+      facingDirection, // 'north' | 'northeast' | 'deg:180' | null. Bitki dönüşü için kullanılır.
 }) {
   return Builder(
     builder: (context) {
@@ -159,21 +197,123 @@ Widget buildCropMarkerWidget({
           ? assetPath.replaceAll('.png', '.jpg')
           : assetPath;
 
-      final sprite = Image.asset(
-        pngPath,
-        width: spriteW,
-        height: spriteH,
-        fit: BoxFit.contain,
-        filterQuality: FilterQuality.high,
-        errorBuilder: (_, __, ___) => Image.asset(
-          jpgPath,
+      Widget buildSpriteImage() {
+        return Image.asset(
+          pngPath,
           width: spriteW,
           height: spriteH,
           fit: BoxFit.contain,
           filterQuality: FilterQuality.high,
-          errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-        ),
-      );
+          errorBuilder: (_, __, ___) => Image.asset(
+            jpgPath,
+            width: spriteW,
+            height: spriteH,
+            fit: BoxFit.contain,
+            filterQuality: FilterQuality.high,
+            errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+          ),
+        );
+      }
+
+      final sprite = buildSpriteImage();
+      final facingYaw = _facingYawRadians(facingDirection);
+
+      Widget orientLayer(Widget child) {
+        return TweenAnimationBuilder<double>(
+          tween: Tween<double>(end: facingYaw),
+          duration: const Duration(milliseconds: 260),
+          curve: Curves.easeOutCubic,
+          child: child,
+          builder: (_, yaw, layerChild) {
+            final rearRatio = ((-math.cos(yaw)).clamp(0.0, 1.0)).toDouble();
+            final brightness = 1.0 - (rearRatio * 0.34);
+            final saturation = 1.0 - (rearRatio * 0.22);
+            final filteredChild = ColorFiltered(
+              colorFilter: ColorFilter.matrix([
+                brightness * saturation,
+                0,
+                0,
+                0,
+                rearRatio * 18,
+                0,
+                brightness,
+                0,
+                0,
+                rearRatio * 10,
+                0,
+                0,
+                brightness * saturation,
+                0,
+                -rearRatio * 8,
+                0,
+                0,
+                0,
+                1,
+                0,
+              ]),
+              child: layerChild!,
+            );
+            return Transform(
+              transform: Matrix4.identity()
+                ..setEntry(3, 2, 0.0014)
+                ..rotateY(yaw),
+              alignment: Alignment.bottomCenter,
+              child: filteredChild,
+            );
+          },
+        );
+      }
+
+      Widget spriteSlice({
+        required double top,
+        required double height,
+      }) {
+        return SizedBox(
+          width: spriteW,
+          height: height,
+          child: ClipRect(
+            child: Transform.translate(
+              offset: Offset(0, -top),
+              child: SizedBox(
+                width: spriteW,
+                height: spriteH,
+                child: buildSpriteImage(),
+              ),
+            ),
+          ),
+        );
+      }
+
+      final layeredFacing = _usesLayeredFacing(cropName, assetPath);
+      final headCut = spriteH * 0.58;
+      final bodyTop = spriteH * 0.46;
+      final orientedSprite = layeredFacing
+          ? SizedBox(
+              width: spriteW,
+              height: spriteH,
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Positioned(
+                    top: bodyTop,
+                    child: spriteSlice(
+                      top: bodyTop,
+                      height: spriteH - bodyTop,
+                    ),
+                  ),
+                  Positioned(
+                    top: 0,
+                    child: orientLayer(
+                      spriteSlice(
+                        top: 0,
+                        height: headCut,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            )
+          : orientLayer(sprite);
 
       final double shadowW = spriteW * 0.7;
       final double shadowH = spriteH * 0.12;
@@ -211,6 +351,79 @@ Widget buildCropMarkerWidget({
           ),
         ),
       );
+      final showGroundContact = currentZoom >= 16.0;
+      final double rootLockW = spriteW * 0.24;
+      final double rootLockH = (spriteH * 0.055).clamp(2.0, 8.0);
+      final double rootPinW = (spriteW * 0.055).clamp(2.0, 4.5);
+      final double rootPinH = (spriteH * 0.16).clamp(7.0, 18.0);
+      final rootPin = Container(
+        width: rootPinW,
+        height: rootPinH,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(rootPinW),
+          gradient: const LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xFF6E6A22),
+              Color(0xFF5B3A1F),
+              Color(0xFF2D1A0F),
+            ],
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.22),
+              blurRadius: 2,
+              offset: const Offset(0, 1),
+            ),
+          ],
+        ),
+      );
+      final double rootMoundW = spriteW * 0.36;
+      final double rootMoundH = (spriteH * 0.09).clamp(4.0, 12.0);
+      final rootMound = Container(
+        width: rootMoundW,
+        height: rootMoundH,
+        decoration: BoxDecoration(
+          borderRadius:
+              BorderRadius.all(Radius.elliptical(rootMoundW, rootMoundH)),
+          gradient: RadialGradient(
+            center: Alignment.center,
+            radius: 0.72,
+            colors: [
+              const Color(0xFF2D1A0F).withValues(alpha: 0.82),
+              const Color(0xFF4A2D18).withValues(alpha: 0.56),
+              const Color(0xFF4A2D18).withValues(alpha: 0.0),
+            ],
+            stops: const [0.0, 0.58, 1.0],
+          ),
+        ),
+      );
+      final rootLock = Container(
+        width: rootLockW,
+        height: rootLockH,
+        decoration: BoxDecoration(
+          borderRadius:
+              BorderRadius.all(Radius.elliptical(rootLockW, rootLockH)),
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              const Color(0xFF6B4728).withValues(alpha: 0.0),
+              const Color(0xFF4A2D18).withValues(alpha: 0.62),
+              const Color(0xFF2D1A0F).withValues(alpha: 0.82),
+            ],
+            stops: const [0.0, 0.45, 1.0],
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.16),
+              blurRadius: 3,
+              offset: const Offset(0, 1),
+            ),
+          ],
+        ),
+      );
 
       // PNG bitki: TABANI marker'ın alt kenarına yapışır. Dış Marker
       // `Alignment.topCenter` ile bu kenar lat/lng zeminine oturur.
@@ -228,13 +441,13 @@ Widget buildCropMarkerWidget({
                 alignment: Alignment.bottomCenter,
                 children: [
                   // 1. Toprak dairesi (zemin) — bitkinin altına denk gelir
-                  if (currentZoom >= 16.5)
+                  if (showGroundContact)
                     Positioned(
                       bottom: 0,
                       child: soilDisc,
                     ),
                   // 2. Gölge: toprağın üstünde hafif kararma
-                  if (currentZoom >= 16.5)
+                  if (showGroundContact)
                     Positioned(
                       bottom: 0,
                       child: groundShadow,
@@ -242,8 +455,23 @@ Widget buildCropMarkerWidget({
                   // 3. Bitki: tabanı zemin çizgisinde
                   Align(
                     alignment: Alignment.bottomCenter,
-                    child: sprite,
+                    child: orientedSprite,
                   ),
+                  if (showGroundContact)
+                    Positioned(
+                      bottom: 0,
+                      child: rootPin,
+                    ),
+                  if (showGroundContact)
+                    Positioned(
+                      bottom: 0,
+                      child: rootMound,
+                    ),
+                  if (showGroundContact)
+                    Positioned(
+                      bottom: rootMoundH * 0.24,
+                      child: rootLock,
+                    ),
                   // 4. Sağlık badge'i — hasta/ölü işaretlenmiş bitkilerde
                   // sağ-üst köşede ünlem (kırmızı) veya X (siyah).
                   if (healthStatus == 'diseased' || healthStatus == 'dead')

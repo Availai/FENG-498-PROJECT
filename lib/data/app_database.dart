@@ -43,6 +43,10 @@ class FieldCrops extends Table {
   /// Sub-polygon JSON: [{"lat":..., "lng":...}, ...]
   /// null ise bitki tüm tarla alanına ekilmiş kabul edilir.
   TextColumn get zonePolygonJson => text().nullable()();
+
+  /// Bitkinin baktığı yön — PlantFacingDirection.name değeri (ör. 'south').
+  /// null ise belirsiz/girilmemiş.
+  TextColumn get facingDirection => text().nullable()();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
   DateTimeColumn get deletedAt => dateTime().nullable()();
@@ -244,7 +248,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -280,6 +284,11 @@ class AppDatabase extends _$AppDatabase {
             if (from < 6) {
               // v6: K (potasyum) stresi kolonu — NPK ayrımı için.
               await m.addColumn(cropGrowthStates, cropGrowthStates.kStressIdx);
+            }
+            if (from < 7) {
+              // v7: Bitki yön bilgisi — güneş maruziyeti ve mikro-iklim için.
+              await customStatement(
+                  'ALTER TABLE field_crops ADD COLUMN facing_direction TEXT;');
             }
           } catch (e, st) {
             debugPrint('Drift migration $from→$to hata: $e\n$st');

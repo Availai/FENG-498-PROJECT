@@ -488,6 +488,7 @@ class LocalDataRepository {
               harvestDays: Value(harvestDays),
               waterIntervalDays: Value(waterIntervalDays),
               zonePolygonJson: Value(crop['zone_polygon_json']?.toString()),
+              facingDirection: Value(crop['facing_direction']?.toString()),
               createdAt: Value(_parseTimestamp(crop['created_at']) ?? now),
               updatedAt: Value(now),
               deletedAt: const Value(null),
@@ -808,6 +809,7 @@ class LocalDataRepository {
     int? colorValue,
     String? zonePolygonJson,
     bool replaceZone = false,
+    String? facingDirection,
   }) async {
     final now = DateTime.now().toUtc();
     final existing = await (_db.select(_db.fieldCrops)
@@ -833,6 +835,9 @@ class LocalDataRepository {
           plantSpacingCm == null ? const Value.absent() : Value(plantSpacingCm),
       colorValue: colorValue == null ? const Value.absent() : Value(colorValue),
       zonePolygonJson: Value(zoneJson),
+      facingDirection: facingDirection == null
+          ? const Value.absent()
+          : Value(facingDirection),
       updatedAt: Value(now),
     ));
 
@@ -861,6 +866,7 @@ class LocalDataRepository {
         'harvest_days': harvestDays,
         'water_interval_days': waterIntervalDays,
         'zone_polygon_json': zoneJson,
+        'facing_direction': facingDirection ?? existing.facingDirection,
         'replant': true,
       },
       updatedAt: now,
@@ -915,12 +921,56 @@ class LocalDataRepository {
         'harvest_days': existing.harvestDays,
         'water_interval_days': waterIntervalDays ?? existing.waterIntervalDays,
         'zone_polygon_json': existing.zonePolygonJson,
+        'facing_direction': existing.facingDirection,
       },
       updatedAt: now,
     );
 
     await _regenerateIrrigationPlans(
         fieldId: existing.fieldId, referenceTime: now);
+    await _touchFieldUpdatedAt(existing.fieldId, now);
+    await _mirrorActiveFieldsToHive();
+  }
+
+  /// Bir bitkinin baktığı yönü günceller. Sadece `facing_direction` kolonunu
+  /// değiştirir; takvim/sulama planları yeniden üretilmez.
+  Future<void> updateCropFacingDirection({
+    required String cropId,
+    String? facingDirection,
+  }) async {
+    final now = DateTime.now().toUtc();
+    final existing = await (_db.select(_db.fieldCrops)
+          ..where((tbl) => tbl.id.equals(cropId)))
+        .getSingleOrNull();
+    if (existing == null) return;
+
+    await (_db.update(_db.fieldCrops)..where((tbl) => tbl.id.equals(cropId)))
+        .write(FieldCropsCompanion(
+      facingDirection: Value(facingDirection),
+      updatedAt: Value(now),
+    ));
+
+    await _enqueueSyncJob(
+      entityType: 'field_crops',
+      entityId: cropId,
+      operation: 'upsert',
+      payload: {
+        'id': cropId,
+        'field_id': existing.fieldId,
+        'name': existing.name,
+        'zone_start': existing.zoneStart,
+        'zone_end': existing.zoneEnd,
+        'row_spacing_cm': existing.rowSpacingCm,
+        'plant_spacing_cm': existing.plantSpacingCm,
+        'color_value': existing.colorValue,
+        'planted_date': existing.plantedDate,
+        'harvest_days': existing.harvestDays,
+        'water_interval_days': existing.waterIntervalDays,
+        'zone_polygon_json': existing.zonePolygonJson,
+        'facing_direction': facingDirection,
+      },
+      updatedAt: now,
+    );
     await _touchFieldUpdatedAt(existing.fieldId, now);
     await _mirrorActiveFieldsToHive();
   }
@@ -1451,6 +1501,7 @@ class LocalDataRepository {
       'harvest_days': crop.harvestDays ?? 90,
       'water_interval_days': crop.waterIntervalDays ?? 7,
       'zone_polygon_json': crop.zonePolygonJson,
+      'facing_direction': crop.facingDirection,
       'created_at': crop.createdAt.toIso8601String(),
       'updated_at': crop.updatedAt.toIso8601String(),
     };
@@ -1472,6 +1523,7 @@ class LocalDataRepository {
     double rowSpacingCm = 50.0,
     double plantSpacingCm = 40.0,
     String? zonePolygonJson,
+    String? facingDirection,
   }) async {
     final now = DateTime.now().toUtc();
     final cropId = _newId('crop');
@@ -1490,6 +1542,7 @@ class LocalDataRepository {
             harvestDays: Value(harvestDays),
             waterIntervalDays: Value(waterIntervalDays),
             zonePolygonJson: Value(zonePolygonJson),
+            facingDirection: Value(facingDirection),
             createdAt: now,
             updatedAt: now,
           ),
@@ -1512,6 +1565,7 @@ class LocalDataRepository {
         'harvest_days': harvestDays,
         'water_interval_days': waterIntervalDays,
         'zone_polygon_json': zonePolygonJson,
+        'facing_direction': facingDirection,
       },
       updatedAt: now,
     );

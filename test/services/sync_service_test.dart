@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:drift/drift.dart' hide isNotNull;
+import 'package:drift/drift.dart' hide isNotNull, isNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -162,5 +162,77 @@ void main() {
     expect(crop.rowSpacingCm, 70);
     expect(crop.plantSpacingCm, 20);
     expect(crop.zonePolygonJson, contains('"lat":39.0'));
+  });
+
+  test('runPullCycle applies field crop facing direction updates', () async {
+    final now = DateTime.utc(2026, 5, 4);
+    await database.into(database.fields).insert(
+          FieldsCompanion.insert(
+            id: 'field-1',
+            name: 'Tarla',
+            date: '04.05.2026',
+            createdAt: now,
+            updatedAt: now,
+          ),
+        );
+
+    final serviceWithDb = SyncService(
+      syncRepository: repository,
+      database: database,
+    );
+    final client = SyncApiClient(
+      baseUrl: 'http://sync.test',
+      authTokenProvider: () async => 'user-token',
+      httpClient: MockClient((request) async {
+        expect(request.url.path, '/api/sync/pull');
+        return http.Response.bytes(
+          utf8.encode(jsonEncode({
+            'items': [
+              {
+                'entity_type': 'field_crops',
+                'entity_id': 'crop-1',
+                'operation': 'upsert',
+                'updated_at': now.toIso8601String(),
+                'payload': {
+                  'field_id': 'field-1',
+                  'name': 'Aycicegi',
+                  'zone_start': 0,
+                  'zone_end': 1,
+                  'row_spacing_cm': 70,
+                  'plant_spacing_cm': 30,
+                  'planted_date': '04.05.2026',
+                  'harvest_days': 100,
+                  'water_interval_days': 7,
+                  'facing_direction': 'north',
+                },
+              },
+              {
+                'entity_type': 'field_crops',
+                'entity_id': 'crop-1',
+                'operation': 'upsert',
+                'updated_at':
+                    now.add(const Duration(minutes: 1)).toIso8601String(),
+                'payload': {
+                  'field_id': 'field-1',
+                  'facing_direction': null,
+                },
+              },
+            ],
+            'server_time':
+                now.add(const Duration(minutes: 2)).toIso8601String(),
+          })),
+          200,
+        );
+      }),
+    );
+
+    final applied = await serviceWithDb.runPullCycle(apiClient: client);
+    final crop = await (database.select(database.fieldCrops)
+          ..where((tbl) => tbl.id.equals('crop-1')))
+        .getSingle();
+
+    expect(applied, 2);
+    expect(crop.name, 'Aycicegi');
+    expect(crop.facingDirection, isNull);
   });
 }

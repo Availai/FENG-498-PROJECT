@@ -3,29 +3,30 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../data/activity_types.dart';
-import '../data/crop_protocols.dart';
 import '../services/agri_service.dart';
 import '../services/app_providers.dart';
 import '../services/crop_daily_plan.dart';
 import '../services/crop_protocol_service.dart';
+import '../services/daily_guide_engine.dart';
 import '../theme/app_theme.dart';
 import '../widgets/activity_quick_log.dart';
 import '../widgets/floating_toast.dart';
-import '../widgets/live_crop_growth.dart';
 import '../widgets/particle_background.dart';
 import '../widgets/season_summary_card.dart';
 import '../widgets/tap_scale.dart';
 
-/// Tarladaki tek bir bitki için gün-gün rehber + canlı su muhasebesi.
+/// Tek bir bitki için yeniden tasarlanmış günlük rehber.
 ///
-/// Üç akışı birleştirir:
-/// - `fieldActivityLogProvider`   (çiftçi logları)
-/// - `fieldScheduledAutoSeedProvider` (sezonluk planlanmış görevler)
-/// - `fieldGrowthStatesProvider`  (GDD/evre/su açığı — canlı)
-///
-/// Yağmur verisi `AgriService.getFieldAnalysis` ile bir kez yüklenir; tarla
-/// detay ekranı yağmuru zaten cache'lediği için bu çağrı çoğunlukla saniyenin
-/// altında döner.
+/// Yapı (yukarıdan aşağı):
+///   1. Tarla sağlığı hero kartı (0-100 skor + 4 faktör çubuğu)
+///   2. Tek-cümle akıllı özet
+///   3. Risk şeritleri (sadece aktif olanlar)
+///   4. Canlı aktivite etkisi (son 36 saat içindeyse)
+///   5. Bugün yapılacaklar (öncelikli, tek-tap log)
+///   6. 3 günlük tahmin şeridi
+///   7. Sezon su muhasebesi (kompakt)
+///   8. Yetiştirme adımları (özet, açılır)
+///   9. Sezon özeti
 class CropDailyPlanScreen extends ConsumerStatefulWidget {
   final String fieldId;
   final String cropId;
@@ -50,8 +51,12 @@ class CropDailyPlanScreen extends ConsumerStatefulWidget {
 }
 
 class _CropDailyPlanScreenState extends ConsumerState<CropDailyPlanScreen> {
+  static const _engine = DailyGuideEngine();
+
   List<dynamic> _dailyForecast = const [];
   bool _forecastLoading = true;
+  bool _roadmapExpanded = false;
+  bool _waterExpanded = false;
 
   @override
   void initState() {
@@ -85,7 +90,8 @@ class _CropDailyPlanScreenState extends ConsumerState<CropDailyPlanScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final activitiesAsync = ref.watch(fieldActivityLogProvider(widget.fieldId));
+    final activitiesAsync =
+        ref.watch(fieldActivityLogProvider(widget.fieldId));
     final scheduledAsync =
         ref.watch(fieldScheduledAutoSeedProvider(widget.fieldId));
     final growthAsync = ref.watch(fieldGrowthStatesProvider(widget.fieldId));
@@ -93,10 +99,11 @@ class _CropDailyPlanScreenState extends ConsumerState<CropDailyPlanScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Günlük Rehber'),
+        elevation: 0,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
-            tooltip: 'Yağmur ve plan tahminini yenile',
+            tooltip: 'Hava verisini yenile',
             onPressed: () {
               setState(() => _forecastLoading = true);
               _loadForecast();
@@ -142,6 +149,7 @@ class _CropDailyPlanScreenState extends ConsumerState<CropDailyPlanScreen> {
         if (cropMap == null) {
           return _emptyState('Bitki bulunamadı.');
         }
+
         Map<String, dynamic>? growthMap;
         for (final g in growthList) {
           if (_extractCropId(g) == widget.cropId) {
@@ -149,7 +157,9 @@ class _CropDailyPlanScreenState extends ConsumerState<CropDailyPlanScreen> {
             break;
           }
         }
-        final result = ref.read(cropDailyPlanServiceProvider).build(
+
+        // Yetiştirme planı (Ayçiçeği/Mısır/Domates için zengin; diğerleri null).
+        final plan = ref.read(cropDailyPlanServiceProvider).build(
               crop: cropMap,
               fieldId: widget.fieldId,
               areaDekar: widget.areaDekar,
@@ -158,21 +168,16 @@ class _CropDailyPlanScreenState extends ConsumerState<CropDailyPlanScreen> {
               dailyForecast: _dailyForecast,
               growthState: growthMap,
             );
-        if (result == null) {
-          return _emptyState(
-            'Gün-gün rehber yalnızca Ayçiçeği, Mısır ve Domates için '
-            'üretilir. Ekim tarihinin de girilmiş olması gerekir.',
-          );
-        }
 
-        // Direktif hesaplaması burada KALDIRILDI: aynı liste Durumum,
-        // HUD'taki "Yapılacaklar" modal'ı ve Yetiştirme Rehberi'nde zaten
-        // gösteriliyordu. Bu ekran 14-günlük plan + su muhasebesi + yol
-        // haritasına odaklansın diye direktifler tek merkezden okunuyor.
-        // fieldStateMap / growthSnapshots da yalnız direktif motoru için
-        // hesaplanıyordu, onlar da kaldırıldı.
+        // Yeni motor — tüm faktörleri tek state'e indirger.
+        final state = _engine.compute(
+          crop: cropMap,
+          activities: activities,
+          dailyForecast: _dailyForecast,
+          growthState: growthMap,
+          plan: plan,
+        );
 
-        // Yetiştirme protokolü (3 vitrin bitki için yol haritası).
         final progress = CropProtocolService.computeProgress(
           crop: cropMap,
           activities: activities,
@@ -180,122 +185,194 @@ class _CropDailyPlanScreenState extends ConsumerState<CropDailyPlanScreen> {
         );
 
         return _buildContent(
-          r: result,
+          state: state,
+          plan: plan,
           progress: progress,
           fieldCrops: snap.data!,
-          seasonSummary: computeSeasonSummary(
-            activities: activities,
-            cropId: widget.cropId,
-            since: result.plantedDate,
-          ),
+          cropMap: cropMap,
+          activities: activities,
         );
       },
     );
   }
 
   Widget _buildContent({
-    required CropDailyPlanResult r,
+    required DailyGuideState state,
+    required CropDailyPlanResult? plan,
     required CropProtocolProgress? progress,
     required List<Map<String, dynamic>> fieldCrops,
-    required Map<String, dynamic> seasonSummary,
+    required Map<String, dynamic> cropMap,
+    required List<Map<String, dynamic>> activities,
   }) {
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
-      children: [
-        _HeaderCard(result: r),
-        const SizedBox(height: 16),
-        LiveCropGuideScene(
-          cropId: r.cropId,
-          cropName: r.cropName,
-          plantedDate: r.plantedDate,
-          harvestDate: r.harvestDate,
-          fallbackStageKey: r.currentStageKey,
-          fallbackWaterDeficitMm: r.waterDeficitMm,
-          yieldLossPct: r.yieldLossPct,
-        ),
-        const SizedBox(height: 16),
-        _WaterAccountingCard(result: r),
-        // "Bugünün yönergeleri" bölümü kaldırıldı:
-        // aynı direktifler "Durumum", HUD'taki "Yapılacaklar" modal'ı ve
-        // Yetiştirme Rehberi'nde gösteriliyor. Burada tekrar etmek
-        // kullanıcıyı aynı sulama emrini iki kere okumaya zorluyordu.
-        const SizedBox(height: 20),
-        _SectionTitle('Bugün ne yapmalıyım?'),
-        const SizedBox(height: 8),
-        if (r.today != null)
-          _TodayCard(
-            day: r.today!,
-            cropName: r.cropName,
-            onTaskTap: (task) => _onTaskTap(r, r.today!, task, fieldCrops),
-          )
-        else
-          _emptyMessage('Bugün ekim aralığı dışında.'),
-        const SizedBox(height: 20),
-        _SectionTitle('Sezon özeti'),
-        const SizedBox(height: 8),
-        SeasonSummaryCard(
-          cropName: r.cropName,
-          plantedDate: r.plantedDate,
-          areaDekar: r.areaDekar,
-          summary: seasonSummary,
-          harvestDays: r.harvestDays,
-          cropId: r.cropId,
-        ),
-        if (progress != null) ...[
-          const SizedBox(height: 20),
-          _SectionTitle('Yetiştirme rehberi'),
-          const SizedBox(height: 8),
-          _RoadmapMiniCard(progress: progress),
-        ],
-        const SizedBox(height: 20),
-        _SectionTitle('14 günlük zaman çizelgesi'),
-        const SizedBox(height: 8),
-        for (final d in r.days)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: _DayTile(
-              day: d,
-              cropName: r.cropName,
-              onTaskTap: (task) => _onTaskTap(r, d, task, fieldCrops),
+    final cropName = cropMap['name']?.toString() ?? 'Bitki';
+
+    return RefreshIndicator(
+      color: AppColors.emerald,
+      onRefresh: () async {
+        setState(() => _forecastLoading = true);
+        await _loadForecast();
+      },
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 36),
+        children: [
+          _HealthHeroCard(state: state, cropName: cropName),
+          const SizedBox(height: 14),
+          _OneLinerStrip(state: state),
+          const SizedBox(height: 16),
+          if (state.lastImpact != null) ...[
+            _LiveImpactCard(impact: state.lastImpact!),
+            const SizedBox(height: 14),
+          ],
+          if (state.risks.isNotEmpty) ...[
+            _SectionHeader(
+              title: 'Risk uyarıları',
+              count: state.risks.length,
+              icon: Icons.warning_amber_rounded,
+              accent: _severityColor(state.risks.first.severity),
             ),
-          ),
-        const SizedBox(height: 12),
-        Center(
-          child: Text(
-            'Hasat: ${DateFormat('d MMMM y', 'tr_TR').format(r.harvestDate)}',
-            style: AppText.xs(context),
-          ),
-        ),
-      ],
+            const SizedBox(height: 8),
+            for (final r in state.risks) ...[
+              _RiskBannerCard(
+                risk: r,
+                onAction: r.actionType == null
+                    ? null
+                    : () => _onRiskAction(r, plan, fieldCrops),
+              ),
+              const SizedBox(height: 8),
+            ],
+            const SizedBox(height: 6),
+          ],
+          if (state.actions.isNotEmpty) ...[
+            _SectionHeader(
+              title: 'Bugün yapılacaklar',
+              count: state.actions.length,
+              icon: Icons.check_circle_outline_rounded,
+              accent: AppColors.emerald,
+            ),
+            const SizedBox(height: 8),
+            for (final a in state.actions) ...[
+              _ActionCard(
+                action: a,
+                onTap: () => _onActionTap(a, plan, fieldCrops),
+              ),
+              const SizedBox(height: 8),
+            ],
+            const SizedBox(height: 6),
+          ],
+          if (state.actions.isEmpty && state.risks.isEmpty)
+            _IdleCard(stageLabel: state.stage?.stageLabel),
+          const SizedBox(height: 16),
+          if (state.forecast.isNotEmpty) ...[
+            _SectionHeader(
+              title: '3 günlük tahmin',
+              icon: Icons.calendar_today_rounded,
+              accent: AppColors.frost,
+            ),
+            const SizedBox(height: 8),
+            _ForecastStrip(days: state.forecast),
+            const SizedBox(height: 16),
+          ],
+          if (plan != null) ...[
+            _SectionHeader(
+              title: 'Sezon su muhasebesi',
+              icon: Icons.water_drop_rounded,
+              accent: AppColors.frost,
+              trailing: TextButton(
+                onPressed: () =>
+                    setState(() => _waterExpanded = !_waterExpanded),
+                child: Text(_waterExpanded ? 'Kapat' : 'Detay'),
+              ),
+            ),
+            const SizedBox(height: 8),
+            _WaterAccountingCard(plan: plan, expanded: _waterExpanded),
+            const SizedBox(height: 16),
+          ],
+          if (progress != null) ...[
+            _SectionHeader(
+              title: 'Yetiştirme adımları',
+              icon: Icons.timeline_rounded,
+              accent: AppColors.emeraldDark,
+              trailing: TextButton(
+                onPressed: () =>
+                    setState(() => _roadmapExpanded = !_roadmapExpanded),
+                child: Text(_roadmapExpanded ? 'Kapat' : 'Detay'),
+              ),
+            ),
+            const SizedBox(height: 8),
+            _RoadmapSummaryCard(
+              progress: progress,
+              expanded: _roadmapExpanded,
+            ),
+            const SizedBox(height: 16),
+          ],
+          if (plan != null) ...[
+            _SectionHeader(
+              title: 'Sezon özeti',
+              icon: Icons.bar_chart_rounded,
+              accent: AppColors.emerald,
+            ),
+            const SizedBox(height: 8),
+            SeasonSummaryCard(
+              cropName: plan.cropName,
+              plantedDate: plan.plantedDate,
+              areaDekar: plan.areaDekar,
+              summary: computeSeasonSummary(
+                activities: activities,
+                cropId: widget.cropId,
+                since: plan.plantedDate,
+              ),
+              harvestDays: plan.harvestDays,
+              cropId: plan.cropId,
+            ),
+            const SizedBox(height: 12),
+            Center(
+              child: Text(
+                'Hedef hasat: ${DateFormat('d MMMM y', 'tr_TR').format(plan.harvestDate)}',
+                style: AppText.xs(context),
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 
-  Future<void> _onTaskTap(
-    CropDailyPlanResult r,
-    DayPlan day,
-    DayTask task,
+  Future<void> _onActionTap(
+    GuideAction action,
+    CropDailyPlanResult? plan,
     List<Map<String, dynamic>> fieldCrops,
   ) async {
-    if (task.done) {
-      AppToast.show(context, message: 'Bu görev zaten kaydedildi.');
-      return;
-    }
-    if (!day.isToday && !day.isPast) {
-      AppToast.show(context,
-          message: 'Sadece bugünün veya geçmişin görevleri loglanabilir.');
-      return;
-    }
     await showActivityQuickLogSheet(
       context: context,
       ref: ref,
-      fieldId: r.fieldId,
-      type: task.type,
-      cropId: r.cropId,
+      fieldId: widget.fieldId,
+      type: action.actionType,
+      cropId: widget.cropId,
       fieldCrops: fieldCrops,
-      fieldAreaDekar: r.areaDekar,
-      recommendedQuantity: task.recommendedQuantity,
-      quantityUnit: task.unit,
-      note: task.detail,
+      fieldAreaDekar: plan?.areaDekar ?? widget.areaDekar ?? 1.0,
+      recommendedQuantity: action.recommendedQuantity,
+      quantityUnit: action.unit,
+      note: action.detail.isEmpty ? null : action.detail,
+    );
+  }
+
+  Future<void> _onRiskAction(
+    RiskBanner r,
+    CropDailyPlanResult? plan,
+    List<Map<String, dynamic>> fieldCrops,
+  ) async {
+    if (r.actionType == null) return;
+    await showActivityQuickLogSheet(
+      context: context,
+      ref: ref,
+      fieldId: widget.fieldId,
+      type: r.actionType!,
+      cropId: widget.cropId,
+      fieldCrops: fieldCrops,
+      fieldAreaDekar: plan?.areaDekar ?? widget.areaDekar ?? 1.0,
+      recommendedQuantity: r.actionQuantity,
+      quantityUnit: r.actionUnit,
+      note: r.advice,
     );
   }
 
@@ -305,15 +382,6 @@ class _CropDailyPlanScreenState extends ConsumerState<CropDailyPlanScreen> {
           child: Text(msg,
               textAlign: TextAlign.center, style: AppText.body(context)),
         ),
-      );
-
-  Widget _emptyMessage(String msg) => Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: AppRadius.md,
-        ),
-        child: Text(msg, style: AppText.body(context)),
       );
 
   static String? _extractCropId(dynamic g) {
@@ -335,6 +403,8 @@ class _CropDailyPlanScreenState extends ConsumerState<CropDailyPlanScreen> {
         'stage_progress': dyn.stageProgress,
         'accumulated_gdd': dyn.accumulatedGdd,
         'water_deficit_mm': dyn.waterDeficitMm,
+        'n_stress_idx': dyn.nStressIdx,
+        'disease_pressure': dyn.diseasePressure,
         'yield_multiplier': dyn.yieldMultiplier,
       };
     } catch (_) {
@@ -343,44 +413,79 @@ class _CropDailyPlanScreenState extends ConsumerState<CropDailyPlanScreen> {
   }
 }
 
-String _fmtNum(double v) =>
-    v == v.roundToDouble() ? v.toInt().toString() : v.toStringAsFixed(1);
+// ─── ortak yardımcılar ───────────────────────────────────────────────────────
 
-String _stageLabel(String? key) {
-  switch (key) {
-    case 'cimlenme':
-      return 'Çimlenme';
-    case 'vejetatif':
-      return 'Vejetatif';
-    case 'ciceklenme':
-      return 'Çiçeklenme';
-    case 'meyve_dolumu':
-      return 'Meyve Dolumu';
-    case 'olgunlasma':
-      return 'Olgunlaşma';
-    case 'hasat':
-      return 'Hasat';
-    default:
-      return '—';
+Color _severityColor(RiskSeverity s) {
+  switch (s) {
+    case RiskSeverity.critical:
+      return AppColors.error;
+    case RiskSeverity.warning:
+      return AppColors.warning;
+    case RiskSeverity.info:
+      return AppColors.info;
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Header — bitki adı, evre, GDD ilerlemesi, ekim/hasat tarihleri
-// ─────────────────────────────────────────────────────────────────────────────
-class _HeaderCard extends StatelessWidget {
-  final CropDailyPlanResult result;
-  const _HeaderCard({required this.result});
+Color _severityBg(RiskSeverity s) {
+  switch (s) {
+    case RiskSeverity.critical:
+      return AppColors.errorBg;
+    case RiskSeverity.warning:
+      return AppColors.warningBg;
+    case RiskSeverity.info:
+      return AppColors.infoBg;
+  }
+}
+
+IconData _iconFor(String key) {
+  switch (key) {
+    case 'water':
+      return Icons.water_drop_rounded;
+    case 'fertilizer':
+      return Icons.grass_rounded;
+    case 'spray':
+      return Icons.sanitizer_rounded;
+    case 'scout':
+      return Icons.search_rounded;
+    case 'harvest':
+      return Icons.agriculture_rounded;
+    case 'frost':
+      return Icons.ac_unit_rounded;
+    case 'heat':
+      return Icons.local_fire_department_rounded;
+    case 'storm':
+      return Icons.thunderstorm_rounded;
+    case 'rain':
+      return Icons.umbrella_rounded;
+    case 'drought':
+      return Icons.dry_rounded;
+    case 'saturation':
+      return Icons.water_rounded;
+    case 'disease':
+      return Icons.bug_report_rounded;
+    case 'climate':
+      return Icons.thermostat_rounded;
+    case 'yield':
+      return Icons.trending_down_rounded;
+    case 'task':
+      return Icons.task_alt_rounded;
+    default:
+      return Icons.info_outline_rounded;
+  }
+}
+
+// ─── Hero kart: tarla sağlığı skoru ──────────────────────────────────────────
+
+class _HealthHeroCard extends StatelessWidget {
+  final DailyGuideState state;
+  final String cropName;
+
+  const _HealthHeroCard({required this.state, required this.cropName});
 
   @override
   Widget build(BuildContext context) {
-    final r = result;
-    final daysSince = DateTime.now().difference(r.plantedDate).inDays;
-    final progress =
-        r.totalGdd <= 0 ? 0.0 : (r.accumulatedGdd / r.totalGdd).clamp(0.0, 1.0);
-
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
       decoration: BoxDecoration(
         gradient: AppGradients.emeraldCard,
         borderRadius: AppRadius.md,
@@ -390,149 +495,742 @@ class _HeaderCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(Icons.eco_rounded, color: Colors.white, size: 28),
-              const SizedBox(width: 10),
+              _ScoreRing(score: state.healthScore),
+              const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      r.cropName,
-                      style: AppText.h2(context).copyWith(color: Colors.white),
+                      cropName,
+                      style: AppText.h2(context).copyWith(
+                        color: Colors.white,
+                        height: 1.1,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
+                    const SizedBox(height: 4),
                     Text(
-                      'Ekim: ${DateFormat('d MMM y', 'tr_TR').format(r.plantedDate)}'
-                      ' • $daysSince. gün',
-                      style: AppText.xs(context)
-                          .copyWith(color: Colors.white.withValues(alpha: 0.85)),
+                      'Tarla sağlığı: ${state.healthLabel}',
+                      style: AppText.body(context).copyWith(
+                        color: Colors.white.withValues(alpha: 0.92),
+                      ),
                     ),
+                    const SizedBox(height: 10),
+                    if (state.stage != null)
+                      _StageMiniBar(stage: state.stage!),
                   ],
                 ),
               ),
-              if (r.yieldLossPct > 0)
-                _Pill(
-                  label: 'Verim −%${r.yieldLossPct}',
-                  background: AppColors.warning,
-                ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           Row(
             children: [
-              Expanded(
-                child: _Pill(
-                  icon: Icons.spa_rounded,
-                  label: _stageLabel(r.currentStageKey),
-                  background: Colors.white.withValues(alpha: 0.2),
+              for (int i = 0; i < state.factors.length; i++) ...[
+                Expanded(child: _FactorChip(bar: state.factors[i])),
+                if (i < state.factors.length - 1) const SizedBox(width: 8),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ScoreRing extends StatelessWidget {
+  final int score;
+  const _ScoreRing({required this.score});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = score >= 85
+        ? Colors.white
+        : score >= 70
+            ? Colors.white
+            : score >= 55
+                ? AppColors.wheat
+                : AppColors.warningBg;
+    return SizedBox(
+      width: 86,
+      height: 86,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          SizedBox(
+            width: 86,
+            height: 86,
+            child: CircularProgressIndicator(
+              value: score / 100.0,
+              strokeWidth: 7,
+              backgroundColor: Colors.white.withValues(alpha: 0.20),
+              valueColor: AlwaysStoppedAnimation(color),
+            ),
+          ),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '$score',
+                style: const TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                  height: 1.0,
                 ),
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _Pill(
-                  icon: Icons.local_fire_department_rounded,
-                  label:
-                      'GDD ${r.accumulatedGdd.round()}/${r.totalGdd.round()}',
-                  background: Colors.white.withValues(alpha: 0.2),
+              Text(
+                '/100',
+                style: TextStyle(
+                  fontSize: 10,
+                  color: Colors.white.withValues(alpha: 0.85),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(6),
-            child: LinearProgressIndicator(
-              value: progress,
-              minHeight: 8,
-              backgroundColor: Colors.white.withValues(alpha: 0.25),
-              valueColor: const AlwaysStoppedAnimation(Colors.white),
-            ),
-          ),
         ],
       ),
     );
   }
 }
 
-class _Pill extends StatelessWidget {
-  final String label;
-  final IconData? icon;
-  final Color background;
-  const _Pill({required this.label, required this.background, this.icon});
+class _StageMiniBar extends StatelessWidget {
+  final StageInfo stage;
+  const _StageMiniBar({required this.stage});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: AppRadius.full,
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (icon != null) ...[
-            Icon(icon, color: Colors.white, size: 16),
-            const SizedBox(width: 6),
-          ],
-          Flexible(
-            child: Text(
-              label,
-              overflow: TextOverflow.ellipsis,
-              style: AppText.xs(context).copyWith(
-                color: Colors.white,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          stage.oneLiner,
+          style: AppText.xs(context).copyWith(
+            color: Colors.white.withValues(alpha: 0.92),
           ),
-        ],
-      ),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+        const SizedBox(height: 6),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: LinearProgressIndicator(
+            value: stage.seasonProgress,
+            minHeight: 4,
+            backgroundColor: Colors.white.withValues(alpha: 0.20),
+            valueColor: const AlwaysStoppedAnimation(Colors.white),
+          ),
+        ),
+      ],
     );
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Toplam su muhasebesi — sulama + yağmur birikiyor, hedefe doğru gidiyor.
-// ─────────────────────────────────────────────────────────────────────────────
-class _WaterAccountingCard extends StatelessWidget {
-  final CropDailyPlanResult result;
-  const _WaterAccountingCard({required this.result});
+class _FactorChip extends StatelessWidget {
+  final FactorBar bar;
+  const _FactorChip({required this.bar});
 
   @override
   Widget build(BuildContext context) {
-    final r = result;
-    final coverage = r.coverageFraction;
+    final pct = (bar.value * 100).round();
+    final tint = bar.value >= 0.85
+        ? Colors.white
+        : bar.value >= 0.65
+            ? AppColors.wheat
+            : AppColors.warningBg;
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: AppRadius.md,
-        boxShadow: AppShadows.card,
+        color: Colors.white.withValues(alpha: 0.13),
+        borderRadius: BorderRadius.circular(10),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(Icons.water_drop_rounded,
-                  color: AppColors.frost, size: 22),
-              const SizedBox(width: 8),
-              Text('Toplam Su Muhasebesi', style: AppText.bodyMd(context)),
+              Icon(_iconFor(bar.iconKey), color: tint, size: 14),
+              const SizedBox(width: 4),
+              Text(
+                bar.label,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: Colors.white.withValues(alpha: 0.95),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                '%$pct',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: tint,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 4),
           ClipRRect(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(3),
+            child: LinearProgressIndicator(
+              value: bar.value.clamp(0.0, 1.0),
+              minHeight: 4,
+              backgroundColor: Colors.white.withValues(alpha: 0.18),
+              valueColor: AlwaysStoppedAnimation(tint),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── tek-cümle özet ──────────────────────────────────────────────────────────
+
+class _OneLinerStrip extends StatelessWidget {
+  final DailyGuideState state;
+  const _OneLinerStrip({required this.state});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: AppRadius.md,
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.tips_and_updates_rounded,
+              color: AppColors.emeraldDark, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              _capFirst(state.oneLiner),
+              style: AppText.body(context).copyWith(
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static String _capFirst(String s) {
+    if (s.isEmpty) return s;
+    return s[0].toUpperCase() + s.substring(1);
+  }
+}
+
+// ─── canlı aktivite etkisi ───────────────────────────────────────────────────
+
+class _LiveImpactCard extends StatelessWidget {
+  final ActivityImpact impact;
+  const _LiveImpactCard({required this.impact});
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      duration: const Duration(milliseconds: 600),
+      curve: Curves.easeOutCubic,
+      tween: Tween(begin: 0.0, end: 1.0),
+      builder: (context, t, _) {
+        return Opacity(
+          opacity: t,
+          child: Transform.translate(
+            offset: Offset(0, (1 - t) * 8),
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFE8F5E9), Color(0xFFE3F2FD)],
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                ),
+                borderRadius: AppRadius.md,
+                border: Border.all(
+                    color: AppColors.emerald.withValues(alpha: 0.30)),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      boxShadow: AppShadows.sm,
+                    ),
+                    child: Icon(
+                      _iconFor(impact.iconKey),
+                      color: AppColors.emeraldDark,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Text(
+                              'Canlı etki: ${impact.activityLabel}',
+                              style: AppText.xs(context).copyWith(
+                                color: AppColors.emeraldDark,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.4,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          impact.summary,
+                          style: AppText.bodyMd(context),
+                        ),
+                        Text(
+                          impact.detail,
+                          style: AppText.xs(context),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+// ─── bölüm başlığı ───────────────────────────────────────────────────────────
+
+class _SectionHeader extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final Color accent;
+  final int? count;
+  final Widget? trailing;
+
+  const _SectionHeader({
+    required this.title,
+    required this.icon,
+    required this.accent,
+    this.count,
+    this.trailing,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, color: accent, size: 18),
+        const SizedBox(width: 8),
+        Text(title, style: AppText.h2(context)),
+        if (count != null && count! > 0) ...[
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+            decoration: BoxDecoration(
+              color: accent.withValues(alpha: 0.15),
+              borderRadius: AppRadius.full,
+            ),
+            child: Text(
+              '$count',
+              style: AppText.xs(context).copyWith(
+                color: accent,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ],
+        const Spacer(),
+        if (trailing != null) trailing!,
+      ],
+    );
+  }
+}
+
+// ─── risk şeridi ─────────────────────────────────────────────────────────────
+
+class _RiskBannerCard extends StatelessWidget {
+  final RiskBanner risk;
+  final VoidCallback? onAction;
+
+  const _RiskBannerCard({required this.risk, this.onAction});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _severityColor(risk.severity);
+    final bg = _severityBg(risk.severity);
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: AppRadius.md,
+        border: Border.all(color: color.withValues(alpha: 0.45)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.16),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(_iconFor(risk.iconKey), color: color, size: 18),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      risk.title,
+                      style: AppText.bodyMd(context).copyWith(
+                        color: color,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(risk.message, style: AppText.body(context)),
+                    const SizedBox(height: 4),
+                    Text(
+                      risk.advice,
+                      style: AppText.xs(context).copyWith(
+                        color: AppColors.textSecondary,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (onAction != null) ...[
+            const SizedBox(height: 10),
+            Align(
+              alignment: Alignment.centerRight,
+              child: ElevatedButton.icon(
+                onPressed: onAction,
+                icon: Icon(_iconFor(risk.iconKey), size: 16),
+                label: Text(_riskCtaLabel(risk)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: color,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 14, vertical: 10),
+                  shape: RoundedRectangleBorder(borderRadius: AppRadius.sm),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  String _riskCtaLabel(RiskBanner r) {
+    switch (r.actionType) {
+      case ActivityType.watering:
+        final mins = r.actionQuantity?.round();
+        return mins == null ? 'Sulamayı kaydet' : '$mins dk sula';
+      case ActivityType.fertilizing:
+        return 'Gübrelemeyi kaydet';
+      case ActivityType.spraying:
+        return 'İlaçlamayı kaydet';
+      case ActivityType.scouting:
+        return 'Gözlem kaydı';
+      case ActivityType.harvest:
+        return 'Hasadı kaydet';
+      default:
+        return 'Kaydet';
+    }
+  }
+}
+
+// ─── eylem kartı (bugün yapılacaklar) ───────────────────────────────────────
+
+class _ActionCard extends StatelessWidget {
+  final GuideAction action;
+  final VoidCallback onTap;
+
+  const _ActionCard({required this.action, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _severityColor(action.priority);
+    return TapScale(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: AppRadius.md,
+          border: Border.all(color: color.withValues(alpha: 0.35)),
+          boxShadow: AppShadows.sm,
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.14),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(_iconFor(action.iconKey), color: color, size: 18),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    action.headline,
+                    style: AppText.bodyMd(context).copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  if (action.detail.isNotEmpty)
+                    Text(
+                      action.detail,
+                      style: AppText.xs(context),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 6),
+            Icon(Icons.chevron_right_rounded, color: color),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _IdleCard extends StatelessWidget {
+  final String? stageLabel;
+  const _IdleCard({this.stageLabel});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.successBg,
+        borderRadius: AppRadius.md,
+        border: Border.all(color: AppColors.emerald.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.check_circle_rounded,
+              color: AppColors.emeraldDark, size: 24),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Bugün acil iş yok',
+                  style: AppText.bodyMd(context)
+                      .copyWith(color: AppColors.emeraldDark),
+                ),
+                Text(
+                  stageLabel == null
+                      ? 'Bitki dinleniyor — yarın tekrar bak.'
+                      : '$stageLabel evresi sürüyor. Yarın güncelleneriz.',
+                  style: AppText.xs(context),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── 3 günlük tahmin şeridi ──────────────────────────────────────────────────
+
+class _ForecastStrip extends StatelessWidget {
+  final List<ForecastDay> days;
+  const _ForecastStrip({required this.days});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: AppRadius.md,
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          for (int i = 0; i < days.length && i < 4; i++) ...[
+            Expanded(child: _ForecastTile(day: days[i], index: i)),
+            if (i < days.length - 1 && i < 3) const SizedBox(width: 6),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _ForecastTile extends StatelessWidget {
+  final ForecastDay day;
+  final int index;
+  const _ForecastTile({required this.day, required this.index});
+
+  @override
+  Widget build(BuildContext context) {
+    final isToday = index == 0;
+    final isTomorrow = index == 1;
+    final dateLabel = isToday
+        ? 'Bugün'
+        : isTomorrow
+            ? 'Yarın'
+            : DateFormat('EEE', 'tr_TR').format(day.date);
+    final hasFrost = day.tags.contains('frost');
+    final hasHeat = day.tags.contains('heat');
+    final hasStorm = day.tags.contains('storm');
+    final hasRain = day.tags.contains('rain');
+    final accent = hasFrost
+        ? AppColors.frost
+        : hasStorm
+            ? AppColors.error
+            : hasHeat
+                ? AppColors.warning
+                : hasRain
+                    ? AppColors.info
+                    : AppColors.emeraldDark;
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
+      decoration: BoxDecoration(
+        color: isToday
+            ? accent.withValues(alpha: 0.10)
+            : AppColors.surfaceAlt,
+        borderRadius: AppRadius.sm,
+        border: Border.all(
+          color: isToday ? accent.withValues(alpha: 0.45) : AppColors.border,
+        ),
+      ),
+      child: Column(
+        children: [
+          Text(
+            dateLabel,
+            style: AppText.xs(context).copyWith(
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Icon(
+            hasFrost
+                ? Icons.ac_unit_rounded
+                : hasStorm
+                    ? Icons.thunderstorm_rounded
+                    : hasHeat
+                        ? Icons.wb_sunny_rounded
+                        : hasRain
+                            ? Icons.umbrella_rounded
+                            : Icons.wb_sunny_outlined,
+            color: accent,
+            size: 22,
+          ),
+          const SizedBox(height: 4),
+          if (day.tempMin != null && day.tempMax != null)
+            Text(
+              '${day.tempMin!.round()}°/${day.tempMax!.round()}°',
+              style: AppText.xs(context).copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            )
+          else
+            Text('—°', style: AppText.xs(context)),
+          const SizedBox(height: 2),
+          Text(
+            day.rainMm > 0 ? '${day.rainMm.round()} mm' : '—',
+            style: AppText.xs(context).copyWith(
+              color: hasRain ? accent : AppColors.textTertiary,
+              fontWeight: hasRain ? FontWeight.w700 : FontWeight.w400,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── sezon su muhasebesi (kompakt + detay) ───────────────────────────────────
+
+class _WaterAccountingCard extends StatelessWidget {
+  final CropDailyPlanResult plan;
+  final bool expanded;
+
+  const _WaterAccountingCard({required this.plan, required this.expanded});
+
+  @override
+  Widget build(BuildContext context) {
+    final coverage = plan.coverageFraction;
+    final pct = (coverage * 100).round();
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: AppRadius.md,
+        border: Border.all(color: AppColors.border),
+        boxShadow: AppShadows.sm,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Sezon: %$pct karşılandı',
+                  style: AppText.bodyMd(context),
+                ),
+              ),
+              Text(
+                '${plan.remainingSeasonMm.round()} mm açık',
+                style: AppText.xs(context).copyWith(
+                  color: plan.remainingSeasonMm > 0
+                      ? AppColors.warning
+                      : AppColors.emeraldDark,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
             child: Stack(
               children: [
-                Container(
-                  height: 14,
-                  color: AppColors.surfaceAlt,
-                ),
+                Container(height: 12, color: AppColors.surfaceAlt),
                 FractionallySizedBox(
                   widthFactor: coverage,
                   child: Container(
-                    height: 14,
+                    height: 12,
                     decoration: const BoxDecoration(
                       gradient: LinearGradient(colors: [
                         AppColors.frost,
@@ -544,89 +1242,58 @@ class _WaterAccountingCard extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(height: 10),
-          _MetricRow(
-            label: 'Sezon hedefi',
-            value: '${r.seasonTargetMm.round()} mm',
-            color: AppColors.textSecondary,
-          ),
-          _MetricRow(
-            label: 'Sulamadan',
-            value: '+${r.appliedIrrigationMm.round()} mm',
-            color: AppColors.frost,
-          ),
-          _MetricRow(
-            label: 'Yağmurdan',
-            value: '+${r.accountedRainMm.round()} mm',
-            color: AppColors.emerald,
-          ),
-          const Divider(height: 18),
-          _MetricRow(
-            label: 'Kalan ihtiyaç',
-            value: '${r.remainingSeasonMm.round()} mm',
-            color: r.remainingSeasonMm > 0
-                ? AppColors.warning
-                : AppColors.emeraldDark,
-            bold: true,
-          ),
-          if (r.waterDeficitMm > 2) ...[
-            const SizedBox(height: 8),
-            Text(
-              'Anlık stres: ${r.waterDeficitMm.toStringAsFixed(1)} mm açık. '
-              'Bugün sulama önerilir.',
-              style: AppText.xs(context).copyWith(color: AppColors.warning),
+          if (expanded) ...[
+            const SizedBox(height: 12),
+            _kv('Sezon hedefi', '${plan.seasonTargetMm.round()} mm',
+                AppColors.textSecondary),
+            _kv('Sulamadan', '+${plan.appliedIrrigationMm.round()} mm',
+                AppColors.frost),
+            _kv('Yağmurdan', '+${plan.accountedRainMm.round()} mm',
+                AppColors.emerald),
+            const Divider(height: 18),
+            _kv(
+              'Anlık açık',
+              '${plan.waterDeficitMm.toStringAsFixed(1)} mm',
+              plan.waterDeficitMm > 2
+                  ? AppColors.warning
+                  : AppColors.emeraldDark,
+              bold: true,
             ),
           ],
         ],
       ),
     );
   }
-}
 
-class _MetricRow extends StatelessWidget {
-  final String label;
-  final String value;
-  final Color color;
-  final bool bold;
-  const _MetricRow({
-    required this.label,
-    required this.value,
-    required this.color,
-    this.bold = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _kv(String label, String value, Color color, {bool bold = false}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Row(
-        children: [
-          Expanded(child: Text(label, style: AppText.body(context))),
-          Text(
-            value,
-            style: (bold ? AppText.bodyMd(context) : AppText.body(context))
-                .copyWith(color: color),
-          ),
-        ],
+      child: Builder(
+        builder: (context) => Row(
+          children: [
+            Expanded(child: Text(label, style: AppText.body(context))),
+            Text(
+              value,
+              style: (bold ? AppText.bodyMd(context) : AppText.body(context))
+                  .copyWith(color: color),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-class _SectionTitle extends StatelessWidget {
-  final String text;
-  const _SectionTitle(this.text);
+// ─── yetiştirme adımları özeti ───────────────────────────────────────────────
 
-  @override
-  Widget build(BuildContext context) {
-    return Text(text, style: AppText.h2(context));
-  }
-}
-
-class _RoadmapMiniCard extends StatelessWidget {
+class _RoadmapSummaryCard extends StatelessWidget {
   final CropProtocolProgress progress;
+  final bool expanded;
 
-  const _RoadmapMiniCard({required this.progress});
+  const _RoadmapSummaryCard({
+    required this.progress,
+    required this.expanded,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -637,118 +1304,72 @@ class _RoadmapMiniCard extends StatelessWidget {
         color: AppColors.surface,
         borderRadius: AppRadius.md,
         border: Border.all(color: AppColors.emerald.withValues(alpha: 0.28)),
-        boxShadow: AppShadows.card,
+        boxShadow: AppShadows.sm,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Text(p.protocol.emoji, style: const TextStyle(fontSize: 26)),
+              Text(p.protocol.emoji, style: const TextStyle(fontSize: 24)),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '${p.protocol.displayName} yetiştirme adımları',
+                      p.isFinished
+                          ? 'Tüm adımlar tamamlandı'
+                          : '${p.completedCount}/${p.totalCount} adım tamam',
                       style: AppText.bodyMd(context),
                     ),
-                    Text(
-                      p.isFinished
-                          ? 'Tüm adımlar tamamlandı.'
-                          : '${p.completedCount}/${p.totalCount} adım tamam',
-                      style: AppText.xs(context),
-                    ),
+                    if (p.activeStep != null && !p.isFinished)
+                      Text(
+                        'Aktif: ${p.activeStep!.title}',
+                        style: AppText.xs(context).copyWith(
+                          color: AppColors.warning,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                   ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           ClipRRect(
             borderRadius: BorderRadius.circular(6),
             child: LinearProgressIndicator(
               value: p.ratio,
-              minHeight: 8,
+              minHeight: 6,
               backgroundColor: AppColors.surfaceAlt,
               valueColor: const AlwaysStoppedAnimation(AppColors.emerald),
             ),
           ),
-          const SizedBox(height: 10),
-          if (p.config != null)
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                _GuideChip(
-                  icon: Icons.landscape_rounded,
-                  label: p.config!.soilType.label,
-                ),
-                _GuideChip(
-                  icon: p.config!.irrigationMethod.icon,
-                  label: p.config!.irrigationMethod.label,
-                ),
-                _GuideChip(
-                  icon: Icons.straighten_rounded,
-                  label: '${_fmtNum(p.config!.areaDekar)} da',
-                ),
-              ],
-            ),
-          const SizedBox(height: 8),
-          for (final step in p.protocol.steps)
-            _RoadmapStepCard(
-              step: step,
-              isCompleted: p.completedOrders.contains(step.order),
-              isActive: p.activeStep?.order == step.order,
-              config: p.config,
-            ),
+          if (expanded) ...[
+            const SizedBox(height: 12),
+            for (final step in p.protocol.steps)
+              _RoadmapStepRow(
+                step: step,
+                isCompleted: p.completedOrders.contains(step.order),
+                isActive: p.activeStep?.order == step.order,
+              ),
+          ],
         ],
       ),
     );
   }
 }
 
-class _GuideChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-
-  const _GuideChip({
-    required this.icon,
-    required this.label,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
-      decoration: BoxDecoration(
-        color: AppColors.emerald.withValues(alpha: 0.08),
-        borderRadius: AppRadius.full,
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: AppColors.emeraldDark),
-          const SizedBox(width: 5),
-          Text(label, style: AppText.xs(context)),
-        ],
-      ),
-    );
-  }
-}
-
-class _RoadmapStepCard extends StatelessWidget {
-  final ProtocolStep step;
+class _RoadmapStepRow extends StatelessWidget {
+  final dynamic step;
   final bool isCompleted;
   final bool isActive;
-  final CropConfig? config;
 
-  const _RoadmapStepCard({
+  const _RoadmapStepRow({
     required this.step,
     required this.isCompleted,
     required this.isActive,
-    required this.config,
   });
 
   @override
@@ -756,388 +1377,47 @@ class _RoadmapStepCard extends StatelessWidget {
     final color = isCompleted
         ? AppColors.emeraldDark
         : (isActive ? AppColors.warning : AppColors.textTertiary);
-    final details = <String>[
-      step.description,
-      if (config != null && step.soilNote(config!.soilType) != null)
-        step.soilNote(config!.soilType)!,
-      if (config != null &&
-          step.irrigationNote(config!.irrigationMethod) != null)
-        step.irrigationNote(config!.irrigationMethod)!,
-      if (step.fertilizerSpec != null) step.fertilizerSpec!,
-      if (step.waterSpec != null) step.waterSpec!,
-      if (step.pesticideSpec != null) step.pesticideSpec!,
-      if (step.criticalWarning != null) step.criticalWarning!,
-      if (step.farmerTip != null) step.farmerTip!,
-      if (step.commonMistake != null) step.commonMistake!,
-    ];
-
     return Padding(
-      padding: const EdgeInsets.only(top: 8),
-      child: ExpansionTile(
-        tilePadding: EdgeInsets.zero,
-        childrenPadding: const EdgeInsets.fromLTRB(32, 0, 0, 8),
-        initiallyExpanded: isActive,
-        leading: Icon(
-          isCompleted
-              ? Icons.check_circle_rounded
-              : (isActive
-                  ? Icons.play_circle_fill_rounded
-                  : Icons.radio_button_unchecked_rounded),
-          color: color,
-        ),
-        title: Text(
-          'G${step.dayOffset} · ${step.stageEmoji} ${step.title}',
-          style: AppText.body(context).copyWith(
-            fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-            color:
-                isCompleted ? AppColors.textSecondary : AppColors.textPrimary,
-            decoration: isCompleted ? TextDecoration.lineThrough : null,
-          ),
-        ),
-        children: [
-          for (final detail in details)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 7),
-              child: Text(
-                detail,
-                style: AppText.xs(context).copyWith(height: 1.35),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Bugün — büyük kart
-// ─────────────────────────────────────────────────────────────────────────────
-class _TodayCard extends StatelessWidget {
-  final DayPlan day;
-  final String cropName;
-  final ValueChanged<DayTask> onTaskTap;
-  const _TodayCard({
-    required this.day,
-    required this.cropName,
-    required this.onTaskTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: AppRadius.md,
-        border: Border.all(color: AppColors.emerald, width: 1.5),
-        boxShadow: AppShadows.card,
-      ),
-      child: Column(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Text('${day.dayIndex}. gün', style: AppText.bodyMd(context)),
-              const SizedBox(width: 8),
-              _Pill(
-                label: day.stageLabel,
-                background: AppColors.emerald,
-              ),
-              const Spacer(),
-              Text(
-                DateFormat('EEEE, d MMM', 'tr_TR').format(day.date),
-                style: AppText.xs(context),
-              ),
-            ],
+          Icon(
+            isCompleted
+                ? Icons.check_circle_rounded
+                : (isActive
+                    ? Icons.play_circle_fill_rounded
+                    : Icons.radio_button_unchecked_rounded),
+            color: color,
+            size: 18,
           ),
-          const SizedBox(height: 12),
-          _DayWaterBar(day: day),
-          const SizedBox(height: 12),
-          if (day.tasks.isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 6),
-              child: Text(
-                'Bugün için planlanmış görev yok. Bitki dinleniyor.',
-                style: AppText.body(context),
-              ),
-            )
-          else
-            ...day.tasks.map((t) => _TaskTile(
-                  task: t,
-                  onTap: () => onTaskTap(t),
-                )),
-        ],
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 14 günlük timeline kartı
-// ─────────────────────────────────────────────────────────────────────────────
-class _DayTile extends StatelessWidget {
-  final DayPlan day;
-  final String cropName;
-  final ValueChanged<DayTask> onTaskTap;
-  const _DayTile({
-    required this.day,
-    required this.cropName,
-    required this.onTaskTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final faded = day.isPast;
-    final highlight = day.isToday;
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color:
-            highlight ? AppColors.emerald.withValues(alpha: 0.07) : AppColors.surface,
-        borderRadius: AppRadius.md,
-        border: Border.all(
-          color: highlight ? AppColors.emerald : AppColors.border,
-          width: highlight ? 1.4 : 1,
-        ),
-      ),
-      child: Opacity(
-        opacity: faded ? 0.85 : 1.0,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _DateChip(date: day.date, isToday: day.isToday),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    '${day.dayIndex}. gün • ${day.stageLabel}',
-                    style: AppText.bodyMd(context),
+                Text(
+                  'G${step.dayOffset} · ${step.stageEmoji} ${step.title}',
+                  style: AppText.body(context).copyWith(
+                    fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+                    decoration:
+                        isCompleted ? TextDecoration.lineThrough : null,
+                    color: isCompleted
+                        ? AppColors.textSecondary
+                        : AppColors.textPrimary,
                   ),
                 ),
-                if (day.tasks.where((t) => !t.done).isNotEmpty)
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: AppColors.warning.withValues(alpha: 0.15),
-                      borderRadius: AppRadius.full,
-                    ),
-                    child: Text(
-                      '${day.tasks.where((t) => !t.done).length} görev',
-                      style: AppText.xs(context)
-                          .copyWith(color: AppColors.warning),
+                if (isActive && step.criticalWarning != null)
+                  Text(
+                    step.criticalWarning!.toString(),
+                    style: AppText.xs(context).copyWith(
+                      color: AppColors.warning,
                     ),
                   ),
               ],
             ),
-            if (day.waterTargetMm > 0) ...[
-              const SizedBox(height: 8),
-              _DayWaterBar(day: day, compact: true),
-            ],
-            if (day.tasks.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              ...day.tasks.map((t) => _TaskTile(
-                    task: t,
-                    compact: true,
-                    onTap: () => onTaskTap(t),
-                  )),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _DateChip extends StatelessWidget {
-  final DateTime date;
-  final bool isToday;
-  const _DateChip({required this.date, required this.isToday});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 50,
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      decoration: BoxDecoration(
-        color: isToday ? AppColors.emerald : AppColors.surfaceAlt,
-        borderRadius: AppRadius.sm,
-      ),
-      child: Column(
-        children: [
-          Text(
-            DateFormat('d', 'tr_TR').format(date),
-            style: AppText.bodyMd(context).copyWith(
-              color: isToday ? Colors.white : AppColors.textPrimary,
-              fontSize: 18,
-            ),
-          ),
-          Text(
-            DateFormat('MMM', 'tr_TR').format(date),
-            style: AppText.xs(context).copyWith(
-              color: isToday ? Colors.white : AppColors.textSecondary,
-            ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _DayWaterBar extends StatelessWidget {
-  final DayPlan day;
-  final bool compact;
-  const _DayWaterBar({required this.day, this.compact = false});
-
-  @override
-  Widget build(BuildContext context) {
-    final target = day.waterTargetMm;
-    if (target <= 0) {
-      return Text(
-        'Bugün için sulama hedefi yok.',
-        style: AppText.xs(context),
-      );
-    }
-    final irrFrac =
-        target <= 0 ? 0.0 : (day.waterIrrigatedMm / target).clamp(0.0, 1.0);
-    final rainFrac = target <= 0
-        ? 0.0
-        : (day.waterRainMm / target).clamp(0.0, 1.0 - irrFrac);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(6),
-          child: Stack(
-            children: [
-              Container(
-                height: compact ? 8 : 12,
-                color: AppColors.surfaceAlt,
-              ),
-              Row(
-                children: [
-                  Expanded(
-                    flex: (irrFrac * 100).round(),
-                    child: Container(
-                      height: compact ? 8 : 12,
-                      color: AppColors.frost,
-                    ),
-                  ),
-                  Expanded(
-                    flex: (rainFrac * 100).round(),
-                    child: Container(
-                      height: compact ? 8 : 12,
-                      color: AppColors.emerald,
-                    ),
-                  ),
-                  Expanded(
-                    flex: (100 -
-                            (irrFrac * 100).round() -
-                            (rainFrac * 100).round())
-                        .clamp(0, 100),
-                    child: const SizedBox(),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-        if (!compact) const SizedBox(height: 6),
-        if (!compact)
-          Text(
-            'Hedef ${target.toStringAsFixed(1)} mm  •  '
-            'Sulama ${day.waterIrrigatedMm.toStringAsFixed(1)} mm  •  '
-            'Yağmur ${day.waterRainMm.toStringAsFixed(1)} mm  •  '
-            'Açık ${day.waterRemainingMm.toStringAsFixed(1)} mm',
-            style: AppText.xs(context),
-          ),
-      ],
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Görev satırı (tek tıkla loglanabilir)
-// ─────────────────────────────────────────────────────────────────────────────
-class _TaskTile extends StatelessWidget {
-  final DayTask task;
-  final VoidCallback onTap;
-  final bool compact;
-  const _TaskTile({
-    required this.task,
-    required this.onTap,
-    this.compact = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final color = ActivityType.color(task.type);
-    final icon =
-        task.done ? Icons.check_circle_rounded : ActivityType.icon(task.type);
-    final qty = task.recommendedQuantity;
-    final unit = task.unit;
-    final qtySuffix =
-        qty != null && unit != null ? ' • ${_fmtNum(qty)} $unit' : '';
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: compact ? 3 : 6),
-      child: TapScale(
-        onTap: task.done ? null : onTap,
-        child: Container(
-          padding: EdgeInsets.symmetric(
-            horizontal: 10,
-            vertical: compact ? 8 : 10,
-          ),
-          decoration: BoxDecoration(
-            color: task.done
-                ? AppColors.emeraldDark.withValues(alpha: 0.08)
-                : color.withValues(alpha: 0.08),
-            borderRadius: AppRadius.sm,
-            border: Border.all(
-              color: task.done
-                  ? AppColors.emeraldDark.withValues(alpha: 0.3)
-                  : color.withValues(alpha: 0.3),
-            ),
-          ),
-          child: Row(
-            children: [
-              Icon(icon,
-                  color: task.done ? AppColors.emeraldDark : color,
-                  size: compact ? 18 : 20),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '${task.label}$qtySuffix',
-                      style: (compact
-                              ? AppText.body(context)
-                              : AppText.bodyMd(context))
-                          .copyWith(
-                        decoration:
-                            task.done ? TextDecoration.lineThrough : null,
-                        color: task.done
-                            ? AppColors.textSecondary
-                            : AppColors.textPrimary,
-                      ),
-                    ),
-                    if (task.detail != null && task.detail!.isNotEmpty)
-                      Text(
-                        task.detail!,
-                        style: AppText.xs(context),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                  ],
-                ),
-              ),
-              if (!task.done)
-                const Icon(Icons.chevron_right_rounded,
-                    color: AppColors.textTertiary),
-            ],
-          ),
-        ),
       ),
     );
   }

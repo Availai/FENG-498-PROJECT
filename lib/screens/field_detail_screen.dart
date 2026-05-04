@@ -1510,46 +1510,41 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
     final plantedDate =
         '${DateTime.now().day.toString().padLeft(2, '0')}.${DateTime.now().month.toString().padLeft(2, '0')}.${DateTime.now().year}';
 
-    // Aynı tarlada aynı bitki zaten varsa: yeni satır yaratma, mevcudu
-    // "yeniden ekim" olarak güncelle — takvim + büyüme durumu sıfırlanır.
-    final existing =
-        await repo.findActiveCropByName(fieldId: fieldId, name: plant.nameTr);
-    final bool isReplant = existing != null;
-    final String cropId;
-    if (isReplant) {
-      cropId = existing.id;
-      await repo.updateCropReplanting(
-        cropId: cropId,
-        plantedDate: plantedDate,
-        harvestDays: plant.daysToHarvest,
-        waterIntervalDays: waterIntervalDays,
-        rowSpacingCm: rowSpacingCm,
-        plantSpacingCm: plantSpacingCm,
-        colorValue: plant.renderColor.toARGB32(),
-        zonePolygonJson: zonePolygonJson,
-        replaceZone: true,
-      );
-    } else {
-      cropId = await repo.addSingleCropToField(
-        fieldId: fieldId,
-        name: plant.nameTr,
-        colorValue: plant.renderColor.toARGB32(),
-        plantedDate: plantedDate,
-        harvestDays: plant.daysToHarvest,
-        waterIntervalDays: waterIntervalDays,
-        rowSpacingCm: rowSpacingCm,
-        plantSpacingCm: plantSpacingCm,
-        zonePolygonJson: zonePolygonJson,
+    // Yön seçimi — protocollü/protocolsüz tüm bitkiler için her zaman sor.
+    // Setup sheet sadece 3 protocollü bitkide açılıyor; yön seçimini ondan
+    // ayırarak tüm bitkilerde tutarlı bir akış sağlıyoruz.
+    String? facingDirection = config?.facingDirection?.name;
+    if (mounted) {
+      facingDirection = await _askFacingDirection(
+        context,
+        plantName: plant.nameTr,
+        initialRaw: facingDirection,
       );
     }
+    if (!mounted) return;
+
+    // Her ekleme yeni bir kayıt oluşturur — kullanıcı aynı bitki türünden
+    // birden fazla bölge ekleyebilir. (Eski "aynı isim varsa replant" davranışı
+    // farklı alanları üst üste yazıyordu.)
+    final cropId = await repo.addSingleCropToField(
+      fieldId: fieldId,
+      name: plant.nameTr,
+      colorValue: plant.renderColor.toARGB32(),
+      plantedDate: plantedDate,
+      harvestDays: plant.daysToHarvest,
+      waterIntervalDays: waterIntervalDays,
+      rowSpacingCm: rowSpacingCm,
+      plantSpacingCm: plantSpacingCm,
+      zonePolygonJson: zonePolygonJson,
+      facingDirection: facingDirection,
+    );
+    const bool isReplant = false;
 
     await ref.read(activityLoggerProvider).log(
       fieldId: fieldId,
       type: ActivityType.planting,
       cropId: cropId,
-      note: isReplant
-          ? '${plant.nameTr} yeniden ekildi (geçmiş planlar sıfırlandı)'
-          : '${plant.nameTr} tarlaya eklendi',
+      note: '${plant.nameTr} tarlaya eklendi',
       metadata: {
         'setup_version': 1,
         'replant': isReplant,
@@ -1560,6 +1555,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
         if (config != null) 'production_system': config.productionSystem.name,
         if (config?.targetPlantCount != null)
           'target_plant_count': config!.targetPlantCount,
+        if (facingDirection != null) 'facing_direction': facingDirection,
         'water_interval_days': waterIntervalDays,
         'row_spacing_cm': rowSpacingCm,
         'plant_spacing_cm': plantSpacingCm,
@@ -1875,6 +1871,9 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
           existing: existing,
         );
         break;
+      case _PlantAction.editFacingDirection:
+        await _editCropFacingDirection(crop);
+        break;
       case _PlantAction.deletePlant:
         await _confirmDeletePlantTarget(target);
         break;
@@ -1885,6 +1884,39 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
         _togglePlantMultiSelection(target);
         break;
     }
+  }
+
+  /// Bir bitkinin baktığı yönü düzenler — sheet açar, seçimi DB'ye kaydeder
+  /// ve listeyi yeniler. Toast ile kullanıcıya geri bildirim verir.
+  Future<void> _editCropFacingDirection(Map<String, dynamic> crop) async {
+    final cropId = crop['id']?.toString();
+    if (cropId == null || cropId.isEmpty) return;
+    final cropName = crop['name']?.toString() ?? 'Bitki';
+    final currentRaw = crop['facing_direction']?.toString();
+
+    final result = await _showFacingDirectionSheet(
+      context,
+      plantName: cropName,
+      initialRaw: currentRaw,
+    );
+    if (!mounted) return;
+    if (result == null) return;
+
+    final picked = result is String ? result : null;
+
+    await ref.read(localDataRepositoryProvider).updateCropFacingDirection(
+          cropId: cropId,
+          facingDirection: picked,
+        );
+    await _loadFieldCrops();
+    if (!mounted) return;
+    AppToast.show(
+      context,
+      message: picked == null
+          ? 'Yön bilgisi temizlendi.'
+          : '$cropName → ${_facingDirectionLabel(picked)}',
+      type: ToastType.success,
+    );
   }
 
   void _handlePlantMarkerLongPress({
@@ -1947,6 +1979,20 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
                 title: const Text('Sağlık durumunu düzenle'),
                 onTap: () => Navigator.pop(ctx, _PlantAction.editHealth),
               ),
+              if (cropId != null && cropId.isNotEmpty)
+                Builder(builder: (_) {
+                  final raw = crop['facing_direction']?.toString();
+                  return ListTile(
+                    leading: const Icon(Icons.explore_rounded,
+                        color: AppColors.emerald),
+                    title: const Text('Baktığı yönü değiştir'),
+                    subtitle: Text(raw == null || raw.isEmpty
+                        ? 'Yön belirlenmedi'
+                        : _facingDirectionLabel(raw)),
+                    onTap: () =>
+                        Navigator.pop(ctx, _PlantAction.editFacingDirection),
+                  );
+                }),
               ListTile(
                 leading:
                     const Icon(Icons.delete_outline_rounded, color: Colors.red),
@@ -2349,47 +2395,38 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
     final plantedDateStr =
         '${DateTime.now().day.toString().padLeft(2, '0')}.${DateTime.now().month.toString().padLeft(2, '0')}.${DateTime.now().year}';
 
-    final existing =
-        await repo.findActiveCropByName(fieldId: fieldId, name: plant.nameTr);
-    final bool isReplant = existing != null;
-    final String cropId;
-    if (isReplant) {
-      cropId = existing.id;
-      await repo.updateCropReplanting(
-        cropId: cropId,
-        plantedDate: plantedDateStr,
-        harvestDays: plant.daysToHarvest,
-        waterIntervalDays: waterIntervalDays,
-        rowSpacingCm: rowSpacingCm,
-        plantSpacingCm: plantSpacingCm,
-        colorValue: plant.renderColor.toARGB32(),
-        zonePolygonJson: zoneJson,
-        replaceZone: true,
-      );
-    } else {
-      cropId = await repo.addSingleCropToField(
-        fieldId: fieldId,
-        name: plant.nameTr,
-        colorValue: plant.renderColor.toARGB32(),
-        plantedDate: plantedDateStr,
-        harvestDays: plant.daysToHarvest,
-        waterIntervalDays: waterIntervalDays,
-        rowSpacingCm: rowSpacingCm,
-        plantSpacingCm: plantSpacingCm,
-        zonePolygonJson: zoneJson,
-      );
+    // Yön seçimi — kullanıcıya bitkinin baktığı yönü sor.
+    String? facingDirection;
+    if (mounted) {
+      facingDirection =
+          await _askFacingDirection(context, plantName: plant.nameTr);
     }
+    if (!mounted) return;
+
+    // Her ekleme yeni bir kayıt oluşturur — aynı bitki türünden farklı bölgeler
+    // birbirini ezmesin diye replant kısa-yolu kaldırıldı.
+    final cropId = await repo.addSingleCropToField(
+      fieldId: fieldId,
+      name: plant.nameTr,
+      colorValue: plant.renderColor.toARGB32(),
+      plantedDate: plantedDateStr,
+      harvestDays: plant.daysToHarvest,
+      waterIntervalDays: waterIntervalDays,
+      rowSpacingCm: rowSpacingCm,
+      plantSpacingCm: plantSpacingCm,
+      zonePolygonJson: zoneJson,
+      facingDirection: facingDirection,
+    );
 
     await ref.read(activityLoggerProvider).log(
       fieldId: fieldId,
       type: ActivityType.planting,
       cropId: cropId,
-      note: isReplant
-          ? '${plant.nameTr} seçilen bölgeye yeniden ekildi'
-          : '${plant.nameTr} seçilen bölgeye eklendi',
+      note: '${plant.nameTr} seçilen bölgeye eklendi',
       metadata: {
         'setup_version': 1,
-        'replant': isReplant,
+        if (facingDirection != null) 'facing_direction': facingDirection,
+        'replant': false,
         'row_spacing_cm': rowSpacingCm,
         'plant_spacing_cm': plantSpacingCm,
         'water_interval_days': waterIntervalDays,
@@ -2827,6 +2864,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
                   healthStatus: instance?.healthStatus,
                   diseaseType: instance?.diseaseType,
                   isHighlighted: _isPlantMarkerHighlighted(markerKey),
+                  facingDirection: crop['facing_direction']?.toString(),
                   onHover: (hovering) =>
                       _setHoveredPlantMarker(markerKey, hovering),
                   onTap: () {
@@ -2922,6 +2960,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
                 healthStatus: instance?.healthStatus,
                 diseaseType: instance?.diseaseType,
                 isHighlighted: _isPlantMarkerHighlighted(markerKey),
+                facingDirection: crop['facing_direction']?.toString(),
                 onHover: (hovering) =>
                     _setHoveredPlantMarker(markerKey, hovering),
                 onTap: () {
@@ -3473,6 +3512,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
 
 enum _PlantAction {
   editHealth,
+  editFacingDirection,
   deletePlant,
   deleteArea,
   multiSelect,
@@ -6005,4 +6045,514 @@ class _CropSetupSheetState extends State<_CropSetupSheet> {
               const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         ),
       );
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// PUSULA YÖN SEÇİCİ — 3x3 ızgara, ortada boşluk
+// ═══════════════════════════════════════════════════════════════════════
+double _directionDegrees(PlantFacingDirection direction) {
+  return switch (direction) {
+    PlantFacingDirection.north => 0.0,
+    PlantFacingDirection.northeast => 45.0,
+    PlantFacingDirection.east => 90.0,
+    PlantFacingDirection.southeast => 135.0,
+    PlantFacingDirection.south => 180.0,
+    PlantFacingDirection.southwest => 225.0,
+    PlantFacingDirection.west => 270.0,
+    PlantFacingDirection.northwest => 315.0,
+  };
+}
+
+double _degreesFromFacingRaw(String? raw) {
+  final value = raw?.trim();
+  if (value == null || value.isEmpty) return 180.0;
+  if (value.startsWith('deg:')) {
+    final parsed = double.tryParse(value.substring(4));
+    if (parsed != null) return parsed % 360.0;
+  }
+  for (final direction in PlantFacingDirection.values) {
+    if (direction.name == value) return _directionDegrees(direction);
+  }
+  return 180.0;
+}
+
+String _facingRawFromDegrees(double degrees) {
+  final clean = degrees.round() % 360;
+  return 'deg:$clean';
+}
+
+String _facingDirectionLabel(String raw) {
+  final degrees = _degreesFromFacingRaw(raw).round() % 360;
+  for (final direction in PlantFacingDirection.values) {
+    if (direction.name == raw) {
+      return '${direction.label} ${direction.arrow} ($degrees°)';
+    }
+  }
+  return '$degrees° açı';
+}
+
+class _DirectionPicker extends StatelessWidget {
+  const _DirectionPicker({
+    required this.selectedDegrees,
+    required this.hasSelection,
+    required this.onChanged,
+    required this.accent,
+    required this.card,
+  });
+
+  final double selectedDegrees;
+  final bool hasSelection;
+  final ValueChanged<double?> onChanged;
+  final Color accent;
+  final Color card;
+
+  // 3x3 ızgara sırası: [KK, K, KD, B, null(merkez), D, GB, G, GD]
+  static const _grid = [
+    PlantFacingDirection.northwest,
+    PlantFacingDirection.north,
+    PlantFacingDirection.northeast,
+    PlantFacingDirection.west,
+    null, // merkez — boş
+    PlantFacingDirection.east,
+    PlantFacingDirection.southwest,
+    PlantFacingDirection.south,
+    PlantFacingDirection.southeast,
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return GridView.count(
+      crossAxisCount: 3,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      mainAxisSpacing: 6,
+      crossAxisSpacing: 6,
+      childAspectRatio: 1.6,
+      children: _grid.map((dir) {
+        if (dir == null) {
+          // Merkez hücre — pusula simgesi
+          return GestureDetector(
+            onTap: () => onChanged(null),
+            child: Center(
+              child:
+                  Icon(Icons.explore_rounded, color: Colors.white24, size: 28),
+            ),
+          );
+        }
+        final degrees = _directionDegrees(dir);
+        final isSelected =
+            hasSelection && (selectedDegrees.round() % 360) == degrees.round();
+        return GestureDetector(
+          onTap: () => onChanged(isSelected ? null : degrees),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            decoration: BoxDecoration(
+              color: isSelected ? accent.withValues(alpha: 0.18) : card,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: isSelected ? accent : Colors.white12,
+                width: isSelected ? 1.5 : 1,
+              ),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  dir.arrow,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: isSelected ? accent : Colors.white54,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  dir.shortLabel,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight:
+                        isSelected ? FontWeight.w700 : FontWeight.normal,
+                    color: isSelected ? accent : Colors.white54,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// BAKAN YÖN SEÇİM SAYFASI — her bitki ekleme akışında ayrı olarak açılır
+// ═══════════════════════════════════════════════════════════════════════
+class _AngleSlider extends StatelessWidget {
+  const _AngleSlider({
+    required this.angleDegrees,
+    required this.hasSelection,
+    required this.accent,
+    required this.onChanged,
+  });
+
+  final double angleDegrees;
+  final bool hasSelection;
+  final Color accent;
+  final ValueChanged<double> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final rounded = angleDegrees.round() % 360;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFF101A14),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.threesixty_rounded,
+                  color: Colors.white70, size: 18),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  hasSelection ? 'Serbest açı: $rounded°' : 'Serbest açı',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.outfit(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              Text(
+                'K 0°',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.55),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          SliderTheme(
+            data: SliderTheme.of(context).copyWith(
+              activeTrackColor: accent,
+              inactiveTrackColor: Colors.white12,
+              thumbColor: accent,
+              overlayColor: accent.withValues(alpha: 0.16),
+              valueIndicatorColor: accent,
+              valueIndicatorTextStyle: const TextStyle(
+                color: Colors.black,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            child: Slider(
+              min: 0,
+              max: 359,
+              divisions: 359,
+              value: angleDegrees.clamp(0.0, 359.0).toDouble(),
+              label: '$rounded°',
+              onChanged: onChanged,
+            ),
+          ),
+          const Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Kuzey',
+                  style: TextStyle(color: Colors.white54, fontSize: 11)),
+              Text('Doğu',
+                  style: TextStyle(color: Colors.white54, fontSize: 11)),
+              Text('Güney',
+                  style: TextStyle(color: Colors.white54, fontSize: 11)),
+              Text('Batı',
+                  style: TextStyle(color: Colors.white54, fontSize: 11)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FacingDirectionPreview extends StatelessWidget {
+  const _FacingDirectionPreview({
+    required this.plantName,
+    required this.rawDirection,
+    required this.angleDegrees,
+    required this.hasSelection,
+    required this.accent,
+    required this.card,
+  });
+
+  final String plantName;
+  final String? rawDirection;
+  final double angleDegrees;
+  final bool hasSelection;
+  final Color accent;
+  final Color card;
+
+  @override
+  Widget build(BuildContext context) {
+    final resolvedRaw = rawDirection ?? _facingRawFromDegrees(angleDegrees);
+    final label =
+        hasSelection ? _facingDirectionLabel(resolvedRaw) : 'Yön seçilmedi';
+    return Container(
+      height: 118,
+      decoration: BoxDecoration(
+        color: card,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white12),
+      ),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 110,
+            height: 118,
+            child: Center(
+              child: SizedBox(
+                width: 88,
+                height: 104,
+                child: buildCropMarkerWidget(
+                  cropName: plantName,
+                  cropColor: accent,
+                  maturityPercent: 82,
+                  facingDirection: hasSelection ? resolvedRaw : null,
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(right: 14),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.outfit(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Bu ekim grubundaki tüm bitkiler aynı yöne döner.',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: Colors.white60,
+                      fontSize: 12,
+                      height: 1.25,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FacingDirectionSheet extends StatefulWidget {
+  const _FacingDirectionSheet({
+    required this.plantName,
+    this.initialRaw,
+  });
+
+  final String plantName;
+  final String? initialRaw;
+
+  @override
+  State<_FacingDirectionSheet> createState() => _FacingDirectionSheetState();
+}
+
+class _FacingDirectionSheetState extends State<_FacingDirectionSheet> {
+  late double _angleDegrees;
+  late bool _hasSelection;
+
+  static const _bg = Color(0xFF0D1811);
+  static const _accent = Color(0xFF00E676);
+  static const _card = Color(0xFF152018);
+
+  @override
+  void initState() {
+    super.initState();
+    _angleDegrees = _degreesFromFacingRaw(widget.initialRaw);
+    _hasSelection = widget.initialRaw != null && widget.initialRaw!.isNotEmpty;
+  }
+
+  String? get _selectedRaw =>
+      _hasSelection ? _facingRawFromDegrees(_angleDegrees) : null;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: _bg,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.white24,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(children: [
+              const Icon(Icons.explore_rounded, color: _accent, size: 26),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${widget.plantName} hangi yöne baksın?',
+                      style: GoogleFonts.outfit(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    const Text(
+                      'Güneş maruziyeti ve mikro-iklim için kullanılır.',
+                      style: TextStyle(color: Colors.white54, fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+            ]),
+            const SizedBox(height: 18),
+            _DirectionPicker(
+              selectedDegrees: _angleDegrees,
+              hasSelection: _hasSelection,
+              onChanged: (degrees) => setState(() {
+                if (degrees == null) {
+                  _hasSelection = false;
+                  return;
+                }
+                _angleDegrees = degrees;
+                _hasSelection = true;
+              }),
+              accent: _accent,
+              card: _card,
+            ),
+            const SizedBox(height: 14),
+            _AngleSlider(
+              angleDegrees: _angleDegrees,
+              hasSelection: _hasSelection,
+              accent: _accent,
+              onChanged: (degrees) => setState(() {
+                _angleDegrees = degrees;
+                _hasSelection = true;
+              }),
+            ),
+            const SizedBox(height: 14),
+            _FacingDirectionPreview(
+              plantName: widget.plantName,
+              rawDirection: _selectedRaw,
+              angleDegrees: _angleDegrees,
+              hasSelection: _hasSelection,
+              accent: _accent,
+              card: _card,
+            ),
+            const SizedBox(height: 20),
+            Row(children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => Navigator.pop(context, _SkipDirection()),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Colors.white24),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text('Atla',
+                      style: TextStyle(color: Colors.white70)),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                flex: 2,
+                child: ElevatedButton.icon(
+                  onPressed: () => Navigator.pop(context, _selectedRaw),
+                  icon: const Icon(Icons.check_rounded, size: 18),
+                  label: Text(
+                    _hasSelection ? 'Onayla' : 'Devam Et',
+                    style: GoogleFonts.outfit(
+                        fontSize: 14, fontWeight: FontWeight.w700),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _accent,
+                    foregroundColor: Colors.black,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+            ]),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// "Atla" sentinel — kullanıcı yön belirtmek istemediğinde döner.
+class _SkipDirection {}
+
+/// Yön seçim diyaloğunu gösterir. Dönüş değeri:
+///   - String: kullanıcı derece tabanlı bir yön seçti
+///   - null: kullanıcı sheet'i swipe-to-dismiss ile kapattı (iptal)
+///   - _SkipDirection: "Atla" — yön kaydedilmeyecek (null olarak gönder)
+Future<String?> _askFacingDirection(
+  BuildContext context, {
+  required String plantName,
+  String? initialRaw,
+}) async {
+  final result = await _showFacingDirectionSheet(
+    context,
+    plantName: plantName,
+    initialRaw: initialRaw,
+  );
+  if (result is String) return result;
+  return null;
+}
+
+Future<Object?> _showFacingDirectionSheet(
+  BuildContext context, {
+  required String plantName,
+  String? initialRaw,
+}) {
+  return showModalBottomSheet<Object?>(
+    context: context,
+    backgroundColor: Colors.transparent,
+    isScrollControlled: true,
+    builder: (_) =>
+        _FacingDirectionSheet(plantName: plantName, initialRaw: initialRaw),
+  );
 }
