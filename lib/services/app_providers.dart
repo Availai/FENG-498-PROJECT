@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive/hive.dart';
@@ -24,6 +26,10 @@ import 'backend_service.dart';
 import 'disease_diagnosis_service.dart';
 import 'activity_logger.dart';
 import 'guide_engine.dart';
+import 'rules/crop_rule_set.dart';
+import 'rules/recommendation.dart';
+import 'rules/recommendation_ledger.dart';
+import 'rules/sunflower_rules.dart';
 import 'api/sync_api_client.dart';
 
 final appDatabaseProvider = Provider<AppDatabase>((ref) {
@@ -279,4 +285,214 @@ final fieldScheduledAutoSeedProvider = StreamProvider.family
     .autoDispose<List<Map<String, dynamic>>, String>((ref, fieldId) {
   final repo = ref.watch(localDataRepositoryProvider);
   return repo.watchScheduledAutoSeedEvents(fieldId: fieldId);
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Deterministik tavsiye motoru (ayçiçeği MVP-1; ileride çoklu bitki)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Mevcut bitki kural setleri. Yeni bitki eklemek için bu listeye yeni bir
+/// `CropRuleSet` implementation eklemek yeterli; UI değişmez.
+final cropRuleSetsProvider = Provider<List<CropRuleSet>>((ref) {
+  return const [
+    SunflowerRules(),
+  ];
+});
+
+/// Tavsiye gösterim defteri — Hive box `recommendation_ledger`. Cooldown
+/// kontrolü ve aktivite sonrası temizleme buradan yürür.
+final recommendationLedgerProvider = Provider<RecommendationLedger>((ref) {
+  return RecommendationLedger(Hive.box(RecommendationLedger.boxName));
+});
+
+/// Tarla bazında ayçiçeği (ve gelecekte eklenecek) deterministik tavsiyeleri.
+/// `fieldGuideProvider` ile aynı stream'leri dinler → aktivite logu yazılınca,
+/// büyüme yeniden hesaplanınca, hava verisi tazelenince otomatik invalidate.
+///
+/// Akış:
+///   1. Aktivite/growth/plant instances/forecast topla
+///   2. Her ekin için match eden RuleSet → evaluate → Recommendation listesi
+///   3. Ledger ile cooldown filtresi uygula
+///   4. Severity'ye göre sırala (acil → önemli → bilgi)
+final fieldRecommendationsProvider = FutureProvider.family
+    .autoDispose<List<Recommendation>, String>((ref, fieldId) async {
+  final repo = ref.watch(localDataRepositoryProvider);
+  final ruleSets = ref.watch(cropRuleSetsProvider);
+  final ledger = ref.watch(recommendationLedgerProvider);
+  if (ruleSets.isEmpty) return const [];
+
+  final crops = await repo.loadFieldCrops(fieldId);
+  if (crops.isEmpty) return const [];
+
+  final activities = await ref.watch(fieldActivityLogProvider(fieldId).future);
+  final growthList =
+      await ref.watch(fieldGrowthStatesProvider(fieldId).future);
+  final plantInstances =
+      await ref.watch(fieldPlantInstancesProvider(fieldId).future);
+
+  // GrowthState[] → Map<cropId, GrowthSnapshot>
+  final growthMap = <String, GrowthSnapshot>{};
+  for (final g in growthList) {
+    growthMap[g.cropId] = GrowthSnapshot(
+      stageKey: g.currentStageKey,
+      stageProgress: g.stageProgress,
+      accumulatedGdd: g.accumulatedGdd,
+      waterDeficitMm: g.waterDeficitMm,
+      nStressIdx: g.nStressIdx,
+      diseasePressure: g.diseasePressure,
+      yieldMultiplier: g.yieldMultiplier,
+    );
+  }
+
+  // Activity log → ActivityRecord (yeni → eski)
+  final actRecords = <ActivityRecord>[];
+  for (final a in activities) {
+    final dateRaw = a['date'];
+    DateTime? at;
+    if (dateRaw is DateTime) {
+      at = dateRaw;
+    } else if (dateRaw is String) {
+      at = DateTime.tryParse(dateRaw);
+    }
+    if (at == null) continue;
+    actRecords.add(ActivityRecord(
+      type: a['type']?.toString() ?? '',
+      subtype: a['subtype']?.toString(),
+      at: at,
+      plantInstanceId: a['plant_instance_id']?.toString(),
+      quantity: (a['quantity'] as num?)?.toDouble(),
+    ));
+  }
+  actRecords.sort((a, b) => b.at.compareTo(a.at));
+
+  // Plant instances → snapshot
+  final plantSnaps = <PlantInstanceSnapshot>[];
+  for (final p in plantInstances) {
+    final flags = <String>[];
+    final raw = p.conditionFlagsJson;
+    if (raw != null && raw.isNotEmpty) {
+      try {
+        final decoded = jsonDecode(raw);
+        if (decoded is List) {
+          for (final v in decoded) {
+            if (v is String && v.isNotEmpty) flags.add(v);
+          }
+        }
+      } catch (_) {}
+    }
+    plantSnaps.add(PlantInstanceSnapshot(
+      id: p.id,
+      cropId: p.cropId,
+      healthStatus: p.healthStatus,
+      conditionFlags: flags,
+    ));
+  }
+
+  // Saatlik forecast — koordinat varsa
+  HourlyForecast? hourly;
+  final fieldMap = await repo.loadFieldById(fieldId);
+  final lat = (fieldMap?['latitude'] as num?)?.toDouble();
+  final lng = (fieldMap?['longitude'] as num?)?.toDouble();
+  if (lat != null && lng != null) {
+    try {
+      hourly = await ref
+          .watch(weatherSoilServiceProvider)
+          .fetchHourlyForecast(latitude: lat, longitude: lng);
+    } catch (_) {}
+  }
+
+  final now = DateTime.now();
+  final out = <Recommendation>[];
+
+  for (final crop in crops) {
+    final cropId = crop['id']?.toString();
+    final cropName = crop['name']?.toString() ?? '';
+    if (cropId == null || cropId.isEmpty) continue;
+
+    // Bu ekine match eden ilk RuleSet'i çalıştır.
+    CropRuleSet? matched;
+    for (final rs in ruleSets) {
+      if (rs.matches(cropName)) {
+        matched = rs;
+        break;
+      }
+    }
+    if (matched == null) continue;
+
+    final plantedRaw = crop['planted_date']?.toString();
+    DateTime? planted;
+    if (plantedRaw != null && plantedRaw.isNotEmpty) {
+      planted = DateTime.tryParse(plantedRaw);
+      if (planted == null) {
+        final parts = plantedRaw.split('.');
+        if (parts.length == 3) {
+          planted = DateTime.tryParse(
+              '${parts[2]}-${parts[1].padLeft(2, '0')}-${parts[0].padLeft(2, '0')}');
+        }
+      }
+    }
+
+    final ctx = RuleEvaluationContext(
+      fieldId: fieldId,
+      crop: FieldCropSnapshot(
+        id: cropId,
+        name: cropName,
+        plantedDate: planted,
+      ),
+      growth: growthMap[cropId],
+      recentActivities: actRecords,
+      plantInstances: plantSnaps,
+      hourly: hourly,
+      now: now,
+    );
+
+    final recs = matched.evaluate(ctx);
+    for (final r in recs) {
+      // Cooldown'da mı?
+      if (ledger.isOnCooldown(
+        ruleKey: r.ruleKey,
+        target: r.target,
+        cooldownHours: r.cooldownHours,
+        now: now,
+      )) {
+        continue;
+      }
+      // ClearOnActivity — son aktivite penceresinde varsa tavsiye expire.
+      bool cleared = false;
+      for (final clear in r.clearOnActivities) {
+        for (final a in actRecords) {
+          if (a.type != clear.activityType) continue;
+          if (clear.subtype != null && a.subtype != clear.subtype) continue;
+          // Tekil bitki hedefi varsa aktivite de aynı bitkide olmalı.
+          if (r.target.plantInstanceId != null &&
+              a.plantInstanceId != r.target.plantInstanceId) {
+            continue;
+          }
+          final hours = now.difference(a.at).inMinutes / 60.0;
+          if (hours <= clear.withinHours) {
+            cleared = true;
+            break;
+          }
+        }
+        if (cleared) break;
+      }
+      if (cleared) continue;
+      out.add(r);
+    }
+  }
+
+  // Severity'ye göre sırala — critical en üste.
+  int order(AlertSeverity s) {
+    switch (s) {
+      case AlertSeverity.critical:
+        return 0;
+      case AlertSeverity.warning:
+        return 1;
+      case AlertSeverity.info:
+        return 2;
+    }
+  }
+
+  out.sort((a, b) => order(a.severity).compareTo(order(b.severity)));
+  return out;
 });

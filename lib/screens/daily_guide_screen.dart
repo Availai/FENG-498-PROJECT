@@ -8,6 +8,7 @@ import '../services/notification_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/floating_toast.dart';
 import '../widgets/help_panel.dart';
+import '../widgets/recommendation_card.dart';
 
 /// Tek "Bugünün Rehberi" ekranı — eski 5 paralel UI yüzeyini değiştirir.
 ///
@@ -112,6 +113,8 @@ class DailyGuideScreen extends ConsumerWidget {
     GuideResult result,
     AsyncValue<List<dynamic>> growthAsync,
   ) {
+    final recommendationsAsync =
+        ref.watch(fieldRecommendationsProvider(fieldId));
     if (result.isEmpty) {
       return Center(
         child: Padding(
@@ -144,6 +147,33 @@ class DailyGuideScreen extends ConsumerWidget {
           for (final alert in result.alerts) _AlertBanner(alert: alert),
           const SizedBox(height: 8),
         ],
+
+        // ÜRÜN TAVSİYELERİ — deterministik kural motoru çıktısı
+        // (şu an: ayçiçeği için 5 kural; ileride mısır/buğday için genişler)
+        recommendationsAsync.maybeWhen(
+          data: (recs) {
+            if (recs.isEmpty) return const SizedBox.shrink();
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _SectionHeader(label: 'ÜRÜN TAVSİYELERİ', count: recs.length),
+                for (final r in recs)
+                  RecommendationCard(
+                    recommendation: r,
+                    onShown: () {
+                      // Cooldown başlat — aynı ruleKey + target kombinasyonu
+                      // pencerede tekrar üst sıraya çıkmaz.
+                      ref
+                          .read(recommendationLedgerProvider)
+                          .markShown(ruleKey: r.ruleKey, target: r.target);
+                    },
+                  ),
+                const SizedBox(height: 16),
+              ],
+            );
+          },
+          orElse: () => const SizedBox.shrink(),
+        ),
 
         // BUGÜN
         if (result.today.isNotEmpty) ...[

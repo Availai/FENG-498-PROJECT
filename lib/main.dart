@@ -94,6 +94,7 @@ Future<AppDatabase> _bootstrap() async {
     'crop_history',
     'fuel_cache',
     'crop_protocol_state',
+    'recommendation_ledger',
   ];
   await Future.wait(boxNames.map((name) => Hive.openBox(name)));
 
