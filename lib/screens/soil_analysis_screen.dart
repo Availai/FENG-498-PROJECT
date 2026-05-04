@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../services/api/soilgrids_api.dart';
 import '../services/soil_fertilization_service.dart';
+import '../widgets/help_panel.dart';
 
 /// Modül 6 — Detaylı Toprak Analizi & Gübreleme ekranı.
 ///
@@ -96,6 +97,11 @@ class _SoilAnalysisScreenState extends State<SoilAnalysisScreen> {
             tooltip: 'Yenile',
             icon: const Icon(Icons.refresh),
             onPressed: _isLoading ? null : _loadProfile,
+          ),
+          IconButton(
+            icon: const Icon(Icons.help_outline_rounded, color: Colors.white),
+            tooltip: 'Yardım',
+            onPressed: () => HelpPanel.show(context, HelpContent.soilAnalysis),
           ),
         ],
       ),

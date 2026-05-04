@@ -8,6 +8,7 @@ import '../data/supported_crops.dart';
 import '../services/anatolian_seed_db.dart';
 import '../services/agri_sim_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/help_panel.dart';
 
 class SeedSelectorScreen extends StatefulWidget {
   const SeedSelectorScreen({super.key});
@@ -72,6 +73,13 @@ class _SeedSelectorScreenState extends State<SeedSelectorScreen>
           onPressed: () => Navigator.pop(context),
         ),
         title: Text('Anadolu Tohum DB', style: AppText.h2(context)),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.help_outline_rounded),
+            tooltip: 'Yardım',
+            onPressed: () => HelpPanel.show(context, HelpContent.seedSelector),
+          ),
+        ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(48),
           child: TabBar(

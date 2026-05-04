@@ -5,6 +5,7 @@ import '../data/activity_types.dart';
 import '../services/app_providers.dart';
 import '../theme/app_theme.dart';
 import '../widgets/floating_toast.dart';
+import '../widgets/help_panel.dart';
 import '../widgets/tap_scale.dart';
 
 /// Tarlam Günlüğü — tüm tarlaların kronolojik aktivite akışı.
@@ -40,6 +41,13 @@ class _FarmJournalScreenState extends ConsumerState<FarmJournalScreen> {
         title: Text('Tarlam Günlüğü', style: AppText.h2(context)),
         backgroundColor: AppColors.surface,
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.help_outline_rounded),
+            tooltip: 'Yardım',
+            onPressed: () => HelpPanel.show(context, HelpContent.farmJournal),
+          ),
+        ],
       ),
       body: Column(
         children: [

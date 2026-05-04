@@ -577,6 +577,387 @@ class HelpContent {
     ],
   );
 
+  // ── Tarla Durumu ──────────────────────────────────────────────────────────
+  static const HelpContent fieldStatus = HelpContent(
+    screenTitle: 'Tarla Durumu',
+    screenSubtitle: 'Tüm tarlalarınızın anlık çalışma durumunu tek ekranda görün.',
+    headerIcon: Icons.crop_square_rounded,
+    headerColor: Color(0xFF1565C0),
+    items: [
+      HelpItem(
+        icon: Icons.list_alt_rounded,
+        iconColor: Color(0xFF43A047),
+        title: 'Tarla Kartları',
+        description:
+            'Her tarla için o günkü sulama, gübreleme ve ilaçlama durumu gösterilir. '
+            'Bir sonraki işleme kaç gün kaldığı ve tahmini miktar da listelenir.',
+      ),
+      HelpItem(
+        icon: Icons.assistant_rounded,
+        iconColor: Color(0xFF2E7D32),
+        title: 'Bugünün Rehberi\'ne Git',
+        description:
+            'Her tarla kartındaki "Rehber" düğmesine basarak o tarlaya özel '
+            '"Bugünün Rehberi" ekranına geçin. Detaylı görevler ve hava uyarıları orada görünür.',
+      ),
+      HelpItem(
+        icon: Icons.book_rounded,
+        iconColor: Color(0xFF8D6E63),
+        title: 'Günlüğe Git',
+        description:
+            '"Günlük" bağlantısına basarak ilgili tarlanın tüm aktivite geçmişine '
+            'kronolojik sırayla ulaşabilirsiniz.',
+      ),
+      HelpItem(
+        icon: Icons.refresh_rounded,
+        iconColor: Color(0xFF6B7280),
+        title: 'Canlı Güncelleme',
+        description:
+            'Herhangi bir tarlaya aktivite kaydedildiğinde bu liste otomatik olarak tazelenir. '
+            'Manuel yenileme gerekmez.',
+      ),
+    ],
+  );
+
+  // ── ÇKS Maliyet Defteri ───────────────────────────────────────────────────
+  static const HelpContent costLedger = HelpContent(
+    screenTitle: 'ÇKS Cüzdan — Maliyet Defteri',
+    screenSubtitle: 'Tarla masraflarınızı kaydedin, kâr/zarar hesabı yapın.',
+    headerIcon: Icons.account_balance_wallet_rounded,
+    headerColor: Color(0xFF6A1B9A),
+    items: [
+      HelpItem(
+        icon: Icons.add_rounded,
+        iconColor: Color(0xFF43A047),
+        title: 'Masraf Ekle',
+        description:
+            'Sağ alttaki "+" düğmesine basın. Kategori olarak tohum, gübre, '
+            'mazot, ilaç veya diğer masraflardan birini seçin; '
+            'miktarı ve tutarı girin. Her kayıt hangi tarlaya ait olduğuyla birlikte saklanır.',
+      ),
+      HelpItem(
+        icon: Icons.local_gas_station_rounded,
+        iconColor: Color(0xFFE67E22),
+        title: 'Güncel Mazot Fiyatı',
+        description:
+            'EPDK veritabanından çekilen güncel mazot fiyatı otomatik olarak görünür. '
+            'Litre bazında masraf girildiğinde toplam TL otomatik hesaplanır.',
+      ),
+      HelpItem(
+        icon: Icons.trending_up_rounded,
+        iconColor: Color(0xFF2E7D32),
+        title: 'Kâr / Zarar Tahmini',
+        description:
+            'Ekranın üstündeki özet alanda toplam masraf, tahmini rekolte geliri '
+            've Net Kâr = Gelir − Masraf formülüyle hesaplanan sonuç gösterilir.',
+      ),
+      HelpItem(
+        icon: Icons.picture_as_pdf_rounded,
+        iconColor: Color(0xFFD32F2F),
+        title: 'PDF Raporu',
+        description:
+            'Sağ üstteki indirme simgesine basarak sezon sonu masraf raporunuzu '
+            'PDF olarak dışa aktarabilirsiniz. ÇKS başvurularında kullanabilirsiniz.',
+      ),
+      HelpItem(
+        icon: Icons.delete_outline_rounded,
+        iconColor: Color(0xFFD32F2F),
+        title: 'Masraf Silme',
+        description:
+            'Bir masraf satırına uzun basın ya da sola kaydırın. '
+            'Silinen kayıt geri alınamaz; dikkatli olun.',
+      ),
+    ],
+  );
+
+  // ── Tarlam Günlüğü ────────────────────────────────────────────────────────
+  static const HelpContent farmJournal = HelpContent(
+    screenTitle: 'Tarlam Günlüğü',
+    screenSubtitle: 'Tüm tarlaların kronolojik aktivite akışını görüntüleyin.',
+    headerIcon: Icons.menu_book_rounded,
+    headerColor: Color(0xFF4E342E),
+    items: [
+      HelpItem(
+        icon: Icons.history_rounded,
+        iconColor: Color(0xFF43A047),
+        title: 'Aktivite Akışı',
+        description:
+            'Sulama, gübreleme, ilaçlama ve hasat gibi tüm kayıtlar '
+            'Bugün / Dün / Bu Hafta / Bu Ay / Daha Eski gruplarıyla listelenir.',
+      ),
+      HelpItem(
+        icon: Icons.filter_list_rounded,
+        iconColor: Color(0xFF1976D2),
+        title: 'Tarla & Tür Filtresi',
+        description:
+            'Üstteki filtre çubuğundan belirli bir tarlayı veya aktivite türünü seçerek '
+            'listeyi daraltabilirsiniz. Birden fazla filtre aynı anda uygulanabilir.',
+      ),
+      HelpItem(
+        icon: Icons.water_drop_rounded,
+        iconColor: Color(0xFF0288D1),
+        title: 'Kayıt Detayı',
+        description:
+            'Herhangi bir aktivite satırına dokunarak miktar, birim, not '
+            've hangi ürüne ait olduğu gibi detayları görebilirsiniz.',
+      ),
+      HelpItem(
+        icon: Icons.delete_outline_rounded,
+        iconColor: Color(0xFFD32F2F),
+        title: 'Kayıt Silme',
+        description:
+            'Bir kaydı sola kaydırarak silebilirsiniz. '
+            'Silme işlemi büyüme motorunu geriye dönük etkiler; emin olmadan silmeyin.',
+      ),
+    ],
+  );
+
+  // ── Hasat Oracle ──────────────────────────────────────────────────────────
+  static const HelpContent harvestOracle = HelpContent(
+    screenTitle: 'Hasat Oracle',
+    screenSubtitle: 'Hava tahminine göre optimal hasat penceresi hesaplanır.',
+    headerIcon: Icons.grain_rounded,
+    headerColor: Color(0xFFE65100),
+    items: [
+      HelpItem(
+        icon: Icons.wb_sunny_rounded,
+        iconColor: Color(0xFFE67E22),
+        title: 'Hasat Penceresi',
+        description:
+            'Önümüzdeki 7 günün hava tahminine göre yağmursuz ve uygun sıcaklıktaki '
+            'günler otomatik belirlenir. Yeşil kutular ideal hasat günlerini gösterir.',
+      ),
+      HelpItem(
+        icon: Icons.warning_amber_rounded,
+        iconColor: Color(0xFFD32F2F),
+        title: 'Hava Uyarıları',
+        description:
+            'Şiddetli yağmur, aşırı sıcak veya rüzgar gibi hasadı olumsuz etkileyen '
+            'durumlar kırmızı uyarı olarak listelenir. Bu günlerde hasatı ertelemeniz önerilir.',
+      ),
+      HelpItem(
+        icon: Icons.eco_rounded,
+        iconColor: Color(0xFF2E7D32),
+        title: 'Çeşit Seçimi',
+        description:
+            'Ekranın üstünden ürün çeşidi seçin. '
+            'Seçilen çeşidin nem ve sıcaklık toleransına göre hasat skoru hesaplanır.',
+      ),
+      HelpItem(
+        icon: Icons.refresh_rounded,
+        iconColor: Color(0xFF6B7280),
+        title: 'Yenile',
+        description:
+            'Sağ üstteki yenile simgesine basarak hava tahminini güncelleyebilirsiniz. '
+            'İnternet yoksa son kaydedilen tahmin gösterilir.',
+      ),
+    ],
+  );
+
+  // ── Toprak Analizi ────────────────────────────────────────────────────────
+  static const HelpContent soilAnalysis = HelpContent(
+    screenTitle: 'Toprak Analizi',
+    screenSubtitle: 'Tarlanızın toprak yapısını ve NPK ihtiyacını öğrenin.',
+    headerIcon: Icons.landscape_rounded,
+    headerColor: Color(0xFF1B5E20),
+    items: [
+      HelpItem(
+        icon: Icons.science_rounded,
+        iconColor: Color(0xFF43A047),
+        title: 'NPK & pH Değerleri',
+        description:
+            'SoilGrids uydu verilerinden hesaplanan Azot (N), Fosfor (P), Potasyum (K) '
+            've toprak pH\'ı gösterilir. Değerler 0-30 cm derinliği temsil eder.',
+      ),
+      HelpItem(
+        icon: Icons.tune_rounded,
+        iconColor: Color(0xFF1976D2),
+        title: 'Hedef pH Ayarı',
+        description:
+            'Kaydırıcı ile hedef pH değerini girin. '
+            'Kireçleme veya kükürt miktarı otomatik hesaplanarak ekranda gösterilir.',
+      ),
+      HelpItem(
+        icon: Icons.calendar_today_rounded,
+        iconColor: Color(0xFFE67E22),
+        title: 'Dönemsel Gübreleme Takvimi',
+        description:
+            'Seçilen bitki için ekim öncesi, gelişme dönemi ve hasat öncesi olmak üzere '
+            'üç dönemlik gübreleme miktarları ve zamanları listelenir.',
+      ),
+      HelpItem(
+        icon: Icons.offline_bolt_rounded,
+        iconColor: Color(0xFF8D6E63),
+        title: 'Çevrimdışı Fallback',
+        description:
+            'İnternet yoksa bölgesel istatistiklerden türetilen tahmini değerler gösterilir. '
+            'Ekranın üstünde "tahmini veri" uyarısı görünür.',
+      ),
+    ],
+  );
+
+  // ── Anadolu Tohum DB ──────────────────────────────────────────────────────
+  static const HelpContent seedSelector = HelpContent(
+    screenTitle: 'Anadolu Tohum Veritabanı',
+    screenSubtitle: 'Bölgenize uygun çeşidi seçin, büyüme simülasyonu yapın.',
+    headerIcon: Icons.spa_rounded,
+    headerColor: Color(0xFF33691E),
+    items: [
+      HelpItem(
+        icon: Icons.search_rounded,
+        iconColor: Color(0xFF43A047),
+        title: 'Çeşit Tarama',
+        description:
+            'Ürün adını seçin, ardından bölgenizi belirtin. '
+            'O bölgede onaylı tescilli çeşitler verim ve olgunlaşma süresine göre listelenir.',
+      ),
+      HelpItem(
+        icon: Icons.bar_chart_rounded,
+        iconColor: Color(0xFF1976D2),
+        title: 'Büyüme Simülasyonu',
+        description:
+            '"Simülasyon" sekmesine geçin. Bölge iklimi ve seçili çeşidin parametrelerine göre '
+            'tahmini büyüme eğrisi, kritik tarihler ve rekolte tahmini hesaplanır.',
+      ),
+      HelpItem(
+        icon: Icons.compare_rounded,
+        iconColor: Color(0xFFE67E22),
+        title: 'Çeşit Karşılaştırma',
+        description:
+            'İki farklı çeşidi seçerek yan yana karşılaştırabilirsiniz. '
+            'Verim, hastalık direnci ve olgunlaşma süresi fark tablosuyla gösterilir.',
+      ),
+      HelpItem(
+        icon: Icons.agriculture_rounded,
+        iconColor: Color(0xFF2E7D32),
+        title: 'Hasat Oracle\'a Git',
+        description:
+            'Çeşit seçildikten sonra "Hasat Penceresi" düğmesiyle '
+            'Hasat Oracle ekranına geçebilirsiniz — optimal hasat günleri orada hesaplanır.',
+      ),
+    ],
+  );
+
+  // ── Harita Merkezi ────────────────────────────────────────────────────────
+  static const HelpContent mapHub = HelpContent(
+    screenTitle: 'Harita Merkezi',
+    screenSubtitle: 'Kayıtlı tüm tarlalarınızı harita üzerinde görün.',
+    headerIcon: Icons.map_rounded,
+    headerColor: Color(0xFF1565C0),
+    items: [
+      HelpItem(
+        icon: Icons.crop_free_rounded,
+        iconColor: Color(0xFF43A047),
+        title: 'Tarla Poligonları',
+        description:
+            'Her kayıtlı tarla, çizdiğiniz sınır noktalarına göre haritada renkli '
+            'alan olarak gösterilir. Poligona dokunarak tarla adını ve alanını görebilirsiniz.',
+      ),
+      HelpItem(
+        icon: Icons.info_outline_rounded,
+        iconColor: Color(0xFF1976D2),
+        title: 'İstatistik Çubuğu',
+        description:
+            'Ekranın üstündeki çubuk toplam kayıtlı tarla sayısını ve haritada '
+            'görüntülenebilen (koordinatlı) tarla sayısını gösterir.',
+      ),
+      HelpItem(
+        icon: Icons.zoom_in_rounded,
+        iconColor: Color(0xFF6B7280),
+        title: 'Yakınlaştırma',
+        description:
+            'Haritada iki parmakla yakınlaştırıp uzaklaştırabilirsiniz. '
+            'Harita çevrimiçiyken daha yüksek çözünürlükte yüklenip, çevrimdışıyken '
+            'önbellekten gösterilir.',
+      ),
+      HelpItem(
+        icon: Icons.add_location_alt_rounded,
+        iconColor: Color(0xFFE67E22),
+        title: 'Yeni Tarla Ekle',
+        description:
+            'Tarla kaydı buradan değil, "Tarım Alanlarım" sekmesindeki '
+            '"YENİ ALAN ÇİZ" düğmesiyle yapılır. Bu ekran yalnızca görüntüleme amaçlıdır.',
+      ),
+    ],
+  );
+
+  // ── Uydu & Hava ───────────────────────────────────────────────────────────
+  static const HelpContent satelliteWeather = HelpContent(
+    screenTitle: 'Uydu & Hava Durumu',
+    screenSubtitle: 'Tarlaya özgü uydu verisi ve detaylı hava analizi.',
+    headerIcon: Icons.satellite_alt_rounded,
+    headerColor: Color(0xFF0D1321),
+    items: [
+      HelpItem(
+        icon: Icons.thermostat_rounded,
+        iconColor: Color(0xFFE67E22),
+        title: 'Sıcaklık & Nem',
+        description:
+            'Tarla konumuna özel anlık sıcaklık, nem oranı, hissedilen sıcaklık '
+            've çiğlenme noktası gösterilir. Veriler meteoroloji API\'sinden alınır.',
+      ),
+      HelpItem(
+        icon: Icons.water_drop_rounded,
+        iconColor: Color(0xFF0288D1),
+        title: 'Yağış Tahmini',
+        description:
+            'Önümüzdeki günler için yağış miktarı ve olasılığı gösterilir. '
+            'Bu bilgiyi sulama planlamanızda kullanabilirsiniz.',
+      ),
+      HelpItem(
+        icon: Icons.satellite_alt_rounded,
+        iconColor: Color(0xFF4FC3F7),
+        title: 'Uydu Görüntüsü',
+        description:
+            'Tarlanızın NDVI (bitki örtüsü indeksi) veya gerçek renk uydu görüntüsü '
+            'mevcut olduğunda gösterilir. Renk skalası ekranın altında açıklanmıştır.',
+      ),
+      HelpItem(
+        icon: Icons.refresh_rounded,
+        iconColor: Color(0xFF6B7280),
+        title: 'Güncelleme',
+        description:
+            'Sağ üstteki yenile simgesine basarak verileri yenileyebilirsiniz. '
+            'Eski veriler "güncelleme tarihi" bilgisiyle birlikte gösterilir.',
+      ),
+    ],
+  );
+
+  // ── Kayıtlı Verilerim ─────────────────────────────────────────────────────
+  static const HelpContent plantDatabase = HelpContent(
+    screenTitle: 'Kayıtlı Verilerim',
+    screenSubtitle: 'YZ analiz geçmişiniz ve hızlı çevre ölçümleriniz burada.',
+    headerIcon: Icons.storage_rounded,
+    headerColor: Color(0xFF37474F),
+    items: [
+      HelpItem(
+        icon: Icons.psychology_rounded,
+        iconColor: Color(0xFF43A047),
+        title: 'AI Görüntü Analizleri',
+        description:
+            'Kamera ekranından yaptığınız tüm hastalık teşhisleri bu sekmede listelenir. '
+            'Her analiz için tarih, bitki adı, teşhis ve güven oranı kaydedilmiştir. '
+            'Bir analize dokunarak detayları tekrar görebilirsiniz.',
+      ),
+      HelpItem(
+        icon: Icons.history_rounded,
+        iconColor: Color(0xFF1976D2),
+        title: 'Hızlı Çevre Geçmişi',
+        description:
+            '"Hızlı Çevre Geçmişi" sekmesinde anlık sıcaklık, nem ve toprak '
+            'ölçümlerinizin kronolojik kaydı tutulur.',
+      ),
+      HelpItem(
+        icon: Icons.delete_outline_rounded,
+        iconColor: Color(0xFFD32F2F),
+        title: 'Kayıt Silme',
+        description:
+            'Listeden bir analizi sola kaydırarak silebilirsiniz. '
+            'Silinen analiz bir daha gösterilmez.',
+      ),
+    ],
+  );
+
   // Bölge Çizme (tarlaya bitki ekleme) — ikinci harita ekranı
   static const HelpContent plantZoneDrawing = HelpContent(
     screenTitle: 'Bitki Bölgesi Çiz',

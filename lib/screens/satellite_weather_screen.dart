@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../services/app_providers.dart';
+import '../widgets/help_panel.dart';
 
 class SatelliteWeatherScreen extends ConsumerStatefulWidget {
   final dynamic fieldData;
@@ -82,6 +83,12 @@ class _SatelliteWeatherScreenState
             icon: const Icon(Icons.refresh, color: Color(0xFF4FC3F7)),
             onPressed: _load,
             tooltip: 'Yenile',
+          ),
+          IconButton(
+            icon: const Icon(Icons.help_outline_rounded, color: Colors.white),
+            tooltip: 'Yardım',
+            onPressed: () =>
+                HelpPanel.show(context, HelpContent.satelliteWeather),
           ),
         ],
       ),

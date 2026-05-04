@@ -8,6 +8,7 @@ import '../services/app_providers.dart';
 import '../services/task_directive_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/animated_route.dart';
+import '../widgets/help_panel.dart';
 import '../widgets/shimmer_loader.dart';
 import '../widgets/tap_scale.dart';
 import 'daily_guide_screen.dart';
@@ -35,6 +36,13 @@ class FieldStatusScreen extends ConsumerWidget {
         backgroundColor: AppColors.surface,
         elevation: 0,
         centerTitle: false,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.help_outline_rounded),
+            tooltip: 'Yardım',
+            onPressed: () => HelpPanel.show(context, HelpContent.fieldStatus),
+          ),
+        ],
       ),
       body: fieldsAsync.when(
         loading: () => ListView.builder(

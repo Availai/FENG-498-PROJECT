@@ -12,6 +12,7 @@ import '../services/app_providers.dart';
 import '../services/pdf_export_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/floating_toast.dart';
+import '../widgets/help_panel.dart';
 import '../widgets/shimmer_loader.dart';
 
 /// ÇKS (Çiftçi Kayıt Sistemi) uyumlu basit maliyet defteri.
@@ -82,6 +83,11 @@ class _CostLedgerScreenState extends ConsumerState<CostLedgerScreen> {
             icon: const Icon(Icons.file_download_rounded),
             tooltip: 'Sezon Raporu (PDF)',
             onPressed: () => _generateSeasonReport(),
+          ),
+          IconButton(
+            icon: const Icon(Icons.help_outline_rounded),
+            tooltip: 'Yardım',
+            onPressed: () => HelpPanel.show(context, HelpContent.costLedger),
           ),
         ],
       ),

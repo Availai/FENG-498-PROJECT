@@ -9,6 +9,7 @@ import '../services/harvest_oracle.dart';
 import '../services/offline_rule_engine.dart' show RiskLevel;
 import '../theme/app_theme.dart';
 import '../widgets/glass_panel.dart';
+import '../widgets/help_panel.dart';
 
 class HarvestOracleScreen extends StatefulWidget {
   final double lat;
@@ -96,6 +97,11 @@ class _HarvestOracleScreenState extends State<HarvestOracleScreen> {
               icon: const Icon(Icons.refresh_rounded, color: AppColors.emerald),
               onPressed: _fetch,
             ),
+          IconButton(
+            icon: const Icon(Icons.help_outline_rounded),
+            tooltip: 'Yardım',
+            onPressed: () => HelpPanel.show(context, HelpContent.harvestOracle),
+          ),
         ],
       ),
       body: _loading

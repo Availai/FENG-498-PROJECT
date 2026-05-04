@@ -5,6 +5,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 import '../services/app_providers.dart';
+import '../widgets/help_panel.dart';
 
 /// Aşama-1 / Flutter çekirdek modülü:
 /// Harita odaklı tarla görünümü (offline-first veri kaynağı: local repository).
@@ -20,6 +21,13 @@ class MapHubScreen extends ConsumerWidget {
         title: const Text('Harita Merkezi'),
         backgroundColor: Colors.green.shade700,
         foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.help_outline_rounded),
+            tooltip: 'Yardım',
+            onPressed: () => HelpPanel.show(context, HelpContent.mapHub),
+          ),
+        ],
       ),
       body: fieldsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
