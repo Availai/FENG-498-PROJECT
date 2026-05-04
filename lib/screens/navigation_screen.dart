@@ -6,6 +6,7 @@ import '../services/app_providers.dart';
 import '../services/haptic_service.dart';
 import '../widgets/glass_panel.dart';
 import '../widgets/tap_scale.dart';
+import 'activity_panel_screen.dart';
 import 'dashboard_screen.dart';
 import 'growing_guide_screen.dart';
 import 'my_crops_screen.dart';
@@ -13,6 +14,7 @@ import 'camera_screen.dart';
 import 'plant_database_screen.dart';
 import 'crop_calendar_screen.dart';
 import 'map_hub_screen.dart';
+import 'todo_panel_screen.dart';
 
 class MainNavigationScreen extends ConsumerStatefulWidget {
   const MainNavigationScreen({super.key});
@@ -36,24 +38,26 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
     });
   }
 
-  // Page order — camera (index 2) is exposed as FAB
+  // Page order — Yapılacaklar (index 2) is exposed as central FAB.
+  // Camera, Rehber, Arşiv menüye taşındı (profil sheet'inden açılır).
   static const List<Widget> _pages = [
     AgriDashboard(), // 0 – Özet
-    MyCropsScreen(), // 1 – Tarlalarım
-    CameraScreen(), // 2 – AI Analiz (FAB)
-    CropCalendarScreen(), // 3 – Takvim
-    GrowingGuideScreen(), // 4 – Rehber
-    PlantDatabaseScreen(), // 5 – Arşiv
+    ActivityPanelScreen(), // 1 – Aktivite (FAB'ın hemen solunda)
+    TodoPanelScreen(), // 2 – Yapılacaklar (FAB merkez)
+    MyCropsScreen(), // 3 – Tarlalar
+    CropCalendarScreen(), // 4 – Takvim
+    PlantDatabaseScreen(), // 5 – Arşiv (profil menüsü)
+    GrowingGuideScreen(), // 6 – Rehber (profil menüsü)
+    CameraScreen(), // 7 – AI Analiz (profil menüsü)
   ];
 
-  // Bottom nav slots: 0=Özet, 1=Tarlalar, 2=Pazar, [FAB gap], 3=Takvim, 4=Rehber
-  // Arşiv accessible via profile menu
-  static const List<int> _navToPage = [0, 1, 6, 3, 4];
+  // Bottom nav slots: 0=Özet, 1=Aktivite, [FAB Yapılacaklar = page 2], 2=Tarlalar, 3=Takvim
+  // Profil son sırada — açılır sheet ile Camera/Rehber/Arşiv'e erişim verir.
+  static const List<int> _navToPage = [0, 1, 3, 4];
 
   int get _navIndex {
-    if (_currentIndex == 2) return -1; // FAB (camera)
-    final idx = _navToPage.indexOf(_currentIndex);
-    return idx; // -1 if page 5 (Arşiv) is active
+    if (_currentIndex == 2) return -1; // FAB (Yapılacaklar)
+    return _navToPage.indexOf(_currentIndex); // -1 if hidden page (Arşiv/Rehber/Camera)
   }
 
   void _onNavTap(int navIdx) {
@@ -112,7 +116,46 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
                     style:
                         TextStyle(fontSize: 13, color: Colors.grey.shade500)),
               const SizedBox(height: 24),
-              // Archive button
+              // AI Analiz (Kamera)
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                      color: Colors.teal.shade50,
+                      borderRadius: BorderRadius.circular(10)),
+                  child: Icon(Icons.document_scanner_rounded,
+                      color: Colors.teal.shade700, size: 20),
+                ),
+                title: const Text('AI Analiz'),
+                subtitle:
+                    const Text('Bitki fotoğrafından hastalık ve tür teşhisi'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  Navigator.pop(context);
+                  setState(() => _currentIndex = 7);
+                },
+              ),
+              const Divider(),
+              // Rehber
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                      color: Colors.amber.shade50,
+                      borderRadius: BorderRadius.circular(10)),
+                  child: Icon(Icons.menu_book_rounded,
+                      color: Colors.amber.shade800, size: 20),
+                ),
+                title: const Text('Yetiştirme Rehberi'),
+                subtitle: const Text('Bitki bazlı yetiştirme adımları'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  Navigator.pop(context);
+                  setState(() => _currentIndex = 6);
+                },
+              ),
+              const Divider(),
+              // Harita Merkezi
               ListTile(
                 leading: Container(
                   padding: const EdgeInsets.all(8),
@@ -201,8 +244,8 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 250),
           curve: Curves.easeOut,
-          width: 60,
-          height: 60,
+          width: 64,
+          height: 64,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             gradient:
@@ -211,15 +254,15 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
             border: Border.all(
                 color: Colors.white.withValues(alpha: 0.2), width: 1.5),
           ),
-          child: AnimatedRotation(
-            turns: isActive ? 0.125 : 0.0,
+          child: AnimatedScale(
+            scale: isActive ? 1.05 : 1.0,
             duration: const Duration(milliseconds: 250),
             child: Icon(
               isActive
-                  ? Icons.document_scanner
-                  : Icons.document_scanner_outlined,
+                  ? Icons.checklist_rtl_rounded
+                  : Icons.checklist_rounded,
               color: Colors.white,
-              size: 26,
+              size: 28,
             ),
           ),
         ),
@@ -238,36 +281,48 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
           height: 68,
           child: Row(
             children: [
-              // Left: Özet + Tarlalar + Pazar
-              // Left: Özet + Tarlalar
+              // Sol: Özet + Aktivite (Aktivite FAB'ın hemen yanında)
               Expanded(
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
-                    _NavButton(
-                      icon: Icons.dashboard_outlined,
-                      activeIcon: Icons.dashboard,
-                      label: 'Özet',
-                      isActive: _navIndex == 0,
-                      onTap: () => _onNavTap(0),
+                    Flexible(
+                      child: _NavButton(
+                        icon: Icons.dashboard_outlined,
+                        activeIcon: Icons.dashboard,
+                        label: 'Özet',
+                        isActive: _navIndex == 0,
+                        onTap: () => _onNavTap(0),
+                      ),
                     ),
-                    _NavButton(
-                      icon: Icons.grass_outlined,
-                      activeIcon: Icons.grass,
-                      label: 'Tarlalar',
-                      isActive: _navIndex == 1,
-                      onTap: () => _onNavTap(1),
+                    Flexible(
+                      child: _NavButton(
+                        icon: Icons.bolt_outlined,
+                        activeIcon: Icons.bolt_rounded,
+                        label: 'Aktivite',
+                        isActive: _navIndex == 1,
+                        onTap: () => _onNavTap(1),
+                      ),
                     ),
                   ],
                 ),
               ),
-              // FAB gap
-              const SizedBox(width: 56),
-              // Right: Takvim + Rehber + Profil
+              // FAB gap — Yapılacaklar paneli burada
+              const SizedBox(width: 64),
+              // Sağ: Tarlalar + Takvim + Profil
               Expanded(
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
+                    Flexible(
+                      child: _NavButton(
+                        icon: Icons.grass_outlined,
+                        activeIcon: Icons.grass,
+                        label: 'Tarlalar',
+                        isActive: _navIndex == 2,
+                        onTap: () => _onNavTap(2),
+                      ),
+                    ),
                     Flexible(
                       child: _NavButton(
                         icon: Icons.calendar_month_outlined,
@@ -275,15 +330,6 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
                         label: 'Takvim',
                         isActive: _navIndex == 3,
                         onTap: () => _onNavTap(3),
-                      ),
-                    ),
-                    Flexible(
-                      child: _NavButton(
-                        icon: Icons.menu_book_outlined,
-                        activeIcon: Icons.menu_book,
-                        label: 'Rehber',
-                        isActive: _navIndex == 4,
-                        onTap: () => _onNavTap(4),
                       ),
                     ),
                     Flexible(

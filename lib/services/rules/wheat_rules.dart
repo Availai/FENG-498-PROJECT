@@ -194,7 +194,7 @@ class WheatRules extends CropRuleSet {
       reasonBullets: [
         if (nStress > 0.25) 'Azot stresi %${(nStress * 100).round()}',
         if (nLow)
-          'Tahmini azot ${env!.nitrogenKgDekar!.toStringAsFixed(1)} kg/da',
+          'Tahmini azot ${env.nitrogenKgDekar!.toStringAsFixed(1)} kg/da',
         'Son 14 günde gübreleme kaydı yok',
         if (scale != null) scale,
         if (src != null) src,
@@ -318,7 +318,7 @@ class WheatRules extends CropRuleSet {
       reasonText:
           'Yüksek nem ve hastalık baskısı sarı/kahverengi pas için risk oluşturuyor.',
       reasonBullets: [
-        if (humid) 'Hava nemi %${env!.humidityPct!.round()}',
+        if (humid) 'Hava nemi %${env.humidityPct!.round()}',
         if (pressure > 0.30)
           'Hastalık baskısı %${(pressure * 100).round()}',
         'Son 5 gün içinde gözlem kaydı yok',
@@ -383,7 +383,7 @@ class WheatRules extends CropRuleSet {
       reasonBullets: [
         if (byStage) 'Evre: $stage',
         if (byDays) 'Ekimden $days gün geçti',
-        if (humid) 'Hava nemi %${env!.humidityPct!.round()}',
+        if (humid) 'Hava nemi %${env.humidityPct!.round()}',
         'Son 7 gün içinde hasat kaydı yok',
         if (scale != null) scale,
         if (src != null) src,

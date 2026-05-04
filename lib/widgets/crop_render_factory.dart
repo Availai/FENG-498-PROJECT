@@ -426,6 +426,62 @@ Widget buildCropMarkerWidget({
         ),
       );
 
+      // ── Sağlık durumu rozeti — kritik UX, çiftçi haritada hangi bitkinin
+      // hasta/cansız olduğunu tek bakışta görmeli. Sağlıklı durumda da
+      // küçük bir tik gösterilir; renk kodu: yeşil=sağlıklı, kırmızı=hasta,
+      // gri=cansız.
+      Widget? healthBadge;
+      if (healthStatus == 'diseased' ||
+          healthStatus == 'dead' ||
+          healthStatus == 'healthy') {
+        final badgeColor = switch (healthStatus) {
+          'diseased' => const Color(0xFFD32F2F),
+          'dead' => const Color(0xFF424242),
+          _ => const Color(0xFF2E7D32),
+        };
+        final badgeIcon = switch (healthStatus) {
+          'diseased' => Icons.priority_high_rounded,
+          'dead' => Icons.close_rounded,
+          _ => Icons.check_rounded,
+        };
+        // Sadece hasta/cansız durumda badge'i sürekli göster; sağlıklı için
+        // marker zaten varsayılan görünümünde, küçük tik az opaq gösterilir.
+        final isAlertBadge =
+            healthStatus == 'diseased' || healthStatus == 'dead';
+        final badgeSize = isAlertBadge ? 18.0 : 14.0;
+        healthBadge = Positioned(
+          bottom: (spriteH * 0.62).clamp(28.0, 96.0),
+          right: ((spriteW * 0.5) - badgeSize - 2).clamp(-12.0, 24.0),
+          child: IgnorePointer(
+            child: AnimatedOpacity(
+              opacity: isAlertBadge ? 1.0 : 0.85,
+              duration: const Duration(milliseconds: 200),
+              child: Container(
+                width: badgeSize,
+                height: badgeSize,
+                decoration: BoxDecoration(
+                  color: badgeColor,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 1.5),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.4),
+                      blurRadius: 4,
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
+                ),
+                child: Icon(
+                  badgeIcon,
+                  size: badgeSize * 0.7,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+        );
+      }
+
       final highlightedMarker = Stack(
         clipBehavior: Clip.none,
         alignment: Alignment.bottomCenter,
@@ -438,6 +494,7 @@ Widget buildCropMarkerWidget({
             alignment: Alignment.bottomCenter,
             child: marker,
           ),
+          if (healthBadge != null) healthBadge,
           if (cropName.trim().isNotEmpty)
             Positioned(bottom: labelBottom, child: highlightLabel),
         ],

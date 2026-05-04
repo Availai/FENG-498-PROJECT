@@ -464,11 +464,11 @@ class SunflowerRules extends CropRuleSet {
       reasonBullets: [
         if (nStress > 0.25) 'Azot stresi %${(nStress * 100).round()}',
         if (nLow)
-          'Tahmini azot ${env!.nitrogenKgDekar!.toStringAsFixed(1)} kg/da',
+          'Tahmini azot ${env.nitrogenKgDekar!.toStringAsFixed(1)} kg/da',
         if (pLow)
-          'Tahmini fosfor ${env!.phosphorusKgDekar!.toStringAsFixed(1)} kg/da',
+          'Tahmini fosfor ${env.phosphorusKgDekar!.toStringAsFixed(1)} kg/da',
         if (kLow)
-          'Tahmini potasyum ${env!.potassiumKgDekar!.toStringAsFixed(1)} kg/da',
+          'Tahmini potasyum ${env.potassiumKgDekar!.toStringAsFixed(1)} kg/da',
         if (phOut) 'Toprak pH ${ph.toStringAsFixed(1)}; ideal aralık 6.0-8.0',
         if (fertilizedRecently)
           'Son 14 günde gübreleme kaydı var; doz tekrarı için gözlem gerekir',
@@ -548,7 +548,7 @@ class SunflowerRules extends CropRuleSet {
           'Nem, yağış veya hastalık baskısı ayçiçeğinde risk oluşturuyor.',
       reasonBullets: [
         if (pressure > 0.35) 'Hastalık baskısı %${(pressure * 100).round()}',
-        if (humid) 'Hava nemi %${env!.humidityPct!.round()}',
+        if (humid) 'Hava nemi %${env.humidityPct!.round()}',
         if (wetSoil)
           'Toprak nemi %${(env!.soilMoisture! * 100).round()} ile yüksek',
         if (rainAhead >= 6) '24 saat içinde ${rainAhead.round()} mm yağış',
@@ -696,7 +696,7 @@ class SunflowerRules extends CropRuleSet {
         if (byDays) 'Ekimden $days gün geçti',
         if (byPlantFlag) 'En az bir bitki "hasada yakın" işaretli',
         if (rainAhead >= 5) '24 saat içinde ${rainAhead.round()} mm yağış var',
-        if (humidHarvest) 'Hava nemi %${env!.humidityPct!.round()}',
+        if (humidHarvest) 'Hava nemi %${env.humidityPct!.round()}',
         if (scaleBullet != null) scaleBullet,
         if (sourceBullet != null) sourceBullet,
         'Son 7 gün içinde hasat kaydı yok',
