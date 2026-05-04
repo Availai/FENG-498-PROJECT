@@ -300,8 +300,7 @@ class _CropCalendarScreenState extends ConsumerState<CropCalendarScreen> {
                     itemCount: selectedEvents.length,
                     itemBuilder: (ctx, i) {
                       final ev = selectedEvents[i];
-                      final tappable =
-                          ev.type == _EventType.watering && ev.fieldId != null;
+                      final tappable = ev.fieldId != null;
                       final tile = Container(
                         margin: const EdgeInsets.only(bottom: 8),
                         padding: const EdgeInsets.symmetric(
