@@ -32,6 +32,8 @@ import '../widgets/weekly_water_card.dart';
 
 enum _GuideMode { picker, field, generic }
 
+const double _guideBottomSafePadding = 128;
+
 class GrowingGuideScreen extends ConsumerStatefulWidget {
   const GrowingGuideScreen({super.key, this.fieldId, this.cropId});
 
@@ -114,6 +116,13 @@ class _GuidePickerView extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Yetiştirme Rehberi'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.help_outline_rounded),
+            tooltip: 'Yardım',
+            onPressed: () => HelpPanel.show(context, HelpContent.guide),
+          ),
+        ],
       ),
       body: FutureBuilder<List<_FieldCropEntry>>(
         future: _loadEntries(repo),
@@ -126,7 +135,8 @@ class _GuidePickerView extends ConsumerWidget {
           final entries = snap.data ?? const <_FieldCropEntry>[];
 
           return ListView(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+            padding:
+                const EdgeInsets.fromLTRB(16, 16, 16, _guideBottomSafePadding),
             children: [
               if (entries.isEmpty) ...[
                 _PickerEmptyState(),
@@ -423,6 +433,13 @@ class _FieldGuideViewState extends ConsumerState<_FieldGuideView> {
             onPressed: widget.onBack,
           ),
           title: const Text('Yetiştirme Rehberi'),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.help_outline_rounded),
+              tooltip: 'Yardım',
+              onPressed: () => HelpPanel.show(context, HelpContent.guide),
+            ),
+          ],
         ),
         body: const Center(
           child: CircularProgressIndicator(color: Color(0xFF2E7D32)),
@@ -438,6 +455,13 @@ class _FieldGuideViewState extends ConsumerState<_FieldGuideView> {
             onPressed: widget.onBack,
           ),
           title: const Text('Yetiştirme Rehberi'),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.help_outline_rounded),
+              tooltip: 'Yardım',
+              onPressed: () => HelpPanel.show(context, HelpContent.guide),
+            ),
+          ],
         ),
         body: const Center(child: Text('Tarla bulunamadı.')),
       );
@@ -468,6 +492,11 @@ class _FieldGuideViewState extends ConsumerState<_FieldGuideView> {
                   )
                   .toList(),
             ),
+          IconButton(
+            icon: const Icon(Icons.help_outline_rounded),
+            tooltip: 'Yardım',
+            onPressed: () => HelpPanel.show(context, HelpContent.guide),
+          ),
         ],
       ),
       body: crop == null
@@ -585,7 +614,8 @@ class _FieldGuideBody extends ConsumerWidget {
         final plantedDate = _parseDateLoose(crop['planted_date']);
 
         return ListView(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+          padding:
+              const EdgeInsets.fromLTRB(16, 12, 16, _guideBottomSafePadding),
           children: [
             _CropHeader(
               crop: crop,
@@ -1513,7 +1543,8 @@ class _GenericGuideScreenState extends State<_GenericGuideScreen> {
     final idealPhMax = (crop['ideal_ph_max'] as num?)?.toDouble() ?? 7.0;
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding:
+          const EdgeInsets.fromLTRB(16, 16, 16, _guideBottomSafePadding),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1971,7 +2002,7 @@ class _GenericGuideScreenState extends State<_GenericGuideScreen> {
           // ── 7. Ansiklopedi Derinleştirme — Modül 4 ──
           _buildEncyclopediaDeepCard(),
 
-          const SizedBox(height: 40),
+          const SizedBox(height: 24),
         ],
       ),
     );
