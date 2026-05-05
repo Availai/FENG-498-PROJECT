@@ -6,7 +6,6 @@ import '../services/app_providers.dart';
 import '../services/haptic_service.dart';
 import '../widgets/glass_panel.dart';
 import 'dashboard_screen.dart';
-import 'growing_guide_screen.dart';
 import 'my_crops_screen.dart';
 import 'camera_screen.dart';
 import 'plant_database_screen.dart';
@@ -37,11 +36,12 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
   }
 
   // Ana sekmeler sade tutulur; ikincil araçlar "Daha Fazla" menüsünden açılır.
+  // Tek rehber tarladaki "Bugünün Rehberi" ekranıdır — eski genel rehber
+  // sekmesi kaldırıldı.
   static const List<Widget> _pages = [
     AgriDashboard(), // 0 – Özet
     MyCropsScreen(), // 1 – Tarlalar
-    GrowingGuideScreen(), // 2 – Rehber
-    CropCalendarScreen(), // 3 – Takvim
+    CropCalendarScreen(), // 2 – Takvim
   ];
 
   void _onNavTap(int navIdx) {
@@ -118,31 +118,6 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
                   Navigator.pop(context);
                   Navigator.of(context).push(
                     MaterialPageRoute(builder: (_) => const CameraScreen()),
-                  );
-                },
-              ),
-              const Divider(),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.lightGreen.shade50,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(Icons.menu_book_rounded,
-                      color: Colors.lightGreen.shade800, size: 20),
-                ),
-                title: const Text('Genel Bitki Rehberi'),
-                subtitle: const Text(
-                    'Ansiklopedi: bitki ara ve detaylı bilgi al'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const GenericGuideScreen(),
-                    ),
                   );
                 },
               ),
@@ -298,20 +273,11 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
               ),
               Expanded(
                 child: _NavButton(
-                  icon: Icons.menu_book_outlined,
-                  activeIcon: Icons.menu_book_rounded,
-                  label: 'Rehber',
-                  isActive: _currentIndex == 2,
-                  onTap: () => _onNavTap(2),
-                ),
-              ),
-              Expanded(
-                child: _NavButton(
                   icon: Icons.calendar_month_outlined,
                   activeIcon: Icons.calendar_month,
                   label: 'Takvim',
-                  isActive: _currentIndex == 3,
-                  onTap: () => _onNavTap(3),
+                  isActive: _currentIndex == 2,
+                  onTap: () => _onNavTap(2),
                 ),
               ),
               Expanded(

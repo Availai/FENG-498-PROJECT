@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/activity_types.dart';
+import '../data/app_database.dart';
 import '../data/turkiye_crop_guides.dart';
 import '../services/app_providers.dart';
 import '../services/crop_daily_plan.dart';
 import '../services/crop_protocol_service.dart';
+import '../services/disease_log_service.dart';
 import '../services/guide_engine.dart';
 import '../services/notification_service.dart';
 import '../services/offline_encyclopedia.dart';
@@ -207,6 +209,8 @@ class DailyGuideScreen extends ConsumerWidget {
             ),
             orElse: () => const SizedBox.shrink(),
           ),
+
+          _DiseaseAdviceSection(fieldId: fieldId),
 
           _CropDailyGuideSection(
             fieldId: fieldId,
@@ -1513,6 +1517,276 @@ class _InsightCard extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(insight.body, style: AppText.sm(context)),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Hastalık rehberi bölümü — tarladaki hasta bitkiler için Türkiye'nin
+/// güvenilir kaynaklarından (TAGEM, Tarım Bakanlığı, bku.tarim.gov.tr) gelen
+/// kimyasal mücadele önerilerini ve doğru ilaçla çözüldü durumunu listeler.
+class _DiseaseAdviceSection extends ConsumerWidget {
+  final String fieldId;
+  const _DiseaseAdviceSection({required this.fieldId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final plantsAsync = ref.watch(fieldPlantInstancesProvider(fieldId));
+    final activitiesAsync = ref.watch(fieldActivityLogProvider(fieldId));
+
+    final plants =
+        plantsAsync.valueOrNull ?? const <FieldPlantInstance>[];
+    final activities =
+        activitiesAsync.valueOrNull ?? const <Map<String, dynamic>>[];
+
+    final entries = DiseaseLogService.build(
+      plantInstances: plants,
+      activities: activities,
+    );
+    if (entries.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const SizedBox(height: 16),
+        _SectionHeader(label: 'HASTALIK REHBERİ', count: entries.length),
+        for (final entry in entries) _DiseaseAdviceCard(entry: entry),
+      ],
+    );
+  }
+}
+
+class _DiseaseAdviceCard extends StatelessWidget {
+  final DiseaseLogEntry entry;
+  const _DiseaseAdviceCard({required this.entry});
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = entry.resolved ? AppColors.emerald : AppColors.error;
+    final icon = entry.resolved
+        ? Icons.verified_rounded
+        : Icons.coronavirus_rounded;
+    final statusLabel =
+        entry.resolved ? 'SORUN ÇÖZÜLDÜ' : 'AKTİF HASTALIK';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: accent.withValues(alpha: 0.06),
+        borderRadius: AppRadius.md,
+        border: Border.all(color: accent.withValues(alpha: 0.4)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: accent, size: 22),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${entry.cropName} • ${entry.diseaseName}',
+                      style: AppText.bodyMd(context)
+                          .copyWith(fontWeight: FontWeight.w800),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      statusLabel,
+                      style: AppText.xs(context).copyWith(
+                        color: accent,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (entry.affectedCount > 1)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: accent.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    '${entry.affectedCount} bitki',
+                    style: AppText.xs(context).copyWith(
+                      color: accent,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          if (entry.resolved) ...[
+            const SizedBox(height: 10),
+            _ResolvedBanner(entry: entry),
+          ] else ...[
+            const SizedBox(height: 10),
+            Text(
+              'Aciliyet: ${entry.urgency}  ·  Patojen: ${entry.pathogenType}',
+              style: AppText.xs(context)
+                  .copyWith(color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 12),
+            _TreatmentList(suggestions: entry.chemicalSuggestions),
+            const SizedBox(height: 10),
+            _SourceFooter(sources: entry.sources),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _ResolvedBanner extends StatelessWidget {
+  final DiseaseLogEntry entry;
+  const _ResolvedBanner({required this.entry});
+
+  @override
+  Widget build(BuildContext context) {
+    final dateStr = entry.resolvedAt == null
+        ? ''
+        : ' • ${entry.resolvedAt!.day.toString().padLeft(2, '0')}.${entry.resolvedAt!.month.toString().padLeft(2, '0')}.${entry.resolvedAt!.year}';
+    final productLine = entry.resolvedActiveIngredient != null &&
+            entry.resolvedActiveIngredient!.trim().isNotEmpty
+        ? '"${entry.resolvedBy}" (${entry.resolvedActiveIngredient}) doğru ilaçla uygulandı'
+        : '"${entry.resolvedBy}" doğru ilaçla uygulandı';
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.emerald.withValues(alpha: 0.12),
+        borderRadius: AppRadius.sm,
+        border:
+            Border.all(color: AppColors.emerald.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.check_circle_rounded,
+              color: AppColors.emerald, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Sorun çözüldü',
+                  style: AppText.bodyMd(context).copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.emeraldDark,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '$productLine$dateStr.',
+                  style: AppText.sm(context)
+                      .copyWith(color: AppColors.textPrimary, height: 1.4),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Bitkiyi izlemeye devam edin; belirti tekrarlarsa '
+                  'sağlık durumunu yeniden işaretleyin.',
+                  style: AppText.xs(context)
+                      .copyWith(color: AppColors.textSecondary),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TreatmentList extends StatelessWidget {
+  final List<String> suggestions;
+  const _TreatmentList({required this.suggestions});
+
+  @override
+  Widget build(BuildContext context) {
+    if (suggestions.isEmpty) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.medication_rounded,
+                size: 16, color: AppColors.textSecondary),
+            const SizedBox(width: 6),
+            Text(
+              'Önerilen kimyasal mücadele',
+              style: AppText.sm(context).copyWith(
+                fontWeight: FontWeight.w800,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        for (final t in suggestions.take(4))
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.only(top: 7),
+                  child: Icon(Icons.fiber_manual_record,
+                      size: 6, color: AppColors.textTertiary),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    t,
+                    style: AppText.sm(context).copyWith(
+                      color: AppColors.textPrimary,
+                      height: 1.45,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _SourceFooter extends StatelessWidget {
+  final List<String> sources;
+  const _SourceFooter({required this.sources});
+
+  @override
+  Widget build(BuildContext context) {
+    if (sources.isEmpty) return const SizedBox.shrink();
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+      decoration: BoxDecoration(
+        color: AppColors.bg,
+        borderRadius: AppRadius.sm,
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.verified_user_outlined,
+              size: 14, color: AppColors.textTertiary),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              'Kaynak: ${sources.join(' · ')}',
+              style: AppText.xs(context)
+                  .copyWith(color: AppColors.textTertiary, height: 1.4),
             ),
           ),
         ],

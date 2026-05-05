@@ -182,55 +182,6 @@ class HelpContent {
     ],
   );
 
-  static const HelpContent guide = HelpContent(
-    screenTitle: 'Akıllı Tarım Rehberi',
-    screenSubtitle: 'Herhangi bir bitki için yetiştiriclik rehberi alın.',
-    headerIcon: Icons.menu_book_rounded,
-    headerColor: Color(0xFF8D6E63),
-    items: [
-      HelpItem(
-        icon: Icons.search_rounded,
-        iconColor: Color(0xFF43A047),
-        title: 'Bitki Arama',
-        description:
-            'Üstteki arama kutusuna bitki adını Türkçe yazın (örn. "domates", "buğday"). '
-            'Ardından "Rehber Al" düğmesine basın.',
-      ),
-      HelpItem(
-        icon: Icons.tune_rounded,
-        iconColor: Color(0xFF1976D2),
-        title: 'Üretim Ölçeği',
-        description:
-            'Hobi bahçesi, küçük aile işletmesi veya ticari üretim seçeneklerinden birini seçin. '
-            'Rehber içeriği bu seçime göre uyarlanır.',
-      ),
-      HelpItem(
-        icon: Icons.grass_rounded,
-        iconColor: Color(0xFF2E7D32),
-        title: 'Rehber İçeriği',
-        description:
-            'Sonuç; ekiş zamanı, toprak hazırlığı, sulama sıklığı, haşere koruması ve '
-            'hasat bilgilerini içerir. Çevrimdışı kullanım için önbelleğe alınır.',
-      ),
-      HelpItem(
-        icon: Icons.water_drop_rounded,
-        iconColor: Color(0xFF0288D1),
-        title: 'Haftalık Su Çizelgesi',
-        description:
-            'Sayfanın altında 7 günlük hava tahmini ve önerilen sulama miktarları gösterilir. '
-            'Bu veriler gerçek zamanlı meteoroloji verilerine dayanır.',
-      ),
-      HelpItem(
-        icon: Icons.offline_bolt_rounded,
-        iconColor: Color(0xFFE67E22),
-        title: 'Çevrimdışı Kullanım',
-        description:
-            'Daha önce aranan bitkiler internet kesilse bile gösterilebilir. '
-            'İlk aramayı bağlantılıyken yapmanız yeterlidir.',
-      ),
-    ],
-  );
-
   static const HelpContent camera = HelpContent(
     screenTitle: 'Akıllı Asistan Kamerası',
     screenSubtitle:
@@ -571,6 +522,26 @@ class HelpContent {
             'İlaçlama kaydettikten sonra kullandığınız ilaca göre tarlaya yeniden giriş süresi '
             '(REI) banner olarak gösterilir. Süre dolmadan tarlaya girmeyin; '
             'banner süresi saatlik olarak geri sayar.',
+      ),
+      HelpItem(
+        icon: Icons.coronavirus_rounded,
+        iconColor: Color(0xFFD32F2F),
+        title: 'HASTALIK REHBERİ Bölümü',
+        description:
+            'Tarladaki bir bitkide hastalık işaretlediğinizde bu bölüm açılır. '
+            'Hastalık adı, aciliyet düzeyi ve TAGEM, Tarım Bakanlığı ile '
+            'bku.tarim.gov.tr kaynaklı önerilen kimyasal mücadele listesi gösterilir. '
+            'Aynı hastalıktan birden çok bitki etkilendiyse "X bitki" rozeti görünür.',
+      ),
+      HelpItem(
+        icon: Icons.verified_rounded,
+        iconColor: Color(0xFF2E7D32),
+        title: 'Sorun Çözüldü Bildirimi',
+        description:
+            'Bir hastalık için "İlaçladım" aktivitesi kaydedildiğinde sistem '
+            'kullandığınız ilacın etken maddesini önerilen tedavi listesiyle eşleştirir. '
+            'Doğru ilaç son 14 gün içinde uygulandıysa kart yeşile döner ve '
+            '"Sorun çözüldü" rozeti belirir. Yanlış ilaç ise kart aktif kalır.',
       ),
     ],
   );
