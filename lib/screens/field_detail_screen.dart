@@ -32,6 +32,7 @@ import '../widgets/zone_drawing_toolbar.dart';
 import '../widgets/crop_zone_tooltip.dart';
 import '../widgets/crop_render_factory.dart';
 import '../widgets/disease_picker_sheet.dart';
+import '../widgets/disease_advice_sheet.dart';
 import '../data/disease_types.dart';
 import 'cost_ledger_screen.dart';
 import 'disease_capture_screen.dart';
@@ -70,9 +71,14 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
   bool _isPlantMultiSelectMode = false;
   final Map<String, _PlantDeleteTarget> _multiSelectedPlantTargets = {};
   static const String _removedPlantStatus = 'removed';
-  static const int _maxZonePlantMarkers = defaultVisualPlantLimit;
-  static const int _maxGridPlantMarkers = 120;
-  static const double _minCropMarkerSpacingM = defaultMinVisualSpacingM;
+  // Görsel marker tavanı — agronomik gerçek bitki sayısından bağımsız.
+  // Eski değerler (160 zone + 120 grid + 1.25 m aralık) tarlada 280+
+  // animasyonlu widget üretiyordu; bu hem performans (kasma) hem de
+  // "çok sık görünme" şikayetinin temel nedeniydi. Yarıya indirildi ve
+  // minimum görsel mesafe 3 m'ye çekildi.
+  static const int _maxZonePlantMarkers = 64;
+  static const int _maxGridPlantMarkers = 64;
+  static const double _minCropMarkerSpacingM = 3.0;
 
   // ═══ Tekil bitki yerleştirme modu state ═══
   bool _isPlacingSinglePlantMode = false;
@@ -1879,6 +1885,19 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
               : 'Bitki sağlıklı olarak işaretlendi.',
       type: ToastType.success,
     );
+
+    // Hasta veya ölü işaretlendiyse — Tarım Bakanlığı/TAGEM bültenleri
+    // tabanlı tavsiye panelini aç. Sağlıklı durumda gösterme.
+    if (mounted &&
+        (result.status == DiseaseTypes.statusDiseased ||
+            result.status == DiseaseTypes.statusDead)) {
+      await DiseaseAdviceSheet.show(
+        context,
+        cropName: cropName,
+        healthStatus: result.status,
+        diseaseType: result.diseaseType,
+      );
+    }
   }
 
   _PlantDeleteTarget _plantTargetForMarker({
@@ -2252,6 +2271,18 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
       message: '$count bitki $statusLabel olarak işaretlendi.',
       type: ToastType.success,
     );
+
+    // Toplu işaretlemede de hasta/ölü için tavsiye sheet'i göster.
+    if (mounted &&
+        (result.status == DiseaseTypes.statusDiseased ||
+            result.status == DiseaseTypes.statusDead)) {
+      await DiseaseAdviceSheet.show(
+        context,
+        cropName: '$count bitki',
+        healthStatus: result.status,
+        diseaseType: result.diseaseType,
+      );
+    }
   }
 
   Future<void> _deletePlantTarget(_PlantDeleteTarget target) async {

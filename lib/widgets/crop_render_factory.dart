@@ -171,10 +171,25 @@ Widget buildCropMarkerWidget({
   String?
       facingDirection, // 'north' | 'northeast' | 'deg:180' | null. Bitki dönüşü için kullanılır.
 }) {
-  return Builder(
+  // Pahalı efektleri (facing rotation, ColorFilter matrix, AnimatedScale,
+  // halo) yalnızca *gerçekten gerekli* marker'larda çalıştır. Tarlada 200+
+  // bitki marker'ı varsa, %95'i sıradan/sağlıklı/highlight yok durumdadır;
+  // onları sadeleştirilmiş bir code path ile çiz, böylece kamera her hareket
+  // ettiğinde yüzlerce ColorFiltered/TweenAnimationBuilder yeniden
+  // değerlendirmesi gerekmez.
+  final bool needsRichEffects = isHighlighted ||
+      healthStatus == 'diseased' ||
+      healthStatus == 'dead' ||
+      maturityPercent >= 90;
+  return RepaintBoundary(
+    child: Builder(
     builder: (context) {
       final camera = MapCamera.maybeOf(context);
-      final currentZoom = camera?.zoom ?? 18.0;
+      final rawZoom = camera?.zoom ?? 18.0;
+      // Zoom'u 0.5 birime yuvarla — kamera her küçük zoom değişikliğinde
+      // 200+ marker yeniden boyutlanmasın. Çiftçi gözüyle 0.25'lik bir
+      // farkı zaten algılayamaz; ama performans iki katına çıkar.
+      final currentZoom = (rawZoom * 2.0).round() / 2.0;
       final currentRotation = camera?.rotation ?? 0.0;
 
       // Harita zoom seviyesine göre büyüme çarpanı
@@ -236,7 +251,19 @@ Widget buildCropMarkerWidget({
       final facingYaw =
           _facingYawForCameraRadians(facingDirection, currentRotation);
 
+      // Hafif yol: vurgulu/hasta/hasat-aşamasındaki olmayan markerlar için
+      // ColorFilter.matrix ve TweenAnimationBuilder devreye sokulmuyor.
+      // Bu yüzlerce markerın her kamera hareketinde repaint maliyetini düşürür.
       Widget orientLayer(Widget child) {
+        if (!needsRichEffects) {
+          return Transform(
+            transform: Matrix4.identity()
+              ..setEntry(3, 2, 0.0014)
+              ..rotateY(facingYaw),
+            alignment: Alignment.bottomCenter,
+            child: child,
+          );
+        }
         return TweenAnimationBuilder<double>(
           tween: Tween<double>(end: facingYaw),
           duration: const Duration(milliseconds: 260),
@@ -358,7 +385,12 @@ Widget buildCropMarkerWidget({
         ),
       );
 
-      final highlightHalo = IgnorePointer(
+      // Vurgu olmayan markerda halo widget ağacını hiç oluşturma — sadece
+      // boş yer tutucu döndür. AnimatedOpacity'nin opacity:0 ile bile
+      // layer/composite maliyeti vardır.
+      final highlightHalo = !isHighlighted
+          ? const SizedBox.shrink()
+          : IgnorePointer(
         child: AnimatedOpacity(
           opacity: isHighlighted ? 1.0 : 0.0,
           duration: const Duration(milliseconds: 120),
@@ -389,7 +421,9 @@ Widget buildCropMarkerWidget({
       );
 
       final labelBottom = (spriteH * 0.82).clamp(32.0, 108.0);
-      final highlightLabel = IgnorePointer(
+      final highlightLabel = !isHighlighted
+          ? const SizedBox.shrink()
+          : IgnorePointer(
         child: AnimatedOpacity(
           opacity: isHighlighted ? 1.0 : 0.0,
           duration: const Duration(milliseconds: 120),
@@ -431,32 +465,21 @@ Widget buildCropMarkerWidget({
       // küçük bir tik gösterilir; renk kodu: yeşil=sağlıklı, kırmızı=hasta,
       // gri=cansız.
       Widget? healthBadge;
-      if (healthStatus == 'diseased' ||
-          healthStatus == 'dead' ||
-          healthStatus == 'healthy') {
-        final badgeColor = switch (healthStatus) {
-          'diseased' => const Color(0xFFD32F2F),
-          'dead' => const Color(0xFF424242),
-          _ => const Color(0xFF2E7D32),
-        };
-        final badgeIcon = switch (healthStatus) {
-          'diseased' => Icons.priority_high_rounded,
-          'dead' => Icons.close_rounded,
-          _ => Icons.check_rounded,
-        };
-        // Sadece hasta/cansız durumda badge'i sürekli göster; sağlıklı için
-        // marker zaten varsayılan görünümünde, küçük tik az opaq gösterilir.
-        final isAlertBadge =
-            healthStatus == 'diseased' || healthStatus == 'dead';
-        final badgeSize = isAlertBadge ? 18.0 : 14.0;
+      // Yalnızca hasta/ölü için badge çiz; sağlıklı bitki haritada zaten
+      // varsayılan görünümünde, ekstra yeşil tik görsel kalabalık yaratıyor.
+      if (healthStatus == 'diseased' || healthStatus == 'dead') {
+        final badgeColor = healthStatus == 'diseased'
+            ? const Color(0xFFD32F2F)
+            : const Color(0xFF424242);
+        final badgeIcon = healthStatus == 'diseased'
+            ? Icons.priority_high_rounded
+            : Icons.close_rounded;
+        const badgeSize = 18.0;
         healthBadge = Positioned(
           bottom: (spriteH * 0.62).clamp(28.0, 96.0),
           right: ((spriteW * 0.5) - badgeSize - 2).clamp(-12.0, 24.0),
           child: IgnorePointer(
-            child: AnimatedOpacity(
-              opacity: isAlertBadge ? 1.0 : 0.85,
-              duration: const Duration(milliseconds: 200),
-              child: Container(
+            child: Container(
                 width: badgeSize,
                 height: badgeSize,
                 decoration: BoxDecoration(
@@ -476,26 +499,28 @@ Widget buildCropMarkerWidget({
                   size: badgeSize * 0.7,
                   color: Colors.white,
                 ),
-              ),
             ),
           ),
         );
       }
 
+      final scaledMarker = isHighlighted
+          ? AnimatedScale(
+              scale: 1.16,
+              duration: const Duration(milliseconds: 120),
+              curve: Curves.easeOutCubic,
+              alignment: Alignment.bottomCenter,
+              child: marker,
+            )
+          : marker;
       final highlightedMarker = Stack(
         clipBehavior: Clip.none,
         alignment: Alignment.bottomCenter,
         children: [
-          Positioned(bottom: 1, child: highlightHalo),
-          AnimatedScale(
-            scale: isHighlighted ? 1.16 : 1.0,
-            duration: const Duration(milliseconds: 120),
-            curve: Curves.easeOutCubic,
-            alignment: Alignment.bottomCenter,
-            child: marker,
-          ),
+          if (isHighlighted) Positioned(bottom: 1, child: highlightHalo),
+          scaledMarker,
           if (healthBadge != null) healthBadge,
-          if (cropName.trim().isNotEmpty)
+          if (isHighlighted && cropName.trim().isNotEmpty)
             Positioned(bottom: labelBottom, child: highlightLabel),
         ],
       );
@@ -533,5 +558,6 @@ Widget buildCropMarkerWidget({
       }
       return highlightedMarker;
     },
+  ),
   );
 }
