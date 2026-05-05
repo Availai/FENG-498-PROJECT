@@ -21,6 +21,7 @@ class DiseaseTypes {
   /// Sağlık durumu sabitleri — `FieldPlantInstances.healthStatus` sütunu.
   static const String statusHealthy = 'healthy';
   static const String statusDiseased = 'diseased';
+  static const String statusTreating = 'treating';
   static const String statusDead = 'dead';
 
   /// Tanı kaynağı sabitleri — `FieldPlantInstances.diagnosisSource` sütunu.
@@ -33,6 +34,8 @@ class DiseaseTypes {
     switch (status) {
       case statusDiseased:
         return 'Hasta';
+      case statusTreating:
+        return 'Tedavi ediliyor';
       case statusDead:
         return 'Ölü';
       case statusHealthy:

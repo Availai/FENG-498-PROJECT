@@ -186,6 +186,7 @@ Widget buildCropMarkerWidget({
   final bool needsRichEffects = isHighlighted ||
       healthStatus == 'diseased' ||
       healthStatus == 'dead' ||
+      healthStatus == 'treating' ||
       maturityPercent >= 90;
   return RepaintBoundary(
     child: Builder(
@@ -338,7 +339,7 @@ Widget buildCropMarkerWidget({
       final layeredFacing = _usesLayeredFacing(cropName, assetPath);
       final headCut = spriteH * 0.58;
       final bodyTop = spriteH * 0.46;
-      final orientedSprite = layeredFacing
+      final baseOrientedSprite = layeredFacing
           ? SizedBox(
               width: spriteW,
               height: spriteH,
@@ -365,6 +366,70 @@ Widget buildCropMarkerWidget({
               ),
             )
           : orientLayer(sprite);
+
+      // ── Sağlık durumu rozeti — kritik UX, çiftçi haritada hangi bitkinin
+      // hasta/cansız olduğunu tek bakışta görmeli. Renk kodu:
+      // kırmızı=hasta, turuncu=tedavi ediliyor, gri=cansız.
+      Widget? healthBadge;
+      if (healthStatus == 'diseased' || healthStatus == 'dead' || healthStatus == 'treating') {
+        final badgeColor = switch (healthStatus) {
+          'diseased' => const Color(0xFFD32F2F),
+          'treating' => const Color(0xFFE67E22),
+          'dead' => const Color(0xFF424242),
+          _ => const Color(0xFFD32F2F),
+        };
+        final badgeIcon = switch (healthStatus) {
+          'diseased' => Icons.priority_high_rounded,
+          'treating' => Icons.medication_rounded,
+          'dead' => Icons.close_rounded,
+          _ => Icons.priority_high_rounded,
+        };
+            
+        // Rozet boyutunu da zoom ile hafifçe ölçeklendir, ancak çok küçülmesini engelle
+        final badgeSize = (18.0 * zoomScale).clamp(12.0, 24.0);
+        
+        healthBadge = IgnorePointer(
+          child: Container(
+              width: badgeSize,
+              height: badgeSize,
+              decoration: BoxDecoration(
+                color: badgeColor,
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: (badgeSize * 0.1).clamp(1.0, 2.0)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.4),
+                    blurRadius: 4,
+                    offset: const Offset(0, 1),
+                  ),
+                ],
+              ),
+              child: Icon(
+                badgeIcon,
+                size: badgeSize * 0.7,
+                color: Colors.white,
+              ),
+          ),
+        );
+      }
+
+      final orientedSprite = SizedBox(
+        width: spriteW,
+        height: spriteH,
+        child: Stack(
+          clipBehavior: Clip.none,
+          alignment: Alignment.bottomCenter,
+          children: [
+            baseOrientedSprite,
+            if (healthBadge != null)
+              Positioned(
+                bottom: spriteH * 0.5, // Bitkinin tam ortası hizası
+                right: -(18.0 * zoomScale).clamp(12.0, 24.0) * 0.2, // Hafifçe dışarı taşsın
+                child: healthBadge,
+              ),
+          ],
+        ),
+      );
 
       final statusSemantics = switch (healthStatus) {
         'diseased' => diseaseType?.trim().isNotEmpty == true
@@ -466,50 +531,6 @@ Widget buildCropMarkerWidget({
         ),
       );
 
-      // ── Sağlık durumu rozeti — kritik UX, çiftçi haritada hangi bitkinin
-      // hasta/cansız olduğunu tek bakışta görmeli. Sağlıklı durumda da
-      // küçük bir tik gösterilir; renk kodu: yeşil=sağlıklı, kırmızı=hasta,
-      // gri=cansız.
-      Widget? healthBadge;
-      // Yalnızca hasta/ölü için badge çiz; sağlıklı bitki haritada zaten
-      // varsayılan görünümünde, ekstra yeşil tik görsel kalabalık yaratıyor.
-      if (healthStatus == 'diseased' || healthStatus == 'dead') {
-        final badgeColor = healthStatus == 'diseased'
-            ? const Color(0xFFD32F2F)
-            : const Color(0xFF424242);
-        final badgeIcon = healthStatus == 'diseased'
-            ? Icons.priority_high_rounded
-            : Icons.close_rounded;
-        const badgeSize = 18.0;
-        healthBadge = Positioned(
-          bottom: (spriteH * 0.62).clamp(28.0, 96.0),
-          right: ((spriteW * 0.5) - badgeSize - 2).clamp(-12.0, 24.0),
-          child: IgnorePointer(
-            child: Container(
-                width: badgeSize,
-                height: badgeSize,
-                decoration: BoxDecoration(
-                  color: badgeColor,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 1.5),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.4),
-                      blurRadius: 4,
-                      offset: const Offset(0, 1),
-                    ),
-                  ],
-                ),
-                child: Icon(
-                  badgeIcon,
-                  size: badgeSize * 0.7,
-                  color: Colors.white,
-                ),
-            ),
-          ),
-        );
-      }
-
       final scaledMarker = isHighlighted
           ? AnimatedScale(
               scale: 1.16,
@@ -525,7 +546,6 @@ Widget buildCropMarkerWidget({
         children: [
           if (isHighlighted) Positioned(bottom: 1, child: highlightHalo),
           scaledMarker,
-          if (healthBadge != null) healthBadge,
           if (isHighlighted && cropName.trim().isNotEmpty)
             Positioned(bottom: labelBottom, child: highlightLabel),
         ],

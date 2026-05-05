@@ -4,8 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/activity_types.dart';
 import '../data/app_database.dart';
+import '../data/disease_advice.dart';
 import '../services/app_providers.dart';
 import '../services/guide_engine.dart' show AlertSeverity;
+import '../services/notification_service.dart';
 import '../services/rules/recommendation.dart';
 import '../theme/app_theme.dart';
 
@@ -103,14 +105,19 @@ class _QuickGuideBodyState extends ConsumerState<_QuickGuideBody> {
       return d is DateTime && d.isAfter(cutoff);
     }).toList();
 
-    return DraggableScrollableSheet(
-      initialChildSize: 0.55,
-      minChildSize: 0.35,
-      maxChildSize: 0.9,
-      builder: (_, ctrl) {
-        return Container(
-          decoration: BoxDecoration(
-            color: AppColors.surface,
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => Navigator.of(context).pop(),
+      child: DraggableScrollableSheet(
+        initialChildSize: 0.55,
+        minChildSize: 0.35,
+        maxChildSize: 0.9,
+        builder: (_, ctrl) {
+          return GestureDetector(
+            onTap: () {}, // İçeriğe tıklamayı yut ki dışarıya taşmasın
+            child: Container(
+              decoration: BoxDecoration(
+                color: AppColors.surface,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
             boxShadow: [
               BoxShadow(
@@ -155,11 +162,34 @@ class _QuickGuideBodyState extends ConsumerState<_QuickGuideBody> {
                     // Son aktiviteler
                     if (recentActs.isNotEmpty)
                       _RecentActivityBanner(activities: recentActs),
-                    // Hasta / ölü bitki uyarısı
-                    if (diseasedCount > 0 || deadCount > 0)
-                      _PlantHealthAlert(
-                          diseasedCount: diseasedCount,
-                          deadCount: deadCount),
+                    // Hasta / ölü / tedavi gören bitkileri ismine göre grupla
+                    ...() {
+                      final problematic = plants.where((p) => p.healthStatus != 'healthy').toList();
+                      if (problematic.isEmpty) return <Widget>[];
+
+                      final grouped = <String, List<FieldPlantInstance>>{};
+                      for (final p in problematic) {
+                        grouped.putIfAbsent(p.cropName, () => []).add(p);
+                      }
+
+                      return grouped.entries.map((entry) {
+                        final cropName = entry.key;
+                        final cropPlants = entry.value;
+                        final dCount = cropPlants.where((p) => p.healthStatus == 'diseased').length;
+                        final tCount = cropPlants.where((p) => p.healthStatus == 'treating').length;
+                        final ddCount = cropPlants.where((p) => p.healthStatus == 'dead').length;
+
+                        return _PlantHealthAlert(
+                          fieldId: widget.fieldId,
+                          fieldName: widget.fieldName,
+                          cropName: cropName,
+                          diseasedCount: dCount,
+                          treatingCount: tCount,
+                          deadCount: ddCount,
+                          plants: cropPlants,
+                        );
+                      }).toList();
+                    }(),
                     // Direktifler
                     _DirectiveList(
                       recs: _recs,
@@ -171,9 +201,9 @@ class _QuickGuideBodyState extends ConsumerState<_QuickGuideBody> {
               ),
             ],
           ),
-        );
+        ));
       },
-    );
+    ));
   }
 }
 
@@ -509,43 +539,432 @@ class _ActivityLine extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Hasta / ölü bitki uyarısı
+// Hasta / ölü bitki uyarısı + tedavi önerisi + ilaçlama akışı
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _PlantHealthAlert extends StatelessWidget {
+class _PlantHealthAlert extends ConsumerStatefulWidget {
+  final String fieldId;
+  final String fieldName;
+  final String cropName;
   final int diseasedCount;
+  final int treatingCount;
   final int deadCount;
+  final List<FieldPlantInstance> plants;
 
   const _PlantHealthAlert({
+    required this.fieldId,
+    required this.fieldName,
+    required this.cropName,
     required this.diseasedCount,
+    required this.treatingCount,
     required this.deadCount,
+    required this.plants,
   });
 
   @override
+  ConsumerState<_PlantHealthAlert> createState() => _PlantHealthAlertState();
+}
+
+enum _TreatmentPhase { alert, guide, treating }
+
+class _PlantHealthAlertState extends ConsumerState<_PlantHealthAlert> {
+  _TreatmentPhase _phase = _TreatmentPhase.alert;
+  bool _logging = false;
+
+  /// Hastalık dağılımını hesapla — öncelikle 'diseased' ve 'dead' olanlara odaklan.
+  /// Eğer onlardan hiç yoksa, 'treating' olanlara bak.
+  DiseaseAdvice get _primaryAdvice {
+    var relevant = widget.plants
+        .where((p) => p.healthStatus == 'diseased' || p.healthStatus == 'dead')
+        .toList();
+    if (relevant.isEmpty) {
+      relevant = widget.plants.where((p) => p.healthStatus == 'treating').toList();
+    }
+    
+    final counts = <String, int>{};
+    for (final p in relevant) {
+      final d = p.diseaseType?.trim();
+      if (d != null && d.isNotEmpty) {
+        counts[d] = (counts[d] ?? 0) + 1;
+      }
+    }
+    if (counts.isEmpty) return DiseaseAdvice.forName(null);
+    final top = counts.entries.reduce((a, b) => a.value >= b.value ? a : b);
+    return DiseaseAdvice.forName(top.key);
+  }
+
+  /// İlk kimyasal tedavi önerisinden kısa doz bilgisi çıkar.
+  String _shortDoseGuide(DiseaseAdvice advice) {
+    for (final t in advice.chemicalTreatments) {
+      final stripped = t.trim();
+      if (stripped.isEmpty || stripped.toLowerCase().startsWith('not')) continue;
+      // "Mancozeb (%80 WP) — 250 g / 100 L su, koruyucu olarak 10 gün arayla"
+      // → tamamını döndür, kısa olsun diye ilk 120 karakter
+      return stripped.length > 120 ? '${stripped.substring(0, 117)}…' : stripped;
+    }
+    return 'Etiketteki doz talimatına uygun uygulama yapın.';
+  }
+
+  /// Tedavi tavsiyesinden gün sayısını çıkar (ör. "10 gün arayla" → 10).
+  int _parseTreatmentDays(DiseaseAdvice advice) {
+    for (final t in advice.chemicalTreatments) {
+      final match = RegExp(r'(\d+)\s*gün').firstMatch(t);
+      if (match != null) {
+        final days = int.tryParse(match.group(1)!);
+        if (days != null && days > 0 && days <= 30) return days;
+      }
+    }
+    return 7; // Varsayılan tedavi süresi
+  }
+
+  Future<void> _logSpraying() async {
+    if (_logging) return;
+    setState(() => _logging = true);
+    try {
+      final advice = _primaryAdvice;
+      final logger = ref.read(activityLoggerProvider);
+      // Tarlaya ilaçlama aktivitesi log'la
+      await logger.log(
+        fieldId: widget.fieldId,
+        type: ActivityType.spraying,
+        note: 'Hastalık tedavisi: ${advice.name}',
+      );
+
+      // Hasta bitkileri "tedavi ediliyor" durumuna çevir (kırmızı → turuncu)
+      final repo = ref.read(localDataRepositoryProvider);
+      final diseased = widget.plants
+          .where((p) => p.healthStatus == 'diseased');
+      for (final p in diseased) {
+        await repo.setPlantHealth(
+          instanceId: p.id,
+          healthStatus: 'treating',
+          diseaseType: p.diseaseType,
+          notes: 'İlaçlama uygulandı, tedavi devam ediyor',
+        );
+      }
+
+      // Tedavi hatırlatıcı bildirimlerini planla
+      final treatmentDays = _parseTreatmentDays(advice);
+      final doseGuide = _shortDoseGuide(advice);
+      await NotificationService.scheduleTreatmentReminders(
+        fieldId: widget.fieldId,
+        fieldName: widget.fieldName,
+        diseaseName: advice.name,
+        treatmentDays: treatmentDays,
+        doseGuide: doseGuide.length > 60
+            ? '${doseGuide.substring(0, 57)}…'
+            : doseGuide,
+      );
+
+      if (mounted) setState(() => _phase = _TreatmentPhase.treating);
+    } catch (_) {
+      // Hata olsa bile UI kırılmasın
+    } finally {
+      if (mounted) setState(() => _logging = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final cropName = widget.cropName;
+    final advice = _primaryAdvice;
+
+    // ── Faz 3: Tedavi başladı ──
+    if (_phase == _TreatmentPhase.treating) {
+      final days = _parseTreatmentDays(advice);
+      return Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.warning.withValues(alpha: 0.1),
+          borderRadius: AppRadius.sm,
+          border: Border.all(color: AppColors.warning.withValues(alpha: 0.35)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.medication_rounded,
+                    color: AppColors.warning, size: 22),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    '$cropName Tedavisi Başladı — $days günlük plan (${advice.name})',
+                    style: AppText.bodyMd(context).copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.warning,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.7),
+                borderRadius: AppRadius.xs,
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.notifications_active_rounded,
+                      color: AppColors.warning, size: 16),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Her gün sabah 08:00 ve akşam 18:00\'de hatırlatıcı bildirim gelecek.',
+                      style: AppText.sm(context).copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Eğer sadece tedavi ediliyor durumunda bitkiler varsa (reopen sonrası)
+    if (widget.diseasedCount == 0 && widget.deadCount == 0 && widget.treatingCount > 0) {
+      return Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: AppColors.warning.withValues(alpha: 0.1),
+          borderRadius: AppRadius.sm,
+          border: Border.all(color: AppColors.warning.withValues(alpha: 0.35)),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.medication_rounded,
+                color: AppColors.warning, size: 22),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                '${widget.treatingCount} $cropName tedavi ediliyor (${advice.name})',
+                style: AppText.bodyMd(context).copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.warning,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     final parts = <String>[];
-    if (diseasedCount > 0) parts.add('$diseasedCount hasta');
-    if (deadCount > 0) parts.add('$deadCount ölü');
+    if (widget.diseasedCount > 0) parts.add('${widget.diseasedCount} hasta');
+    if (widget.deadCount > 0) parts.add('${widget.deadCount} ölü');
     final msg = parts.join(', ');
 
+    // İlk 2 aktif maddeyi çıkar
+    final topChemicals = <String>[];
+    for (final t in advice.chemicalTreatments) {
+      final s = t.trim();
+      if (s.isEmpty || s.toLowerCase().startsWith('not')) continue;
+      final head = s.split('—').first.trim();
+      if (head.isNotEmpty) topChemicals.add(head);
+      if (topChemicals.length >= 2) break;
+    }
+
+    // ── Faz 2: Kullanım rehberi (ilaçladım'a bastıktan sonra doz göster) ──
+    if (_phase == _TreatmentPhase.guide) {
+      final doseText = _shortDoseGuide(advice);
+      return Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.warning.withValues(alpha: 0.08),
+          borderRadius: AppRadius.sm,
+          border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.medication_rounded,
+                    color: AppColors.warning, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '$cropName Uygulama Rehberi — ${advice.name}',
+                    style: AppText.bodyMd(context).copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.warning,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.7),
+                borderRadius: AppRadius.xs,
+              ),
+              child: Text(
+                doseText,
+                style: AppText.body(context).copyWith(
+                  fontSize: 13,
+                  height: 1.4,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            if (advice.chemicalTreatments.length > 1) ...[
+              const SizedBox(height: 6),
+              Text(
+                '⚠️ Aynı aktif maddeyi üst üste kullanmayın — direnç gelişir.',
+                style: AppText.xs(context).copyWith(
+                  color: AppColors.textSecondary,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ],
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _logging ? null : _logSpraying,
+                icon: _logging
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Icon(Icons.check_rounded, size: 18),
+                label: Text(_logging ? 'Kaydediliyor…' : 'Uyguladım, kaydet'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.emerald,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: AppRadius.sm,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // ── Faz 1: Uyarı + tedavi önerisi + İlaçla butonu ──
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: AppColors.error.withValues(alpha: 0.08),
         borderRadius: AppRadius.sm,
         border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Icon(Icons.warning_rounded, color: AppColors.error, size: 20),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              '$msg bitki — ilaçlama zamanı',
-              style: AppText.bodyMd(context).copyWith(
-                fontWeight: FontWeight.w800,
-                color: AppColors.error,
+          // Üst satır: uyarı mesajı
+          Row(
+            children: [
+              const Icon(Icons.warning_rounded,
+                  color: AppColors.error, size: 20),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  '$msg $cropName — ${advice.name} tedavisi',
+                  style: AppText.bodyMd(context).copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.error,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          // Hastalık adı + önerilen aktif maddeler
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF3E0).withValues(alpha: 0.6),
+              borderRadius: AppRadius.xs,
+              border: Border.all(
+                color: AppColors.warning.withValues(alpha: 0.2),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.healing_rounded,
+                        color: AppColors.warning, size: 16),
+                    const SizedBox(width: 6),
+                    Text(
+                      advice.name == 'Bilinmiyor'
+                          ? 'Genel koruyucu tedavi'
+                          : advice.name,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.warning,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppColors.warning.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        advice.urgency,
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.warning,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                if (topChemicals.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    'Önerilen: ${topChemicals.join(', ')}',
+                    style: AppText.sm(context).copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () => setState(() => _phase = _TreatmentPhase.guide),
+              icon: const Icon(Icons.science_rounded, size: 18),
+              label: const Text('İlaçla'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.error,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: const RoundedRectangleBorder(
+                  borderRadius: AppRadius.sm,
+                ),
               ),
             ),
           ),

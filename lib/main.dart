@@ -161,8 +161,9 @@ class _SmartAgriAppState extends State<SmartAgriApp> {
         final nav = SmartAgriApp.navigatorKey.currentState;
         if (nav == null) return;
 
-        if (type == 'field') {
+        if (type == 'field' || type == 'treatment') {
           // Tarla haritası ekranı — fieldData async yüklenir.
+          // 'treatment' tipi: tedavi hatırlatıcı bildirimi tıklandı.
           nav.push(MaterialPageRoute(
             builder: (_) => _NotificationFieldLaunchPage(
               fieldId: fieldId,

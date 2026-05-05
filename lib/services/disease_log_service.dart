@@ -256,9 +256,17 @@ class _Resolution {
     required this.product,
     required this.activeIngredient,
     required this.date,
+    this.dosePerDa,
+    this.doseUnit,
+    this.mixtureLiters,
+    this.preharvestDays,
   });
 
   final String product;
   final String? activeIngredient;
   final DateTime date;
+  final double? dosePerDa;
+  final String? doseUnit;
+  final double? mixtureLiters;
+  final int? preharvestDays;
 }

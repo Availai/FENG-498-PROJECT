@@ -568,4 +568,104 @@ class NotificationService {
       }
     } catch (_) {}
   }
+
+  // ── Tedavi Hatırlatıcı Bildirimleri ─────────────────────────────────────
+
+  /// İlaçlama sonrası tedavi planı hatırlatıcılarını planlar.
+  ///
+  /// [treatmentDays] gün boyunca günde 2 bildirim (08:00 ve 18:00) gönderir.
+  /// Bildirime tıklandığında [fieldId] üzerinden tarla ekranına yönlendirir.
+  static Future<void> scheduleTreatmentReminders({
+    required String fieldId,
+    required String fieldName,
+    required String diseaseName,
+    required int treatmentDays,
+    required String doseGuide,
+  }) async {
+    try {
+      final payload = jsonEncode({
+        'type': 'treatment',
+        'fieldId': fieldId,
+        'fieldName': fieldName,
+      });
+
+      final baseId = 6000 + (fieldId.hashCode.abs() % 1000);
+      final now = DateTime.now();
+
+      for (int day = 0; day < treatmentDays; day++) {
+        final targetDate = now.add(Duration(days: day));
+        final dayLabel = day == 0
+            ? 'Bugün'
+            : (day == 1 ? 'Yarın' : '${day + 1}. gün');
+
+        // Sabah 08:00
+        final morning = DateTime(
+          targetDate.year, targetDate.month, targetDate.day, 8, 0,
+        );
+        if (morning.isAfter(now)) {
+          _scheduleDelayed(
+            id: baseId + (day * 2),
+            delay: morning.difference(now),
+            title: '💊 Tedavi Hatırlatıcı — $fieldName',
+            body: '$dayLabel: $diseaseName tedavisi — $doseGuide',
+            payload: payload,
+          );
+        }
+
+        // Akşam 18:00
+        final evening = DateTime(
+          targetDate.year, targetDate.month, targetDate.day, 18, 0,
+        );
+        if (evening.isAfter(now)) {
+          _scheduleDelayed(
+            id: baseId + (day * 2) + 1,
+            delay: evening.difference(now),
+            title: '💊 Akşam Tedavi — $fieldName',
+            body: '$dayLabel: $diseaseName — uygulama kontrol edin',
+            payload: payload,
+          );
+        }
+      }
+
+      // Tedavi sonu bildirimi
+      final endDate = now.add(Duration(days: treatmentDays));
+      final endMorning = DateTime(
+        endDate.year, endDate.month, endDate.day, 9, 0,
+      );
+      if (endMorning.isAfter(now)) {
+        _scheduleDelayed(
+          id: baseId + (treatmentDays * 2) + 2,
+          delay: endMorning.difference(now),
+          title: '✅ Tedavi Tamamlandı — $fieldName',
+          body: '$diseaseName tedavisi sona erdi. Bitkileri kontrol edin.',
+          payload: payload,
+        );
+      }
+    } catch (e) {
+      debugPrint('Tedavi hatırlatıcı planlama hatası: $e');
+    }
+  }
+
+  /// Bir tarla için tüm tedavi hatırlatıcılarını iptal eder.
+  static Future<void> cancelTreatmentReminders(String fieldId) async {
+    try {
+      final baseId = 6000 + (fieldId.hashCode.abs() % 1000);
+      for (int i = 0; i < 62; i++) {
+        await _plugin.cancel(baseId + i);
+      }
+    } catch (_) {}
+  }
+
+  /// Geciktirilmiş bildirim — zonedSchedule yerine Future.delayed kullanır.
+  static void _scheduleDelayed({
+    required int id,
+    required Duration delay,
+    required String title,
+    required String body,
+    String? payload,
+  }) {
+    Future.delayed(delay, () async {
+      await show(id: id, title: title, body: body, payload: payload);
+    });
+  }
 }
