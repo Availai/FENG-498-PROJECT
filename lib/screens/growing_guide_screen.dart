@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../data/activity_types.dart';
 import '../data/app_database.dart';
 import '../data/crop_protocols.dart';
+import '../data/disease_types.dart';
 import '../data/supported_crops.dart';
 import '../services/agri_service.dart';
 import '../services/app_providers.dart';
@@ -14,6 +15,7 @@ import '../services/harvest_shift_estimator.dart';
 import '../services/task_directive_service.dart';
 import '../utils/location_utils.dart';
 import '../widgets/activity_quick_log.dart';
+import '../widgets/disease_advice_sheet.dart';
 import '../widgets/floating_toast.dart';
 import '../widgets/help_panel.dart';
 import '../widgets/weekly_water_card.dart';
@@ -567,6 +569,21 @@ class _FieldGuideBody extends ConsumerWidget {
     final growthAsync = ref.watch(fieldGrowthStatesProvider(fieldId));
     final scheduledAsync = ref.watch(fieldScheduledAutoSeedProvider(fieldId));
     final service = ref.watch(taskDirectiveServiceProvider);
+    // Bitki sağlık durumu — hasta/ölü sayısı bu crop'a göre filtrelenir.
+    final plantInstances =
+        ref.watch(fieldPlantInstancesProvider(fieldId)).valueOrNull ??
+            const <FieldPlantInstance>[];
+    final cropId0 = crop['id']?.toString();
+    final diseasedInstances = plantInstances
+        .where((p) =>
+            p.healthStatus == DiseaseTypes.statusDiseased &&
+            (cropId0 == null || p.cropId == cropId0))
+        .toList();
+    final deadInstances = plantInstances
+        .where((p) =>
+            p.healthStatus == DiseaseTypes.statusDead &&
+            (cropId0 == null || p.cropId == cropId0))
+        .toList();
 
     return activityAsync.when(
       loading: () => const Center(
@@ -612,6 +629,7 @@ class _FieldGuideBody extends ConsumerWidget {
         );
 
         final plantedDate = _parseDateLoose(crop['planted_date']);
+        final cropName = crop['name']?.toString() ?? 'Bitki';
 
         return ListView(
           padding:
@@ -622,8 +640,19 @@ class _FieldGuideBody extends ConsumerWidget {
               plantedDate: plantedDate,
               progress: progress,
               growthMap: growthMap,
+              diseasedCount: diseasedInstances.length,
+              deadCount: deadInstances.length,
             ),
             const SizedBox(height: 14),
+            // ── Hastalık / Ölüm özeti — hasta veya ölü bitki varsa göster ──
+            if (diseasedInstances.isNotEmpty || deadInstances.isNotEmpty) ...[
+              _HealthSummaryCard(
+                cropName: cropName,
+                diseased: diseasedInstances,
+                dead: deadInstances,
+              ),
+              const SizedBox(height: 14),
+            ],
             _LastActivityCard(activities: cropActivities),
             const SizedBox(height: 14),
             _QuickLogStrip(
@@ -680,12 +709,16 @@ class _CropHeader extends StatelessWidget {
     required this.plantedDate,
     required this.progress,
     required this.growthMap,
+    this.diseasedCount = 0,
+    this.deadCount = 0,
   });
 
   final Map<String, dynamic> crop;
   final DateTime? plantedDate;
   final CropProtocolProgress? progress;
   final Map<String, GrowthSnapshot> growthMap;
+  final int diseasedCount;
+  final int deadCount;
 
   String _emojiFor(String name) {
     final n = name.toLowerCase();
@@ -789,6 +822,30 @@ class _CropHeader extends StatelessWidget {
                     style: const TextStyle(color: Colors.white60, fontSize: 11),
                   ),
                 ],
+                // ── Hasta / Ölü bitki rozetleri ──────────────────────────
+                if (diseasedCount > 0 || deadCount > 0) ...[
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 6,
+                    children: [
+                      if (diseasedCount > 0)
+                        _HealthBadge(
+                          count: diseasedCount,
+                          label: 'hasta bitki',
+                          icon: Icons.coronavirus_rounded,
+                          color: const Color(0xFFEF5350),
+                        ),
+                      if (deadCount > 0)
+                        _HealthBadge(
+                          count: deadCount,
+                          label: 'cansız bitki',
+                          icon: Icons.close_rounded,
+                          color: const Color(0xFF757575),
+                        ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
@@ -821,6 +878,367 @@ class _MiniStat extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// HEALTH BADGE — header içi küçük rozet
+// ─────────────────────────────────────────────────────────────────────────
+
+class _HealthBadge extends StatelessWidget {
+  const _HealthBadge({
+    required this.count,
+    required this.label,
+    required this.icon,
+    required this.color,
+  });
+  final int count;
+  final String label;
+  final IconData icon;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.22),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withValues(alpha: 0.55), width: 1.2),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13, color: Colors.white),
+          const SizedBox(width: 5),
+          Text(
+            '$count $label',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// HEALTH SUMMARY CARD — rehberde hasta/ölü bitkiler bölümü
+// Tarım Bakanlığı/TAGEM tavsiyelerine yönlendirme içerir.
+// ─────────────────────────────────────────────────────────────────────────
+
+class _HealthSummaryCard extends StatelessWidget {
+  const _HealthSummaryCard({
+    required this.cropName,
+    required this.diseased,
+    required this.dead,
+  });
+
+  final String cropName;
+  final List<FieldPlantInstance> diseased;
+  final List<FieldPlantInstance> dead;
+
+  /// Hasta bitkilerdeki benzersiz hastalık türleri
+  List<String> _uniqueDiseases() {
+    final s = <String>{};
+    for (final d in diseased) {
+      final t = d.diseaseType?.trim();
+      if (t != null && t.isNotEmpty) s.add(t);
+    }
+    return s.toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final uniqueDiseases = _uniqueDiseases();
+    final hasDisease = diseased.isNotEmpty;
+    final hasDead = dead.isNotEmpty;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: const Color(0xFFD32F2F).withValues(alpha: 0.3),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFD32F2F).withValues(alpha: 0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Başlık ──────────────────────────────────────────────────────
+          Container(
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFD32F2F).withValues(alpha: 0.07),
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(16)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(7),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFD32F2F).withValues(alpha: 0.14),
+                    borderRadius: BorderRadius.circular(9),
+                  ),
+                  child: const Icon(Icons.coronavirus_rounded,
+                      size: 16, color: Color(0xFFD32F2F)),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Bitki Sağlık Durumu',
+                    style: GoogleFonts.outfit(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      color: const Color(0xFFB71C1C),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // ── Sayı özeti ──────────────────────────────────────────
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 8,
+                  children: [
+                    if (hasDisease)
+                      _CountChip(
+                        count: diseased.length,
+                        label: 'hasta bitki',
+                        color: const Color(0xFFD32F2F),
+                        icon: Icons.priority_high_rounded,
+                      ),
+                    if (hasDead)
+                      _CountChip(
+                        count: dead.length,
+                        label: 'cansız bitki',
+                        color: const Color(0xFF424242),
+                        icon: Icons.close_rounded,
+                      ),
+                  ],
+                ),
+
+                // ── Hastalık türleri ─────────────────────────────────
+                if (uniqueDiseases.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  Text(
+                    uniqueDiseases.length == 1
+                        ? 'Tespit edilen hastalık: ${uniqueDiseases.first}'
+                        : 'Tespit edilen hastalıklar: ${uniqueDiseases.join(", ")}',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF5D4037),
+                      fontWeight: FontWeight.w600,
+                      height: 1.4,
+                    ),
+                  ),
+                ] else if (hasDisease) ...[
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Hastalık türü kaydedilmedi — tarlayı yakından incele.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF757575),
+                      height: 1.4,
+                    ),
+                  ),
+                ],
+
+                const SizedBox(height: 12),
+
+                // ── Hızlı tavsiye kutusu ─────────────────────────────
+                Container(
+                  padding: const EdgeInsets.all(11),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF8E1),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                        color: const Color(0xFFFB8C00).withValues(alpha: 0.4)),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.lightbulb_rounded,
+                          size: 16, color: Color(0xFFF57C00)),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          hasDisease
+                              ? 'Hasta bitkileri komşu sağlıklı bitkilerden ayır. '
+                                  'Etiketteki doza göre BKÜ uygula, '
+                                  'sonraki 3 günü yakından izle.'
+                              : 'Cansız bitkileri derhal kaldır; '
+                                  'çevresindeki toprak ve bitkileri hastalık '
+                                  'belirtisine karşı kontrol et.',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF5D4037),
+                            height: 1.45,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // ── Detaylı tavsiye bağlantısı ───────────────────────
+                if (hasDisease) ...[
+                  const SizedBox(height: 10),
+                  ...uniqueDiseases.take(2).map(
+                        (disease) => Padding(
+                          padding: const EdgeInsets.only(bottom: 6),
+                          child: _DiseaseAdviceButton(
+                            cropName: cropName,
+                            diseaseType: disease,
+                            healthStatus: DiseaseTypes.statusDiseased,
+                          ),
+                        ),
+                      ),
+                  if (uniqueDiseases.isEmpty)
+                    _DiseaseAdviceButton(
+                      cropName: cropName,
+                      diseaseType: null,
+                      healthStatus: DiseaseTypes.statusDiseased,
+                    ),
+                ],
+                if (hasDead) ...[
+                  SizedBox(height: hasDead && hasDisease ? 0 : 10),
+                  const SizedBox(height: 6),
+                  _DiseaseAdviceButton(
+                    cropName: '$cropName (${dead.length} cansız)',
+                    diseaseType: dead.first.diseaseType,
+                    healthStatus: DiseaseTypes.statusDead,
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CountChip extends StatelessWidget {
+  const _CountChip({
+    required this.count,
+    required this.label,
+    required this.color,
+    required this.icon,
+  });
+  final int count;
+  final String label;
+  final Color color;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 5),
+          Text(
+            '$count $label',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Tıklanınca DiseaseAdviceSheet açan buton
+class _DiseaseAdviceButton extends StatelessWidget {
+  const _DiseaseAdviceButton({
+    required this.cropName,
+    required this.diseaseType,
+    required this.healthStatus,
+  });
+  final String cropName;
+  final String? diseaseType;
+  final String healthStatus;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDead = healthStatus == DiseaseTypes.statusDead;
+    final label = isDead
+        ? 'Güvenli koparma protokolü →'
+        : diseaseType != null
+            ? '$diseaseType mücadele rehberi →'
+            : 'Genel hastalık mücadele rehberi →';
+    final color =
+        isDead ? const Color(0xFF424242) : const Color(0xFFD32F2F);
+
+    return GestureDetector(
+      onTap: () => DiseaseAdviceSheet.show(
+        context,
+        cropName: cropName,
+        healthStatus: healthStatus,
+        diseaseType: diseaseType,
+      ),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.07),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              isDead
+                  ? Icons.delete_forever_rounded
+                  : Icons.healing_rounded,
+              size: 15,
+              color: color,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: color,
+                ),
+              ),
+            ),
+            Icon(Icons.chevron_right_rounded, size: 16, color: color),
+          ],
+        ),
+      ),
     );
   }
 }
