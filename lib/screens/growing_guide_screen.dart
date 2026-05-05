@@ -87,7 +87,6 @@ class _GrowingGuideScreenState extends ConsumerState<GrowingGuideScreen> {
       case _GuideMode.picker:
         return _GuidePickerView(
           onPickField: _selectField,
-          onPickGeneric: () => setState(() => _mode = _GuideMode.generic),
         );
       case _GuideMode.field:
         return _FieldGuideView(
@@ -106,11 +105,9 @@ class _GrowingGuideScreenState extends ConsumerState<GrowingGuideScreen> {
 // ═══════════════════════════════════════════════════════════════════════
 
 class _GuidePickerView extends ConsumerWidget {
-  const _GuidePickerView(
-      {required this.onPickField, required this.onPickGeneric});
+  const _GuidePickerView({required this.onPickField});
 
   final void Function(String fieldId, String? cropId) onPickField;
-  final VoidCallback onPickGeneric;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -167,26 +164,7 @@ class _GuidePickerView extends ConsumerWidget {
                     ),
                   ),
                 ),
-                const SizedBox(height: 12),
-                const Divider(),
-                const SizedBox(height: 12),
               ],
-              OutlinedButton.icon(
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  side: const BorderSide(color: Color(0xFF2E7D32)),
-                  foregroundColor: const Color(0xFF2E7D32),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                onPressed: onPickGeneric,
-                icon: const Icon(Icons.menu_book_rounded),
-                label: const Text(
-                  'Genel Bitki Rehberi (ansiklopedi)',
-                  style: TextStyle(fontWeight: FontWeight.w600),
-                ),
-              ),
             ],
           );
         },
@@ -1737,6 +1715,20 @@ class _InlineSpec extends StatelessWidget {
   }
 }
 
+/// Public entry point for the search-driven plant encyclopedia.
+/// "Daha" menüsünden açılır; bağımsız push edildiğinde geri tuşuyla kapanır.
+class GenericGuideScreen extends StatelessWidget {
+  const GenericGuideScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    // onBack vermiyoruz: wrapped _GenericGuideScreen, Navigator.pop'u
+    // varsayılan AppBar back butonu ile yapsın. PopScope sadece mod-switch
+    // (Yetiştirme Rehberi içi) için anlamlı.
+    return const _GenericGuideScreen();
+  }
+}
+
 class _GenericGuideScreen extends StatefulWidget {
   const _GenericGuideScreen({this.onBack});
 
@@ -1832,16 +1824,15 @@ class _GenericGuideScreenState extends State<_GenericGuideScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) widget.onBack?.call();
-      },
-      child: Scaffold(
+    // onBack verilmişse (mod-switch kullanımı) PopScope ile sistem geri tuşunu
+    // yakalayıp parent'a haber ver; verilmemişse (standalone push) default
+    // Navigator.pop davranışına bırak.
+    final hasOnBack = widget.onBack != null;
+    final scaffold = Scaffold(
       appBar: AppBar(
         title: const Text('Akıllı Tarım Rehberi'),
         elevation: 0,
-        leading: widget.onBack != null
+        leading: hasOnBack
             ? IconButton(
                 icon: const Icon(Icons.arrow_back),
                 onPressed: widget.onBack,
@@ -1937,7 +1928,15 @@ class _GenericGuideScreenState extends State<_GenericGuideScreen> {
           ),
         ],
       ),
-    ),  // PopScope
+    );
+
+    if (!hasOnBack) return scaffold;
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) widget.onBack?.call();
+      },
+      child: scaffold,
     );
   }
 
