@@ -9,6 +9,7 @@ import '../data/activity_types.dart';
 import '../data/crop_playbooks.dart';
 import '../data/supported_crops.dart';
 import '../models/seed_models.dart';
+import 'alert_journal_service.dart';
 import 'water_accounting.dart';
 
 /// 3 vitrin bitki için GDD + aktivite delta → büyüme durumu hesaplayan servis.
@@ -24,8 +25,11 @@ import 'water_accounting.dart';
 /// kullanılır. Ağ çağrısı yapmaz — çağıran katman opsiyonel olarak gerçek
 /// günlük sıcaklıkları `dailyTemps` üzerinden geçebilir.
 class GrowthEngine {
-  GrowthEngine(this._db);
+  GrowthEngine(this._db, {AlertJournalService? alertJournal})
+      : _alertJournal = alertJournal;
+
   final AppDatabase _db;
+  final AlertJournalService? _alertJournal;
 
   // ─── GDD tabanları (Tbase °C) ──────────────────────────────────────
   static const Map<String, double> _tBase = {
@@ -386,6 +390,9 @@ class GrowthEngine {
         .clamp(0.5, 1.15);
 
     final nowUtc = DateTime.now().toUtc();
+    final previousState = await (_db.select(_db.cropGrowthStates)
+          ..where((tbl) => tbl.cropId.equals(cropId)))
+        .getSingleOrNull();
     final newState = CropGrowthStatesCompanion(
       cropId: Value(cropId),
       fieldId: Value(crop.fieldId),
@@ -404,6 +411,15 @@ class GrowthEngine {
       updatedAt: Value(nowUtc),
     );
     await _db.into(_db.cropGrowthStates).insertOnConflictUpdate(newState);
+    await _recordStageTransition(
+      previousState: previousState,
+      fieldId: crop.fieldId,
+      cropId: cropId,
+      cropName: crop.name,
+      newStageKey: active.key,
+      accumulatedGdd: accGdd,
+      at: t,
+    );
 
     return (await (_db.select(_db.cropGrowthStates)
           ..where((tbl) => tbl.cropId.equals(cropId)))
@@ -426,6 +442,35 @@ class GrowthEngine {
       }
     }
     return ok;
+  }
+
+  Future<void> _recordStageTransition({
+    required CropGrowthState? previousState,
+    required String fieldId,
+    required String cropId,
+    required String cropName,
+    required String newStageKey,
+    required double accumulatedGdd,
+    required DateTime at,
+  }) async {
+    final journal = _alertJournal;
+    if (journal == null || previousState == null) return;
+    final previousStage = previousState.currentStageKey;
+    if (previousStage == newStageKey) return;
+    try {
+      await journal.recordGrowthStageTransition(
+        fieldId: fieldId,
+        cropId: cropId,
+        cropName: cropName,
+        previousStageKey: previousStage,
+        stageKey: newStageKey,
+        stageLabel: GrowthEngineStageLabels.label(newStageKey),
+        accumulatedGdd: accumulatedGdd,
+        at: at,
+      );
+    } catch (_) {
+      // Uyarı günlüğü best-effort; büyüme hesabını asla bozmasın.
+    }
   }
 
   /// Tek bir ekinin büyüme durumunu canlı izler (Drift stream).

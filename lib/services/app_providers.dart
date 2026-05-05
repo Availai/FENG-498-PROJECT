@@ -24,6 +24,7 @@ import 'weather_soil_service.dart';
 import 'backend_service.dart';
 import 'disease_diagnosis_service.dart';
 import 'activity_logger.dart';
+import 'alert_journal_service.dart';
 import 'guide_engine.dart';
 import 'live_todo_service.dart';
 import 'soil_fertilization_service.dart';
@@ -44,10 +45,19 @@ final localDataRepositoryProvider = Provider<LocalDataRepository>((ref) {
   return LocalDataRepository(database: db, currentUid: uid);
 });
 
+final alertJournalServiceProvider = Provider<AlertJournalService>((ref) {
+  return AlertJournalService(
+    repository: ref.watch(localDataRepositoryProvider),
+  );
+});
+
 /// GDD + aktivite delta → CropGrowthStates üreten singleton. Tek bir
 /// AppDatabase üstünde çalışır; UI katmanı `watch(cropId)` ile canlı okur.
 final growthEngineProvider = Provider<GrowthEngine>((ref) {
-  return GrowthEngine(ref.watch(appDatabaseProvider));
+  return GrowthEngine(
+    ref.watch(appDatabaseProvider),
+    alertJournal: ref.watch(alertJournalServiceProvider),
+  );
 });
 
 /// `logActivity` + `GrowthEngine.recompute` zincirlemesini tek yerde tutar.

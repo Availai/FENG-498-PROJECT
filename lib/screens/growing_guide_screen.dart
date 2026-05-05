@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -543,6 +545,19 @@ class _FieldGuideBody extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final fieldId = field['id'].toString();
+    final fieldName = field['name']?.toString() ?? 'Tarla';
+    ref.listen(fieldGuideProvider(fieldId), (_, next) {
+      next.whenData((result) {
+        unawaited(
+          ref.read(alertJournalServiceProvider).recordGuideResult(
+                fieldId: fieldId,
+                fieldName: fieldName,
+                result: result,
+              ),
+        );
+      });
+    });
+
     final activityAsync = ref.watch(fieldActivityLogProvider(fieldId));
     final growthAsync = ref.watch(fieldGrowthStatesProvider(fieldId));
     final scheduledAsync = ref.watch(fieldScheduledAutoSeedProvider(fieldId));

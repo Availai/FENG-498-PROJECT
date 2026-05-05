@@ -95,6 +95,8 @@ class _FarmJournalScreenState extends ConsumerState<FarmJournalScreen> {
                   child: _buildTypeChip(t),
                 )),
             _buildTypeChip(ActivityType.planting),
+            const SizedBox(width: 8),
+            _buildTypeChip(ActivityType.systemAlert),
           ],
         ),
       ),
@@ -409,9 +411,13 @@ class _FarmJournalScreenState extends ConsumerState<FarmJournalScreen> {
 
   Widget _buildEntryCard(Map<String, dynamic> entry) {
     final type = entry['type'] as String? ?? ActivityType.other;
-    final color = ActivityType.color(type);
     final date = entry['date'] as DateTime;
     final meta = entry['metadata'] as Map<String, dynamic>?;
+    final isSystemAlert = type == ActivityType.systemAlert;
+    final severity = ActivityType.normalizeAlertSeverity(meta?['severity']);
+    final color = isSystemAlert
+        ? ActivityType.alertSeverityColor(severity)
+        : ActivityType.color(type);
     final fieldName = entry['field_name'] as String?;
     final cropName =
         entry['crop_name'] as String? ?? _stringValue(meta?['crop_name']);
@@ -421,9 +427,15 @@ class _FarmJournalScreenState extends ConsumerState<FarmJournalScreen> {
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: isSystemAlert
+              ? ActivityType.alertSeverityBackground(severity)
+              : AppColors.surface,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.border),
+          border: Border.all(
+            color: isSystemAlert
+                ? color.withValues(alpha: 0.45)
+                : AppColors.border,
+          ),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -435,7 +447,13 @@ class _FarmJournalScreenState extends ConsumerState<FarmJournalScreen> {
                 color: color.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(ActivityType.icon(type), color: color, size: 22),
+              child: Icon(
+                isSystemAlert
+                    ? ActivityType.alertSeverityIcon(severity)
+                    : ActivityType.icon(type),
+                color: color,
+                size: 22,
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -447,7 +465,9 @@ class _FarmJournalScreenState extends ConsumerState<FarmJournalScreen> {
                     children: [
                       Expanded(
                         child: Text(
-                          _entryTitle(type),
+                          isSystemAlert
+                              ? _systemAlertTitle(entry, meta)
+                              : _entryTitle(type),
                           style: const TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w800,
@@ -540,7 +560,7 @@ class _FarmJournalScreenState extends ConsumerState<FarmJournalScreen> {
   }
 
   Widget _buildNoteBlock(Map<String, dynamic>? meta) {
-    final note = _stringValue(meta?['note']);
+    final note = _stringValue(meta?['message']) ?? _stringValue(meta?['note']);
     if (note == null) return const SizedBox.shrink();
     return Container(
       width: double.infinity,
@@ -635,6 +655,16 @@ class _FarmJournalScreenState extends ConsumerState<FarmJournalScreen> {
         add('Bitki arası', meta?['plant_spacing_cm'], unit: 'cm');
         add('Sulama aralığı', meta?['water_interval_days'], unit: 'gün');
         break;
+      case ActivityType.systemAlert:
+        add('Önem', ActivityType.alertSeverityLabel(meta?['severity']));
+        add('Kaynak', _alertOriginLabel(meta?['origin']));
+        add('Tür', _alertKindLabel(meta?['kind'] ?? entry['subtype']));
+        add('Dönem', meta?['stage_label']);
+        add('Önceki dönem', meta?['previous_stage_label']);
+        add('Sıcaklık', meta?['temperature_c'], unit: '°C');
+        add('Yağış', meta?['rain_mm'], unit: 'mm');
+        add('Rüzgar', meta?['wind_ms'], unit: 'm/s');
+        break;
       default:
         add('Miktar', qty, unit: unit?.toString());
     }
@@ -656,9 +686,20 @@ class _FarmJournalScreenState extends ConsumerState<FarmJournalScreen> {
         return 'Hasat kaydı';
       case ActivityType.planting:
         return 'Ekim kaydı';
+      case ActivityType.systemAlert:
+        return 'Sistem uyarısı';
       default:
         return 'Tarla notu';
     }
+  }
+
+  String _systemAlertTitle(
+    Map<String, dynamic> entry,
+    Map<String, dynamic>? meta,
+  ) {
+    return _stringValue(meta?['title']) ??
+        _stringValue(entry['title']) ??
+        'Sistem uyarısı';
   }
 
   String _guideTextForLastEntry(Map<String, dynamic>? last) {
@@ -679,6 +720,8 @@ class _FarmJournalScreenState extends ConsumerState<FarmJournalScreen> {
         return 'Son işlem hasat. Miktar ve kalite notları sezon sonunda gelir-maliyet hesabını güçlendirir.';
       case ActivityType.planting:
         return 'Son işlem ekim. Sıra arası, bitki arası ve sulama aralığı kayıtları bakım planının temelidir.';
+      case ActivityType.systemAlert:
+        return 'Son kayıt sistem uyarısı. Kritik olanları tarla kaydında tutuyorum; böylece hava, büyüme dönemi ve rehber değişiklikleri geriye dönük izlenebilir.';
       default:
         return 'Son kayıt tarla notu. Kısa ve ölçülebilir notlar sonraki kararı daha net hale getirir.';
     }
@@ -709,6 +752,53 @@ class _FarmJournalScreenState extends ConsumerState<FarmJournalScreen> {
       case 'criticalNoChemical':
         return 'Kritik uyarı';
       default:
+        return _stringValue(raw);
+    }
+  }
+
+  String? _alertOriginLabel(Object? raw) {
+    switch (raw?.toString()) {
+      case 'guide':
+        return 'Rehber';
+      case 'weather':
+        return 'Hava taraması';
+      case 'growth':
+        return 'Büyüme takibi';
+      default:
+        return _stringValue(raw);
+    }
+  }
+
+  String? _alertKindLabel(Object? raw) {
+    final value = raw?.toString();
+    switch (value) {
+      case 'frost':
+      case 'weather_frost_critical':
+      case 'weather_frost_warning':
+        return 'Don';
+      case 'heat':
+      case 'weather_heat_critical':
+      case 'weather_heat_warning':
+        return 'Sıcaklık';
+      case 'rainExpected':
+      case 'weather_rain_critical':
+      case 'weather_rain_warning':
+        return 'Yağış';
+      case 'fieldUnsafe':
+        return 'Tarla zemini';
+      case 'overWatering':
+        return 'Aşırı sulama';
+      case 'reiActive':
+        return 'İlaçlama bekleme süresi';
+      case 'weather_wind_critical':
+      case 'weather_wind_warning':
+        return 'Rüzgar';
+      case 'weather_storm_warning':
+        return 'Fırtına';
+      default:
+        if (value != null && value.startsWith('growth_stage_')) {
+          return 'Büyüme dönemi';
+        }
         return _stringValue(raw);
     }
   }
@@ -766,6 +856,8 @@ class _FarmJournalScreenState extends ConsumerState<FarmJournalScreen> {
   }
 
   Future<void> _showEntryOptions(Map<String, dynamic> entry) async {
+    final isSystemAlert =
+        entry['type']?.toString() == ActivityType.systemAlert;
     final action = await showModalBottomSheet<String>(
       context: context,
       backgroundColor: AppColors.bg,
@@ -776,14 +868,24 @@ class _FarmJournalScreenState extends ConsumerState<FarmJournalScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ListTile(
-              leading: const Icon(Icons.delete_outline, color: AppColors.error),
-              title: Text(
-                'Kaydı sil',
-                style: TextStyle(color: AppColors.error),
+            if (isSystemAlert)
+              const ListTile(
+                leading: Icon(Icons.lock_outline_rounded),
+                title: Text('Sistem kaydı'),
+                subtitle: Text(
+                  'Bu uyarı rehber tarafından oluşturulduğu için silinmez.',
+                ),
+              )
+            else
+              ListTile(
+                leading:
+                    const Icon(Icons.delete_outline, color: AppColors.error),
+                title: Text(
+                  'Kaydı sil',
+                  style: TextStyle(color: AppColors.error),
+                ),
+                onTap: () => Navigator.pop(context, 'delete'),
               ),
-              onTap: () => Navigator.pop(context, 'delete'),
-            ),
             ListTile(
               leading: const Icon(Icons.close),
               title: const Text('Kapat'),

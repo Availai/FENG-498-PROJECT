@@ -669,6 +669,7 @@ class LocalDataRepository {
         'title': title,
         'event_type': eventType,
         'event_date': eventDate.toUtc().toIso8601String(),
+        'source': source,
         'metadata': metadata,
         'quantity': quantity,
         'unit': unit,
@@ -1247,6 +1248,9 @@ class LocalDataRepository {
           'type': ev.eventType,
           'date': ev.eventDate.toLocal(),
           'source': ev.source,
+          'subtype': ev.subtype,
+          'note_text': ev.noteText,
+          'photo_path': ev.photoPath,
           'quantity': qty,
           'unit': unit,
           'recommended_quantity': recQty,
@@ -1254,6 +1258,27 @@ class LocalDataRepository {
         };
       }).toList();
     });
+  }
+
+  /// `AlertJournalService` dedup'ı için: belirli tarla + alertKey kombosunun
+  /// son [within] içinde sistem uyarısı olarak yazılıp yazılmadığını tespit
+  /// eder. alertKey, CalendarEvent.subtype kolonuna eşitlenir.
+  Future<bool> hasRecentSystemAlert({
+    required String fieldId,
+    required String alertKey,
+    Duration within = const Duration(hours: 24),
+  }) async {
+    final cutoff = DateTime.now().subtract(within);
+    final rows = await (_db.select(_db.calendarEvents)
+          ..where((tbl) =>
+              tbl.fieldId.equals(fieldId) &
+              tbl.eventType.equals(ActivityType.systemAlert) &
+              tbl.subtype.equals(alertKey) &
+              tbl.eventDate.isBiggerThanValue(cutoff) &
+              tbl.deletedAt.isNull())
+          ..limit(1))
+        .get();
+    return rows.isNotEmpty;
   }
 
   /// Takvimde auto_seed kaynaklı, tamamlanmamış (soft-delete'siz) planları

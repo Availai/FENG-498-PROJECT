@@ -20,6 +20,13 @@ class ActivityType {
   static const thinning = 'thinning';
   static const other = 'other';
 
+  /// Sistem üretimi uyarı kaydı — `AlertJournalService` tarafından yazılır.
+  /// Çiftçi manuel logu değildir; quickLogOrder'a girmez, filtrelenebilir
+  /// ama kaldırılamaz. Tarlam Günlüğü'nde "Sistem Uyarısı" rozetiyle render
+  /// edilir. Subtype alanına alert kind (`frost_critical`, `heat_critical`,
+  /// `growth_stage`, vb.) yazılır.
+  static const systemAlert = 'system_alert';
+
   /// Hızlı-log UI'sında gösterilen sırada.
   /// Çapalama ve seyreltme ayçiçeği için kritik (v8); aynı satıra eklendi.
   static const quickLogOrder = <String>[
@@ -50,6 +57,8 @@ class ActivityType {
         return 'Çapalama';
       case thinning:
         return 'Seyreltme';
+      case systemAlert:
+        return 'Sistem Uyarısı';
       default:
         return 'Diğer';
     }
@@ -74,6 +83,8 @@ class ActivityType {
         return 'Çapaladım';
       case thinning:
         return 'Seyrelttim';
+      case systemAlert:
+        return 'Sistem Uyarısı';
       default:
         return 'Not';
     }
@@ -97,6 +108,8 @@ class ActivityType {
         return Icons.handyman_rounded;
       case thinning:
         return Icons.content_cut_rounded;
+      case systemAlert:
+        return Icons.notifications_active_rounded;
       default:
         return Icons.edit_note_rounded;
     }
@@ -120,8 +133,78 @@ class ActivityType {
         return AppColors.soil;
       case thinning:
         return AppColors.sage;
+      case systemAlert:
+        return AppColors.error;
       default:
         return AppColors.textTertiary;
+    }
+  }
+
+  static const alertSeverityInfo = 'info';
+  static const alertSeverityWarning = 'warning';
+  static const alertSeverityCritical = 'critical';
+
+  static String normalizeAlertSeverity(Object? raw) {
+    switch (raw?.toString().toLowerCase().trim()) {
+      case alertSeverityCritical:
+      case 'kritik':
+        return alertSeverityCritical;
+      case alertSeverityWarning:
+      case 'uyari':
+      case 'uyarı':
+        return alertSeverityWarning;
+      case alertSeverityInfo:
+      case 'bilgi':
+      default:
+        return alertSeverityInfo;
+    }
+  }
+
+  static String alertSeverityLabel(Object? raw) {
+    switch (normalizeAlertSeverity(raw)) {
+      case alertSeverityCritical:
+        return 'Kritik';
+      case alertSeverityWarning:
+        return 'Uyarı';
+      case alertSeverityInfo:
+      default:
+        return 'Bilgi';
+    }
+  }
+
+  static IconData alertSeverityIcon(Object? raw) {
+    switch (normalizeAlertSeverity(raw)) {
+      case alertSeverityCritical:
+        return Icons.priority_high_rounded;
+      case alertSeverityWarning:
+        return Icons.warning_amber_rounded;
+      case alertSeverityInfo:
+      default:
+        return Icons.info_outline_rounded;
+    }
+  }
+
+  static Color alertSeverityColor(Object? raw) {
+    switch (normalizeAlertSeverity(raw)) {
+      case alertSeverityCritical:
+        return AppColors.error;
+      case alertSeverityWarning:
+        return AppColors.warning;
+      case alertSeverityInfo:
+      default:
+        return AppColors.info;
+    }
+  }
+
+  static Color alertSeverityBackground(Object? raw) {
+    switch (normalizeAlertSeverity(raw)) {
+      case alertSeverityCritical:
+        return AppColors.errorBg;
+      case alertSeverityWarning:
+        return AppColors.warningBg;
+      case alertSeverityInfo:
+      default:
+        return AppColors.infoBg;
     }
   }
 

@@ -5,6 +5,8 @@ import 'package:geolocator/geolocator.dart';
 
 import 'notification_service.dart';
 import '../data/app_database.dart';
+import 'alert_journal_service.dart';
+import 'local_data_repository.dart';
 import 'repositories/sync_repository.dart';
 import 'sync_service.dart';
 import 'api/sync_api_client.dart';
@@ -77,6 +79,9 @@ void backgroundDispatcher() {
             // Kayıtlı tüm tarlaları tara — her birinin koordinatına göre uyarı.
             final db = AppDatabase();
             try {
+              final alertJournal = AlertJournalService(
+                repository: LocalDataRepository(database: db),
+              );
               final fields = await (db.select(db.fields)
                     ..where((f) => f.deletedAt.isNull()))
                   .get();
@@ -97,9 +102,11 @@ void backgroundDispatcher() {
                   await NotificationService.checkWeatherAndAlert(
                     f.latitude!,
                     f.longitude!,
+                    fieldId: f.id,
                     fieldName: f.name,
                     // Her tarlaya benzersiz id seed'i ver — bildirimler birbirini ezmesin.
                     notificationIdSeed: seed,
+                    alertJournal: alertJournal,
                   );
                   seed += 100;
                 }

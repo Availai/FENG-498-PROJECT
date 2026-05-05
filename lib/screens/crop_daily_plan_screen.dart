@@ -658,15 +658,19 @@ class _FactorChip extends StatelessWidget {
             children: [
               Icon(_iconFor(bar.iconKey), color: tint, size: 14),
               const SizedBox(width: 4),
-              Text(
-                bar.label,
-                style: TextStyle(
-                  fontSize: 11,
-                  color: Colors.white.withValues(alpha: 0.95),
-                  fontWeight: FontWeight.w700,
+              Expanded(
+                child: Text(
+                  bar.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.white.withValues(alpha: 0.95),
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
-              const Spacer(),
+              const SizedBox(width: 4),
               Text(
                 '%$pct',
                 style: TextStyle(

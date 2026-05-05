@@ -94,6 +94,7 @@ class DailyGuideScreen extends ConsumerWidget {
           fieldName ?? 'Tarla',
           fieldId: fieldId,
           notificationIdSeed: fieldId.hashCode.abs() % 100,
+          alertJournal: ref.read(alertJournalServiceProvider),
         );
       });
     });

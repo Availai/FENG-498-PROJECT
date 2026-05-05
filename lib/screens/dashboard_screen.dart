@@ -265,6 +265,7 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
               fieldName,
               fieldId: fieldId,
               notificationIdSeed: (i + 1) * 100,
+              alertJournal: ref.read(alertJournalServiceProvider),
             );
           } catch (_) {}
         }

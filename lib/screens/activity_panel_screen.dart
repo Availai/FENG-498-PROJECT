@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../data/activity_types.dart';
 import '../data/app_database.dart';
 import '../data/disease_types.dart';
 import '../services/app_providers.dart';
@@ -64,6 +65,7 @@ class ActivityPanelScreen extends ConsumerWidget {
                 if (id != null && id.isNotEmpty) {
                   ref.invalidate(fieldDirectivesSummaryProvider(id));
                   ref.invalidate(fieldPlantInstancesProvider(id));
+                  ref.invalidate(fieldActivityLogProvider(id));
                 }
               }
               await Future<void>.delayed(const Duration(milliseconds: 300));
@@ -283,6 +285,7 @@ class _FieldActivityCard extends ConsumerWidget {
     final directivesAsync = ref.watch(fieldDirectivesSummaryProvider(fieldId));
     final plantsAsync = ref.watch(fieldPlantInstancesProvider(fieldId));
     final weatherAsync = ref.watch(_fieldHourlyForecastProvider(fieldId));
+    final activityAsync = ref.watch(fieldActivityLogProvider(fieldId));
 
     return directivesAsync.when(
       loading: () => _shell(
@@ -310,10 +313,13 @@ class _FieldActivityCard extends ConsumerWidget {
       data: (directives) {
         final plants = plantsAsync.valueOrNull ?? const <FieldPlantInstance>[];
         final weather = weatherAsync.valueOrNull;
+        final activities =
+            activityAsync.valueOrNull ?? const <Map<String, dynamic>>[];
         final notifications = _buildNotifications(
           directives: directives,
           plants: plants,
           weather: weather,
+          activities: activities,
           scope: scope,
         );
         if (notifications.isEmpty) return const SizedBox.shrink();
@@ -330,9 +336,24 @@ class _FieldActivityCard extends ConsumerWidget {
     required List<FieldDirective> directives,
     required List<FieldPlantInstance> plants,
     required HourlyForecast? weather,
+    required List<Map<String, dynamic>> activities,
     required _Scope scope,
   }) {
     final out = <Widget>[];
+    final systemAlertKinds = <String>{};
+
+    for (final alert in _systemAlertsForScope(activities, scope)) {
+      final meta = alert['metadata'] as Map<String, dynamic>?;
+      final kind = meta?['kind']?.toString() ?? alert['subtype']?.toString();
+      if (kind != null && kind.isNotEmpty) systemAlertKinds.add(kind);
+      final severity = ActivityType.normalizeAlertSeverity(meta?['severity']);
+      out.add(_hintRow(
+        color: ActivityType.alertSeverityColor(severity),
+        icon: ActivityType.alertSeverityIcon(severity),
+        text: _systemAlertText(alert, meta),
+        badge: ActivityType.alertSeverityLabel(severity).toUpperCase(),
+      ));
+    }
 
     // 1) Bitki sağlık durumu — hasta/cansız bitkiler kritik bildirim.
     if (scope == _Scope.today) {
@@ -368,7 +389,7 @@ class _FieldActivityCard extends ConsumerWidget {
 
       if (scope == _Scope.today) {
         // Yağmur → sulamayı ertele
-        if (rainNext24 >= 5) {
+        if (rainNext24 >= 5 && !systemAlertKinds.contains('rainExpected')) {
           final rainHour = _findFirstSignificantRainHour(weather);
           final hourStr = rainHour != null
               ? '${rainHour.hour.toString().padLeft(2, '0')}:00'
@@ -472,6 +493,37 @@ class _FieldActivityCard extends ConsumerWidget {
       }
     }
     return null;
+  }
+
+  List<Map<String, dynamic>> _systemAlertsForScope(
+    List<Map<String, dynamic>> activities,
+    _Scope scope,
+  ) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final weekStart = today.subtract(Duration(days: now.weekday - 1));
+    return activities.where((entry) {
+      if (entry['type']?.toString() != ActivityType.systemAlert) {
+        return false;
+      }
+      final date = entry['date'];
+      if (date is! DateTime) return false;
+      final day = DateTime(date.year, date.month, date.day);
+      if (scope == _Scope.today) return day == today;
+      return day.isAfter(weekStart.subtract(const Duration(days: 1))) &&
+          day != today;
+    }).take(3).toList(growable: false);
+  }
+
+  String _systemAlertText(
+    Map<String, dynamic> entry,
+    Map<String, dynamic>? meta,
+  ) {
+    final message = meta?['message']?.toString().trim();
+    if (message != null && message.isNotEmpty) return message;
+    final title = meta?['title']?.toString().trim();
+    if (title != null && title.isNotEmpty) return title;
+    return entry['title']?.toString() ?? 'Sistem uyarısı';
   }
 
   Widget _shell({

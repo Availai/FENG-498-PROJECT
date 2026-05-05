@@ -5,6 +5,8 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:http/http.dart' as http;
 
+import '../data/activity_types.dart';
+import 'alert_journal_service.dart';
 import 'guide_engine.dart';
 
 /// FCM + Local notification service.
@@ -159,8 +161,10 @@ class NotificationService {
   static Future<void> checkWeatherAndAlert(
     double lat,
     double lng, {
+    String? fieldId,
     String? fieldName,
     int notificationIdSeed = 0,
+    AlertJournalService? alertJournal,
   }) async {
     try {
       // Hourly: don/sıcaklık/rüzgar tepelerini yakalamak için
@@ -219,79 +223,198 @@ class NotificationService {
       }
 
       final suffix = fieldName != null ? ' — $fieldName' : '';
+      final journalFieldName = fieldName ?? 'Tarla';
+
+      Future<void> recordWeather({
+        required String key,
+        required String title,
+        required String body,
+        required String severity,
+        String? icon,
+        Map<String, dynamic>? metadata,
+      }) async {
+        final id = fieldId;
+        if (id == null || id.isEmpty || alertJournal == null) return;
+        await alertJournal.recordWeatherAlert(
+          fieldId: id,
+          fieldName: journalFieldName,
+          alertKey: key,
+          title: title,
+          message: body,
+          severity: severity,
+          icon: icon,
+          metadata: metadata,
+        );
+      }
 
       // ── DON (FAO/WMO) ────────────────────────────────────────────────────
       if (minTemp <= frostCriticalC) {
+        final title = 'KRİTİK Don Uyarısı$suffix';
+        final body =
+            '${minTemp.toStringAsFixed(1)}°C bekleniyor (${_hh(minTempHour)}). Hassas bitkilerinizi örtün, sera ısıtmasını devreye alın. Sabah erken sulama yapmayın.';
         await show(
           id: 1002 + notificationIdSeed,
-          title: '🥶 KRİTİK Don Uyarısı$suffix',
-          body:
-              '${minTemp.toStringAsFixed(1)}°C bekleniyor (${_hh(minTempHour)}). Hassas bitkilerinizi örtün, sera ısıtmasını devreye alın. Sabah erken sulama yapmayın.',
+          title: '🥶 $title',
+          body: body,
+        );
+        await recordWeather(
+          key: 'frost_critical',
+          title: title,
+          body: body,
+          severity: ActivityType.alertSeverityCritical,
+          icon: '🥶',
+          metadata: {
+            'temperature_c': minTemp,
+            'hour': _hh(minTempHour),
+          },
         );
       } else if (minTemp <= frostWarningC) {
+        final title = 'Don Riski$suffix';
+        final body =
+            '${minTemp.toStringAsFixed(1)}°C bekleniyor (${_hh(minTempHour)}). Örtü bezi hazırlayın, fideleri koruyun.';
         await show(
           id: 1002 + notificationIdSeed,
-          title: '❄️ Don Riski$suffix',
-          body:
-              '${minTemp.toStringAsFixed(1)}°C bekleniyor (${_hh(minTempHour)}). Örtü bezi hazırlayın, fideleri koruyun.',
+          title: '❄️ $title',
+          body: body,
+        );
+        await recordWeather(
+          key: 'frost_warning',
+          title: title,
+          body: body,
+          severity: ActivityType.alertSeverityWarning,
+          icon: '❄️',
+          metadata: {
+            'temperature_c': minTemp,
+            'hour': _hh(minTempHour),
+          },
         );
       }
 
       // ── AŞIRI SICAKLIK (FAO) ─────────────────────────────────────────────
       if (maxTemp >= heatCriticalC) {
+        final title = 'KRİTİK Sıcak Dalgası$suffix';
+        final body =
+            '${maxTemp.toStringAsFixed(1)}°C — bitki ölüm riski. Sulamayı sabah 06:00 öncesi yapın, gölgeleme uygulayın.';
         await show(
           id: 1003 + notificationIdSeed,
-          title: '🔥 KRİTİK Sıcak Dalgası$suffix',
-          body:
-              '${maxTemp.toStringAsFixed(1)}°C — bitki ölüm riski. Sulamayı sabah 06:00 öncesi yapın, gölgeleme uygulayın.',
+          title: '🔥 $title',
+          body: body,
+        );
+        await recordWeather(
+          key: 'heat_critical',
+          title: title,
+          body: body,
+          severity: ActivityType.alertSeverityCritical,
+          icon: '🔥',
+          metadata: {'temperature_c': maxTemp},
         );
       } else if (maxTemp >= heatWarningC) {
+        final title = 'Yüksek Sıcaklık$suffix';
+        final body =
+            '${maxTemp.toStringAsFixed(1)}°C bekleniyor. Sulama saatini sabah erken/akşam üstüne çekin.';
         await show(
           id: 1003 + notificationIdSeed,
-          title: '🌡️ Yüksek Sıcaklık$suffix',
-          body:
-              '${maxTemp.toStringAsFixed(1)}°C bekleniyor. Sulama saatini sabah erken/akşam üstüne çekin.',
+          title: '🌡️ $title',
+          body: body,
+        );
+        await recordWeather(
+          key: 'heat_warning',
+          title: title,
+          body: body,
+          severity: ActivityType.alertSeverityWarning,
+          icon: '🌡️',
+          metadata: {'temperature_c': maxTemp},
         );
       }
 
       // ── RÜZGAR (Beaufort/WMO) ────────────────────────────────────────────
       if (maxWind >= windCriticalMs) {
+        final title = 'FIRTINA Uyarısı$suffix';
+        final body =
+            '${maxWind.toStringAsFixed(1)} m/s (Beaufort 8+). Sera örtü/perdelerini sabitleyin, destek kazıkları kontrol edin, ilaçlama yapmayın.';
         await show(
           id: 1004 + notificationIdSeed,
-          title: '🌪️ FIRTINA Uyarısı$suffix',
-          body:
-              '${maxWind.toStringAsFixed(1)} m/s (Beaufort 8+). Sera örtü/perdelerini sabitleyin, destek kazıkları kontrol edin, ilaçlama yapmayın.',
+          title: '🌪️ $title',
+          body: body,
+        );
+        await recordWeather(
+          key: 'wind_critical',
+          title: title,
+          body: body,
+          severity: ActivityType.alertSeverityCritical,
+          icon: '🌪️',
+          metadata: {'wind_ms': maxWind},
         );
       } else if (maxWind >= windWarningMs) {
+        final title = 'Kuvvetli Rüzgar$suffix';
+        final body =
+            '${maxWind.toStringAsFixed(1)} m/s rüzgar bekleniyor. İlaçlama erteleyin (drift riski), perdeleri kapatın.';
         await show(
           id: 1004 + notificationIdSeed,
-          title: '💨 Kuvvetli Rüzgar$suffix',
-          body:
-              '${maxWind.toStringAsFixed(1)} m/s rüzgar bekleniyor. İlaçlama erteleyin (drift riski), perdeleri kapatın.',
+          title: '💨 $title',
+          body: body,
+        );
+        await recordWeather(
+          key: 'wind_warning',
+          title: title,
+          body: body,
+          severity: ActivityType.alertSeverityWarning,
+          icon: '💨',
+          metadata: {'wind_ms': maxWind},
         );
       }
 
       // ── YAĞIŞ (MGM/WMO) ──────────────────────────────────────────────────
       if (tomorrowRainMm >= rainCriticalMm) {
+        final title = 'ŞİDDETLİ Yağış$suffix';
+        final body =
+            'Yarın ${tomorrowRainMm.toStringAsFixed(0)} mm yağış (MGM şiddetli sınıfı). Drenaj kanallarını açın, sulamayı tamamen durdurun, kök çürüklüğüne dikkat.';
         await show(
           id: 1001 + notificationIdSeed,
-          title: '⛈️ ŞİDDETLİ Yağış$suffix',
-          body:
-              'Yarın ${tomorrowRainMm.toStringAsFixed(0)} mm yağış (MGM şiddetli sınıfı). Drenaj kanallarını açın, sulamayı tamamen durdurun, kök çürüklüğüne dikkat.',
+          title: '⛈️ $title',
+          body: body,
+        );
+        await recordWeather(
+          key: 'rain_critical',
+          title: title,
+          body: body,
+          severity: ActivityType.alertSeverityCritical,
+          icon: '⛈️',
+          metadata: {'rain_mm': tomorrowRainMm},
         );
       } else if (tomorrowRainMm >= rainWarningMm) {
+        final title = 'Kuvvetli Yağış$suffix';
+        final body =
+            'Yarın ${tomorrowRainMm.toStringAsFixed(0)} mm yağış bekleniyor. Sulama ve ilaçlamayı erteleyin.';
         await show(
           id: 1001 + notificationIdSeed,
-          title: '🌧️ Kuvvetli Yağış$suffix',
-          body:
-              'Yarın ${tomorrowRainMm.toStringAsFixed(0)} mm yağış bekleniyor. Sulama ve ilaçlamayı erteleyin.',
+          title: '🌧️ $title',
+          body: body,
+        );
+        await recordWeather(
+          key: 'rain_warning',
+          title: title,
+          body: body,
+          severity: ActivityType.alertSeverityWarning,
+          icon: '🌧️',
+          metadata: {'rain_mm': tomorrowRainMm},
         );
       } else if (hasStorm) {
+        final title = 'Gök Gürültülü Fırtına$suffix';
+        const body =
+            'Önümüzdeki saatlerde fırtına bekleniyor. Tarla işlerini erteleyin, ekipmanı emniyete alın.';
         await show(
           id: 1005 + notificationIdSeed,
-          title: '⚡ Gök Gürültülü Fırtına$suffix',
-          body:
-              'Önümüzdeki saatlerde fırtına bekleniyor. Tarla işlerini erteleyin, ekipmanı emniyete alın.',
+          title: '⚡ $title',
+          body: body,
+        );
+        await recordWeather(
+          key: 'storm_warning',
+          title: title,
+          body: body,
+          severity: ActivityType.alertSeverityWarning,
+          icon: '⚡',
+          metadata: {'weathercode_storm': true},
         );
       }
     } catch (_) {
@@ -347,13 +470,26 @@ class NotificationService {
     String fieldName, {
     String? fieldId,
     int notificationIdSeed = 0,
+    AlertJournalService? alertJournal,
   }) async {
     // Bildirime tıklandığında DailyGuideScreen'e gidilecek payload.
     final payload = fieldId != null && fieldId.isNotEmpty
-        ? jsonEncode({'type': 'guide', 'fieldId': fieldId, 'fieldName': fieldName})
+        ? jsonEncode({
+            'type': 'guide',
+            'fieldId': fieldId,
+            'fieldName': fieldName,
+          })
         : null;
 
     try {
+      if (fieldId != null && fieldId.isNotEmpty && alertJournal != null) {
+        await alertJournal.recordGuideResult(
+          fieldId: fieldId,
+          fieldName: fieldName,
+          result: result,
+        );
+      }
+
       // 1. Yağmur bekleniyor → sulama ertele
       final rainAlert = result.alerts
           .where((a) => a.kind == AlertKind.rainExpected)
