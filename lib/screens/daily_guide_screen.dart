@@ -8,6 +8,7 @@ import '../services/crop_daily_plan.dart';
 import '../services/crop_protocol_service.dart';
 import '../services/guide_engine.dart';
 import '../services/notification_service.dart';
+import '../services/offline_encyclopedia.dart';
 import '../services/rules/recommendation.dart';
 import '../theme/app_theme.dart';
 import '../widgets/help_panel.dart';
@@ -438,13 +439,17 @@ class _CropDailyGuideCard extends StatelessWidget {
               const SizedBox(height: 10),
               _RecommendationLine(recommendation: recommendations.first),
             ],
+            const SizedBox(height: 12),
+            _MiniWeekStrip(plan: plan!),
           ] else
             _FallbackGuideBlock(
               guide: guide,
               progress: progress,
               recommendations: recommendations,
             ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
+          _CropEncyclopediaPanel(cropName: cropName, plan: plan),
+          const SizedBox(height: 8),
           Align(
             alignment: Alignment.centerRight,
             child: TextButton.icon(
@@ -466,6 +471,298 @@ class _CropDailyGuideCard extends StatelessWidget {
                     },
               icon: const Icon(Icons.calendar_month_rounded, size: 18),
               label: const Text('Tam Günlük Rehber'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Bugünden 3 gün geri + 4 gün ileri = 7 gün mini şerit. Kullanıcı tek bakışta
+/// suluk durumunu (yağmur/sulama/açık) görür. Activity log değişince Riverpod
+/// otomatik tazeler (plan rebuild olur).
+class _MiniWeekStrip extends StatelessWidget {
+  final CropDailyPlanResult plan;
+  const _MiniWeekStrip({required this.plan});
+
+  @override
+  Widget build(BuildContext context) {
+    final today = plan.todayIndex;
+    if (today < 0 || plan.days.isEmpty) return const SizedBox.shrink();
+    final start = (today - 2).clamp(0, plan.days.length - 1);
+    final end = (start + 7).clamp(0, plan.days.length);
+    final visible = plan.days.sublist(start, end);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppColors.bg,
+        borderRadius: AppRadius.sm,
+        border: Border.all(color: AppColors.border.withValues(alpha: 0.6)),
+      ),
+      child: Row(
+        children: [
+          for (final day in visible)
+            Expanded(child: _MiniDayCell(day: day)),
+        ],
+      ),
+    );
+  }
+}
+
+class _MiniDayCell extends StatelessWidget {
+  final DayPlan day;
+  const _MiniDayCell({required this.day});
+
+  @override
+  Widget build(BuildContext context) {
+    final isToday = day.isToday;
+    final coverage = day.waterCoverageFraction;
+    final hasOpen = day.hasOpenTask;
+    final color = day.waterTargetMm <= 0
+        ? AppColors.textSecondary
+        : coverage >= 0.95
+            ? AppColors.emerald
+            : coverage >= 0.5
+                ? AppColors.warning
+                : AppColors.error;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 2),
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      decoration: BoxDecoration(
+        color: isToday ? AppColors.mint : Colors.transparent,
+        borderRadius: AppRadius.sm,
+        border: isToday
+            ? Border.all(color: AppColors.emeraldDark, width: 1.5)
+            : null,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            _shortDay(day.date),
+            style: AppText.xs(context).copyWith(
+              fontWeight: FontWeight.w800,
+              color: isToday ? AppColors.emeraldDark : AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            '${day.date.day}',
+            style: AppText.bodyMd(context).copyWith(
+              fontWeight: FontWeight.w800,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Container(
+            width: 22,
+            height: 4,
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(height: 3),
+          Icon(
+            hasOpen
+                ? Icons.radio_button_unchecked
+                : Icons.check_circle_rounded,
+            size: 12,
+            color: hasOpen ? AppColors.warning : AppColors.emerald,
+          ),
+        ],
+      ),
+    );
+  }
+
+  static String _shortDay(DateTime d) {
+    const labels = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
+    return labels[(d.weekday - 1).clamp(0, 6)];
+  }
+}
+
+/// Ansiklopedi paneli — collapsible. OfflineEncyclopedia + plan birleştirir.
+/// Kullanıcı bitki başlığına dokunup tüm teknik bilgiyi inline görür.
+class _CropEncyclopediaPanel extends StatefulWidget {
+  final String cropName;
+  final CropDailyPlanResult? plan;
+
+  const _CropEncyclopediaPanel({required this.cropName, this.plan});
+
+  @override
+  State<_CropEncyclopediaPanel> createState() => _CropEncyclopediaPanelState();
+}
+
+class _CropEncyclopediaPanelState extends State<_CropEncyclopediaPanel> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final data = OfflineEncyclopedia.getByName(widget.cropName);
+    final plan = widget.plan;
+    if (data == null && plan == null) return const SizedBox.shrink();
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.mint.withValues(alpha: 0.35),
+        borderRadius: AppRadius.sm,
+        border: Border.all(color: AppColors.emerald.withValues(alpha: 0.25)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          InkWell(
+            onTap: () => setState(() => _expanded = !_expanded),
+            borderRadius: AppRadius.sm,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              child: Row(
+                children: [
+                  const Icon(Icons.menu_book_rounded,
+                      size: 18, color: AppColors.emeraldDark),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Bitki Bilgisi',
+                      style: AppText.bodyMd(context).copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.emeraldDark,
+                      ),
+                    ),
+                  ),
+                  Icon(
+                    _expanded
+                        ? Icons.expand_less_rounded
+                        : Icons.expand_more_rounded,
+                    color: AppColors.emeraldDark,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (_expanded)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+              child: _buildBody(context, data, plan),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBody(
+    BuildContext context,
+    Map<String, dynamic>? data,
+    CropDailyPlanResult? plan,
+  ) {
+    final rows = <Widget>[];
+
+    if (data?['scientific_name'] != null) {
+      rows.add(_kvRow('Bilimsel ad', data!['scientific_name'].toString(),
+          italic: true));
+    }
+    if (data?['type'] != null) {
+      rows.add(_kvRow('Tür', data!['type'].toString()));
+    }
+    if (data?['cycle'] != null) {
+      rows.add(_kvRow('Döngü', data!['cycle'].toString()));
+    }
+
+    final tMin = (data?['ideal_temp_min'] as num?)?.toDouble();
+    final tMax = (data?['ideal_temp_max'] as num?)?.toDouble();
+    if (tMin != null && tMax != null) {
+      rows.add(_kvRow('İdeal sıcaklık', '${tMin.toStringAsFixed(0)}-'
+          '${tMax.toStringAsFixed(0)} °C'));
+    }
+    final phMin = (data?['ideal_ph_min'] as num?)?.toDouble();
+    final phMax = (data?['ideal_ph_max'] as num?)?.toDouble();
+    if (phMin != null && phMax != null) {
+      rows.add(_kvRow('İdeal pH',
+          '${phMin.toStringAsFixed(1)} - ${phMax.toStringAsFixed(1)}'));
+    }
+    final waterMm = (data?['water_need_mm_week'] as num?)?.toDouble();
+    if (waterMm != null) {
+      rows.add(_kvRow('Su ihtiyacı', '${waterMm.toStringAsFixed(0)} mm/hafta'));
+    }
+    if (data?['harvest_season'] != null) {
+      rows.add(_kvRow('Hasat dönemi', data!['harvest_season'].toString()));
+    }
+    if (data?['origin'] != null) {
+      rows.add(_kvRow('Köken', data!['origin'].toString()));
+    }
+    if (data?['propagation'] != null) {
+      rows.add(_kvRow('Çoğaltma', data!['propagation'].toString()));
+    }
+    if (data?['pest_susceptibility'] != null) {
+      rows.add(_kvRow(
+          'Zararlılar', data!['pest_susceptibility'].toString(),
+          multiline: true));
+    }
+
+    if (plan != null) {
+      rows.add(const Divider(height: 18));
+      rows.add(_kvRow('Sezon hedefi',
+          '${plan.seasonTargetMm.toStringAsFixed(0)} mm'));
+      rows.add(_kvRow('Uygulanan sulama',
+          '${plan.appliedIrrigationMm.toStringAsFixed(0)} mm'));
+      rows.add(_kvRow('Yağışla karşılanan',
+          '${plan.accountedRainMm.toStringAsFixed(0)} mm'));
+      rows.add(_kvRow('Sezon kalan',
+          '${plan.remainingSeasonMm.toStringAsFixed(0)} mm'));
+      rows.add(_kvRow('Hasat günü',
+          '${plan.harvestDate.day}.${plan.harvestDate.month}.${plan.harvestDate.year}'));
+    }
+
+    if (data?['care_description'] != null) {
+      rows.add(const SizedBox(height: 8));
+      rows.add(Text(
+        data!['care_description'].toString(),
+        style: AppText.sm(context).copyWith(height: 1.5),
+      ));
+    }
+
+    if (rows.isEmpty) {
+      return Text(
+        'Bu bitki için ayrıntılı çevrimdışı veri henüz hazır değil.',
+        style: AppText.sm(context),
+      );
+    }
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: rows);
+  }
+
+  Widget _kvRow(String label, String value,
+      {bool italic = false, bool multiline = false}) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 110,
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              value,
+              maxLines: multiline ? 4 : 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                fontStyle: italic ? FontStyle.italic : FontStyle.normal,
+                color: AppColors.textPrimary,
+              ),
             ),
           ),
         ],

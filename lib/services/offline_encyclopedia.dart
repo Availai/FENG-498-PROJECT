@@ -698,6 +698,111 @@ class OfflineEncyclopedia {
               '✂️ Budama: Kış budaması temel bakım; terbiye sistemi seçimi önemli.\n\n'
               '🧪 Gübreleme: Sonbahar: Organik gübre; ilkbahar: Potasyum ağırlıklı.',
     },
+    'portakal': {
+      'other_names': 'Portakal, Washington Navel, Valencia, Finike',
+      'scientific_name': 'Citrus sinensis L.',
+      'type': 'Meyve',
+      'cycle': 'Çok yıllık (ağaç)',
+      'watering': 'Düzenli, yaz kuraklığında yüksek',
+      'sunlight': 'Tam güneş',
+      'soil':
+          'Derin, havalanan, iyi drene; kumlu-tınlı/tınlı, pH 6.0-6.5 en uygun',
+      'growth_rate': 'Yavaş',
+      'care_level': 'Yüksek',
+      'maintenance':
+          'Toprak analizi, drenaj, düzenli sulama, budama ve zararlı izlemesi ister',
+      'drought_tolerant': false,
+      'salt_tolerant': false,
+      'tropical': false,
+      'invasive': false,
+      'medicinal': false,
+      'poisonous_to_humans': false,
+      'poisonous_to_pets': false,
+      'edible_fruit': true,
+      'edible_leaf': false,
+      'flowering_season': 'İlkbahar',
+      'fruiting_season': 'Sonbahar-Kış',
+      'harvest_season': 'Kasım-Nisan (çeşide göre)',
+      'harvest_method': 'Elle veya makasla hasat',
+      'pruning_month': 'Hasat sonrası; don riski geçince Şubat-Mart',
+      'origin': 'Güney Çin / Güneydoğu Asya',
+      'propagation': 'Aşılı fidan; uygun anaç seçimi toprak analizine göre',
+      'pest_susceptibility':
+          'Akdeniz meyve sineği, turunçgil unlubiti, kırmızı kabuklu bit, turunçgil kırmızı örümceği, yaprak bitleri',
+      'ideal_temp_min': 13.0,
+      'ideal_temp_max': 32.0,
+      'ideal_ph_min': 6.0,
+      'ideal_ph_max': 6.5,
+      'water_need_mm_week': 25.0,
+      'harvest_days': 1460,
+      'row_spacing_cm': 600,
+      'plant_spacing_cm': 500,
+      'depth_cm': 60,
+      'source_refs': [
+        'T.C. Tarım ve Orman Bakanlığı/TAGEM-BATEM, Portakal Yetiştiriciliği; pH 6.0-6.5, iyi drene kumlu-tınlı/tınlı toprak, çiçeklenme ve sıcaklık bilgileri, https://arastirma.tarimorman.gov.tr/batem/Belgeler/Kutuphane/Teknik%20Bilgiler/Portakal%20Yeti%C5%9Ftiricili%C4%9Fi.pdf',
+        'T.C. Tarım ve Orman Bakanlığı/TAGEM-BATEM, Turunçgil Yetiştiriciliği Rehberi; bahçe yeri, 0-30/30-60/60-90 cm toprak analizi, drenaj ve düşük sıcaklık eşiği, https://arastirma.tarimorman.gov.tr/batem/Belgeler/Kutuphane/Teknik%20Bilgiler/Turun%C3%A7gil%20Yeti%C5%9Ftiricili%C4%9Fi.pdf',
+        'T.C. Tarım ve Orman Bakanlığı Zirai Mücadele Merkez Araştırma Enstitüsü, Meyve Hastalıkları ve Zararlıları Rehberi; turunçgil zararlıları listesi, https://arastirma.tarimorman.gov.tr/zmmae/Sayfalar/Detay.aspx?SayfaId=34',
+      ],
+      'care_description': '💧 Sulama: Yaz kuraklığında düzenli ve derin sulama yapın; suyu kök boğazına değil taç izdüşümüne verin. Taban suyu 1.5-2 m\'den yüksekse drenaj şarttır.\n\n'
+          '☀️ Yer seçimi: Akdeniz ve Ege sahil kuşağı uygundur. Soğuk çukur, sert rüzgar ve denizden gelen tuzlu su etkisi olan yerlerde bahçe kurmayın; gerekiyorsa rüzgar kıran kullanın.\n\n'
+          '🌱 Toprak: Dikimden önce 0-30, 30-60 ve 60-90 cm katmanlarından analiz yaptırın. Derin, geçirgen, organik maddesi iyi, kumlu-tınlı/tınlı toprak ve pH 6.0-6.5 hedeflenir.\n\n'
+          '✂️ Budama: Hasat sonrası ve don riski geçince kuru, hasta, çapraz dalları çıkarın; tacı ışık alacak ve hava dolaşacak şekilde açık tutun.\n\n'
+          '🧪 Gübreleme: Toprak ve yaprak analizine göre azotu bölerek, potasyumu meyve irileşme döneminde destekleyin. Gübreyi kök boğazına değil taç izdüşümüne uygulayın.\n\n'
+          '⚠️ Sıcaklık riski: 12.8°C altında büyüme çok yavaşlar; 32°C üstünde gelişme yavaşlar, 38-39°C\'de neredeyse durur. Portakal için -3°C civarı don eşiği kritiktir.',
+    },
+    'çay': {
+      'other_names': 'Çay bitkisi, Siyah çay, Yeşil çay',
+      'scientific_name': 'Camellia sinensis (L.) Kuntze',
+      'type': 'Endüstri Bitkisi',
+      'cycle': 'Çok yıllık (çalı)',
+      'watering': 'Çok yüksek; düzenli yağış ister',
+      'sunlight': 'Yarı gölgeye dayanıklı, nemli ışık sever',
+      'soil':
+          'Asit karakterli, derin, serin, humuslu ve iyi drenajlı; pH 4.5-6.0',
+      'growth_rate': 'Yavaş',
+      'care_level': 'Orta',
+      'maintenance':
+          'Düzenli sürgün hasadı, budama, toprak pH takibi ve dengeli gübreleme ister',
+      'drought_tolerant': false,
+      'salt_tolerant': false,
+      'tropical': false,
+      'invasive': false,
+      'medicinal': true,
+      'poisonous_to_humans': false,
+      'poisonous_to_pets': false,
+      'edible_fruit': false,
+      'edible_leaf': true,
+      'flowering_season': 'Sonbahar-Kış',
+      'fruiting_season': '-',
+      'harvest_season': 'Mayıs-Ekim (bölgeye göre 3-4 sürgün)',
+      'harvest_method':
+          'İki buçuk yaprak: tepe tomurcuğu + ilk iki körpe yaprak',
+      'pruning_month': 'Şubat, Mart',
+      'origin': 'Çin / Güneydoğu Asya',
+      'propagation': 'Çelikleme veya tohum',
+      'pest_susceptibility':
+          'Çay koşnili, çay akarı, yaprak bitleri; drenaj zayıfsa kök ve gövde çürüklüğü',
+      'ideal_temp_min': 14.0,
+      'ideal_temp_max': 30.0,
+      'ideal_ph_min': 4.5,
+      'ideal_ph_max': 6.0,
+      'water_need_mm_week': 35.0,
+      'harvest_days': 1095,
+      'row_spacing_cm': 150,
+      'plant_spacing_cm': 60,
+      'depth_cm': 30,
+      'source_refs': [
+        'ÇAYKUR, Çay Bitkisi Teknik Dokümanı; yıllık yağış 2000 mm altına düşmemeli, gelişme döneminde 1200 mm üstü yağış, bağıl nem en az %70, pH 4.5-6.0, iki buçuk yaprak hasat standardı, https://www.caykur.gov.tr/CMS/Design/Sources/UnitePCKYSDokumanlari/76_75.pdf',
+        'T.C. Tarım ve Orman Bakanlığı Rize İl Müdürlüğü, Çayda dolomit kireç uygulaması; sürdürülebilir çay tarımı için pH hedefi 5.0-5.5, https://rize.tarimorman.gov.tr/Haber/650/Cayda-Dolomit-Kalsiyum-Granul-Oksit-Formunda-Tarim-Kireci-Uygulanmasi-Yerinde-Incelendi',
+        'ÇAYKUR İstatistik Bülteni 2017; çayda yüksek azot ihtiyacı ve 25:5:10 NPK çay gübresi kullanımı, https://www.caykur.gov.tr/CMS/Design/Sources/Dosya/Yayinlar/281.pdf',
+      ],
+      'care_description': '💧 Su ve nem: Normal gelişme için yıllık yağışın 2000 mm altına düşmemesi, gelişme döneminde 1200 mm üstü yağış ve en az %70 bağıl nem gerekir. Kurak dönemde sulama planı yapılmalıdır.\n\n'
+          '☀️ Işık: Nemli, serin ve yarı gölgeli yamaçlarda daha dengeli sürgün verir; rüzgar ve kurutucu sıcak hava kaliteyi düşürür.\n\n'
+          '🌱 Toprak: Derin, serin, humuslu, asit karakterli ve iyi drenajlı toprak ister. pH 4.5-6.0 aralığı uygundur; sürdürülebilir üretimde hedef pH 5.0-5.5 tutulmalıdır.\n\n'
+          '✂️ Hasat ve budama: Kaliteli yaş çay için tepe tomurcuğu ile ilk iki körpe yaprak toplanır. Budama kış sonu-ilkbahar başında hasat tablasını yenileyecek şekilde yapılır.\n\n'
+          '🧪 Gübreleme: Toprak analizine göre, bölgede kullanılan 25:5:10 çay gübresi gibi azot ağırlıklı dengeli gübreler tercih edilir; gereğinden fazla azot ve gelişigüzel asitleştirici gübre kullanmayın.\n\n'
+          '🏔️ Bölge: Türkiye\'de ana üretim kuşağı Doğu Karadeniz\'dir; özellikle Rize, Trabzon ve Artvin koşulları yağış, nem ve asit toprak isteğiyle uyumludur.',
+    },
     'zeytin': {
       'other_names': 'Zeytin, Olive',
       'type': 'Meyve',

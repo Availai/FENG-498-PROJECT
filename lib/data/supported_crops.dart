@@ -1,7 +1,3 @@
-/// İlk üretim sürümünde tam desteklenen ürünler.
-///
-/// Diğer bitki verileri repoda kalır; kullanıcıya yeni ekim/rehber/seçim
-/// yüzeylerinde yalnız bu üç ürün gösterilir.
 library;
 
 class SupportedCrops {
@@ -11,29 +7,29 @@ class SupportedCrops {
     'Ayçiçeği',
     'Mısır',
     'Domates',
+    'Portakal',
+    'Çay',
   ];
 
-  static const _keys = <String>{
-    'aycicegi',
-    'aycicek',
-    'gunebakan',
-    'misir',
-    'domates',
+  static const _keyToCanonical = <String, String>{
+    'aycicegi': 'Ayçiçeği',
+    'aycicek': 'Ayçiçeği',
+    'gunebakan': 'Ayçiçeği',
+    'misir': 'Mısır',
+    'domates': 'Domates',
+    'portakal': 'Portakal',
+    'narenciye': 'Portakal',
+    'cay': 'Çay',
+    'caycamellia': 'Çay',
   };
 
   static bool isSupported(String? cropName) {
     if (cropName == null || cropName.trim().isEmpty) return false;
-    return _keys.contains(normalize(cropName));
+    return _keyToCanonical.containsKey(normalize(cropName));
   }
 
   static String? canonicalName(String? cropName) {
-    final key = normalize(cropName ?? '');
-    if (key == 'aycicegi' || key == 'aycicek' || key == 'gunebakan') {
-      return 'Ayçiçeği';
-    }
-    if (key == 'misir') return 'Mısır';
-    if (key == 'domates') return 'Domates';
-    return null;
+    return _keyToCanonical[normalize(cropName ?? '')];
   }
 
   static String normalize(String input) {

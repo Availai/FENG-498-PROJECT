@@ -467,6 +467,14 @@ class AgriService {
     String scientificName,
     String commonName,
   ) async {
+    final enc = OfflineEncyclopedia.getByName(commonName);
+    if (enc != null &&
+        enc.isNotEmpty &&
+        (enc['source_refs'] as List?)?.isNotEmpty == true) {
+      PlantCacheService.save(scientificName, enc);
+      return enc;
+    }
+
     final cached = await PlantCacheService.get(scientificName);
     if (cached != null && cached.isNotEmpty) return cached;
 
@@ -481,7 +489,6 @@ class AgriService {
       }
     } catch (_) {}
 
-    final enc = OfflineEncyclopedia.getByName(commonName);
     if (enc != null && enc.isNotEmpty) {
       PlantCacheService.save(scientificName, enc);
       return enc;

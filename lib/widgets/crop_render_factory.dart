@@ -146,6 +146,12 @@ String _getAssetPath(String cropName) {
   if (name.contains('nohut')) return 'assets/crops/nohut.jpg';
   if (name.contains('mercimek')) return 'assets/crops/mercimek.jpg';
   if (name.contains('patates')) return 'assets/crops/patates.jpg';
+  if (name.contains('portakal') || name.contains('narenciye')) {
+    return 'assets/crops/portakal.png';
+  }
+  if (name.contains('çay') && !name.contains('adaçay')) {
+    return 'assets/crops/cay.png';
+  }
   return 'assets/crops/bugday.jpg';
 }
 

@@ -67,7 +67,7 @@ class _CropFieldMatchScreenState extends ConsumerState<CropFieldMatchScreen>
       AppToast.show(
         context,
         message:
-            'Bu prototipte yalnız Ayçiçeği, Mısır ve Domates destekleniyor.',
+            'Desteklenen ürünler: Ayçiçeği, Mısır, Domates, Portakal, Çay.',
         type: ToastType.warning,
       );
       return;

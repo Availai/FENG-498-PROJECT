@@ -466,6 +466,195 @@ const _domatesWater = <WaterGuideBand>[
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════
+// PORTAKAL — Çok yıllık (Citrus sinensis). Yıllık döngü 365 gün üzerinden
+// modellendi (Mart başlangıcı = ekim/dikim referans). Su bantları yağışlı
+// Akdeniz iklimine göre dengelenmiştir.
+// ═══════════════════════════════════════════════════════════════════════════
+
+const _portakalFertilizers = <FertilizerProduct>[
+  FertilizerProduct(
+    name: 'Yanmış Ahır Gübresi',
+    formula: 'Organik',
+    defaultDosePerDa: 3000,
+    unit: 'kg',
+    stage: 'Şubat — uyanma öncesi (taç altı)',
+    tip: 'Ağaç başına 30-40 kg, tacın altına serpip toprağa hafif karıştır.',
+  ),
+  FertilizerProduct(
+    name: 'Üre %46 N (1. Doz)',
+    formula: '%46 N',
+    defaultDosePerDa: 18,
+    unit: 'kg',
+    stage: 'Mart — çiçeklenme öncesi',
+    tip: 'Ağaç başına ≈ 0.5-1 kg saf azot. Sulama suyu ile ver.',
+  ),
+  FertilizerProduct(
+    name: 'Triple Süperfosfat',
+    formula: '%43 P₂O₅',
+    defaultDosePerDa: 12,
+    unit: 'kg',
+    stage: 'Mart — taç altı',
+  ),
+  FertilizerProduct(
+    name: 'Potasyum Sülfat',
+    formula: 'K₂SO₄',
+    defaultDosePerDa: 15,
+    unit: 'kg',
+    stage: 'Haziran — meyve büyümesi',
+    tip: 'Meyve kalitesi (şeker/asit dengesi) için kritik.',
+  ),
+  FertilizerProduct(
+    name: 'Üre %46 N (2. Doz)',
+    formula: '%46 N',
+    defaultDosePerDa: 12,
+    unit: 'kg',
+    stage: 'Eylül — meyve dolumu',
+    tip: 'Geç azot meyve kabuğunu yeşil tutar — dozu aşma.',
+  ),
+  FertilizerProduct(
+    name: 'Çinko + Demir Yaprak Gübresi',
+    formula: 'Zn + Fe (şelat)',
+    defaultDosePerDa: 0.5,
+    unit: 'L',
+    stage: 'Nisan-Mayıs — yaprak gelişimi',
+    tip: 'Sarı yaprak (kloroz) görülürse iki hafta arayla iki kez.',
+  ),
+];
+
+const _portakalPesticides = <PesticideProduct>[
+  PesticideProduct(
+    name: 'Yazlık Madeni Yağ',
+    activeIngredient: 'Mineral oil',
+    category: PesticideCategory.insecticide,
+    targets: ['Torbalı koşnil', 'Unlubit', 'Beyaz sinek'],
+    defaultDosePerDa: 1500,
+    unit: 'mL',
+    preharvestIntervalDays: 21,
+    tip: '25°C üstünde uygulama yapma — yaprak yanığı riski.',
+  ),
+  PesticideProduct(
+    name: 'Spinosad',
+    activeIngredient: 'Spinosad %48',
+    category: PesticideCategory.insecticide,
+    targets: ['Akdeniz meyve sineği'],
+    defaultDosePerDa: 25,
+    unit: 'mL',
+    preharvestIntervalDays: 7,
+    tip: 'Tuzaklarda ergin görüldüğünde 7-10 gün arayla.',
+  ),
+  PesticideProduct(
+    name: 'Bakır Oksiklorür',
+    activeIngredient: 'Cu %50',
+    category: PesticideCategory.fungicide,
+    targets: ['Kök çürüklüğü (phytophthora)', 'Gommozis'],
+    defaultDosePerDa: 400,
+    unit: 'g',
+    preharvestIntervalDays: 14,
+    tip: 'Kış uygulaması — yaprak dökümünden sonra gövdeye fırça ile.',
+  ),
+  PesticideProduct(
+    name: 'Abamektin',
+    activeIngredient: 'Abamectin %1.8',
+    category: PesticideCategory.acaricide,
+    targets: ['Kırmızı örümcek', 'Pas akarı'],
+    defaultDosePerDa: 60,
+    unit: 'mL',
+    preharvestIntervalDays: 14,
+  ),
+];
+
+/// Portakal yıllık döngüsü — gün 0 = ekim/dikim ya da yıllık çevrim başı (Mart).
+/// Çok yıllık ağaç olsa da kullanıcının canlı rehberi her yıl başa döner.
+const _portakalWater = <WaterGuideBand>[
+  WaterGuideBand(dayFrom: 0, dayTo: 30, weeklyMm: 18, stage: 'Uyanma + sürgün'),
+  WaterGuideBand(dayFrom: 31, dayTo: 75, weeklyMm: 28, stage: 'Çiçeklenme'),
+  WaterGuideBand(
+      dayFrom: 76, dayTo: 165, weeklyMm: 45, stage: 'Meyve büyümesi'),
+  WaterGuideBand(
+      dayFrom: 166,
+      dayTo: 240,
+      weeklyMm: 55,
+      stage: 'Yaz stresi (KRİTİK)'),
+  WaterGuideBand(
+      dayFrom: 241, dayTo: 305, weeklyMm: 30, stage: 'Olgunlaşma'),
+  WaterGuideBand(
+      dayFrom: 306, dayTo: 365, weeklyMm: 12, stage: 'Hasat + dinlenme'),
+];
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ÇAY — Camellia sinensis. Doğu Karadeniz koşulları. Yıllık döngü; sulama
+// ihtiyacı düşük (yağışlı bölge) ama gübre + sürgün hasadı yoğun.
+// ═══════════════════════════════════════════════════════════════════════════
+
+const _cayFertilizers = <FertilizerProduct>[
+  FertilizerProduct(
+    name: 'Amonyum Sülfat',
+    formula: '%21 N + S',
+    defaultDosePerDa: 60,
+    unit: 'kg',
+    stage: 'Mart — uyanma öncesi (1. doz)',
+    tip: 'Asidik tutar (pH 4.5-5.5 hedefi). Üre yerine her zaman tercih et.',
+  ),
+  FertilizerProduct(
+    name: 'Kompoze 15-15-15',
+    formula: '15-15-15',
+    defaultDosePerDa: 20,
+    unit: 'kg',
+    stage: 'Mayıs — 1. sürgün sonrası',
+    tip: 'Hasat sonrası tetiklemek için.',
+  ),
+  FertilizerProduct(
+    name: 'Amonyum Sülfat (2. Doz)',
+    formula: '%21 N + S',
+    defaultDosePerDa: 50,
+    unit: 'kg',
+    stage: 'Temmuz — 2. sürgün sonrası',
+  ),
+  FertilizerProduct(
+    name: 'Potasyum Sülfat',
+    formula: 'K₂SO₄',
+    defaultDosePerDa: 10,
+    unit: 'kg',
+    stage: 'Eylül — son sürgün sonrası',
+    tip: 'Kışa girişte sürgün dayanıklılığını artırır.',
+  ),
+];
+
+const _cayPesticides = <PesticideProduct>[
+  PesticideProduct(
+    name: 'Yazlık Madeni Yağ',
+    activeIngredient: 'Mineral oil',
+    category: PesticideCategory.insecticide,
+    targets: ['Çay koşnili', 'Yaprak biti'],
+    defaultDosePerDa: 1200,
+    unit: 'mL',
+    preharvestIntervalDays: 21,
+  ),
+  PesticideProduct(
+    name: 'Bakır Hidroksit',
+    activeIngredient: 'Cu(OH)₂',
+    category: PesticideCategory.fungicide,
+    targets: ['Kök ve gövde çürüklüğü'],
+    defaultDosePerDa: 250,
+    unit: 'g',
+    preharvestIntervalDays: 14,
+    tip: 'Kış uygulaması — sürgün budamasından hemen sonra.',
+  ),
+];
+
+const _cayWater = <WaterGuideBand>[
+  WaterGuideBand(dayFrom: 0, dayTo: 60, weeklyMm: 12, stage: 'Kış dinlenmesi'),
+  WaterGuideBand(
+      dayFrom: 61, dayTo: 120, weeklyMm: 22, stage: 'İlk sürgün (Mayıs)'),
+  WaterGuideBand(
+      dayFrom: 121, dayTo: 210, weeklyMm: 28, stage: 'Yaz sürgünü'),
+  WaterGuideBand(
+      dayFrom: 211, dayTo: 280, weeklyMm: 25, stage: 'Son sürgün (Eylül)'),
+  WaterGuideBand(
+      dayFrom: 281, dayTo: 365, weeklyMm: 10, stage: 'Hazırlık + budama'),
+];
+
+// ═══════════════════════════════════════════════════════════════════════════
 // API
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -485,9 +674,16 @@ class CropPlaybook {
   });
 
   /// Ekimden itibaren [daysSincePlanting] için önerilen haftalık mm.
+  /// Çok yıllık bitkilerde (portakal, çay) bant yıllık döngüye sarılır:
+  /// dayTo > 365 olan bitkilerde gün sayısı `cycleEnd + 1` ile mod alınır.
   WaterGuideBand? bandForDay(int daysSincePlanting) {
+    if (waterGuide.isEmpty) return null;
+    final cycleEnd = waterGuide.last.dayTo;
+    final dayInCycle = cycleEnd > 0 && daysSincePlanting > cycleEnd
+        ? daysSincePlanting % (cycleEnd + 1)
+        : daysSincePlanting;
     for (final b in waterGuide) {
-      if (daysSincePlanting >= b.dayFrom && daysSincePlanting <= b.dayTo) {
+      if (dayInCycle >= b.dayFrom && dayInCycle <= b.dayTo) {
         return b;
       }
     }
@@ -519,10 +715,32 @@ const _domates = CropPlaybook(
   waterGuide: _domatesWater,
 );
 
+const _portakal = CropPlaybook(
+  cropKey: 'portakal',
+  displayName: 'Portakal',
+  fertilizers: _portakalFertilizers,
+  pesticides: _portakalPesticides,
+  waterGuide: _portakalWater,
+);
+
+const _cay = CropPlaybook(
+  cropKey: 'cay',
+  displayName: 'Çay',
+  fertilizers: _cayFertilizers,
+  pesticides: _cayPesticides,
+  waterGuide: _cayWater,
+);
+
 class CropPlaybooks {
   CropPlaybooks._();
 
-  static const all = <CropPlaybook>[_aycicegi, _misir, _domates];
+  static const all = <CropPlaybook>[
+    _aycicegi,
+    _misir,
+    _domates,
+    _portakal,
+    _cay,
+  ];
 
   /// Bitki adından (serbest yazılmış olsa bile) playbook'u bulur.
   /// [SupportedCrops.canonicalName] kullanarak normalize eder.

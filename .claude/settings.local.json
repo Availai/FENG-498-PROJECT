@@ -27,7 +27,13 @@
       "Bash(xargs grep *)",
       "Bash(Select-String -Pattern \"FAIL|fail|✗|\\\\[E\\\\]\" -Context 0,3)",
       "Bash(Out-String)",
-      "Bash(dart format *)"
+      "Bash(dart format *)",
+      "Bash(python -c \"import json; data=json.load\\(open\\('backend/data_pipeline/seed_plants.json', encoding='utf-8'\\)\\); names=[p['name_tr'] for p in data]; matches=[n for n in names if 'portakal' in n.lower\\(\\) or 'çay' in n.lower\\(\\) or 'cay' in n.lower\\(\\)]; print\\(matches[:10]\\)\")",
+      "Bash(python -c ' *)",
+      "Bash(python data_pipeline/sync_crop_images.py --dry-run)",
+      "Bash(grep -n \"cropName.*'\\\\\\\\\\(Portakal\\\\\\\\|Çay\\\\\\\\|Ayçiçeği\\\\\\\\|Domates\\\\\\\\|Mısır\\\\\\\\\\)'\" lib/data/turkiye_crop_guides.dart)",
+      "Bash(grep -n \"id: '\\\\\\\\\\(portakal\\\\\\\\|cay\\\\\\\\|aycicegi\\\\\\\\|domates\\\\\\\\|misir\\\\\\\\\\)'\" lib/data/turkiye_crop_guides.dart)",
+      "Bash(grep -v \"^.*//.*\")"
     ]
   }
 }

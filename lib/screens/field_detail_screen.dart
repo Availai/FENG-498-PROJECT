@@ -8,7 +8,6 @@ import 'package:intl/intl.dart';
 import 'package:latlong2/latlong.dart';
 import '../services/agri_service.dart';
 import 'crop_daily_plan_screen.dart';
-import 'daily_guide_screen.dart';
 import '../services/app_providers.dart';
 import '../services/crop_placement.dart';
 import '../services/crop_protocol_service.dart';
@@ -38,6 +37,7 @@ import 'cost_ledger_screen.dart';
 import 'disease_capture_screen.dart';
 import 'farm_journal_screen.dart';
 import 'growing_guide_screen.dart';
+import 'field_quick_guide_sheet.dart';
 import 'plant_zone_drawing_screen.dart';
 import 'turkish_crops_search_screen.dart';
 import '../widgets/animated_route.dart';
@@ -3421,19 +3421,18 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
           type: ToastType.warning);
       return;
     }
-    // Açılış öncesi ekinler için recompute — ilk açılışta stale durmasın.
+    // Açılış öncesi ekinler için recompute — stale veriyle açılmasın.
     for (final crop in _fieldCrops) {
       final cropId = crop['id']?.toString();
       if (cropId != null && cropId.isNotEmpty) {
         ref.read(growthEngineProvider).recompute(cropId: cropId);
       }
     }
-    Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => DailyGuideScreen(
-        fieldId: fieldId,
-        fieldName: widget.fieldData['name']?.toString(),
-      ),
-    ));
+    FieldQuickGuideSheet.show(
+      context,
+      fieldId: fieldId,
+      fieldName: widget.fieldData['name']?.toString() ?? 'Tarla',
+    );
   }
 
   // ignore: unused_element
