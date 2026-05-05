@@ -6,6 +6,7 @@ import '../services/app_providers.dart';
 import '../services/guide_engine.dart' show AlertSeverity;
 import '../services/rules/recommendation.dart';
 import '../theme/app_theme.dart';
+import 'activity_quick_log.dart';
 import 'floating_toast.dart';
 
 /// Deterministik kural motorundan gelen tek bir tavsiyeyi gösteren kart.
@@ -127,6 +128,29 @@ class _RecommendationCardState extends ConsumerState<RecommendationCard> {
     }
     setState(() => _logging = true);
     try {
+      if (command.activityType == ActivityType.watering) {
+        final repo = ref.read(localDataRepositoryProvider);
+        final field = await repo.loadFieldById(r.target.fieldId);
+        final crops = await repo.loadFieldCrops(r.target.fieldId);
+        if (!mounted) return;
+        final ok = await showActivityQuickLogSheet(
+          context: context,
+          ref: ref,
+          fieldId: r.target.fieldId,
+          type: command.activityType,
+          cropId: r.target.cropId,
+          fieldCrops: crops,
+          fieldAreaDekar:
+              (field?['area_dekar'] as num?)?.toDouble() ?? 1.0,
+          recommendedQuantity:
+              command.recommendedQuantity ?? command.quantity,
+          quantityUnit:
+              command.quantityUnit ?? ActivityType.quantityUnit(command.activityType),
+          note: r.actionHint,
+        );
+        if (ok) widget.onLogged?.call();
+        return;
+      }
       await ref.read(activityLoggerProvider).log(
         fieldId: r.target.fieldId,
         type: command.activityType,

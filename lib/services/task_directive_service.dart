@@ -6,6 +6,7 @@ import '../data/crop_protocols.dart';
 import '../data/turkiye_crop_guides.dart';
 import 'field_state_service.dart';
 import 'ipm_decision_service.dart';
+import 'rules/timing_window.dart';
 import 'water_accounting.dart';
 
 /// `GrowthEngine` tarafından üretilen bir ekinin stres/verim özeti. Saf POD —
@@ -132,6 +133,9 @@ class TaskDirectiveService {
     DateTime? now,
   }) {
     final t = now ?? DateTime.now();
+    final realActivities = activities
+        .where((activity) => _isRealActivity(activity, t))
+        .toList(growable: false);
     final out = <FieldDirective>[];
 
     // ── Tarihi geçmiş takvim planları (auto_seed) → somut "yapılmadı" ──
@@ -142,6 +146,7 @@ class TaskDirectiveService {
         scheduledEvents: scheduledEvents,
         fieldCrops: fieldCrops,
         growthStates: growthStates,
+        fieldStates: fieldStates,
         now: t,
       ));
     }
@@ -193,7 +198,7 @@ class TaskDirectiveService {
       final harvestDays = (crop['harvest_days'] as num?)?.toInt() ?? 90;
       final plantedDate = _parsePlantedDate(crop['planted_date']?.toString());
 
-      final activitiesForCrop = activities.where((a) {
+      final activitiesForCrop = realActivities.where((a) {
         final fid = a['crop_id']?.toString();
         return fid == null || fid.isEmpty || fid == cropId;
       }).toList();
@@ -290,21 +295,22 @@ class TaskDirectiveService {
           fieldState: fieldState,
           waterIntervalDays: waterInterval,
           growth: growth,
+          now: t,
         );
-        final minutes = waterPlan.quantity.round();
+        final waterAmount = _formatQuantity(waterPlan.quantity, waterPlan.unit);
         final baseReason = lastWater == null
             ? 'Henüz sulama kaydı yok. $waterInterval gün aralıkla sulama öneriliyor.'
             : 'Son sulama $daysSinceWater gün önce. Aralık $waterInterval gün doldu.';
         final stressNote = _growthStressNote(growth, focus: 'water');
         out.add(FieldDirective(
           urgency: 2,
-          headline: '$cropName: BUGÜN $minutes DK SULA',
+          headline: '$cropName: BUGÜN $waterAmount SULA',
           reason: stressNote == null ? baseReason : '$baseReason $stressNote',
           kind: 'water_now',
           actionType: ActivityType.watering,
-          suggestedQuantity: minutes.toDouble(),
-          recommendedQuantity: minutes.toDouble(),
-          quantityUnit: 'dk',
+          suggestedQuantity: waterPlan.quantity,
+          recommendedQuantity: waterPlan.quantity,
+          quantityUnit: waterPlan.unit,
           steps: waterPlan.steps,
           sourceRefs: sourceRefs,
           areaDekar: fieldState?.areaDekar,
@@ -415,7 +421,7 @@ class TaskDirectiveService {
       out.add(FieldDirective(
         urgency: 0,
         headline: 'BUGÜN İÇİN ACİL BİR İŞ YOK',
-        reason: _nextCheckHint(fieldCrops, activities, t),
+        reason: _nextCheckHint(fieldCrops, realActivities, t),
         kind: 'idle',
       ));
     }
@@ -434,6 +440,7 @@ class TaskDirectiveService {
     required List<Map<String, dynamic>> scheduledEvents,
     required List<Map<String, dynamic>> fieldCrops,
     required Map<String, GrowthSnapshot>? growthStates,
+    required Map<String, CropFieldState>? fieldStates,
     required DateTime now,
   }) {
     final cropById = <String, Map<String, dynamic>>{
@@ -483,6 +490,7 @@ class TaskDirectiveService {
       final recommended = (ev['recommended_quantity'] as num?)?.toDouble();
       final unit = ev['unit']?.toString();
       final growth = cropId == null ? null : growthStates?[cropId];
+      final fieldState = cropId == null ? null : fieldStates?[cropId];
 
       final stageLabel = _stageLabelFromSnapshot(growth);
       final lossNote = growth != null && growth.yieldLossPct > 4
@@ -493,21 +501,30 @@ class TaskDirectiveService {
 
       switch (type) {
         case 'watering':
-          final minutes = recommended?.round();
+          final waterPlan = _scheduledWaterPlan(
+            recommended: recommended,
+            unit: unit,
+            fieldState: fieldState,
+            now: now,
+          );
+          final waterAmount = waterPlan == null
+              ? null
+              : _formatQuantity(waterPlan.quantity, waterPlan.unit);
           out.add(FieldDirective(
             urgency: urgency,
-            headline: minutes == null
+            headline: waterAmount == null
                 ? '$cropLabel: SULAMA GECİKTİ'
-                : '$cropLabel: $minutes DK SULA (GECİKTİ)',
+                : '$cropLabel: $waterAmount SULA (GECİKTİ)',
             reason:
                 'Takvimdeki sulama $lateDays gün önce planlıydı, kayıt yok. '
                 '${stageLabel.isEmpty ? '' : '$stageLabel evresinde '}'
                 'kök su açığı birikir.$lossNote',
             kind: 'overdue_water',
             actionType: ActivityType.watering,
-            suggestedQuantity: recommended,
-            recommendedQuantity: recommended,
-            quantityUnit: unit,
+            suggestedQuantity: waterPlan?.quantity,
+            recommendedQuantity: waterPlan?.quantity,
+            quantityUnit: waterPlan?.unit,
+            steps: waterPlan?.steps ?? const [],
             cropId: cropId,
             cropName: cropName,
           ));
@@ -702,29 +719,77 @@ class TaskDirectiveService {
     return null;
   }
 
-  static int _estimateWateringMinutes(int interval) {
-    if (interval <= 2) return 10;
-    if (interval <= 4) return 20;
-    if (interval <= 6) return 30;
-    return 45;
+  static String _formatQuantity(double quantity, String unit) {
+    if (unit == 'L' && quantity >= 1000) {
+      return '${(quantity / 1000).toStringAsFixed(1)} m³';
+    }
+    final rounded = quantity.round();
+    return '$rounded $unit';
+  }
+
+  static _QuantityPlan? _scheduledWaterPlan({
+    required double? recommended,
+    required String? unit,
+    required CropFieldState? fieldState,
+    required DateTime now,
+  }) {
+    if (recommended == null || recommended <= 0) return null;
+    if (unit == 'L') {
+      return _QuantityPlan(
+        quantity: recommended,
+        unit: 'L',
+        steps: [
+          'Planlı sulama miktarı: ${_formatQuantity(recommended, 'L')}.',
+          'Uygun saat: ${TimingWindow.forIrrigation(now: now)?.descriptor ?? 'Sabah 06:00-10:00 arası ideal'}.',
+        ],
+      );
+    }
+    final areaSqm = fieldState?.areaSqm ?? 1000.0;
+    final impact = WaterAccounting.calculate(
+      metadata: const {'irrigation_method': 'Damla sulama'},
+      quantity: recommended,
+      quantityUnit: unit ?? 'dk',
+      areaSqm: areaSqm,
+      plantCount: fieldState?.estimatedPlantCount,
+    );
+    final grossLiters =
+        impact.liters / WaterAccounting.methodEfficiency('Damla sulama');
+    return _QuantityPlan(
+      quantity: grossLiters.roundToDouble(),
+      unit: 'L',
+      steps: [
+        'Eski plan ${recommended.round()} ${unit ?? 'dk'} idi; kayıt ekranı için litreye çevrildi.',
+        'Damla sulamada verilecek ${grossLiters.round()} L, etkili su ${impact.liters.round()} L / ${impact.mm.toStringAsFixed(1)} mm.',
+        'Uygun saat: ${TimingWindow.forIrrigation(now: now)?.descriptor ?? 'Sabah 06:00-10:00 arası ideal'}.',
+      ],
+    );
   }
 
   static _QuantityPlan _waterRecommendation({
     required CropFieldState? fieldState,
     required int waterIntervalDays,
     required GrowthSnapshot? growth,
+    required DateTime now,
   }) {
-    final baseMinutes = _estimateWateringMinutes(waterIntervalDays).toDouble();
+    final timing = TimingWindow.forIrrigation(now: now)?.descriptor ??
+        'Sabah 06:00-10:00 arası ideal';
+    const method = 'Damla sulama';
+    final efficiency = WaterAccounting.methodEfficiency(method);
     if (fieldState == null ||
         fieldState.areaSqm <= 0 ||
         fieldState.estimatedPlantCount <= 0) {
-      final adjusted = growth != null && growth.waterDeficitMm > 5
-          ? baseMinutes * 1.2
-          : baseMinutes;
+      final targetMm = growth != null && growth.waterDeficitMm > 5
+          ? (growth.waterDeficitMm * 1.15).clamp(5.0, 45.0).toDouble()
+          : (waterIntervalDays / 7.0 * 25.0).clamp(8.0, 35.0).toDouble();
+      final grossLiters = targetMm * 1000.0 / efficiency;
       return _QuantityPlan(
-        quantity: adjusted.roundToDouble(),
-        unit: 'dk',
-        steps: const ['Sulamayı sabah erken veya güneş battıktan sonra yap.'],
+        quantity: grossLiters.roundToDouble(),
+        unit: 'L',
+        steps: [
+          'Alan bilgisi eksik olduğu için 1 dekar varsayıldı.',
+          'Hedef su: ${targetMm.toStringAsFixed(1)} mm, damla sulamada yaklaşık ${grossLiters.round()} L.',
+          'Uygun saat: $timing.',
+        ],
       );
     }
 
@@ -737,26 +802,24 @@ class TaskDirectiveService {
     );
     final stressMm = math.max(0.0, growth?.waterDeficitMm ?? 0.0);
     final totalMm = remainingMm + stressMm * 0.35;
-    final liters = totalMm * fieldState.areaSqm;
-    const dripperLiterPerHour = 1.6;
-    final minutes =
-        (liters / (fieldState.estimatedPlantCount * dripperLiterPerHour) * 60)
-            .clamp(5.0, 480.0);
+    final effectiveLiters = totalMm * fieldState.areaSqm;
+    final grossLiters = effectiveLiters / efficiency;
     final impact = WaterAccounting.calculate(
-      metadata: const {'irrigation_method': 'Damla sulama'},
-      quantity: minutes,
-      quantityUnit: 'dk',
+      metadata: {
+        'irrigation_method': method,
+        'water_liters': grossLiters,
+      },
       areaSqm: fieldState.areaSqm,
       plantCount: fieldState.estimatedPlantCount,
     );
 
     return _QuantityPlan(
-      quantity: minutes.roundToDouble(),
-      unit: 'dk',
+      quantity: grossLiters.roundToDouble(),
+      unit: 'L',
       steps: [
         '${fieldState.areaDekar.toStringAsFixed(2)} da alanda ${fieldState.estimatedPlantCount} bitki hesaba katıldı.',
-        'Hedef su: ${impact.mm.toStringAsFixed(1)} mm, yaklaşık ${impact.liters.round()} L.',
-        'Damla sulama varsayımı ile ${minutes.round()} dk uygula; karıkta toprak tava gelince kes.',
+        'Hedef su: ${impact.mm.toStringAsFixed(1)} mm, damla sulamada verilecek ${grossLiters.round()} L; etkili su ${impact.liters.round()} L.',
+        'Uygun saat: $timing. Yöntem değişirse kayıt ekranındaki net etki yeniden hesaplanır.',
       ],
     );
   }
@@ -906,6 +969,13 @@ class TaskDirectiveService {
       }
     }
     return latest;
+  }
+
+  static bool _isRealActivity(Map<String, dynamic> activity, DateTime now) {
+    if (activity['source']?.toString() == 'auto_seed') return false;
+    final date = activity['date'];
+    if (date is DateTime && date.isAfter(now)) return false;
+    return true;
   }
 
   static List<_ForecastDay> _parseForecast(List<dynamic>? raw) {

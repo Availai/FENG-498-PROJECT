@@ -1200,7 +1200,8 @@ class LocalDataRepository {
     int limit = 500,
   }) {
     final query = _db.select(_db.calendarEvents)
-      ..where((tbl) => tbl.deletedAt.isNull());
+      ..where((tbl) =>
+          tbl.deletedAt.isNull() & tbl.source.equals('auto_seed').not());
     if (fieldId != null) {
       query.where((tbl) => tbl.fieldId.equals(fieldId));
     }
@@ -1208,6 +1209,10 @@ class LocalDataRepository {
       ..orderBy([(tbl) => OrderingTerm.desc(tbl.eventDate)])
       ..limit(limit);
     return query.watch().asyncMap((rows) async {
+      final now = DateTime.now();
+      final realRows = rows
+          .where((row) => !row.eventDate.toLocal().isAfter(now))
+          .toList(growable: false);
       final fields = await _activeFieldsQuery().get();
       final names = {for (final f in fields) f.id: f.name};
       final cropRows = await (_db.select(_db.fieldCrops)
@@ -1215,8 +1220,8 @@ class LocalDataRepository {
           .get();
       final cropNames = {for (final c in cropRows) c.id: c.name};
       final filtered = types == null || types.isEmpty
-          ? rows
-          : rows.where((r) => types.contains(r.eventType)).toList();
+          ? realRows
+          : realRows.where((r) => types.contains(r.eventType)).toList();
       return filtered.map((ev) {
         Map<String, dynamic>? meta;
         final raw = ev.metadataJson;

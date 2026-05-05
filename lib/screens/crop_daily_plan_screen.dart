@@ -341,6 +341,10 @@ class _CropDailyPlanScreenState extends ConsumerState<CropDailyPlanScreen> {
     CropDailyPlanResult? plan,
     List<Map<String, dynamic>> fieldCrops,
   ) async {
+    final noteParts = [
+      if (action.detail.isNotEmpty) action.detail,
+      if (action.timingLabel != null) 'Uygun saat: ${action.timingLabel}',
+    ];
     await showActivityQuickLogSheet(
       context: context,
       ref: ref,
@@ -351,7 +355,7 @@ class _CropDailyPlanScreenState extends ConsumerState<CropDailyPlanScreen> {
       fieldAreaDekar: plan?.areaDekar ?? widget.areaDekar ?? 1.0,
       recommendedQuantity: action.recommendedQuantity,
       quantityUnit: action.unit,
-      note: action.detail.isEmpty ? null : action.detail,
+      note: noteParts.isEmpty ? null : noteParts.join('\n'),
     );
   }
 
@@ -1010,6 +1014,14 @@ class _ActionCard extends StatelessWidget {
                       action.detail,
                       style: AppText.xs(context),
                       maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  if (action.timingLabel != null)
+                    Text(
+                      'Uygun saat: ${action.timingLabel}',
+                      style: AppText.xs(context)
+                          .copyWith(color: AppColors.textSecondary),
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                 ],

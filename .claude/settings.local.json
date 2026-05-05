@@ -24,7 +24,10 @@
       "Bash(flutter test *)",
       "Bash(grep -v \"//\")",
       "Bash(git stash *)",
-      "Bash(xargs grep *)"
+      "Bash(xargs grep *)",
+      "Bash(Select-String -Pattern \"FAIL|fail|✗|\\\\[E\\\\]\" -Context 0,3)",
+      "Bash(Out-String)",
+      "Bash(dart format *)"
     ]
   }
 }

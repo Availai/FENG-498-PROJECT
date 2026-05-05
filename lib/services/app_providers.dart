@@ -245,6 +245,16 @@ final fieldGuideProvider = FutureProvider.family
 
   final fieldMap = await repo.loadFieldById(fieldId);
   final crops = await repo.loadFieldCrops(fieldId);
+  final fieldStateRows = fieldMap == null
+      ? const <CropFieldState>[]
+      : ref.read(fieldStateServiceProvider).compute(
+            field: fieldMap,
+            fieldCrops: crops,
+            activities: activities,
+          );
+  final fieldStateMap = {
+    for (final state in fieldStateRows) state.cropId: state,
+  };
 
   // Saatlik forecast — koordinat varsa
   HourlyForecast? hourly;
@@ -263,6 +273,7 @@ final fieldGuideProvider = FutureProvider.family
         activities: activities,
         scheduledEvents: scheduled,
         growthStates: growthMap,
+        fieldStates: fieldStateMap,
         hourly: hourly,
       );
 });
@@ -290,10 +301,22 @@ final fieldDirectivesSummaryProvider = FutureProvider.family
   final crops = await repo.loadFieldCrops(fieldId);
   final scheduled =
       await repo.watchScheduledAutoSeedEvents(fieldId: fieldId).first;
+  final fieldMap = await repo.loadFieldById(fieldId);
+  final fieldStateRows = fieldMap == null
+      ? const <CropFieldState>[]
+      : ref.read(fieldStateServiceProvider).compute(
+            field: fieldMap,
+            fieldCrops: crops,
+            activities: activities,
+          );
+  final fieldStateMap = {
+    for (final state in fieldStateRows) state.cropId: state,
+  };
   return ref.watch(taskDirectiveServiceProvider).generate(
         fieldCrops: crops,
         activities: activities,
         scheduledEvents: scheduled,
+        fieldStates: fieldStateMap,
       );
 });
 

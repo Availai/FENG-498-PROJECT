@@ -55,7 +55,10 @@ void main() {
     );
 
     expect(water.recommendedQuantity, isNotNull);
+    expect(water.quantityUnit, 'L');
+    expect(water.headline, contains('SULA'));
     expect(water.steps, isNotEmpty);
+    expect(water.steps.join(' '), contains('Uygun saat'));
     expect(water.sourceRefs, isNotEmpty);
     expect(water.areaDekar, 2.4);
     expect(water.plantCount, 17000);

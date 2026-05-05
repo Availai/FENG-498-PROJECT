@@ -9,7 +9,7 @@ import '../widgets/help_panel.dart';
 import '../widgets/shimmer_loader.dart';
 import '../widgets/tap_scale.dart';
 import 'field_3d_planner_screen.dart';
-import 'field_status_screen.dart';
+import 'field_detail_screen.dart';
 import '../theme/app_theme.dart';
 
 class MyCropsScreen extends ConsumerWidget {
@@ -81,7 +81,7 @@ class MyCropsScreen extends ConsumerWidget {
           onPressed: () => _openFieldPlanner(context),
           backgroundColor: AppColors.emerald,
           icon: const Icon(Icons.satellite_alt, color: Colors.white),
-          label: Text('YENİ TARLA ÇİZ',
+          label: Text('Yeni Tarla Çiz',
               style: AppText.label(context).copyWith(color: Colors.white)),
         ),
       ),
@@ -160,8 +160,7 @@ class MyCropsScreen extends ConsumerWidget {
                       ? () {
                           Navigator.of(context).push(
                             AnimatedRoute.scaleFade(
-                              FieldStatusScreen(
-                                  fieldId: item['id']?.toString()),
+                              FieldDetailScreen(fieldData: item),
                             ),
                           );
                         }

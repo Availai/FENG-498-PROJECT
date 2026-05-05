@@ -3,6 +3,7 @@ import 'dart:convert';
 import '../data/activity_types.dart';
 import '../data/crop_playbooks.dart';
 import '../data/supported_crops.dart';
+import 'rules/timing_window.dart';
 import 'water_accounting.dart';
 
 /// Bir sulama aktivitesinin tarlaya kattığı toplam mm'yi hesaplar.
@@ -151,6 +152,7 @@ class DayTask {
   final String? detail;
   final double? recommendedQuantity;
   final String? unit;
+  final String? timingLabel;
   final bool done;
   final DateTime? doneAt;
 
@@ -164,6 +166,7 @@ class DayTask {
     this.detail,
     this.recommendedQuantity,
     this.unit,
+    this.timingLabel,
     this.done = false,
     this.doneAt,
   });
@@ -220,6 +223,7 @@ class CropDailyPlanService {
     final activitiesByDay = <DateTime, List<Map<String, dynamic>>>{};
     double appliedTotalMm = 0;
     for (final a in activities) {
+      if (!_isRealActivity(a, t)) continue;
       final aCrop = a['crop_id']?.toString();
       // crop_id boş → tarla geneli; bu ekine de say.
       if (aCrop != null && aCrop.isNotEmpty && aCrop != cropId) continue;
@@ -291,6 +295,7 @@ class CropDailyPlanService {
         waterTargetMm: waterTarget,
         waterIrrigatedMm: waterMm,
         waterRainMm: rain,
+        areaSqm: areaSqm,
       );
 
       final isToday = date == today;
@@ -365,6 +370,7 @@ class CropDailyPlanService {
     required double waterTargetMm,
     required double waterIrrigatedMm,
     required double waterRainMm,
+    required double areaSqm,
   }) {
     final out = <DayTask>[];
     final loggedTypes = <String>{};
@@ -419,16 +425,18 @@ class CropDailyPlanService {
           .clamp(0, double.infinity)
           .toDouble();
       if (neededMm > 0.5) {
-        final minutes =
-            (neededMm / fallbackMmPerWaterMinute).round().clamp(5, 90);
+        final liters =
+            neededMm * areaSqm / WaterAccounting.methodEfficiency('Damla sulama');
+        final timing = TimingWindow.forIrrigation(now: today);
         out.add(DayTask(
           type: ActivityType.watering,
           label: 'Sulama önerisi',
           origin: 'computed',
           detail:
-              '$minutes dk damla • Bugün ${_fmtNum(neededMm)} mm açık (${band.stage})',
-          recommendedQuantity: minutes.toDouble(),
-          unit: 'dk',
+              'Bugün ${_fmtNum(neededMm)} mm açık, damla sulama için yaklaşık ${_fmtNum(liters)} L. Uygun saat: ${timing?.descriptor ?? 'Sabah 06:00-10:00'}.',
+          recommendedQuantity: liters.toDouble(),
+          unit: 'L',
+          timingLabel: timing?.descriptor,
           done: waterIrrigatedMm > 0,
         ));
       }
@@ -480,6 +488,13 @@ class CropDailyPlanService {
   static String _fmtNum(double v) {
     if (v == v.roundToDouble()) return v.toInt().toString();
     return v.toStringAsFixed(1);
+  }
+
+  static bool _isRealActivity(Map<String, dynamic> activity, DateTime now) {
+    if (activity['source']?.toString() == 'auto_seed') return false;
+    final date = activity['date'];
+    if (date is DateTime && date.isAfter(now)) return false;
+    return true;
   }
 
   static DateTime? _parsePlanted(String? raw) {

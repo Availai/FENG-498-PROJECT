@@ -91,6 +91,9 @@ class FieldStateService {
     DateTime? now,
   }) {
     final t = now ?? DateTime.now();
+    final realActivities = activities
+        .where((activity) => _isRealActivity(activity, t))
+        .toList(growable: false);
     final supportedCrops = fieldCrops
         .where((crop) => SupportedCrops.isSupported(crop['name']?.toString()))
         .toList(growable: false);
@@ -102,7 +105,7 @@ class FieldStateService {
       final cropName = SupportedCrops.canonicalName(crop['name']?.toString()) ??
           crop['name']?.toString() ??
           'Bitki';
-      final setup = _setupMetadata(activities, cropId);
+      final setup = _setupMetadata(realActivities, cropId);
       final areaSqm =
           _cropAreaSqm(crop, setup, fieldAreaSqm, supportedCrops.length);
       final areaDekar = areaSqm / 1000.0;
@@ -126,7 +129,7 @@ class FieldStateService {
 
       DateTime? plantedAt = _parsePlantedDate(crop['planted_date']?.toString());
       plantedAt ??=
-          _firstActivityDate(activities, cropId, ActivityType.planting);
+          _firstActivityDate(realActivities, cropId, ActivityType.planting);
 
       double weeklyWaterMm = 0;
       double weeklyWaterL = 0;
@@ -144,7 +147,7 @@ class FieldStateService {
 
       double harvestedKg = 0;
 
-      for (final activity in activities) {
+      for (final activity in realActivities) {
         if (!_belongsToCrop(activity, cropId)) continue;
         final type = activity['type']?.toString();
         final date = activity['date'];
@@ -225,6 +228,13 @@ class FieldStateService {
     return activityCropId == null ||
         activityCropId.isEmpty ||
         activityCropId == cropId;
+  }
+
+  static bool _isRealActivity(Map<String, dynamic> activity, DateTime now) {
+    if (activity['source']?.toString() == 'auto_seed') return false;
+    final date = activity['date'];
+    if (date is DateTime && date.isAfter(now)) return false;
+    return true;
   }
 
   static Map<String, dynamic> _metadata(Map<String, dynamic> activity) {

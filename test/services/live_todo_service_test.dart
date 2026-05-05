@@ -3,7 +3,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:feng_498/data/activity_types.dart';
 import 'package:feng_498/models/plant_condition.dart';
 import 'package:feng_498/services/field_state_service.dart';
-import 'package:feng_498/services/guide_engine.dart' show AlertSeverity;
 import 'package:feng_498/services/live_todo_service.dart';
 import 'package:feng_498/services/rules/crop_rule_set.dart';
 import 'package:feng_498/services/rules/recommendation.dart';
@@ -184,8 +183,7 @@ void main() {
       now: now,
       plantedDate: now.subtract(const Duration(days: 30)),
       fieldState: ruleFieldState(weeklyWaterMm: 30, weeklyWaterTargetMm: 35),
-      rawFieldState:
-          cropFieldState(weeklyWaterMm: 30, weeklyWaterTargetMm: 35),
+      rawFieldState: cropFieldState(weeklyWaterMm: 30, weeklyWaterTargetMm: 35),
       hourly: hourly,
       growth: const GrowthSnapshot(
         stageKey: 'vejetatif',

@@ -3,7 +3,9 @@ import 'dart:math' as math;
 import '../data/activity_types.dart';
 import '../data/pesticide_rei.dart';
 import '../data/turkish_crops_repository.dart';
+import 'field_state_service.dart' show CropFieldState;
 import 'task_directive_service.dart';
+import 'water_accounting.dart';
 import 'weather_soil_service.dart';
 
 /// Birleşik rehber motoru — TaskDirectiveService'in çıktısını alır,
@@ -27,6 +29,7 @@ class GuideEngine {
     List<dynamic>? dailyForecast,
     double? currentTemp,
     double? soilMoisture,
+    Map<String, CropFieldState>? fieldStates,
     DateTime? now,
   }) async {
     final t = now ?? DateTime.now();
@@ -40,6 +43,7 @@ class GuideEngine {
       currentTemp: currentTemp,
       soilMoisture: soilMoisture,
       growthStates: growthStates,
+      fieldStates: fieldStates,
       scheduledEvents: scheduledEvents,
       now: t,
     );
@@ -55,7 +59,7 @@ class GuideEngine {
     }
 
     // 4) Aşırı sulama alert (son 7 gün uygulanan vs. ihtiyaç)
-    _emitOverWateringAlert(activities, fieldCrops, alerts, t);
+    _emitOverWateringAlert(activities, fieldCrops, alerts, t, fieldStates);
 
     // 5) REI alert (son ilaçlama timestamp + REI saat)
     await _emitReiAlert(activities, alerts, t);
@@ -222,34 +226,36 @@ class GuideEngine {
     List<Map<String, dynamic>> fieldCrops,
     List<EnvAlert> alerts,
     DateTime now,
+    Map<String, CropFieldState>? fieldStates,
   ) {
     final cutoff = now.subtract(const Duration(days: 7));
     double appliedMm7d = 0;
     for (final a in activities) {
-      if (a['event_type'] != ActivityType.watering) continue;
-      final dStr = a['event_date']?.toString();
-      if (dStr == null) continue;
-      final d = DateTime.tryParse(dStr);
-      if (d == null || d.isBefore(cutoff)) continue;
-      final qty = (a['quantity'] as num?)?.toDouble();
-      final unit = a['unit']?.toString() ?? 'dk';
-      // Çok kabaca: dk → mm dönüşümü 0.5 mm/dk damla, 1.0 mm/dk yağmurlama
-      // Kesin değer için WaterAccounting gerekir; burada konservatif tahmin.
-      if (qty != null) {
-        if (unit == 'mm') {
-          appliedMm7d += qty;
-        } else if (unit == 'dk') {
-          appliedMm7d += qty * 0.7;
-        } else if (unit == 'L') {
-          // 1L/m² ≈ 1mm — çok kaba tahmin
-          final dekar = (fieldCrops.isNotEmpty
-                  ? (fieldCrops.first['area_dekar'] as num?)?.toDouble()
-                  : null) ??
-              1.0;
-          final m2 = dekar * 1000;
-          if (m2 > 0) appliedMm7d += qty / m2;
-        }
-      }
+      if (a['source']?.toString() == 'auto_seed') continue;
+      if ((a['type'] ?? a['event_type']) != ActivityType.watering) continue;
+      final rawDate = a['date'] ?? a['event_date'];
+      final d = rawDate is DateTime
+          ? rawDate
+          : DateTime.tryParse(rawDate?.toString() ?? '');
+      if (d == null || d.isAfter(now) || d.isBefore(cutoff)) continue;
+      final cropId = a['crop_id']?.toString();
+      final state = cropId == null ? null : fieldStates?[cropId];
+      final areaSqm = state?.areaSqm ??
+          ((fieldCrops.isNotEmpty
+                      ? (fieldCrops.first['area_dekar'] as num?)?.toDouble()
+                      : null) ??
+                  1.0) *
+              1000.0;
+      final impact = WaterAccounting.calculate(
+        metadata: a['metadata'] is Map
+            ? Map<String, dynamic>.from(a['metadata'] as Map)
+            : const <String, dynamic>{},
+        quantity: (a['quantity'] as num?)?.toDouble(),
+        quantityUnit: a['unit']?.toString(),
+        areaSqm: areaSqm,
+        plantCount: state?.estimatedPlantCount,
+      );
+      appliedMm7d += impact.mm;
     }
 
     // Playbook ihtiyacı yaklaşık 30mm/hafta × 1.5 = 45mm

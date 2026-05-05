@@ -64,7 +64,11 @@ void main() {
   }
 
   Future<void> addWaterLiters(
-      String cropId, DateTime date, double liters) async {
+    String cropId,
+    DateTime date,
+    double liters, {
+    String source = 'manual',
+  }) async {
     final now = DateTime.utc(2026, 4, 24);
     await database.into(database.calendarEvents).insert(
           CalendarEventsCompanion.insert(
@@ -74,6 +78,7 @@ void main() {
             title: 'Sulama',
             eventType: ActivityType.watering,
             eventDate: date,
+            source: Value(source),
             unit: const Value('L'),
             metadataJson: Value(
                 '{"water_liters":$liters,"irrigation_method":"Damla sulama"}'),
@@ -124,5 +129,31 @@ void main() {
     expect(dry, isNotNull);
     expect(wet, isNotNull);
     expect(wet!.waterDeficitMm, lessThan(dry!.waterDeficitMm));
+  });
+
+  test('gelecek ve auto_seed sulama kayitlarini su etkisine katmaz', () async {
+    await seedCrop('dry2', fertilizerKg: 10);
+    await seedCrop('planned', fertilizerKg: 10);
+    await addWaterLiters('planned', DateTime(2026, 8, 14), 6000);
+    await addWaterLiters(
+      'planned',
+      DateTime(2026, 4, 20),
+      6000,
+      source: 'auto_seed',
+    );
+
+    final engine = GrowthEngine(database);
+    final dry = await engine.recompute(
+      cropId: 'dry2',
+      now: DateTime(2026, 4, 24),
+    );
+    final planned = await engine.recompute(
+      cropId: 'planned',
+      now: DateTime(2026, 4, 24),
+    );
+
+    expect(dry, isNotNull);
+    expect(planned, isNotNull);
+    expect(planned!.waterDeficitMm, closeTo(dry!.waterDeficitMm, 0.001));
   });
 }

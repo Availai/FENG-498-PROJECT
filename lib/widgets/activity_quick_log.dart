@@ -8,6 +8,7 @@ import '../data/supported_crops.dart';
 import '../services/app_providers.dart';
 import '../services/haptic_service.dart';
 import '../services/ipm_decision_service.dart';
+import '../services/rules/timing_window.dart';
 import '../services/water_accounting.dart';
 import '../theme/app_theme.dart';
 import 'floating_toast.dart';
@@ -55,9 +56,12 @@ Future<bool> showActivityQuickLogSheet({
       cropId: detail.cropId ?? cropId,
       note: detail.note,
       quantity: detail.quantity,
-      quantityUnit: detail.quantityUnit ??
-          quantityUnit ??
-          ActivityType.quantityUnit(type),
+      quantityUnit: type == ActivityType.watering
+          ? detail.quantityUnit ??
+              (_isTopLevelLiterUnit(quantityUnit) ? quantityUnit : 'L')
+          : detail.quantityUnit ??
+              quantityUnit ??
+              ActivityType.quantityUnit(type),
       recommendedQuantity: detail.recommendedQuantity,
       metadata: detail.metadata,
     );
@@ -82,10 +86,16 @@ Future<bool> showActivityQuickLogSheet({
   }
 }
 
+bool _isTopLevelLiterUnit(String? unit) {
+  if (unit == null) return false;
+  final key = SupportedCrops.normalize(unit);
+  return key == 'l' || key == 'lt' || key.contains('litre');
+}
+
 /// Çiftçinin tarlada yaptığı günlük işleri tek tap ile kaydettiği chip satırı.
 /// Field detail ekranında HUD'un üstüne yerleşir.
 ///
-/// Tasarım: Sadelik önceliği — miktar ve not opsiyonel. Boş bırakılabilir.
+/// Tasarım: Sadelik önceliği — not opsiyonel; sulamada verilen litre zorunlu.
 class ActivityQuickLog extends ConsumerStatefulWidget {
   const ActivityQuickLog({
     super.key,
@@ -238,6 +248,22 @@ class _QuickLogDetail {
   final Map<String, dynamic> metadata;
 }
 
+class _WateringRecommendationInfo {
+  const _WateringRecommendationInfo({
+    required this.stageLabel,
+    required this.targetMm,
+    required this.grossLiters,
+    required this.effectiveLiters,
+    required this.timingLabel,
+  });
+
+  final String stageLabel;
+  final double targetMm;
+  final double grossLiters;
+  final double effectiveLiters;
+  final String timingLabel;
+}
+
 class _QuickLogSheet extends StatefulWidget {
   const _QuickLogSheet({
     required this.type,
@@ -335,9 +361,14 @@ class _QuickLogSheetState extends State<_QuickLogSheet> {
     } else if (widget.type == ActivityType.harvest) {
       _method = 'Kasa';
     }
-    if (widget.initialQuantity != null) {
+    if (widget.type == ActivityType.watering &&
+        widget.initialQuantity != null &&
+        _isLiterUnit(widget.quantityUnit)) {
+      _extraQtyCtrl.text = _formatNum(widget.initialQuantity!);
+    } else if (widget.initialQuantity != null) {
       _qtyCtrl.text = _formatNum(widget.initialQuantity!);
     }
+    _prefillWaterRecommendation();
     if (widget.initialNote != null && widget.initialNote!.trim().isNotEmpty) {
       _noteCtrl.text = widget.initialNote!.trim();
     }
@@ -363,6 +394,14 @@ class _QuickLogSheetState extends State<_QuickLogSheet> {
         mounted) {
       setState(() {});
     }
+  }
+
+  void _prefillWaterRecommendation() {
+    if (widget.type != ActivityType.watering) return;
+    if (_extraQtyCtrl.text.trim().isNotEmpty) return;
+    final info = _wateringInfo();
+    if (info == null || info.grossLiters <= 0) return;
+    _extraQtyCtrl.text = _formatNum(info.grossLiters);
   }
 
   @override
@@ -467,7 +506,8 @@ class _QuickLogSheetState extends State<_QuickLogSheet> {
                         color: _cropError ? AppColors.error : AppColors.border,
                       ),
                     ),
-                    errorText: _cropError ? 'Devam etmek için bir ürün seçin' : null,
+                    errorText:
+                        _cropError ? 'Devam etmek için bir ürün seçin' : null,
                   ),
                 ),
                 const SizedBox(height: 14),
@@ -573,6 +613,16 @@ class _QuickLogSheetState extends State<_QuickLogSheet> {
     }
     final qty = double.tryParse(_qtyCtrl.text.replaceAll(',', '.'));
     final extraQty = double.tryParse(_extraQtyCtrl.text.replaceAll(',', '.'));
+    if (widget.type == ActivityType.watering &&
+        (extraQty == null || extraQty <= 0)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+              'Sulama kaydı için verilen su miktarını litre olarak girin.'),
+        ),
+      );
+      return;
+    }
     final ipmDecision = _currentIpmDecision();
     if (widget.type == ActivityType.scouting &&
         _hasIpmRules &&
@@ -609,12 +659,17 @@ class _QuickLogSheetState extends State<_QuickLogSheet> {
     if (widget.type == ActivityType.watering) {
       metadata['irrigation_method'] = _method;
       if (qty != null) metadata['duration_minutes'] = qty;
-      if (extraQty != null) metadata['water_liters'] = extraQty;
+      metadata['water_liters'] = extraQty;
       final impact = _waterImpact(qty: qty, liters: extraQty);
-      if (impact.hasWater) {
-        metadata['effective_water_mm'] = impact.mm;
-        metadata['effective_water_liters'] = impact.liters;
-        metadata['water_impact_source'] = impact.source;
+      metadata['effective_water_mm'] = impact.mm;
+      metadata['effective_water_liters'] = impact.liters;
+      metadata['water_impact_source'] = impact.source;
+      final info = _wateringInfo();
+      if (info != null) {
+        metadata['recommended_water_mm'] = info.targetMm;
+        metadata['recommended_water_liters'] = info.grossLiters;
+        metadata['recommended_effective_water_liters'] = info.effectiveLiters;
+        metadata['recommended_timing'] = info.timingLabel;
       }
       // Playbook'tan haftalık önerilen mm — gerçek/öneri karşılaştırması için.
       final crop = _selectedCropMap();
@@ -691,9 +746,12 @@ class _QuickLogSheetState extends State<_QuickLogSheet> {
       cropId: _selectedCropId,
       note: _noteCtrl.text.isEmpty ? null : _noteCtrl.text,
       quantity: qty,
-      quantityUnit:
-          widget.quantityUnit ?? ActivityType.quantityUnit(widget.type),
-      recommendedQuantity: widget.recommendedQuantity,
+      quantityUnit: widget.type == ActivityType.watering
+          ? (qty == null ? null : 'dk')
+          : widget.quantityUnit ?? ActivityType.quantityUnit(widget.type),
+      recommendedQuantity: widget.type == ActivityType.watering
+          ? (_wateringInfo()?.grossLiters ?? widget.recommendedQuantity)
+          : widget.recommendedQuantity,
       metadata: metadata,
     ));
   }
@@ -710,7 +768,7 @@ class _QuickLogSheetState extends State<_QuickLogSheet> {
   String _quantityLabel(String type) {
     switch (type) {
       case ActivityType.watering:
-        return 'Süre';
+        return 'Süre (isteğe bağlı)';
       case ActivityType.fertilizing:
         return 'Gübre miktarı';
       case ActivityType.spraying:
@@ -740,9 +798,10 @@ class _QuickLogSheetState extends State<_QuickLogSheet> {
   List<Widget> _typeSpecificFields(String type) {
     switch (type) {
       case ActivityType.watering:
+        final recommendation = _wateringRecommendation();
         return [
-          if (_wateringRecommendation() != null) ...[
-            _wateringRecommendation()!,
+          if (recommendation != null) ...[
+            recommendation,
             const SizedBox(height: 12),
           ],
           _methodDropdown(
@@ -757,7 +816,7 @@ class _QuickLogSheetState extends State<_QuickLogSheet> {
           const SizedBox(height: 14),
           _textField(
             controller: _extraQtyCtrl,
-            label: 'Verilen su (opsiyonel)',
+            label: 'Verilen su',
             hint: 'Örn. 1200',
             suffix: 'L',
             number: true,
@@ -807,34 +866,34 @@ class _QuickLogSheetState extends State<_QuickLogSheet> {
             const SizedBox(height: 14),
           ],
           if (chemicalGateOpen) ...[
-          _textField(
-            controller: _materialCtrl,
-            label: 'İlaç adı',
-            hint: 'Kullanılan ilacın ticari adını girin',
-          ),
-          const SizedBox(height: 14),
-          _textField(
-            controller: _activeCtrl,
-            label: 'Etken madde (opsiyonel)',
-            hint: 'Örn. bakır, kükürt, biyolojik preparat',
-          ),
-          const SizedBox(height: 14),
-          _textField(
-            controller: _targetCtrl,
-            label: 'Hedef hastalık/zararlı',
-            hint: 'Örn. mildiyö, Tuta, mısır kurdu',
-          ),
-          const SizedBox(height: 14),
-          _methodDropdown(
-            label: 'Uygulama yöntemi',
-            values: const [
-              'Pülverizatör',
-              'Sırt pompası',
-              'Damla ile',
-              'Tohum uygulaması'
-            ],
-          ),
-          const SizedBox(height: 14),
+            _textField(
+              controller: _materialCtrl,
+              label: 'İlaç adı',
+              hint: 'Kullanılan ilacın ticari adını girin',
+            ),
+            const SizedBox(height: 14),
+            _textField(
+              controller: _activeCtrl,
+              label: 'Etken madde (opsiyonel)',
+              hint: 'Örn. bakır, kükürt, biyolojik preparat',
+            ),
+            const SizedBox(height: 14),
+            _textField(
+              controller: _targetCtrl,
+              label: 'Hedef hastalık/zararlı',
+              hint: 'Örn. mildiyö, Tuta, mısır kurdu',
+            ),
+            const SizedBox(height: 14),
+            _methodDropdown(
+              label: 'Uygulama yöntemi',
+              values: const [
+                'Pülverizatör',
+                'Sırt pompası',
+                'Damla ile',
+                'Tohum uygulaması'
+              ],
+            ),
+            const SizedBox(height: 14),
           ],
         ];
       case ActivityType.scouting:
@@ -1340,9 +1399,11 @@ class _QuickLogSheetState extends State<_QuickLogSheet> {
     );
   }
 
+  double get _fieldAreaSqm =>
+      (widget.fieldAreaDekar <= 0 ? 1.0 : widget.fieldAreaDekar) * 1000.0;
+
   WaterImpact _waterImpact({double? qty, double? liters}) {
-    final areaSqm =
-        (widget.fieldAreaDekar <= 0 ? 1.0 : widget.fieldAreaDekar) * 1000.0;
+    final areaSqm = _fieldAreaSqm;
     final crop = _selectedCropMap();
     final plantCount = WaterAccounting.estimatePlantCount(
       areaSqm: areaSqm,
@@ -1366,6 +1427,7 @@ class _QuickLogSheetState extends State<_QuickLogSheet> {
     final qty = double.tryParse(_qtyCtrl.text.replaceAll(',', '.'));
     final liters = double.tryParse(_extraQtyCtrl.text.replaceAll(',', '.'));
     final impact = _waterImpact(qty: qty, liters: liters);
+    final rawLiters = liters ?? 0;
     final pb = _playbook;
     final crop = _selectedCropMap();
     double? weeklyTarget;
@@ -1379,7 +1441,7 @@ class _QuickLogSheetState extends State<_QuickLogSheet> {
     final targetPct = weeklyTarget == null || weeklyTarget <= 0
         ? null
         : (impact.mm / weeklyTarget * 100).clamp(0, 999).round();
-    final hasInput = (qty != null && qty > 0) || (liters != null && liters > 0);
+    final hasInput = liters != null && liters > 0;
 
     return Container(
       padding: const EdgeInsets.all(12),
@@ -1396,11 +1458,13 @@ class _QuickLogSheetState extends State<_QuickLogSheet> {
           Expanded(
             child: Text(
               hasInput
-                  ? 'Bu kayıt yaklaşık ${impact.mm.toStringAsFixed(1)} mm / '
-                      '${_formatLargeLiter(impact.liters)} L etki eder. '
+                  ? 'Verilen ${_formatWaterVolume(rawLiters)} su, '
+                      '${_method.toLowerCase()} verimiyle yaklaşık '
+                      '${_formatWaterVolume(impact.liters)} etkili su / '
+                      '${impact.mm.toStringAsFixed(1)} mm eder. '
                       '${targetPct == null ? '' : 'Haftalık hedefin %$targetPct kadarını karşılar. '}'
                       'Su açığını yaklaşık ${impact.mm.toStringAsFixed(1)} mm azaltır.'
-                  : 'Süre veya litre girince sulamanın tarlaya kaç mm etki edeceği burada hesaplanır.',
+                  : 'Verilen su miktarını litre olarak girince net mm etkisi burada hesaplanır.',
               style: const TextStyle(
                 fontSize: 12,
                 color: AppColors.textPrimary,
@@ -1413,13 +1477,26 @@ class _QuickLogSheetState extends State<_QuickLogSheet> {
     );
   }
 
-  /// Sulama dialogunda haftalık önerilen mm ve dekara karşılık L hesabı.
-  /// Bitki seçili + planted_date varsa playbook'tan band çekilir; yoksa null.
-  Widget? _wateringRecommendation() {
+  _WateringRecommendationInfo? _wateringInfo() {
+    final timing = TimingWindow.forIrrigation(now: DateTime.now());
+    final timingLabel = timing?.descriptor ?? 'Sabah 06:00-10:00 arası ideal';
+    final recommended = widget.recommendedQuantity;
+    if (recommended != null &&
+        recommended > 0 &&
+        _isLiterUnit(widget.quantityUnit)) {
+      final impact = _waterImpact(liters: recommended);
+      return _WateringRecommendationInfo(
+        stageLabel: 'Rehber önerisi',
+        targetMm: impact.mm,
+        grossLiters: recommended,
+        effectiveLiters: impact.liters,
+        timingLabel: timingLabel,
+      );
+    }
+
     final pb = _playbook;
-    if (pb == null) return null;
     final crop = _selectedCropMap();
-    if (crop == null) return null;
+    if (pb == null || crop == null) return null;
     final planted = _parsePlantedDate(crop['planted_date']?.toString());
     if (planted == null) return null;
     final daysSince = DateTime.now().difference(planted).inDays;
@@ -1427,9 +1504,23 @@ class _QuickLogSheetState extends State<_QuickLogSheet> {
     final band = pb.bandForDay(daysSince);
     if (band == null) return null;
 
-    // 1 mm = 1 L/m². 1 dekar = 1000 m². Toplam L = mm × 1000 × dekar.
-    final totalLiters = band.weeklyMm * 1000 * widget.fieldAreaDekar;
-    final litersPerDay = totalLiters / 7;
+    final targetMm = band.weeklyMm / 7.0;
+    if (targetMm <= 0) return null;
+    final effectiveLiters = targetMm * _fieldAreaSqm;
+    final grossLiters =
+        effectiveLiters / WaterAccounting.methodEfficiency(_method);
+    return _WateringRecommendationInfo(
+      stageLabel: '${pb.displayName} · ${band.stage} ($daysSince. gün)',
+      targetMm: targetMm,
+      grossLiters: grossLiters,
+      effectiveLiters: effectiveLiters,
+      timingLabel: timingLabel,
+    );
+  }
+
+  /// Sulama dialogunda önerilen net mm, yöntem verimli litre ve saat hesabı.
+  Widget? _wateringRecommendation() {
+    final info = _wateringInfo();
 
     return Container(
       padding: const EdgeInsets.all(12),
@@ -1449,7 +1540,7 @@ class _QuickLogSheetState extends State<_QuickLogSheet> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '${pb.displayName} · ${band.stage} ($daysSince. gün)',
+                  info != null ? info.stageLabel : 'Bugün sulama gerekmiyor',
                   style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
@@ -1458,10 +1549,13 @@ class _QuickLogSheetState extends State<_QuickLogSheet> {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'Bu evrede haftada ${band.weeklyMm} mm önerilir. '
-                  'Tarlan ${_formatNum(widget.fieldAreaDekar)} dekar → '
-                  '~${_formatLargeLiter(totalLiters)} L/hafta '
-                  '(≈ ${_formatLargeLiter(litersPerDay)} L/gün)',
+                  info != null
+                      ? 'Bugün hedef ${info.targetMm.toStringAsFixed(1)} mm. '
+                          '${_method.toLowerCase()} için verilecek su '
+                          '${_formatWaterVolume(info.grossLiters)}; '
+                          'tarlaya yaklaşık ${_formatWaterVolume(info.effectiveLiters)} etkili su geçer. '
+                          'Uygun saat: ${info.timingLabel}.'
+                      : 'Hedef karşılandı veya yağış yeterli — yine de sulamak isterseniz litreyi net girin.',
                   style: const TextStyle(
                     fontSize: 12,
                     color: AppColors.textPrimary,
@@ -1526,6 +1620,17 @@ class _QuickLogSheetState extends State<_QuickLogSheet> {
   static String _formatLargeLiter(double v) {
     if (v >= 1000) return '${(v / 1000).toStringAsFixed(1)} m³';
     return v.toStringAsFixed(0);
+  }
+
+  static String _formatWaterVolume(double v) {
+    final formatted = _formatLargeLiter(v);
+    return formatted.contains('m³') ? formatted : '$formatted L';
+  }
+
+  static bool _isLiterUnit(String? unit) {
+    if (unit == null) return false;
+    final key = SupportedCrops.normalize(unit);
+    return key == 'l' || key == 'lt' || key.contains('litre');
   }
 
   Widget _methodDropdown({

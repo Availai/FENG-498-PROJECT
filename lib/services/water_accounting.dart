@@ -49,15 +49,27 @@ class WaterAccounting {
       );
     }
 
-    final liters = _doubleValue(
+    final explicitEffectiveLiters =
+        _doubleValue(meta, ['effective_water_liters']);
+    if (explicitEffectiveLiters != null && explicitEffectiveLiters > 0) {
+      return WaterImpact(
+        mm: explicitEffectiveLiters / safeAreaSqm,
+        liters: explicitEffectiveLiters,
+        source: 'liters',
+        method: method,
+      );
+    }
+
+    final rawLiters = _doubleValue(
           meta,
-          ['water_liters', 'water_l', 'liters', 'effective_water_liters'],
+          ['water_liters', 'water_l', 'liters'],
         ) ??
         (_isLiterUnit(quantityUnit) ? quantity : null);
-    if (liters != null && liters > 0) {
+    if (rawLiters != null && rawLiters > 0) {
+      final effectiveLiters = rawLiters * methodEfficiency(method);
       return WaterImpact(
-        mm: liters / safeAreaSqm,
-        liters: liters,
+        mm: effectiveLiters / safeAreaSqm,
+        liters: effectiveLiters,
         source: 'liters',
         method: method,
       );
@@ -117,6 +129,17 @@ class WaterAccounting {
       return 5.0 * hours;
     }
     return minutes * fallbackMmPerWaterMinute;
+  }
+
+  static double methodEfficiency(String method) {
+    final key = SupportedCrops.normalize(method);
+    if (key.contains('damla') || key.contains('drip')) return 0.90;
+    if (key.contains('yagmurlama') || key.contains('sprinkler')) return 0.75;
+    if (key.contains('karik') || key.contains('furrow')) return 0.65;
+    if (key.contains('el') || key.contains('elle') || key.contains('hand')) {
+      return 0.80;
+    }
+    return 0.75;
   }
 
   static int estimatePlantCount({

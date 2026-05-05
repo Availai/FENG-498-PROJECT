@@ -61,7 +61,55 @@ void main() {
     expect(states, hasLength(1));
     expect(states.single.areaDekar, closeTo(1.5, 0.001));
     expect(states.single.estimatedPlantCount, 3000);
-    expect(states.single.weeklyWaterMm, closeTo(4.0, 0.001));
-    expect(states.single.weeklyWaterLiters, closeTo(6000, 0.001));
+    expect(states.single.weeklyWaterMm, closeTo(3.92, 0.001));
+    expect(states.single.weeklyWaterLiters, closeTo(5880, 0.001));
+  });
+
+  test('auto_seed ve gelecek sulama kayitlarini su etkisine katmaz', () {
+    final service = const FieldStateService();
+    final now = DateTime(2026, 4, 24);
+
+    final states = service.compute(
+      now: now,
+      field: const {
+        'id': 'field-1',
+        'area_sqm': 1000,
+      },
+      fieldCrops: const [
+        {
+          'id': 'crop-1',
+          'name': 'Ayçiçeği',
+          'row_spacing_cm': 70,
+          'plant_spacing_cm': 30,
+          'planted_date': '24.04.2026',
+        },
+      ],
+      activities: [
+        {
+          'crop_id': 'crop-1',
+          'type': ActivityType.watering,
+          'date': DateTime(2026, 4, 24),
+          'source': 'auto_seed',
+          'metadata': const {
+            'water_liters': 5000,
+            'irrigation_method': 'Damla sulama',
+          },
+        },
+        {
+          'crop_id': 'crop-1',
+          'type': ActivityType.watering,
+          'date': DateTime(2026, 4, 25),
+          'source': 'manual',
+          'metadata': const {
+            'water_liters': 5000,
+            'irrigation_method': 'Damla sulama',
+          },
+        },
+      ],
+    );
+
+    expect(states, hasLength(1));
+    expect(states.single.weeklyWaterMm, 0);
+    expect(states.single.weeklyWaterLiters, 0);
   });
 }

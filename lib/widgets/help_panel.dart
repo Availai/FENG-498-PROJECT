@@ -58,8 +58,7 @@ class HelpContent {
         icon: Icons.map_rounded,
         iconColor: Color(0xFF43A047),
         title: 'Tarla Kartları',
-        description:
-            'Kayıtlı tarım alanlarınızın kısa özetini gösterir. '
+        description: 'Kayıtlı tarım alanlarınızın kısa özetini gösterir. '
             'Karta tıklayarak o tarlaya ait detaylar, ekim bilgisi ve günlük rehbere ulaşabilirsiniz.',
       ),
       HelpItem(
@@ -98,8 +97,7 @@ class HelpContent {
         icon: Icons.satellite_alt_rounded,
         iconColor: Color(0xFF43A047),
         title: 'Yeni Alan Çiz',
-        description:
-            'Sağ alttaki "YENİ ALAN ÇİZ" düğmesine basın. '
+        description: 'Sağ alttaki "Yeni Tarla Çiz" düğmesine basın. '
             'Harita üzerinde tarlanızın köşelerini işaretleyerek alanı kaydedin. '
             'Konum izni gereklidir.',
       ),
@@ -107,8 +105,7 @@ class HelpContent {
         icon: Icons.grid_view_rounded,
         iconColor: Color(0xFF1976D2),
         title: 'Alan Kartları',
-        description:
-            'Her kart bir tarım alanını temsil eder. '
+        description: 'Her kart bir tarım alanını temsil eder. '
             'Karta tıklayarak o alanın detaylarını, ürün bilgisini ve sulama planını görebilirsiniz.',
       ),
       HelpItem(
@@ -164,16 +161,14 @@ class HelpContent {
         icon: Icons.circle,
         iconColor: Color(0xFF1976D2),
         title: '🔵 Mavi — Sulama Hatırlatıcısı',
-        description:
-            'Haftalık otomatik sulama hatırlatma tarihleri. '
+        description: 'Haftalık otomatik sulama hatırlatma tarihleri. '
             'Sulama planı ekranından sıklığı değiştirebilirsiniz.',
       ),
       HelpItem(
         icon: Icons.circle,
         iconColor: Color(0xFF9C27B0),
         title: '🟣 Mor — Tarla Kayıt Tarihi',
-        description:
-            'O alanı sisteme ilk eklediğiniz tarih. '
+        description: 'O alanı sisteme ilk eklediğiniz tarih. '
             'Geçmiş faaliyetlerinizi takip etmek için kullanışlıdır.',
       ),
       HelpItem(
@@ -238,7 +233,8 @@ class HelpContent {
 
   static const HelpContent camera = HelpContent(
     screenTitle: 'Akıllı Asistan Kamerası',
-    screenSubtitle: 'Bitkinizdeki hastalığı yapay zeka ile saniyeler içinde teşhis edin.',
+    screenSubtitle:
+        'Bitkinizdeki hastalığı yapay zeka ile saniyeler içinde teşhis edin.',
     headerIcon: Icons.camera_alt_rounded,
     headerColor: Color(0xFF37474F),
     items: [
@@ -262,8 +258,7 @@ class HelpContent {
         icon: Icons.psychology_rounded,
         iconColor: Color(0xFFE67E22),
         title: 'Yapay Zeka Analizi',
-        description:
-            'Fotoğraf yüklendikten sonra "ANALİZ ET" düğmesine basın. '
+        description: 'Fotoğraf yüklendikten sonra "ANALİZ ET" düğmesine basın. '
             'Sistem görüntüyü birden fazla YZ modeline gönderir ve olası hastalıkları listeler.',
       ),
       HelpItem(
@@ -287,27 +282,28 @@ class HelpContent {
 
   static const HelpContent fieldDetail = HelpContent(
     screenTitle: 'Tarla Detay Ekranı',
-    screenSubtitle: 'Tarlanızı harita üzerinde yönetin, ürün ekleyin ve takip edin.',
+    screenSubtitle:
+        'Tarlanızı harita üzerinde yönetin, ürün ekleyin ve takip edin.',
     headerIcon: Icons.map_rounded,
     headerColor: Color(0xFF0D3B1A),
     items: [
       HelpItem(
         icon: Icons.radar_rounded,
         iconColor: Color(0xFF00E676),
-        title: 'Tarlayı Tara — Ekim Alanı',
+        title: 'Ekle — Toplu Ekim',
         description:
-            'Alt bardaki "Tarlayı Tara" düğmesi bitki seçiciyi açar. '
+            'Alt bardaki "Ekle" düğmesine dokununca bitki seçip bölge çizerek toplu ekim yaparsınız. '
             '292 Türk bitkisi arasından seçim yapabilirsiniz; her bitki için toprak ve '
             'iklim uygunluk skoru hesaplanır. Seçtiğiniz bitki tarlaya bölge olarak eklenir.',
       ),
       HelpItem(
         icon: Icons.add_location_alt_rounded,
         iconColor: Color(0xFF43A047),
-        title: 'Tekil Bitki Ekle (Uzun Bas)',
+        title: 'Bölge veya Tekil Bitki',
         description:
-            '"Tarlayı Tara" düğmesine uzun basarsanız tekil bitki yerleştirme moduna girersiniz. '
-            'Haritada herhangi bir noktaya dokunarak 292 bitki arasından seçip o noktaya '
-            'bağımsız bir bitki markeri ekleyebilirsiniz. Bağımsız bitkiler ekim alanına bağlı değildir.',
+            '"Ekle" düğmesine basılı tutunca "Bölge Çiz" ve "Tekil Bitki Ekle" seçenekleri açılır. '
+            'Tekil bitkide haritada herhangi bir noktaya dokunarak 292 bitki arasından seçip o noktaya '
+            'bağımsız bir bitki markeri ekleyebilirsiniz.',
       ),
       HelpItem(
         icon: Icons.healing_rounded,
@@ -335,8 +331,8 @@ class HelpContent {
         title: 'Günlük Rehber',
         description:
             'Üst bardaki "Rehber" düğmesi "Bugünün Rehberi" ekranını açar. '
-            'Bu ekranda tarlaya özel bugünün görevleri, hava uyarıları, bitki sağlığı durumu '
-            've uygulamalı tarım önerileri bir arada sunulur.',
+            'Bu ekranda tarlaya özel bugünün görevleri, ekili bitkilerin gün gün planı, hava uyarıları, '
+            'bitki sağlığı durumu ve uygulamalı tarım önerileri bir arada sunulur.',
       ),
       HelpItem(
         icon: Icons.stacked_line_chart_rounded,
@@ -349,18 +345,18 @@ class HelpContent {
       HelpItem(
         icon: Icons.event_note_rounded,
         iconColor: Color(0xFF8D6E63),
-        title: 'Günlük — Aktivite Kaydı',
+        title: 'Kayıt — Aktivite Girişi',
         description:
-            'Bu tarlaya ait sulama, gübreleme, ilaçlama ve hasat gibi faaliyetleri kayıt altına alın. '
+            'Alt bardaki "Kayıt" düğmesiyle sulama, gübreleme, ilaçlama ve hasat gibi faaliyetleri kayıt altına alın. '
             'Her kayıt büyüme motorunu canlı olarak günceller: "Suladım" dediğinizde '
             'su açığı göstergesi ve rehber önerisi anında değişir.',
       ),
       HelpItem(
         icon: Icons.account_balance_wallet_rounded,
         iconColor: Color(0xFF9C27B0),
-        title: 'Cüzdan — Masraf Takibi',
+        title: 'Diğer — Cüzdan ve Günlük',
         description:
-            'Bu tarlaya özel masraf defteri. Tohum, gübre, yakıt, işçilik gibi '
+            '"Diğer" menüsünden tarla günlüğüne ve bu tarlaya özel masraf defterine ulaşabilirsiniz. Tohum, gübre, yakıt, işçilik gibi '
             'harcamaları girdikçe toplam masraf otomatik güncellenir. '
             'Tahmini Sezon Sonu Kârı masraf defteri ekranında hesaplanır.',
       ),
@@ -447,7 +443,8 @@ class HelpContent {
   // Pazar Yeri & Topluluk ekranı
   static const HelpContent marketplace = HelpContent(
     screenTitle: 'Pazar & Topluluk',
-    screenSubtitle: 'Ürünlerinizi satın, hastalık bildirin, sorularınızı paylaşın.',
+    screenSubtitle:
+        'Ürünlerinizi satın, hastalık bildirin, sorularınızı paylaşın.',
     headerIcon: Icons.storefront_rounded,
     headerColor: Color(0xFF2E7D32),
     items: [
@@ -507,7 +504,8 @@ class HelpContent {
   // Bugünün Rehberi ekranı — GuideEngine çıktısı
   static const HelpContent dailyGuide = HelpContent(
     screenTitle: 'Bugünün Rehberi',
-    screenSubtitle: 'Tarlaya özel günlük görevler, uyarılar ve anlık durum göstergesi.',
+    screenSubtitle:
+        'Tarlaya özel günlük görevler, uyarılar ve anlık durum göstergesi.',
     headerIcon: Icons.assistant_rounded,
     headerColor: Color(0xFF1A3D2B),
     items: [
@@ -532,11 +530,11 @@ class HelpContent {
       HelpItem(
         icon: Icons.date_range_rounded,
         iconColor: Color(0xFF0288D1),
-        title: 'BU HAFTA — Yaklaşan Görevler',
+        title: 'GÜN GÜN REHBER',
         description:
-            'Bugünün dışında bu haftaya ait planlı görevler liste halinde sıralanır. '
-            'Her satırda görev tipi, tarih ve kısa açıklama yer alır. '
-            'Aynı görev "BUGÜN" kartında görünüyorsa bu hafta listesinde tekrarlanmaz.',
+            'Ekili her bitki için bugünden geriye 3, ileriye 10 günlük pencere gösterilir. '
+            'Kartta bugünün evresi, açık işler, su açığı ve yağış etkisi görünür; '
+            '"Tam Günlük Rehber" bağlantısı bitki detayına götürür.',
       ),
       HelpItem(
         icon: Icons.monitor_heart_rounded,
@@ -580,7 +578,8 @@ class HelpContent {
   // ── Tarla Durumu ──────────────────────────────────────────────────────────
   static const HelpContent fieldStatus = HelpContent(
     screenTitle: 'Tarla Durumu',
-    screenSubtitle: 'Tüm tarlalarınızın anlık çalışma durumunu tek ekranda görün.',
+    screenSubtitle:
+        'Tüm tarlalarınızın anlık çalışma durumunu tek ekranda görün.',
     headerIcon: Icons.crop_square_rounded,
     headerColor: Color(0xFF1565C0),
     items: [
@@ -663,8 +662,7 @@ class HelpContent {
         icon: Icons.delete_outline_rounded,
         iconColor: Color(0xFFD32F2F),
         title: 'Masraf Silme',
-        description:
-            'Bir masraf satırına uzun basın ya da sola kaydırın. '
+        description: 'Bir masraf satırına uzun basın ya da sola kaydırın. '
             'Silinen kayıt geri alınamaz; dikkatli olun.',
       ),
     ],
@@ -681,8 +679,7 @@ class HelpContent {
         icon: Icons.history_rounded,
         iconColor: Color(0xFF43A047),
         title: 'Aktivite Akışı',
-        description:
-            'Sulama, gübreleme, ilaçlama ve hasat gibi tüm kayıtlar '
+        description: 'Sulama, gübreleme, ilaçlama ve hasat gibi tüm kayıtlar '
             'Bugün / Dün / Bu Hafta / Bu Ay / Daha Eski gruplarıyla listelenir.',
       ),
       HelpItem(
@@ -705,8 +702,7 @@ class HelpContent {
         icon: Icons.delete_outline_rounded,
         iconColor: Color(0xFFD32F2F),
         title: 'Kayıt Silme',
-        description:
-            'Bir kaydı sola kaydırarak silebilirsiniz. '
+        description: 'Bir kaydı sola kaydırarak silebilirsiniz. '
             'Silme işlemi büyüme motorunu geriye dönük etkiler; emin olmadan silmeyin.',
       ),
     ],
@@ -739,8 +735,7 @@ class HelpContent {
         icon: Icons.eco_rounded,
         iconColor: Color(0xFF2E7D32),
         title: 'Çeşit Seçimi',
-        description:
-            'Ekranın üstünden ürün çeşidi seçin. '
+        description: 'Ekranın üstünden ürün çeşidi seçin. '
             'Seçilen çeşidin nem ve sıcaklık toleransına göre hasat skoru hesaplanır.',
       ),
       HelpItem(
@@ -773,8 +768,7 @@ class HelpContent {
         icon: Icons.tune_rounded,
         iconColor: Color(0xFF1976D2),
         title: 'Hedef pH Ayarı',
-        description:
-            'Kaydırıcı ile hedef pH değerini girin. '
+        description: 'Kaydırıcı ile hedef pH değerini girin. '
             'Kireçleme veya kükürt miktarı otomatik hesaplanarak ekranda gösterilir.',
       ),
       HelpItem(
@@ -807,8 +801,7 @@ class HelpContent {
         icon: Icons.search_rounded,
         iconColor: Color(0xFF43A047),
         title: 'Çeşit Tarama',
-        description:
-            'Ürün adını seçin, ardından bölgenizi belirtin. '
+        description: 'Ürün adını seçin, ardından bölgenizi belirtin. '
             'O bölgede onaylı tescilli çeşitler verim ve olgunlaşma süresine göre listelenir.',
       ),
       HelpItem(
@@ -831,8 +824,7 @@ class HelpContent {
         icon: Icons.agriculture_rounded,
         iconColor: Color(0xFF2E7D32),
         title: 'Hasat Oracle\'a Git',
-        description:
-            'Çeşit seçildikten sonra "Hasat Penceresi" düğmesiyle '
+        description: 'Çeşit seçildikten sonra "Hasat Penceresi" düğmesiyle '
             'Hasat Oracle ekranına geçebilirsiniz — optimal hasat günleri orada hesaplanır.',
       ),
     ],
@@ -951,8 +943,7 @@ class HelpContent {
         icon: Icons.delete_outline_rounded,
         iconColor: Color(0xFFD32F2F),
         title: 'Kayıt Silme',
-        description:
-            'Listeden bir analizi sola kaydırarak silebilirsiniz. '
+        description: 'Listeden bir analizi sola kaydırarak silebilirsiniz. '
             'Silinen analiz bir daha gösterilmez.',
       ),
     ],
@@ -1053,10 +1044,14 @@ class _HelpSheet extends StatelessWidget {
               // ── Header gradient ──────────────────────────────────────
               Container(
                 margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [content.headerColor, content.headerColor.withValues(alpha: 0.75)],
+                    colors: [
+                      content.headerColor,
+                      content.headerColor.withValues(alpha: 0.75)
+                    ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
@@ -1070,7 +1065,8 @@ class _HelpSheet extends StatelessWidget {
                         color: Colors.white.withValues(alpha: 0.18),
                         borderRadius: AppRadius.sm,
                       ),
-                      child: Icon(content.headerIcon, color: Colors.white, size: 28),
+                      child: Icon(content.headerIcon,
+                          color: Colors.white, size: 28),
                     ),
                     const SizedBox(width: 14),
                     Expanded(
@@ -1084,7 +1080,8 @@ class _HelpSheet extends StatelessWidget {
                           const SizedBox(height: 4),
                           Text(
                             content.screenSubtitle,
-                            style: AppText.bodyDark(context).copyWith(fontSize: 13),
+                            style: AppText.bodyDark(context)
+                                .copyWith(fontSize: 13),
                           ),
                         ],
                       ),
@@ -1097,7 +1094,8 @@ class _HelpSheet extends StatelessWidget {
 
               // ── Section label ────────────────────────────────────────
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                 child: Row(
                   children: [
                     Icon(Icons.help_outline_rounded,
@@ -1114,7 +1112,8 @@ class _HelpSheet extends StatelessWidget {
               Expanded(
                 child: ListView.separated(
                   controller: scrollCtrl,
-                  padding: EdgeInsets.fromLTRB(16, 0, 16, mq.padding.bottom + 24),
+                  padding:
+                      EdgeInsets.fromLTRB(16, 0, 16, mq.padding.bottom + 24),
                   itemCount: content.items.length,
                   separatorBuilder: (_, __) => const SizedBox(height: 10),
                   itemBuilder: (_, i) => _HelpItemCard(item: content.items[i]),
@@ -1164,8 +1163,8 @@ class _HelpItemCard extends StatelessWidget {
                         .copyWith(color: AppColors.textPrimary)),
                 const SizedBox(height: 5),
                 Text(item.description,
-                    style: AppText.sm(context)
-                        .copyWith(color: AppColors.textSecondary, height: 1.55)),
+                    style: AppText.sm(context).copyWith(
+                        color: AppColors.textSecondary, height: 1.55)),
               ],
             ),
           ),

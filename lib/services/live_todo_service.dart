@@ -61,6 +61,9 @@ class LiveDecisionContextBuilder {
     RuleEnvironmentSnapshot? environment,
     RecommendationLedger? ledger,
   }) {
+    final realActivities = activities
+        .where((activity) => _isRealActivity(activity, now))
+        .toList(growable: false);
     final growthStates = <String, GrowthSnapshot>{};
     for (final g in growthRows) {
       growthStates[g.cropId] = GrowthSnapshot(
@@ -75,7 +78,7 @@ class LiveDecisionContextBuilder {
     }
 
     final activityRecords = <ActivityRecord>[];
-    for (final a in activities) {
+    for (final a in realActivities) {
       final at = _parseDate(a['date']);
       if (at == null) continue;
       activityRecords.add(ActivityRecord(
@@ -120,7 +123,7 @@ class LiveDecisionContextBuilder {
     return LiveDecisionContext(
       fieldId: fieldId,
       fieldCrops: fieldCrops,
-      activities: activities,
+      activities: realActivities,
       scheduledEvents: scheduledEvents,
       growthStates: growthStates,
       cropFieldStates: cropFieldStates,
@@ -139,6 +142,13 @@ class LiveDecisionContextBuilder {
     if (raw is DateTime) return raw;
     if (raw is String) return DateTime.tryParse(raw);
     return null;
+  }
+
+  static bool _isRealActivity(Map<String, dynamic> activity, DateTime now) {
+    if (activity['source']?.toString() == 'auto_seed') return false;
+    final at = _parseDate(activity['date']);
+    if (at != null && at.isAfter(now)) return false;
+    return true;
   }
 
   static List<String> _decodeStringList(String? raw) {

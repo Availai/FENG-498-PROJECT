@@ -348,7 +348,7 @@ class _FieldStatusCard extends ConsumerWidget {
         timeAgo = '${diff.inDays} gün önce';
       } else if (diff.inHours >= 1) {
         timeAgo = '${diff.inHours} saat önce';
-      } else if (diff.inMinutes >= 1) {
+      } else if (diff.inMinutes >= 6) {
         timeAgo = '${diff.inMinutes} dk önce';
       } else {
         timeAgo = 'Az önce';
@@ -722,8 +722,7 @@ class _GuideLinkCard extends StatelessWidget {
             ),
             if (alertCount > 0)
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(10),

@@ -212,8 +212,10 @@ class GrowthEngine {
           ..where((tbl) =>
               tbl.cropId.equals(cropId) &
               tbl.deletedAt.isNull() &
+              tbl.source.equals('auto_seed').not() &
               tbl.eventDate.isBiggerOrEqualValue(
-                  plantedDate.toUtc().subtract(const Duration(days: 1)))))
+                  plantedDate.toUtc().subtract(const Duration(days: 1))) &
+              tbl.eventDate.isSmallerOrEqualValue(t.toUtc())))
         .get();
 
     // Tarih bazlı günlük özet: day-index → {water_mm_applied, water_mm_rec,

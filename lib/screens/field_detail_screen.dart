@@ -395,26 +395,29 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
           onPressed: () => Navigator.of(context).maybePop(),
         ),
         title: Row(
-          mainAxisSize: MainAxisSize.min,
           children: [
             Container(
               padding: const EdgeInsets.all(4),
               decoration: const BoxDecoration(
-                  shape: BoxShape.circle, color: Color(0xFF00E676)),
+                shape: BoxShape.circle,
+                color: Color(0xFF00E676),
+              ),
               child:
                   const Icon(Icons.eco_rounded, color: Colors.black, size: 16),
             ),
             const SizedBox(width: 8),
-            Text('Agri-Farm ',
+            Expanded(
+              child: Text(
+                widget.fieldData['name']?.toString() ?? 'Tarla Haritası',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: GoogleFonts.outfit(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white)),
-            Text('AR',
-                style: GoogleFonts.outfit(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: const Color(0xFF00E676))),
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ),
           ],
         ),
         centerTitle: false,
@@ -424,25 +427,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
             tooltip: 'Yardım',
             onPressed: () => HelpPanel.show(context, HelpContent.fieldDetail),
           ),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('AKTİF',
-                  style: TextStyle(
-                      color: Colors.white70, fontSize: 10, letterSpacing: 1.2)),
-              const SizedBox(width: 6),
-              Container(
-                  width: 8,
-                  height: 8,
-                  decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Color(0xFF00E676),
-                      boxShadow: [
-                        BoxShadow(color: Color(0xFF00E676), blurRadius: 4)
-                      ])),
-              const SizedBox(width: 16),
-            ],
-          )
+          const SizedBox(width: 8),
         ],
       ),
       body: Stack(
@@ -1144,37 +1129,56 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
   }
 
   Widget _buildHUDBottomBar() {
-    // Matte forest-green bar; her buton kendi tematik rengiyle öne çıkar.
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFF14241B), // matte forest
-        borderRadius: BorderRadius.circular(22),
-        border:
-            Border.all(color: Colors.white.withValues(alpha: 0.06), width: 1),
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.borderDark.withValues(alpha: 0.8)),
         boxShadow: const [
           BoxShadow(
-              color: Color(0x66000000), blurRadius: 18, offset: Offset(0, 6)),
+            color: Color(0x26000000),
+            blurRadius: 10,
+            offset: Offset(0, 3),
+          ),
         ],
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          _buildNavBtn(Icons.radar_rounded, 'Tarlayı Tara', _showPlantPicker,
-              color: const Color(0xFF2ECC71),
+          Expanded(
+            child: _buildNavBtn(
+              Icons.add_location_alt_rounded,
+              'Ekle',
+              _showPlantPicker,
+              color: AppColors.emerald,
               primary: true,
-              onLongPress: _showPlacementMenu),
-          _buildNavBtn(Icons.check_circle_outline_rounded, 'Aktivite',
+              onLongPress: _showPlacementMenu,
+            ),
+          ),
+          Expanded(
+            child: _buildNavBtn(
+              Icons.check_circle_outline_rounded,
+              'Kayıt',
               _showActivityQuickLog,
-              color: const Color(0xFFF2B84B)),
-          _buildNavBtn(Icons.event_note_rounded, 'Günlük', _openFarmJournal,
-              color: const Color(0xFF4DB6AC)),
-          _buildNavBtn(
-              Icons.account_balance_wallet_rounded, 'Cüzdan', _openCostLedger,
-              color: const Color(0xFFB388FF)),
-          _buildNavBtn(Icons.assignment_turned_in_rounded, 'Yapılacaklar',
+              color: AppColors.warning,
+            ),
+          ),
+          Expanded(
+            child: _buildNavBtn(
+              Icons.lightbulb_rounded,
+              'Rehber',
               _showDetailModal,
-              color: const Color(0xFF64B5F6)),
+              color: AppColors.info,
+            ),
+          ),
+          Expanded(
+            child: _buildNavBtn(
+              Icons.more_horiz_rounded,
+              'Diğer',
+              _showFieldMoreActions,
+              color: AppColors.soil,
+            ),
+          ),
         ],
       ),
     );
@@ -1321,48 +1325,99 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
     );
   }
 
+  void _showFieldMoreActions() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.bg,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 14),
+                decoration: BoxDecoration(
+                  color: AppColors.borderDark,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading:
+                    const Icon(Icons.event_note_rounded, color: AppColors.info),
+                title: const Text('Tarla Günlüğü'),
+                subtitle: const Text('Sulama, gübreleme ve hasat geçmişi'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _openFarmJournal();
+                },
+              ),
+              const Divider(),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.account_balance_wallet_rounded,
+                    color: AppColors.soil),
+                title: const Text('ÇKS Cüzdanı'),
+                subtitle: const Text('Maliyet, satış ve kâr takibi'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _openCostLedger();
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildNavBtn(IconData icon, String text, VoidCallback onTap,
       {required Color color, bool primary = false, VoidCallback? onLongPress}) {
-    // Primary: doygun renk dolgulu; diğerleri: matte tonlu daire + renkli ikon.
     final Color bg = primary ? color : color.withValues(alpha: 0.14);
     final Color border = primary ? color : color.withValues(alpha: 0.38);
-    final Color iconColor = primary ? const Color(0xFF0D1811) : color;
+    final Color iconColor = primary ? Colors.white : color;
     return GestureDetector(
       onTap: onTap,
       onLongPress: onLongPress,
       behavior: HitTestBehavior.opaque,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: bg,
-              shape: BoxShape.circle,
-              border: Border.all(color: border, width: 1),
-              boxShadow: primary
-                  ? [
-                      BoxShadow(
-                        color: color.withValues(alpha: 0.35),
-                        blurRadius: 14,
-                        spreadRadius: -2,
-                      ),
-                    ]
-                  : null,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 58),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(9),
+              decoration: BoxDecoration(
+                color: bg,
+                shape: BoxShape.circle,
+                border: Border.all(color: border, width: 1),
+              ),
+              child: Icon(icon, color: iconColor, size: 22),
             ),
-            child: Icon(icon, color: iconColor, size: 22),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            text,
-            style: GoogleFonts.outfit(
-              color: primary ? color : Colors.white.withValues(alpha: 0.78),
-              fontSize: 10,
-              fontWeight: primary ? FontWeight.w700 : FontWeight.w500,
-              letterSpacing: 0.2,
+            const SizedBox(height: 5),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                text,
+                maxLines: 1,
+                style: GoogleFonts.outfit(
+                  color: primary ? color : AppColors.textSecondary,
+                  fontSize: 11,
+                  fontWeight: primary ? FontWeight.w800 : FontWeight.w600,
+                  letterSpacing: 0,
+                ),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -2304,8 +2359,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
     );
   }
 
-  /// "Tarlayı Tara" butonuna uzun basıldığında açılan menü:
-  /// Zone çiz / Tekil bitki ekle.
+  /// "Ekle" uzun basışı bölge çizme ve tekil bitki ekleme seçeneklerini açar.
   void _showPlacementMenu() {
     showModalBottomSheet(
       context: context,
@@ -2333,7 +2387,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
                     color: AppColors.emerald),
                 title: const Text('Bölge Çiz'),
                 subtitle: const Text(
-                    'Bir alana toplu ekim — bitki seç ve çevresini çiz'),
+                    'Toplu ekim için bitki seç ve ekilecek alanı çiz'),
                 onTap: () {
                   Navigator.pop(ctx);
                   _showPlantPicker();
@@ -3323,7 +3377,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
   // ═══════════════════════════════════════════════════
   // DETAY MODAL — Kapsamlı yetiştirme bilgileri
   // ═══════════════════════════════════════════════════
-  /// "Yapılacaklar" akıllı yönlendirme.
+  /// "Rehber" akıllı yönlendirme.
   ///
   /// Tek "Bugünün Rehberi" ekranını açar. Eski bottom-sheet modal + 5 paralel
   /// UI yüzeyi yerine tek `DailyGuideScreen` — alerts/today/thisWeek/insights
@@ -3454,7 +3508,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
               ),
               const SizedBox(height: 4),
               const Text(
-                'Yapılacaklar seçtiğin bitkinin tam günlük rehberinde açılır.',
+                'Seçtiğin bitkinin günlük rehberi buradan açılır.',
                 style: TextStyle(color: Colors.white70, fontSize: 12.5),
               ),
               const SizedBox(height: 12),
@@ -4071,7 +4125,7 @@ class _DirectivesModalContent extends ConsumerWidget {
         title: 'Ekim bölgesini tarlanın üstüne çiz',
         body: guide != null
             ? 'Sıra arası ${guide.rowSpacingCm.toStringAsFixed(0)} cm, bitki arası ${guide.plantSpacingCm.toStringAsFixed(0)} cm rehber değeridir. Bölgeyi çizince kayıtlar bu plana bağlanır.'
-            : 'Tarlayı Tara ile ürünü seç, bölgeyi çiz ve sıra aralığını kaydet. Böylece sulama, günlük ve hasat uyarıları aynı bitkiye bağlanır.',
+            : 'Ekle düğmesiyle ürünü seç, bölgeyi çiz ve sıra aralığını kaydet. Böylece sulama, günlük ve hasat uyarıları aynı bitkiye bağlanır.',
       ),
     ];
   }
@@ -4633,6 +4687,29 @@ class _DirectiveCardState extends ConsumerState<_DirectiveCard> {
     if (type == null || _logging) return;
     setState(() => _logging = true);
     try {
+      if (type == ActivityType.watering) {
+        final repo = ref.read(localDataRepositoryProvider);
+        final field = await repo.loadFieldById(widget.fieldId);
+        final crops = await repo.loadFieldCrops(widget.fieldId);
+        if (!mounted) return;
+        await showActivityQuickLogSheet(
+          context: context,
+          ref: ref,
+          fieldId: widget.fieldId,
+          type: type,
+          cropId: d.cropId,
+          fieldCrops: crops,
+          fieldAreaDekar:
+              (field?['area_dekar'] as num?)?.toDouble() ?? d.areaDekar ?? 1.0,
+          recommendedQuantity: d.recommendedQuantity ?? d.suggestedQuantity,
+          quantityUnit: d.quantityUnit,
+          note: [
+            d.reason,
+            if (d.steps.isNotEmpty) d.steps.join('\n'),
+          ].join('\n'),
+        );
+        return;
+      }
       await ref.read(localDataRepositoryProvider).logActivity(
         fieldId: widget.fieldId,
         type: type,

@@ -2,7 +2,9 @@ import 'dart:math' as math;
 
 import '../data/activity_types.dart';
 import 'crop_daily_plan.dart';
+import 'rules/timing_window.dart';
 import 'task_directive_service.dart';
+import 'water_accounting.dart';
 
 /// Risk şeritleri — yalnız gerçekten tetiklenenler render edilir.
 enum RiskKind {
@@ -69,6 +71,7 @@ class GuideAction {
   final String actionType;
   final double? recommendedQuantity;
   final String? unit;
+  final String? timingLabel;
   final bool done;
   final RiskSeverity priority;
   final String iconKey;
@@ -79,6 +82,7 @@ class GuideAction {
     required this.actionType,
     this.recommendedQuantity,
     this.unit,
+    this.timingLabel,
     this.done = false,
     required this.priority,
     required this.iconKey,
@@ -221,6 +225,9 @@ class DailyGuideEngine {
     final daysSinceWater = lastWater == null
         ? null
         : t.difference(lastWater).inDays;
+    final waterTiming =
+        TimingWindow.forIrrigation(now: t)?.descriptor ??
+            'Sabah 06:00-10:00 arası ideal';
 
     // ── Aşırı sulama (saturation) tespiti ──────────────────
     // Açık negatif değil sadece — son 24 saatte sulama + sonra ağır yağmur
@@ -294,30 +301,40 @@ class DailyGuideEngine {
     }
 
     if (waterDeficit >= _criticalDeficitMm) {
+      final suggestedLiters = _suggestWaterLiters(
+        deficitMm: waterDeficit,
+        areaDekar: plan?.areaDekar,
+      );
       risks.add(RiskBanner(
         kind: RiskKind.droughtSevere,
         severity: RiskSeverity.critical,
         title: 'CİDDİ SU AÇIĞI',
         message:
             'Bitki ${waterDeficit.toStringAsFixed(0)} mm su açığı taşıyor. Verim düşmeye başladı.',
-        advice: 'Bugün uzun sulama yap, akşamüstü kontrol et.',
+        advice:
+            'Bugün ${_formatWaterVolume(suggestedLiters)} suyu $waterTiming ver. Kayıtta litreyi net gir, akşamüstü kontrol et.',
         iconKey: 'drought',
         actionType: ActivityType.watering,
-        actionQuantity: _suggestMinutes(waterDeficit),
-        actionUnit: 'dk',
+        actionQuantity: suggestedLiters,
+        actionUnit: 'L',
       ));
     } else if (waterDeficit >= _moderateDeficitMm && rainNext48h < 5) {
+      final suggestedLiters = _suggestWaterLiters(
+        deficitMm: waterDeficit,
+        areaDekar: plan?.areaDekar,
+      );
       risks.add(RiskBanner(
         kind: RiskKind.droughtMild,
         severity: RiskSeverity.warning,
         title: 'SU AÇIĞI BÜYÜYOR',
         message:
             '${waterDeficit.toStringAsFixed(0)} mm açık var, yakın yağış görünmüyor.',
-        advice: 'Bugün veya yarın sabah sulama planla.',
+        advice:
+            'Bugün veya yarın ${_formatWaterVolume(suggestedLiters)} suyu $waterTiming planla.',
         iconKey: 'drought',
         actionType: ActivityType.watering,
-        actionQuantity: _suggestMinutes(waterDeficit),
-        actionUnit: 'dk',
+        actionQuantity: suggestedLiters,
+        actionUnit: 'L',
       ));
     }
 
@@ -737,6 +754,7 @@ class DailyGuideEngine {
           actionType: task.type,
           recommendedQuantity: task.recommendedQuantity,
           unit: task.unit,
+          timingLabel: task.timingLabel,
           priority: RiskSeverity.warning,
           iconKey: _iconForActivity(task.type),
         ));
@@ -748,8 +766,11 @@ class DailyGuideEngine {
 
   String _actionHeadline(RiskBanner r) {
     if (r.actionType == ActivityType.watering) {
-      final mins = r.actionQuantity?.round();
-      return mins == null ? 'Sula' : '$mins dk sula';
+      final qty = r.actionQuantity;
+      if (qty == null) return 'Sula';
+      return r.actionUnit == 'L'
+          ? '${_formatWaterVolume(qty)} sula'
+          : '${qty.round()} ${r.actionUnit ?? ''} sula';
     }
     if (r.actionType == ActivityType.fertilizing) return 'Gübrele';
     if (r.actionType == ActivityType.spraying) return 'İlaçla';
@@ -785,6 +806,7 @@ class DailyGuideEngine {
   }) {
     Map<String, dynamic>? last;
     for (final a in activities) {
+      if (!_isRealActivity(a, now)) continue;
       final ac = a['crop_id']?.toString();
       if (cropId != null && ac != null && ac.isNotEmpty && ac != cropId) {
         continue;
@@ -797,32 +819,31 @@ class DailyGuideEngine {
     }
     if (last == null) return null;
     final when = last['date'] as DateTime;
-    if (now.difference(when).inHours > 36) return null; // çok eski
+    final elapsed = now.difference(when);
+    if (elapsed.isNegative || elapsed.inHours > 36) return null; // çok eski
     final type = last['type']?.toString() ?? '';
     final qty = (last['quantity'] as num?)?.toDouble();
     final unit = last['unit']?.toString();
     String summary;
     String detail;
     String iconKey;
-    final hoursAgo = now.difference(when).inHours;
-    final timeLabel = hoursAgo < 1
-        ? '${now.difference(when).inMinutes} dk önce'
-        : hoursAgo < 24
-            ? '$hoursAgo saat önce'
-            : 'dün';
+    final timeLabel = _timeAgoLabel(elapsed);
     switch (type) {
       case ActivityType.watering:
         final waterMm =
             ((last['metadata'] as Map?)?['effective_water_mm'] as num?)
                 ?.toDouble();
-        summary = waterMm != null
+        final hasEffectiveWater = waterMm != null && waterMm > 0;
+        summary = hasEffectiveWater
             ? '+${waterMm.toStringAsFixed(0)} mm su'
             : (qty != null && unit != null)
                 ? '${qty.toStringAsFixed(0)} $unit'
                 : 'Sulama yapıldı';
-        detail = waterDeficit <= 2
-            ? 'Açık kapandı, bitki rahat. ($timeLabel)'
-            : 'Açık ${waterDeficit.toStringAsFixed(0)} mm — $timeLabel.';
+        detail = !hasEffectiveWater
+            ? 'Sulama kaydında net su miktarı yok. ($timeLabel)'
+            : waterDeficit <= 2
+                ? 'Açık kapandı, bitki rahat. ($timeLabel)'
+                : 'Açık ${waterDeficit.toStringAsFixed(0)} mm — $timeLabel.';
         iconKey = 'water';
         break;
       case ActivityType.fertilizing:
@@ -860,6 +881,20 @@ class DailyGuideEngine {
     );
   }
 
+  bool _isRealActivity(Map<String, dynamic> activity, DateTime now) {
+    if (activity['source']?.toString() == 'auto_seed') return false;
+    final date = activity['date'];
+    if (date is DateTime && date.isAfter(now)) return false;
+    return true;
+  }
+
+  String _timeAgoLabel(Duration elapsed) {
+    if (elapsed.inMinutes <= 5) return 'az önce';
+    if (elapsed.inHours < 1) return '${elapsed.inMinutes} dk önce';
+    if (elapsed.inHours < 24) return '${elapsed.inHours} saat önce';
+    return 'dün';
+  }
+
   String _oneLiner({
     required List<RiskBanner> risks,
     required List<GuideAction> actions,
@@ -879,10 +914,22 @@ class DailyGuideEngine {
     return '${actions.length} görev sıraya alındı.';
   }
 
-  static double _suggestMinutes(double deficitMm) {
-    // 1 dk damla ≈ 0.6 mm (varsayılan plan motoru ile aynı). Açık kapatma + %20.
-    final mins = (deficitMm / 0.6) * 1.2;
-    return mins.clamp(8.0, 90.0);
+  static double _suggestWaterLiters({
+    required double deficitMm,
+    double? areaDekar,
+  }) {
+    final safeAreaDekar =
+        areaDekar == null || areaDekar <= 0 ? 1.0 : areaDekar;
+    final safeAreaSqm = safeAreaDekar * 1000.0;
+    final targetEffectiveMm = (deficitMm * 1.15).clamp(3.0, 60.0).toDouble();
+    return targetEffectiveMm *
+        safeAreaSqm /
+        WaterAccounting.methodEfficiency('Damla sulama');
+  }
+
+  static String _formatWaterVolume(double liters) {
+    if (liters >= 1000) return '${(liters / 1000).toStringAsFixed(1)} m³';
+    return '${liters.round()} L';
   }
 }
 
