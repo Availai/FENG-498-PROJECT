@@ -48,7 +48,10 @@
       "Bash(python -m pip install --quiet rembg onnxruntime)",
       "Bash(python -c \"import rembg; from PIL import Image; print\\('ok'\\)\")",
       "Bash(python scripts/strip_crop_backgrounds.py)",
-      "Bash(python -c ' *)"
+      "Bash(python -c ' *)",
+      "Bash(/c/Users/eness/AppData/Roaming/uv/python/cpython-3.14.4-windows-x86_64-none/python.exe data_pipeline/_pdf_extract.py tea_caykur_2025.pdf 28 35)",
+      "Bash(/c/Users/eness/AppData/Roaming/uv/python/cpython-3.14.4-windows-x86_64-none/python.exe data_pipeline/build_turkish_crops_db.py)",
+      "Bash(/c/Users/eness/AppData/Roaming/uv/python/cpython-3.14.4-windows-x86_64-none/python.exe -c ' *)"
     ],
     "additionalDirectories": [
       "c:\\FENG 498\\feng_498"

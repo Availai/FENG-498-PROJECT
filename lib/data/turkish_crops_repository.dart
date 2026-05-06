@@ -6,6 +6,8 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:sqlite3/sqlite3.dart';
 
+import '../core/rule_engine/rule.dart';
+
 /// Küratörlü Türkiye bitki bilgi tabanı. seed_plants.json -> SQLite asset.
 ///
 /// Asset (`assets/data/turkish_crops.sqlite`) uygulama açıldığında app
@@ -142,6 +144,61 @@ class TurkishCropsRepository {
     if (db == null) return 0;
     final rs = db.select('SELECT COUNT(*) AS c FROM crops');
     return (rs.first['c'] as int?) ?? 0;
+  }
+
+  /// v2 yapılandırılmış veri taşıyan öncelikli bitki (stable_id ile).
+  ///
+  /// Sadece 5 öncelikli ürün için doludur (CLAUDE.md sec 11). Diğerleri
+  /// `null` döner — UI v1 alanlarına geri düşmelidir.
+  CropV2Bundle? findV2ByStableId(String stableId) {
+    final db = _db;
+    if (db == null) return null;
+    final rs = db.select(
+      'SELECT name_tr, stable_id, v2_status, v2_confidence, v2_data '
+      'FROM crops WHERE stable_id = ? LIMIT 1',
+      [stableId],
+    );
+    if (rs.isEmpty) return null;
+    return CropV2Bundle._fromRow(rs.first);
+  }
+
+  /// Stable id taşıyan tüm öncelikli kayıtlar — listeleme için.
+  List<CropV2Summary> listPriorityV2() {
+    final db = _db;
+    if (db == null) return const [];
+    final rs = db.select(
+      'SELECT name_tr, stable_id, v2_status, v2_confidence FROM crops '
+      'WHERE stable_id IS NOT NULL ORDER BY name_tr COLLATE NOCASE',
+    );
+    return rs
+        .map((r) => CropV2Summary(
+              nameTr: r['name_tr'] as String,
+              stableId: r['stable_id'] as String,
+              status: r['v2_status'] as String?,
+              confidence: r['v2_confidence'] as String?,
+            ))
+        .toList(growable: false);
+  }
+
+  /// sources tablosundan kaynak metadata.
+  AgriSource? findSource(String sourceId) {
+    final db = _db;
+    if (db == null) return null;
+    final rs = db.select(
+      'SELECT * FROM sources WHERE source_id = ? LIMIT 1',
+      [sourceId],
+    );
+    if (rs.isEmpty) return null;
+    return AgriSource._fromRow(rs.first);
+  }
+
+  List<AgriSource> listSources() {
+    final db = _db;
+    if (db == null) return const [];
+    final rs = db.select(
+      'SELECT * FROM sources ORDER BY institution, title',
+    );
+    return rs.map(AgriSource._fromRow).toList(growable: false);
   }
 
   static String _normalize(String s) {
@@ -366,4 +423,152 @@ class SuitabilityScore {
     required this.reasons,
     this.confidence = 'high',
   });
+}
+
+/// 5 öncelikli ürün için yapılandırılmış v2 verisi (CLAUDE.md sec 11-14).
+///
+/// `evidence`, `diseases_v2`, `pests_v2`, `weeds_v2`, `rule_engine_rules`
+/// alanları seed_plants.json içinde JSON olarak tutulur ve build script
+/// `crops.v2_data` kolonuna serileştirir. Kural motoru (`RuleEngine`)
+/// `rules` listesini doğrudan alıp facts ile değerlendirir.
+class CropV2Bundle {
+  final String stableId;
+  final String nameTr;
+  final String? status;
+  final String? confidence;
+  final List<String> sourceIds;
+  final List<Rule> rules;
+  final List<Map<String, dynamic>> diseases;
+  final List<Map<String, dynamic>> pests;
+  final List<Map<String, dynamic>> weeds;
+  final List<Map<String, dynamic>> growthStages;
+  final List<Map<String, dynamic>> evidence;
+  final List<String> missingInformation;
+
+  const CropV2Bundle({
+    required this.stableId,
+    required this.nameTr,
+    this.status,
+    this.confidence,
+    this.sourceIds = const [],
+    this.rules = const [],
+    this.diseases = const [],
+    this.pests = const [],
+    this.weeds = const [],
+    this.growthStages = const [],
+    this.evidence = const [],
+    this.missingInformation = const [],
+  });
+
+  factory CropV2Bundle._fromRow(Map<String, dynamic> r) {
+    final raw = r['v2_data'] as String?;
+    if (raw == null || raw.isEmpty) {
+      return CropV2Bundle(
+        stableId: r['stable_id'] as String? ?? '',
+        nameTr: r['name_tr'] as String? ?? '',
+        status: r['v2_status'] as String?,
+        confidence: r['v2_confidence'] as String?,
+      );
+    }
+    Map<String, dynamic> j;
+    try {
+      j = jsonDecode(raw) as Map<String, dynamic>;
+    } catch (_) {
+      return CropV2Bundle(
+        stableId: r['stable_id'] as String? ?? '',
+        nameTr: r['name_tr'] as String? ?? '',
+        status: r['v2_status'] as String?,
+        confidence: r['v2_confidence'] as String?,
+      );
+    }
+
+    List<Map<String, dynamic>> mapList(String key) {
+      final v = j[key];
+      if (v is! List) return const [];
+      return v
+          .whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList(growable: false);
+    }
+
+    final rulesRaw = (j['rule_engine_rules'] as List?) ?? const [];
+    final rules = rulesRaw
+        .whereType<Map>()
+        .map((m) => Rule.fromJson(Map<String, dynamic>.from(m)))
+        .toList(growable: false);
+
+    final missingRaw = (j['missing_information'] as List?) ?? const [];
+    final missing =
+        missingRaw.map((e) => e?.toString() ?? '').toList(growable: false);
+
+    final sourceIdsRaw = (j['source_ids'] as List?) ?? const [];
+    final sourceIds =
+        sourceIdsRaw.map((e) => e?.toString() ?? '').toList(growable: false);
+
+    return CropV2Bundle(
+      stableId: r['stable_id'] as String? ?? (j['stable_id'] as String? ?? ''),
+      nameTr: r['name_tr'] as String? ?? '',
+      status: r['v2_status'] as String? ?? j['v2_status'] as String?,
+      confidence: r['v2_confidence'] as String? ?? j['confidence'] as String?,
+      sourceIds: sourceIds,
+      rules: rules,
+      diseases: mapList('diseases_v2'),
+      pests: mapList('pests_v2'),
+      weeds: mapList('weeds_v2'),
+      growthStages: mapList('growth_stages'),
+      evidence: mapList('evidence'),
+      missingInformation: missing,
+    );
+  }
+}
+
+class CropV2Summary {
+  final String nameTr;
+  final String stableId;
+  final String? status;
+  final String? confidence;
+
+  const CropV2Summary({
+    required this.nameTr,
+    required this.stableId,
+    this.status,
+    this.confidence,
+  });
+}
+
+/// sources tablosundan kaynak metadata (CLAUDE.md sec 13).
+class AgriSource {
+  final String sourceId;
+  final String title;
+  final String? institution;
+  final String? sourceType;
+  final String? url;
+  final int? publicationYear;
+  final String? retrievedAt;
+  final String? reliability;
+  final String? notes;
+
+  const AgriSource({
+    required this.sourceId,
+    required this.title,
+    this.institution,
+    this.sourceType,
+    this.url,
+    this.publicationYear,
+    this.retrievedAt,
+    this.reliability,
+    this.notes,
+  });
+
+  factory AgriSource._fromRow(Map<String, dynamic> r) => AgriSource(
+        sourceId: r['source_id'] as String,
+        title: r['title'] as String,
+        institution: r['institution'] as String?,
+        sourceType: r['source_type'] as String?,
+        url: r['url'] as String?,
+        publicationYear: (r['publication_year'] as num?)?.toInt(),
+        retrievedAt: r['retrieved_at'] as String?,
+        reliability: r['reliability'] as String?,
+        notes: r['notes'] as String?,
+      );
 }

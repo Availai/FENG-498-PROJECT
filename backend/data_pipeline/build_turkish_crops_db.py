@@ -19,6 +19,7 @@ from pathlib import Path
 
 BASE = Path(__file__).parent
 SEED = BASE / "seed_plants.json"
+SOURCES = BASE / "sources.json"
 OUTPUT = BASE / "output" / "turkish_crops.sqlite"
 ASSET_TARGET = BASE.parent.parent / "assets" / "data" / "turkish_crops.sqlite"
 
@@ -58,12 +59,49 @@ CREATE TABLE IF NOT EXISTS crops (
   common_diseases TEXT,
   growing_tips TEXT,
   days_to_harvest INTEGER,
+  stable_id TEXT,
+  v2_status TEXT,
+  v2_confidence TEXT,
+  v2_data TEXT,
   search_key TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_crops_search ON crops(search_key);
 CREATE INDEX IF NOT EXISTS idx_crops_category ON crops(category);
 CREATE INDEX IF NOT EXISTS idx_crops_name ON crops(name_tr);
+CREATE INDEX IF NOT EXISTS idx_crops_stable_id ON crops(stable_id);
+
+CREATE TABLE IF NOT EXISTS sources (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  source_id TEXT NOT NULL UNIQUE,
+  title TEXT NOT NULL,
+  institution TEXT,
+  source_type TEXT,
+  url TEXT,
+  publication_year INTEGER,
+  retrieved_at TEXT,
+  reliability TEXT,
+  notes TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_sources_id ON sources(source_id);
 """
+
+# v2 anahtarları crops.v2_data JSON bloğuna toplanır. UI rule engine'i bu
+# bloğu parse eder. Bu yaklaşım v1 alanlarını geriye dönük uyumlu tutar.
+V2_FIELDS = (
+    "stable_id",
+    "source_ids",
+    "evidence",
+    "confidence",
+    "growth_stages",
+    "diseases_v2",
+    "pests_v2",
+    "weeds_v2",
+    "fertilizer_rules",
+    "irrigation_rules",
+    "rule_engine_rules",
+    "v2_status",
+    "missing_information",
+)
 
 
 def _js(v) -> str | None:
@@ -89,11 +127,24 @@ def main() -> int:
     conn.executescript(SCHEMA)
 
     rows = []
+    v2_priority_count = 0
     for p in plants:
         name = p["name_tr"]
         aliases = p.get("aliases", []) or []
         search_parts = [name] + list(aliases)
         search_key = " ".join(normalize(s) for s in search_parts if s)
+
+        # v2 bloğunu sadece stable_id taşıyan kayıtlar için topla.
+        stable_id = p.get("stable_id")
+        v2_data: dict | None = None
+        v2_status = p.get("v2_status")
+        v2_confidence = p.get("confidence")
+        if stable_id:
+            v2_priority_count += 1
+            v2_data = {
+                k: p.get(k) for k in V2_FIELDS if p.get(k) is not None
+            }
+
         rows.append((
             name,
             _js(aliases) if aliases else None,
@@ -115,6 +166,10 @@ def main() -> int:
             _js(p.get("common_diseases")),
             p.get("growing_tips"),
             p.get("days_to_harvest"),
+            stable_id,
+            v2_status,
+            v2_confidence,
+            _js(v2_data) if v2_data else None,
             search_key,
         ))
 
@@ -127,10 +182,39 @@ def main() -> int:
             soil_ph_min, soil_ph_max, soil_type,
             region_suitability, fertilizer_notes,
             common_pests, common_diseases, growing_tips,
-            days_to_harvest, search_key)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            days_to_harvest,
+            stable_id, v2_status, v2_confidence, v2_data,
+            search_key)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         rows,
     )
+
+    # sources tablosunu doldur — sources.json varsa.
+    sources_count = 0
+    if SOURCES.exists():
+        sources_doc = json.loads(SOURCES.read_text(encoding="utf-8"))
+        src_rows = []
+        for s in sources_doc.get("sources", []):
+            src_rows.append((
+                s["id"],
+                s.get("title", ""),
+                s.get("institution"),
+                s.get("source_type"),
+                s.get("url"),
+                s.get("publication_year"),
+                s.get("retrieved_at"),
+                s.get("reliability"),
+                s.get("notes"),
+            ))
+        conn.executemany(
+            """INSERT OR REPLACE INTO sources
+               (source_id, title, institution, source_type, url,
+                publication_year, retrieved_at, reliability, notes)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            src_rows,
+        )
+        sources_count = len(src_rows)
+
     conn.commit()
     conn.close()
 
@@ -139,6 +223,8 @@ def main() -> int:
 
     print(f"\n[OK] SQLite uretildi  : {OUTPUT}")
     print(f"[OK] Asset kopyalandi : {ASSET_TARGET}")
+    print(f"v2 bitki sayisi       : {v2_priority_count}")
+    print(f"sources tablosu       : {sources_count} kayit")
     print(f"\nSonraki adım: flutter pub get && flutter run")
     return 0
 
