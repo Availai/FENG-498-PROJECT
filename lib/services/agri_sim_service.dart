@@ -14,12 +14,12 @@ class AgriSimService {
   // ─────────────────────────────────────────────────────────────────────────
 
   static const Map<String, double> _tBase = {
-    'buğday': 0.0,
+    'bugday': 0.0,
     'arpa': 0.0,
-    'mısır': 10.0,
-    'ayçiçeği': 6.0,
+    'misir': 10.0,
+    'aycicegi': 6.0,
     'pamuk': 15.5,
-    'çeltik': 10.0,
+    'celtik': 10.0,
     'kolza': 0.0,
     'nohut': 0.0,
     'mercimek': 0.0,
@@ -140,7 +140,8 @@ class AgriSimService {
     TurkishRegion region = TurkishRegion.icAnadolu,
     List<Map<String, dynamic>> dailyTemps = const [],
   }) {
-    final tBase = _tBase[variety.cropTr] ?? 0.0;
+    final cropKey = _normalizeCropName(variety.cropTr);
+    final tBase = _tBase[cropKey] ?? 0.0;
     final monthlyAvg =
         _monthlyAvgTemp[region] ?? _monthlyAvgTemp[TurkishRegion.icAnadolu]!;
 
@@ -189,7 +190,7 @@ class AgriSimService {
       // Boyu ve biyokütleyi tahmin et (sigmoid büyüme modeli)
       final progress = (day / variety.totalDaysToHarvest).clamp(0.0, 1.0);
       biomass = 1.0 / (1.0 + math.exp(-10 * (progress - 0.5)));
-      heightCm = _estimateHeight(variety.cropTr, progress);
+      heightCm = _estimateHeight(cropKey, progress);
 
       // Evre geçiş kontrolü
       String? event;
@@ -203,11 +204,11 @@ class AgriSimService {
       }
 
       // Özel olaylar
-      if (variety.cropTr == 'buğday' &&
+      if (cropKey == 'bugday' &&
           day == variety.daysUntilStageStart(PhenologyStage.ciceklenme)) {
         event = '🌾 Başak çıkışı — üst gübre zamanı';
       }
-      if (variety.cropTr == 'ayçiçeği' &&
+      if (cropKey == 'aycicegi' &&
           day == variety.daysUntilStageStart(PhenologyStage.ciceklenme)) {
         event = '🌻 İlk çiçek açtı — ilaçlama durdurun';
       }
@@ -247,12 +248,12 @@ class AgriSimService {
 
   static double _estimateHeight(String cropTr, double progress) {
     final maxH = {
-      'buğday': 90.0,
+      'bugday': 90.0,
       'arpa': 80.0,
-      'mısır': 250.0,
-      'ayçiçeği': 200.0,
+      'misir': 250.0,
+      'aycicegi': 200.0,
       'pamuk': 120.0,
-      'çeltik': 100.0,
+      'celtik': 100.0,
       'kolza': 150.0,
       'nohut': 60.0,
     };
@@ -303,4 +304,14 @@ class AgriSimService {
     if (nextDate == null) return variety.phenology.last.baseDurationDays;
     return nextDate.difference(DateTime.now()).inDays.clamp(0, 365);
   }
+
+  static String _normalizeCropName(String value) => value
+      .toLowerCase()
+      .trim()
+      .replaceAll('\u011f', 'g')
+      .replaceAll('\u00fc', 'u')
+      .replaceAll('\u015f', 's')
+      .replaceAll('\u0131', 'i')
+      .replaceAll('\u00f6', 'o')
+      .replaceAll('\u00e7', 'c');
 }

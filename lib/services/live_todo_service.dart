@@ -211,7 +211,8 @@ class LiveTodoService {
           value: '${d.areaDekar!.toStringAsFixed(2)} da',
         ),
       if (d.plantCount != null)
-        RecommendationEvidence(label: 'Tahmini bitki', value: '${d.plantCount}'),
+        RecommendationEvidence(
+            label: 'Tahmini bitki', value: '${d.plantCount}'),
     ];
     return Recommendation(
       ruleKey: 'directive.${d.kind}.${d.cropId ?? fieldId}.v1',
@@ -231,8 +232,7 @@ class LiveTodoService {
               activityType: commandType,
               quantity: d.suggestedQuantity,
               quantityUnit: d.quantityUnit,
-              recommendedQuantity:
-                  d.recommendedQuantity ?? d.suggestedQuantity,
+              recommendedQuantity: d.recommendedQuantity ?? d.suggestedQuantity,
               buttonLabel: ActivityType.actionLabel(commandType),
               metadata: {
                 'directive_kind': d.kind,
@@ -361,9 +361,15 @@ class LiveTodoService {
     if (severity != 0) return severity;
     final gate = _gateOrder(a.gate).compareTo(_gateOrder(b.gate));
     if (gate != 0) return gate;
+    final specificity = _specificityOrder(a).compareTo(_specificityOrder(b));
+    if (specificity != 0) return specificity;
     final sources = b.sourceRefs.length.compareTo(a.sourceRefs.length);
     if (sources != 0) return sources;
     return a.ruleKey.compareTo(b.ruleKey);
+  }
+
+  int _specificityOrder(Recommendation recommendation) {
+    return recommendation.ruleKey.startsWith('directive.') ? 1 : 0;
   }
 
   int _severityOrder(AlertSeverity severity) {

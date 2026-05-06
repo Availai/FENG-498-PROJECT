@@ -285,7 +285,8 @@ class FaoCropCoefficients {
       kcInit: 0.70,
       kcMid: 1.15,
       kcEnd: 0.40,
-      totalLengthDays: 210, // Kışlık buğday; diğer kaynaklarla hizalandı (VerifiedAgriDatabase: 210 gün)
+      totalLengthDays:
+          210, // Kışlık buğday; diğer kaynaklarla hizalandı (VerifiedAgriDatabase: 210 gün)
       faoTableRef: 'FAO-56 Table 12 — Winter Wheat',
     ),
     'arpa': FaoCropCoefficients(
@@ -301,7 +302,8 @@ class FaoCropCoefficients {
       kcInit: 0.30,
       kcMid: 1.20,
       kcEnd: 0.60,
-      totalLengthDays: 130, // TAGEM Türkiye dane mısır: 120-130 gün; TurkiyeCropGuides ile hizalandı
+      totalLengthDays:
+          130, // TAGEM Türkiye dane mısır: 120-130 gün; TurkiyeCropGuides ile hizalandı
       faoTableRef: 'FAO-56 Table 12 — Maize Grain',
     ),
     'çeltik': FaoCropCoefficients(
@@ -372,16 +374,25 @@ class FaoCropCoefficients {
 
   /// Bitki adına göre Kc katsayılarını döndürür (Türkçe arama, fuzzy).
   static FaoCropCoefficients? lookup(String cropTr) {
-    final key = cropTr.toLowerCase().trim();
-    if (_data.containsKey(key)) return _data[key];
-    // Kısmi eşleşme
+    final key = _normalizeCropName(cropTr);
     for (final entry in _data.entries) {
-      if (key.contains(entry.key) || entry.key.contains(key)) {
+      final entryKey = _normalizeCropName(entry.key);
+      if (entryKey == key || key.contains(entryKey) || entryKey.contains(key)) {
         return entry.value;
       }
     }
     return null;
   }
+
+  static String _normalizeCropName(String value) => value
+      .toLowerCase()
+      .trim()
+      .replaceAll('\u011f', 'g')
+      .replaceAll('\u00fc', 'u')
+      .replaceAll('\u015f', 's')
+      .replaceAll('\u0131', 'i')
+      .replaceAll('\u00f6', 'o')
+      .replaceAll('\u00e7', 'c');
 
   /// Verilen ekim tarihinden bugüne göre uygun gelişim evresinin Kc'sini seç.
   static double kcForStage({

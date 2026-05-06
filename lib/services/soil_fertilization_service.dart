@@ -171,12 +171,12 @@ class SoilFertilizationService {
   // ───────────────────────────────────────────────────────────────────
 
   static List<FertilizationStep> fertilizationPlan(String cropName) {
-    final n = cropName.toLowerCase();
+    final n = _normalizeCropName(cropName);
 
     // Tahıllar (buğday, arpa, çavdar, yulaf)
-    if (n.contains('buğday') ||
+    if (n.contains('bugday') ||
         n.contains('arpa') ||
-        n.contains('çavdar') ||
+        n.contains('cavdar') ||
         n.contains('yulaf')) {
       return const [
         FertilizationStep(
@@ -202,7 +202,7 @@ class SoilFertilizationService {
     }
 
     // Mısır
-    if (n.contains('mısır')) {
+    if (n.contains('misir')) {
       return const [
         FertilizationStep(
           period: 'Ekim Öncesi',
@@ -228,8 +228,8 @@ class SoilFertilizationService {
     // Domates / biber / patlıcan / sebze
     if (n.contains('domates') ||
         n.contains('biber') ||
-        n.contains('patlıcan') ||
-        n.contains('salatalık')) {
+        n.contains('patlican') ||
+        n.contains('salatalik')) {
       return const [
         FertilizationStep(
           period: 'Dikim Öncesi',
@@ -262,8 +262,8 @@ class SoilFertilizationService {
     if (n.contains('zeytin') ||
         n.contains('elma') ||
         n.contains('armut') ||
-        n.contains('üzüm') ||
-        n.contains('kayısı') ||
+        n.contains('uzum') ||
+        n.contains('kayisi') ||
         n.contains('kiraz')) {
       return const [
         FertilizationStep(
@@ -294,8 +294,8 @@ class SoilFertilizationService {
     }
 
     // Kök bitkileri
-    if (n.contains('havuç') ||
-        n.contains('soğan') ||
+    if (n.contains('havuc') ||
+        n.contains('sogan') ||
         n.contains('patates') ||
         n.contains('turp') ||
         n.contains('pancar')) {
@@ -369,4 +369,14 @@ class SoilFertilizationService {
         return 'Çoğu bitki için uygundur.';
     }
   }
+
+  static String _normalizeCropName(String value) => value
+      .toLowerCase()
+      .trim()
+      .replaceAll('\u011f', 'g')
+      .replaceAll('\u00fc', 'u')
+      .replaceAll('\u015f', 's')
+      .replaceAll('\u0131', 'i')
+      .replaceAll('\u00f6', 'o')
+      .replaceAll('\u00e7', 'c');
 }

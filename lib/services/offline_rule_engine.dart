@@ -1009,8 +1009,11 @@ class OfflineRuleEngine {
     buf.writeln('• Ekim tarihinden ~$harvest gün sonra hasat.');
     buf.writeln(
         '• ${areaDekar.toStringAsFixed(1)} dekar alandan beklenen verim:');
-    // Yaklaşık verim tahmini (bitki başı ortalama)
-    final plantCount = ((10000 * areaDekar) / (rowSp * plantSp)).round();
+    // Yaklaşık bitki sayısı: dekar -> m2, sıra/bitki aralığı cm -> m.
+    final plantFootprintSqm = (rowSp / 100.0) * (plantSp / 100.0);
+    final plantCount = plantFootprintSqm > 0
+        ? ((areaDekar * 1000.0) / plantFootprintSqm).round()
+        : 0;
     buf.writeln(
         '  Toplam $plantCount bitki × ortalama verim = tür bazlı hesap yapın.');
     buf.writeln('• Hasat sabah erken saatlerde, serin havada yapılmalıdır.');

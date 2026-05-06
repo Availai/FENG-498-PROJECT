@@ -21,17 +21,25 @@ class RotationAdvice {
 
 class CropRotationAdvisor {
   static const _grains = {
-    'buğday',
+    'bugday',
     'arpa',
     'yulaf',
-    'çavdar',
+    'cavdar',
     'tritikale',
-    'mısır'
+    'misir'
   };
   static const _solanaceae = {'domates', 'biber', 'patlıcan', 'patates'};
-  static const _sunflower = 'ayçiçeği';
+  static const _sunflower = 'aycicegi';
 
-  static String _normalize(String s) => s.toLowerCase().trim();
+  static String _normalize(String s) => s
+      .toLowerCase()
+      .trim()
+      .replaceAll('\u011f', 'g')
+      .replaceAll('\u00fc', 'u')
+      .replaceAll('\u015f', 's')
+      .replaceAll('\u0131', 'i')
+      .replaceAll('\u00f6', 'o')
+      .replaceAll('\u00e7', 'c');
 
   /// [history]: son → ilk sırayla ürün listesi (en yeniden en eskiye).
   /// [next]: planlanan sonraki ürün (opsiyonel).
@@ -42,6 +50,8 @@ class CropRotationAdvisor {
     final list = <RotationAdvice>[];
     final h = history.map(_normalize).toList();
     final n = next != null ? _normalize(next) : null;
+    final displayLast = history.isNotEmpty ? history.first.trim() : '';
+    final displayNext = next?.trim() ?? '';
 
     // 3 yıl üst üste tahıl monokültürü
     if (h.length >= 3 &&
@@ -66,7 +76,8 @@ class CropRotationAdvisor {
       list.add(RotationAdvice(
         severity: 'warning',
         title: 'Patlıcangiller Tekrarı',
-        message: '${h[0]} sonrası $n ekimi — aynı familyadan ardışık ekim '
+        message:
+            '$displayLast sonrası $displayNext ekimi — aynı familyadan ardışık ekim '
             'Verticillium, nematod (Meloidogyne spp.) ve Sclerotinia '
             'birikimi yapar. En az 3 yıl ara verin.',
         suggestedCrops: const ['buğday', 'mısır', 'fasulye', 'bakla'],
