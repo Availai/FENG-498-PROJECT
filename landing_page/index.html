@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Akıllı Tarım Asistanı - Dijital Tarlanız</title>
+    <meta name="description" content="Türkiye'nin kırsal bölgelerindeki çiftçilere yönelik, çevrimdışı öncelikli, kapsamlı bir tarım yönetim ve rehberlik uygulaması.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #2E7D32; /* Emerald Green */
+            --primary-light: #4CAF50;
+            --primary-dark: #1B5E20;
+            --accent: #FBC02D; /* Sunflower Yellow */
+            --bg-color: #F8FAF8;
+            --text-main: #1C2826;
+            --text-muted: #546E7A;
+            --card-bg: #FFFFFF;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* Nav */
+        nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 8%;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            position: fixed;
+            width: 100%;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.05);
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--primary-dark);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .logo svg {
+            width: 32px;
+            height: 32px;
+            fill: var(--primary);
+        }
+
+        /* Hero Section */
+        .hero {
+            padding: 160px 8% 100px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #F8FAF8 0%, #E8F5E9 100%);
+            position: relative;
+        }
+
+        .hero-content {
+            max-width: 600px;
+            z-index: 2;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 8px 16px;
+            background-color: rgba(46, 125, 50, 0.1);
+            color: var(--primary-dark);
+            border-radius: 30px;
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+
+        .hero h1 {
+            font-size: 54px;
+            font-weight: 800;
+            line-height: 1.1;
+            margin-bottom: 20px;
+            color: var(--text-main);
+        }
+
+        .hero h1 span {
+            color: var(--primary);
+        }
+
+        .hero p {
+            font-size: 18px;
+            color: var(--text-muted);
+            margin-bottom: 40px;
+        }
+
+        .download-buttons {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .store-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px 24px;
+            background-color: var(--text-main);
+            color: white;
+            text-decoration: none;
+            border-radius: 12px;
+            font-weight: 600;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            gap: 10px;
+            min-width: 180px;
+        }
+
+        .store-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+        }
+
+        .store-btn.android {
+            background-color: var(--primary);
+        }
+
+        .store-btn svg {
+            width: 24px;
+            height: 24px;
+            fill: currentColor;
+        }
+
+        /* Hero Image/Mockup */
+        .hero-visual {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            position: relative;
+            z-index: 2;
+        }
+
+        .phone-mockup {
+            width: 300px;
+            height: 600px;
+            background: #fff;
+            border-radius: 40px;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.15);
+            border: 8px solid #222;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .phone-notch {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120px;
+            height: 25px;
+            background: #222;
+            border-bottom-left-radius: 15px;
+            border-bottom-right-radius: 15px;
+            z-index: 10;
+        }
+
+        .mockup-ui {
+            padding: 40px 20px 20px;
+            background: linear-gradient(to bottom, var(--primary-dark), var(--primary));
+            height: 250px;
+            color: white;
+            position: relative;
+        }
+
+        .mockup-ui-title {
+            font-size: 20px;
+            font-weight: 800;
+            margin-bottom: 5px;
+        }
+        
+        .mockup-ui-subtitle {
+            font-size: 12px;
+            opacity: 0.8;
+            margin-bottom: 20px;
+        }
+
+        .mockup-card {
+            background: white;
+            border-radius: 15px;
+            padding: 15px;
+            color: var(--text-main);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            margin-bottom: 15px;
+        }
+
+        .mockup-body {
+            background: #F4F6F4;
+            flex: 1;
+            padding: 20px;
+        }
+
+        .skeleton-line {
+            height: 10px;
+            background: #E0E0E0;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+
+        .skeleton-line.short { width: 60%; }
+        .skeleton-line.long { width: 90%; }
+        .skeleton-line.medium { width: 75%; }
+
+        /* Features Section */
+        .features {
+            padding: 100px 8%;
+            background: white;
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        .section-header h2 {
+            font-size: 36px;
+            color: var(--primary-dark);
+            margin-bottom: 15px;
+        }
+
+        .section-header p {
+            color: var(--text-muted);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 30px;
+        }
+
+        .feature-card {
+            background: var(--bg-color);
+            padding: 40px 30px;
+            border-radius: 20px;
+            transition: transform 0.3s ease;
+            border: 1px solid rgba(0,0,0,0.03);
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            background: white;
+            box-shadow: 0 15px 30px rgba(0,0,0,0.05);
+        }
+
+        .feature-icon {
+            width: 60px;
+            height: 60px;
+            background: var(--primary-light);
+            color: white;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        
+        .feature-icon svg {
+            width: 30px;
+            height: 30px;
+            fill: white;
+        }
+
+        .feature-card h3 {
+            font-size: 20px;
+            margin-bottom: 12px;
+            color: var(--text-main);
+        }
+
+        .feature-card p {
+            color: var(--text-muted);
+            font-size: 15px;
+        }
+
+        /* Offline Highlight Section */
+        .offline-section {
+            padding: 80px 8%;
+            background: var(--primary-dark);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 40px;
+        }
+
+        .offline-text {
+            flex: 1;
+            max-width: 500px;
+        }
+
+        .offline-text h2 {
+            font-size: 36px;
+            margin-bottom: 20px;
+        }
+
+        .offline-text p {
+            font-size: 16px;
+            opacity: 0.9;
+            margin-bottom: 20px;
+        }
+
+        .offline-icon {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+        }
+        
+        .offline-icon svg {
+            width: 200px;
+            height: 200px;
+            fill: var(--accent);
+            opacity: 0.9;
+        }
+
+        /* Footer */
+        footer {
+            background: #111;
+            color: #888;
+            padding: 40px 8%;
+            text-align: center;
+        }
+
+        /* Decorative shapes */
+        .shape-1 {
+            position: absolute;
+            top: -100px;
+            right: -100px;
+            width: 400px;
+            height: 400px;
+            background: var(--primary-light);
+            opacity: 0.05;
+            border-radius: 50%;
+            z-index: 1;
+        }
+
+        .shape-2 {
+            position: absolute;
+            bottom: 10%;
+            left: -50px;
+            width: 200px;
+            height: 200px;
+            background: var(--accent);
+            opacity: 0.05;
+            border-radius: 50%;
+            z-index: 1;
+        }
+
+        @media (max-width: 900px) {
+            .hero {
+                flex-direction: column;
+                text-align: center;
+                padding-top: 120px;
+            }
+            .hero-content {
+                margin-bottom: 50px;
+            }
+            .download-buttons {
+                justify-content: center;
+            }
+            .offline-section {
+                flex-direction: column;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <nav>
+        <div class="logo">
+            <svg viewBox="0 0 24 24">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-2-5.5l7-7-1.41-1.41L10 11.67l-2.59-2.58L6 10.5l4 4z"/>
+            </svg>
+            Akıllı Tarım
+        </div>
+        <div>
+            <!-- Simple nav links could go here -->
+        </div>
+    </nav>
+
+    <section class="hero">
+        <div class="shape-1"></div>
+        <div class="shape-2"></div>
+        
+        <div class="hero-content">
+            <div class="badge">Sürüm 2.0 Yayında 🚀</div>
+            <h1>Tarlanızın Yönetimi Artık <span>Cebinizde</span></h1>
+            <p>İnternet çekmese bile çalışan, Türkiye'nin coğrafyasına ve TAGEM standartlarına özel olarak tasarlanmış en gelişmiş dijital tarım asistanınız. Hastalık teşhisi, akıllı sulama ve 3D tarla yönetimi hepsi bir arada.</p>
+            
+            <div class="download-buttons">
+                <a href="#download-android" class="store-btn android">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M17.523 15.3414c-.011.0281-.0225.0561-.0365.0822l-1.536 3.167c-.156.324-.543.46-.867.304-.324-.156-.46-.543-.304-.867l1.458-3.007c-2.47-1.127-5.918-1.127-8.388 0l1.458 3.007c.156.324.02.711-.304.867-.324.156-.711.02-.867-.304l-1.536-3.167c-.014-.0261-.0255-.0541-.0365-.0822-3.411 1.637-5.836 4.793-6.529 8.658h24.001c-.693-3.865-3.118-7.021-6.529-8.658zm-11.233 6.368c-.604 0-1.096-.492-1.096-1.096s.492-1.096 1.096-1.096 1.096.492 1.096 1.096-.492 1.096-1.096 1.096zm11.42 0c-.604 0-1.096-.492-1.096-1.096s.492-1.096 1.096-1.096 1.096.492 1.096 1.096-.492 1.096-1.096 1.096zm-5.71-18.709c-4.142 0-7.5 3.358-7.5 7.5v2.5h15v-2.5c0-4.142-3.358-7.5-7.5-7.5zm0 12c-2.485 0-4.5-2.015-4.5-4.5s2.015-4.5 4.5-4.5 4.5 2.015 4.5 4.5-2.015 4.5-4.5 4.5z"/>
+                    </svg>
+                    Android için İndir
+                </a>
+                <a href="#download-ios" class="store-btn ios">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M16.365 2.024c-1.396.068-3.085.932-4.041 1.947-.84.874-1.536 2.109-1.328 3.374 1.547.126 3.093-.787 4.015-1.892.835-.989 1.458-2.316 1.354-3.429zm-1.05 4.88c-1.62.062-3.013.985-3.81 1.002-.87.013-2.18-.888-3.535-.888-2.618.016-5.068 2.227-5.068 5.753 0 3.386 2.308 6.945 4.093 9.475 1.135 1.628 2.457 3.385 4.143 3.356 1.637-.034 2.115-1.026 4.011-1.026 1.867 0 2.378 1.026 4.067 1.002 1.706-.034 2.871-1.625 4.004-3.265 1.157-1.666 1.662-3.238 1.691-3.33-.035-.015-3.136-1.189-3.136-4.733 0-3.078 2.502-4.536 2.617-4.606-1.428-2.08-3.618-2.366-4.403-2.428z"/>
+                    </svg>
+                    iOS için İndir
+                </a>
+            </div>
+        </div>
+
+        <div class="hero-visual">
+            <div class="phone-mockup">
+                <div class="phone-notch"></div>
+                <div class="mockup-ui">
+                    <div class="mockup-ui-subtitle">Günaydın, Çiftçi 🌾</div>
+                    <div class="mockup-ui-title">Çamlıca Tarlası</div>
+                    <div style="font-size: 14px; opacity: 0.9; margin-bottom: 20px;">120 Dönüm • Buğday & Mısır</div>
+                    
+                    <div class="mockup-card">
+                        <div style="font-weight: 800; font-size: 14px;">💦 Akıllı Sulama</div>
+                        <div style="font-size: 12px; color: #666; margin-top: 5px;">Bugün 45dk damlama sulama öneriliyor.</div>
+                    </div>
+                </div>
+                <div class="mockup-body">
+                    <div style="font-weight: 700; font-size: 14px; margin-bottom: 15px; color: #444;">Son Aktiviteler</div>
+                    <div class="mockup-card" style="box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+                        <div class="skeleton-line long"></div>
+                        <div class="skeleton-line medium"></div>
+                    </div>
+                    <div class="mockup-card" style="box-shadow: 0 2px 5px rgba(0,0,0,0.05); background: #383838; color: white;">
+                        <div class="skeleton-line short" style="background: rgba(255,255,255,0.2);"></div>
+                        <div class="skeleton-line medium" style="background: rgba(255,255,255,0.2);"></div>
+                    </div>
+                    <div class="mockup-card" style="box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+                        <div class="skeleton-line long"></div>
+                        <div class="skeleton-line short"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="features">
+        <div class="section-header">
+            <h2>Profesyonel Tarım, Basit Kullanım</h2>
+            <p>Tarlanızdaki tüm süreçleri tek bir ekrandan, karmaşık menüler arasında kaybolmadan yönetin. Uzman ziraat mühendisliği bilgisi şimdi parmaklarınızın ucunda.</p>
+        </div>
+
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <svg viewBox="0 0 24 24"><path d="M20.5 3l-.16.03L15 5.1 9 3 3.36 4.9c-.21.07-.36.25-.36.48V20.5c0 .28.22.5.5.5l.16-.03L9 18.9l6 2.1 5.64-1.9c.21-.07.36-.25.36-.48V3.5c0-.28-.22-.5-.5-.5zM15 19l-6-2.11V5l6 2.11V19z"/></svg>
+                </div>
+                <h3>3D İnteraktif Tarla</h3>
+                <p>GPS ile tarlanızı çizin, 3 boyutlu görünümde ekinlerinizi yerleştirin ve gelişimlerini görsel olarak takip edin.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+                </div>
+                <h3>Akıllı Hastalık Uyarıları</h3>
+                <p>Tarladaki ölü veya hasta bitkileri anında kaydedin. Sistem size ne zaman ilaçlama yapmanız, ne zaman söküm yapmanız gerektiğini söylesin.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <svg viewBox="0 0 24 24"><path d="M12 2.02c-5.51 0-9.98 4.47-9.98 9.98s4.47 9.98 9.98 9.98 9.98-4.47 9.98-9.98S17.51 2.02 12 2.02zM11.48 20v-6.26H8L13 4v6.26h3.35L11.48 20z"/></svg>
+                </div>
+                <h3>Gübre ve Su Asistanı</h3>
+                <p>FAO (Birleşmiş Milletler) ve TAGEM verilerine dayalı matematiksel modellerle tam zamanında, eksiksiz sulama ve gübreleme tavsiyeleri.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <svg viewBox="0 0 24 24"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/></svg>
+                </div>
+                <h3>Kapsamlı Ürün Ansiklopedisi</h3>
+                <p>Türkiye'de yetişen ana ürünlerin detaylı veritabanı. Bölgesel ekim takvimleri, toprak pH uygunluğu ve daha fazlası.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="offline-section">
+        <div class="offline-text">
+            <h2>İnternet Yok mu? Hiç Sorun Değil.</h2>
+            <p>Anadolu'nun ücra köşelerinde, tarlanın ortasında bağlantınız kopabilir. Biz bunu biliyoruz.</p>
+            <p>Akıllı Tarım Asistanı, çevrimdışı öncelikli çalışacak şekilde tasarlanmıştır. Tüm kayıtlarınızı girebilir, tarlanızı inceleyebilir ve hastalık rehberlerine internet olmadan ulaşabilirsiniz. Bağlantı geldiğinde sistem arka planda güvenle eşitlenir.</p>
+        </div>
+        <div class="offline-icon">
+            <svg viewBox="0 0 24 24">
+                <path d="M23.64 7c-.45-.34-4.93-4-11.64-4C5.28 3 .81 6.66.36 7l11.63 14.49.01.01.01-.01L23.64 7zm-11.64 12.19L3.54 8.78c1.37-1.04 4.88-3.28 8.46-3.28s7.09 2.24 8.46 3.28l-8.46 10.41z"/>
+                <path d="M2.26 2.26l19.48 19.48-1.41 1.41-5.27-5.27L12 21.5l-.01.01-.01-.01L.36 7c.21-.16.9-.68 1.96-1.37L.85 3.67l1.41-1.41z"/>
+            </svg>
+        </div>
+    </section>
+
+    <footer>
+        <div class="logo" style="justify-content: center; margin-bottom: 20px; color: #555;">
+            <svg viewBox="0 0 24 24" style="fill: #555;">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-2-5.5l7-7-1.41-1.41L10 11.67l-2.59-2.58L6 10.5l4 4z"/>
+            </svg>
+            Akıllı Tarım Asistanı v2.0
+        </div>
+        <p>&copy; 2026 Tüm Hakları Saklıdır. Türkiye'nin çiftçileri için gururla geliştirildi.</p>
+    </footer>
+
+</body>
+</html>
