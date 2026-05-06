@@ -13,6 +13,51 @@ import '../widgets/help_panel.dart';
 import '../widgets/tap_scale.dart';
 import 'farm_journal_screen.dart';
 import 'field_detail_screen.dart';
+final dashboardWeeklyPlanProvider = FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
+  final fieldsAsync = ref.watch(fieldMapsProvider);
+  final fields = fieldsAsync.asData?.value ?? <Map<String, dynamic>>[];
+  
+  final plans = <Map<String, dynamic>>[];
+
+  for (final f in fields) {
+    final fieldId = f['id']?.toString() ?? '';
+    final name = f['name']?.toString() ?? 'Tarla';
+    
+    // Check Irrigation
+    final analysis = f['analysis'];
+    final moisture = analysis is Map ? (analysis['soil_moisture'] as num?)?.toDouble() : null;
+    if (moisture != null && moisture < 0.45) {
+      plans.add({
+        'title': '$name Sulama',
+        'time': '06:00',
+        'days': 'Her Gün',
+        'type': 'water',
+        'color': const Color(0xFF0288D1),
+        'icon': Icons.water_drop_rounded,
+        'field': f,
+      });
+    }
+
+    // Check Treatment
+    if (fieldId.isNotEmpty) {
+      final plants = await ref.watch(fieldPlantInstancesProvider(fieldId).future);
+      final treating = plants.where((p) => p.healthStatus == 'treating').toList();
+      if (treating.isNotEmpty) {
+        plans.add({
+          'title': '$name İlaçlama',
+          'time': '08:00 & 18:00',
+          'days': 'Tedavi Süresince',
+          'type': 'treatment',
+          'color': const Color(0xFFFF9800),
+          'icon': Icons.medication_rounded,
+          'field': f,
+        });
+      }
+    }
+  }
+
+  return plans;
+});
 
 class AgriDashboard extends ConsumerStatefulWidget {
   const AgriDashboard({super.key});
@@ -309,6 +354,11 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
                               Icons.checklist_rtl_rounded),
                           const SizedBox(height: 12),
                           _buildTasksSummarySection(),
+                          const SizedBox(height: 24),
+                          _buildSectionHeader(
+                              'Haftalık Plan', Icons.calendar_month_rounded),
+                          const SizedBox(height: 12),
+                          _buildWeeklyPlanSection(),
                           const SizedBox(height: 24),
                           _buildSectionHeader(
                               'Tarlalarım', Icons.grass_rounded),
@@ -1097,6 +1147,153 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
             child: _FieldDirectivesStrip(field: f),
           ),
       ],
+    );
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // HAFTALIK PLAN — Sulama ve İlaçlama Takvimi
+  // ───────────────────────────────────────────────────────────────────────────
+  Widget _buildWeeklyPlanSection() {
+    final planAsync = ref.watch(dashboardWeeklyPlanProvider);
+
+    return planAsync.when(
+      loading: () => const Center(
+        child: Padding(
+          padding: EdgeInsets.all(20.0),
+          child: CircularProgressIndicator(color: AppColors.emerald),
+        ),
+      ),
+      error: (_, __) => const Text('Plan yüklenemedi.'),
+      data: (plans) {
+        if (plans.isEmpty) {
+          return Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.95),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.6)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.event_available_rounded,
+                    color: AppColors.emerald, size: 28),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Bu hafta için rutin sulama veya tedavi planı bulunmuyor. Her şey yolunda!',
+                    style: AppText.body(context).copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        return SizedBox(
+          height: 140,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: plans.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 12),
+            itemBuilder: (_, i) {
+              final p = plans[i];
+              final color = p['color'] as Color;
+              return TapScale(
+                scale: 0.96,
+                onTap: () {
+                  Navigator.of(context).push(
+                    AnimatedRoute.scaleFade(FieldDetailScreen(fieldData: p['field'])),
+                  );
+                },
+                child: Container(
+                  width: 220,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        color.withValues(alpha: 0.8),
+                        color,
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: color.withValues(alpha: 0.3),
+                        blurRadius: 12,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.25),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Icon(p['icon'], color: Colors.white, size: 18),
+                          ),
+                          const Spacer(),
+                          Text(
+                            p['days'],
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const Spacer(),
+                      Text(
+                        p['title'],
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          const Icon(Icons.schedule_rounded, color: Colors.white70, size: 14),
+                          const SizedBox(width: 4),
+                          Text(
+                            p['time'],
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        );
+      },
     );
   }
 }
