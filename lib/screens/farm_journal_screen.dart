@@ -66,6 +66,7 @@ class _FarmJournalScreenState extends ConsumerState<FarmJournalScreen> {
                 final entries = (snap.data ?? const [])
                     .where(
                         (entry) => entry['source']?.toString() != 'auto_seed')
+                    .where((entry) => !_isInternalPlantHealthLog(entry))
                     .toList(growable: false);
                 if (entries.isEmpty) {
                   return _buildEmpty();
@@ -282,6 +283,23 @@ class _FarmJournalScreenState extends ConsumerState<FarmJournalScreen> {
     );
   }
 
+  bool _isInternalPlantHealthLog(Map<String, dynamic> entry) {
+    if ((entry['type'] as String? ?? ActivityType.other) !=
+        ActivityType.scouting) {
+      return false;
+    }
+    final rawMeta = entry['metadata'];
+    if (rawMeta is! Map) return false;
+    final meta = rawMeta.cast<String, dynamic>();
+
+    final hasPlantInstance = _stringValue(meta['plant_instance_id']) != null;
+    final healthStatus = _stringValue(meta['health_status']);
+    final hasUserFacingTarget = _stringValue(meta['scouting_target']) != null ||
+        _stringValue(meta['target_pest']) != null;
+
+    return hasPlantInstance && healthStatus != null && !hasUserFacingTarget;
+  }
+
   Widget _buildGroupedList(List<Map<String, dynamic>> entries) {
     final groups = _groupByBucket(entries);
     final children = <Widget>[
@@ -415,14 +433,17 @@ class _FarmJournalScreenState extends ConsumerState<FarmJournalScreen> {
     final meta = entry['metadata'] as Map<String, dynamic>?;
     final isSystemAlert = type == ActivityType.systemAlert;
     final severity = ActivityType.normalizeAlertSeverity(meta?['severity']);
-    
-    final noteStr = _stringValue(meta?['message']) ?? _stringValue(meta?['note']);
-    
-    final isDiseaseDetection = type == ActivityType.scouting && 
-        (meta?['threshold_status'] == 'criticalNoChemical' || meta?['scouting_target']?.toString().contains('Hastalık') == true);
-        
-    final isTreatmentStart = type == ActivityType.spraying && 
-        (meta?['treatment_days'] != null || noteStr?.toLowerCase().contains('tedavi') == true);
+
+    final noteStr =
+        _stringValue(meta?['message']) ?? _stringValue(meta?['note']);
+
+    final isDiseaseDetection = type == ActivityType.scouting &&
+        (meta?['threshold_status'] == 'criticalNoChemical' ||
+            meta?['scouting_target']?.toString().contains('Hastalık') == true);
+
+    final isTreatmentStart = type == ActivityType.spraying &&
+        (meta?['treatment_days'] != null ||
+            noteStr?.toLowerCase().contains('tedavi') == true);
 
     Color iconBgColor;
     Color iconColor;
@@ -455,10 +476,15 @@ class _FarmJournalScreenState extends ConsumerState<FarmJournalScreen> {
       pillBg = Colors.black.withValues(alpha: 0.15);
       pillBorder = Colors.transparent;
     } else {
-      iconColor = isSystemAlert ? ActivityType.alertSeverityColor(severity) : ActivityType.color(type);
+      iconColor = isSystemAlert
+          ? ActivityType.alertSeverityColor(severity)
+          : ActivityType.color(type);
       iconBgColor = iconColor.withValues(alpha: 0.15);
-      bgColor = isSystemAlert ? ActivityType.alertSeverityBackground(severity) : AppColors.surface;
-      borderColor = isSystemAlert ? iconColor.withValues(alpha: 0.45) : AppColors.border;
+      bgColor = isSystemAlert
+          ? ActivityType.alertSeverityBackground(severity)
+          : AppColors.surface;
+      borderColor =
+          isSystemAlert ? iconColor.withValues(alpha: 0.45) : AppColors.border;
       primaryText = AppColors.textPrimary;
       secondaryText = AppColors.textSecondary;
       tertiaryText = AppColors.textTertiary;
@@ -467,8 +493,9 @@ class _FarmJournalScreenState extends ConsumerState<FarmJournalScreen> {
     }
 
     final fieldName = entry['field_name'] as String?;
-    final cropName = entry['crop_name'] as String? ?? _stringValue(meta?['crop_name']);
-    
+    final cropName =
+        entry['crop_name'] as String? ?? _stringValue(meta?['crop_name']);
+
     return TapScale(
       onTap: () => _showEntryOptions(entry),
       child: Container(
@@ -490,7 +517,9 @@ class _FarmJournalScreenState extends ConsumerState<FarmJournalScreen> {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(
-                isSystemAlert ? ActivityType.alertSeverityIcon(severity) : ActivityType.icon(type),
+                isSystemAlert
+                    ? ActivityType.alertSeverityIcon(severity)
+                    : ActivityType.icon(type),
                 color: iconColor,
                 size: 22,
               ),
@@ -505,7 +534,9 @@ class _FarmJournalScreenState extends ConsumerState<FarmJournalScreen> {
                     children: [
                       Expanded(
                         child: Text(
-                          isSystemAlert ? _systemAlertTitle(entry, meta) : _entryTitle(type),
+                          isSystemAlert
+                              ? _systemAlertTitle(entry, meta)
+                              : _entryTitle(type),
                           style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w800,
@@ -537,8 +568,10 @@ class _FarmJournalScreenState extends ConsumerState<FarmJournalScreen> {
                       ),
                     ),
                   ],
-                  _buildDetailPills(entry, type, meta, primaryText, secondaryText, pillBg, pillBorder),
-                  _buildNoteBlock(meta, secondaryText, tertiaryText, pillBg, pillBorder),
+                  _buildDetailPills(entry, type, meta, primaryText,
+                      secondaryText, pillBg, pillBorder),
+                  _buildNoteBlock(
+                      meta, secondaryText, tertiaryText, pillBg, pillBorder),
                 ],
               ),
             ),
@@ -565,13 +598,15 @@ class _FarmJournalScreenState extends ConsumerState<FarmJournalScreen> {
         spacing: 8,
         runSpacing: 8,
         children: details
-            .map((item) => _detailPill(item.$1, item.$2, primaryText, secondaryText, pillBg, pillBorder))
+            .map((item) => _detailPill(item.$1, item.$2, primaryText,
+                secondaryText, pillBg, pillBorder))
             .toList(growable: false),
       ),
     );
   }
 
-  Widget _detailPill(String label, String value, Color primaryText, Color secondaryText, Color bg, Color border) {
+  Widget _detailPill(String label, String value, Color primaryText,
+      Color secondaryText, Color bg, Color border) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
@@ -601,7 +636,8 @@ class _FarmJournalScreenState extends ConsumerState<FarmJournalScreen> {
     );
   }
 
-  Widget _buildNoteBlock(Map<String, dynamic>? meta, Color secondaryText, Color tertiaryText, Color bg, Color border) {
+  Widget _buildNoteBlock(Map<String, dynamic>? meta, Color secondaryText,
+      Color tertiaryText, Color bg, Color border) {
     final note = _stringValue(meta?['message']) ?? _stringValue(meta?['note']);
     if (note == null) return const SizedBox.shrink();
     return Container(
@@ -897,8 +933,7 @@ class _FarmJournalScreenState extends ConsumerState<FarmJournalScreen> {
   }
 
   Future<void> _showEntryOptions(Map<String, dynamic> entry) async {
-    final isSystemAlert =
-        entry['type']?.toString() == ActivityType.systemAlert;
+    final isSystemAlert = entry['type']?.toString() == ActivityType.systemAlert;
     final action = await showModalBottomSheet<String>(
       context: context,
       backgroundColor: AppColors.bg,

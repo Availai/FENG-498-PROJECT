@@ -743,9 +743,8 @@ class LocalDataRepository {
       plantInstanceId: plantInstanceId,
       subtype: subtype,
       photoPath: photoPath,
-      noteText: (trimmedNote != null && trimmedNote.isNotEmpty)
-          ? trimmedNote
-          : null,
+      noteText:
+          (trimmedNote != null && trimmedNote.isNotEmpty) ? trimmedNote : null,
     );
 
     // Sulama log'u → bekleyen sulama planını "tamamlandı" olarak işaretle.
@@ -1930,9 +1929,11 @@ class LocalDataRepository {
     return id;
   }
 
-  /// Mevcut bir bitki kaydının sağlık durumunu günceller. Hasta olarak
-  /// işaretlendiğinde aynı zamanda CalendarEvents'e bir 'scouting' kaydı
-  /// düşürür — Günlüklerim ekranında hastalık geçmişi görünür.
+  /// Mevcut bir bitki kaydının sağlık durumunu günceller. Varsayılan olarak
+  /// eski çağrılarla uyum için aktivite günlüğüne sağlık değişimi düşebilir.
+  /// Ekran akışları kendi anlamlı tekil/toplu gözlem kaydını yazıyorsa
+  /// [writeActivityLog] false geçilir; böylece Tarlam Günlüğü düşük seviye
+  /// bitki başı kayıtlarla dolmaz.
   Future<void> setPlantHealth({
     required String instanceId,
     required String healthStatus,
@@ -1940,6 +1941,7 @@ class LocalDataRepository {
     String? diseasePhotoPath,
     String diagnosisSource = 'manual',
     String? notes,
+    bool writeActivityLog = true,
   }) async {
     final now = DateTime.now().toUtc();
     final inst = await (_db.select(_db.fieldPlantInstances)
@@ -1976,7 +1978,8 @@ class LocalDataRepository {
     );
 
     // Hasta/ölü işaretlendiğinde aktivite günlüğüne 'scouting' düş
-    if (healthStatus == 'diseased' || healthStatus == 'dead') {
+    if (writeActivityLog &&
+        (healthStatus == 'diseased' || healthStatus == 'dead')) {
       final note = healthStatus == 'dead'
           ? 'Bitki ölü olarak işaretlendi'
           : (diseaseType != null && diseaseType.isNotEmpty
@@ -2059,7 +2062,8 @@ class LocalDataRepository {
     required List<String> flags,
   }) async {
     final now = DateTime.now().toUtc();
-    final cleaned = flags.map((f) => f.trim()).where((f) => f.isNotEmpty).toSet().toList();
+    final cleaned =
+        flags.map((f) => f.trim()).where((f) => f.isNotEmpty).toSet().toList();
     final json = cleaned.isEmpty ? null : jsonEncode(cleaned);
     final inst = await (_db.select(_db.fieldPlantInstances)
           ..where((tbl) => tbl.id.equals(plantInstanceId)))
@@ -2109,8 +2113,7 @@ class LocalDataRepository {
   }) {
     final query = _db.select(_db.plantConditionEvents)
       ..where((tbl) =>
-          tbl.plantInstanceId.equals(plantInstanceId) &
-          tbl.deletedAt.isNull())
+          tbl.plantInstanceId.equals(plantInstanceId) & tbl.deletedAt.isNull())
       ..orderBy([(t) => OrderingTerm.desc(t.observedAt)])
       ..limit(limit);
     return query.watch();

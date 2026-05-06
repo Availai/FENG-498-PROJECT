@@ -1908,9 +1908,12 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
       healthStatus: result.status,
       diseaseType: result.diseaseType,
       diseasePhotoPath: result.photoPath,
+      writeActivityLog: false,
     );
 
-    // TARLAM GÜNLÜĞÜ: Hastalık kaydı
+    // TARLAM GÜNLÜĞÜ: Kullanıcıya anlamlı tek kayıt.
+    // setPlantHealth bitki durumunu günceller; günlük kaydı burada tek elden
+    // yazılır ki aynı hastalık hem tekil hem toplu satır olarak çoğalmasın.
     if (result.status == DiseaseTypes.statusDiseased) {
       await ref.read(activityLoggerProvider).log(
         fieldId: fieldId,
@@ -1921,6 +1924,18 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
           'scouting_target': 'Hastalık Taraması',
           'target_pest': result.diseaseType ?? 'Bilinmeyen',
           'threshold_status': 'criticalNoChemical',
+          'crop_name': cropName,
+        },
+      );
+    } else if (result.status == DiseaseTypes.statusDead) {
+      await ref.read(activityLoggerProvider).log(
+        fieldId: fieldId,
+        type: ActivityType.scouting,
+        cropId: cropId,
+        note: 'Bitki ölü olarak işaretlendi',
+        metadata: {
+          'scouting_target': 'Bitki Sağlık Kontrolü',
+          'health_status': result.status,
           'crop_name': cropName,
         },
       );
@@ -2312,10 +2327,12 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
         healthStatus: result.status,
         diseaseType: result.diseaseType,
         diseasePhotoPath: result.photoPath,
+        writeActivityLog: false,
       );
     }
 
-    // TARLAM GÜNLÜĞÜ: Çoklu hastalık kaydı
+    // TARLAM GÜNLÜĞÜ: Toplu işlem tek satır görünür. Bitki başı sağlık
+    // güncellemeleri haritada kalır, günlükte ayrı ayrı tekrarlanmaz.
     if (result.status == DiseaseTypes.statusDiseased) {
       await ref.read(activityLoggerProvider).log(
         fieldId: fieldId,
@@ -2327,6 +2344,17 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
           'target_pest': result.diseaseType ?? 'Bilinmeyen',
           'quantity': count,
           'threshold_status': 'criticalNoChemical',
+        },
+      );
+    } else if (result.status == DiseaseTypes.statusDead) {
+      await ref.read(activityLoggerProvider).log(
+        fieldId: fieldId,
+        type: ActivityType.scouting,
+        note: '$count adet bitki ölü olarak işaretlendi',
+        metadata: {
+          'scouting_target': 'Çoklu Bitki Sağlık Kontrolü',
+          'quantity': count,
+          'health_status': result.status,
         },
       );
     } else if (result.status == DiseaseTypes.statusHealthy) {
