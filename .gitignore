@@ -50,3 +50,10 @@ app.*.map.json
 backend/venv/
 backend/__pycache__/
 backend/.env
+backend/tests/__pycache__/
+
+# Yerel olarak indirilen resmî PDF kaynakları (TAGEM/ÇAYKUR).
+# URL'ler sources.json'da, içerik populate_priority_crops.py içinde
+# alıntı olarak yer aldığından bu dosyalar repo'ya eklenmez.
+backend/data_pipeline/sources_pdf/
+backend/data_pipeline/output/

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../core/rule_engine/rule.dart';
 import '../data/turkish_crops_repository.dart';
 import '../data/supported_crops.dart';
 import '../theme/app_theme.dart';
@@ -329,6 +330,35 @@ class _CropTile extends StatelessWidget {
                 ],
               ),
             ),
+            // Resmî kaynak rozeti — yalnızca v2 verisi taşıyan öncelikli
+            // bitkilerde (CLAUDE.md sec 11). Detay sheet zaten kaynak ve
+            // kanıtları gösteriyor; bu pin kullanıcıya v2 olduğunu belli eder.
+            if (crop.stableId != null) ...[
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppColors.emerald.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                      color: AppColors.emerald.withValues(alpha: 0.35)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.verified_rounded,
+                        size: 12, color: AppColors.emeraldDark),
+                    const SizedBox(width: 3),
+                    Text('Resmî',
+                        style: GoogleFonts.inter(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.emeraldDark)),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 6),
+            ],
             const Icon(Icons.chevron_right_rounded, color: Colors.grey),
           ],
         ),
@@ -374,6 +404,12 @@ class _CropDetailSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final stableId = crop.stableId;
+    final v2 = stableId == null || stableId.isEmpty
+        ? null
+        : TurkishCropsRepository.instance.findV2ByStableId(stableId);
+    final usesTrustedV2 = v2 != null;
+
     return DraggableScrollableSheet(
       expand: false,
       initialChildSize: 0.7,
@@ -399,6 +435,10 @@ class _CropDetailSheet extends StatelessWidget {
             _header(),
             const SizedBox(height: 20),
             _summaryIcons(),
+            if (v2 != null) ...[
+              const SizedBox(height: 18),
+              _v2Knowledge(v2),
+            ],
             const SizedBox(height: 16),
             if (crop.sowingMonths.isNotEmpty || crop.harvestMonths.isNotEmpty)
               _calendarBar(),
@@ -424,13 +464,13 @@ class _CropDetailSheet extends StatelessWidget {
               if (crop.soilType.isNotEmpty)
                 _kv('Toprak tipi', crop.soilType.join(', ')),
             ],
-            if (crop.fertilizerNotes != null) ...[
+            if (!usesTrustedV2 && crop.fertilizerNotes != null) ...[
               const SizedBox(height: 16),
               _sectionTitle('Gübreleme', Icons.scatter_plot_rounded),
               const SizedBox(height: 6),
               _paragraph(crop.fertilizerNotes!),
             ],
-            if (crop.commonPests.isNotEmpty) ...[
+            if (!usesTrustedV2 && crop.commonPests.isNotEmpty) ...[
               const SizedBox(height: 16),
               _sectionTitle('Yaygın Zararlılar', Icons.pest_control_rounded),
               const SizedBox(height: 8),
@@ -442,7 +482,7 @@ class _CropDetailSheet extends StatelessWidget {
                     .toList(),
               ),
             ],
-            if (crop.commonDiseases.isNotEmpty) ...[
+            if (!usesTrustedV2 && crop.commonDiseases.isNotEmpty) ...[
               const SizedBox(height: 16),
               _sectionTitle('Yaygın Hastalıklar', Icons.sick_rounded),
               const SizedBox(height: 8),
@@ -454,7 +494,7 @@ class _CropDetailSheet extends StatelessWidget {
                     .toList(),
               ),
             ],
-            if (crop.growingTips != null) ...[
+            if (!usesTrustedV2 && crop.growingTips != null) ...[
               const SizedBox(height: 16),
               _sectionTitle('Yetiştirme İpuçları', Icons.lightbulb_rounded),
               const SizedBox(height: 6),
@@ -469,6 +509,468 @@ class _CropDetailSheet extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Widget _v2Knowledge(CropV2Bundle v2) {
+    final specialRiskCount = v2.diseases.length + v2.pests.length;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionTitle('Kaynaklı Ürün Rehberi', Icons.verified_rounded),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: [
+            _chip(_statusLabel(v2.status), AppColors.emerald),
+            _chip(_confidenceLabel(v2.confidence), Colors.indigo),
+            _chip('$specialRiskCount özel risk', Colors.deepOrange),
+            _chip('${v2.rules.length} çözüm kuralı', Colors.blueGrey),
+          ],
+        ),
+        if (v2.growthStages.isNotEmpty) ...[
+          const SizedBox(height: 14),
+          _v2MapSection(
+            'Kaynaklı Dönemler',
+            Icons.timeline_rounded,
+            v2.growthStages,
+            AppColors.emerald,
+          ),
+        ],
+        if (v2.diseases.isNotEmpty) ...[
+          const SizedBox(height: 14),
+          _v2MapSection(
+            'Özel Hastalıklar',
+            Icons.sick_rounded,
+            v2.diseases,
+            Colors.deepOrange,
+            showControls: true,
+          ),
+        ] else if (v2.stableId == 'crop.tea') ...[
+          const SizedBox(height: 14),
+          _sectionTitle('Özel Hastalıklar', Icons.sick_rounded),
+          const SizedBox(height: 8),
+          _noticeCard(
+            'Çay için okunan resmi kaynakta doğrulanmış özel hastalık profili yok. Bu yüzden uygulama hastalık adı uydurmaz; çayda kaynaklı zararlı, toprak, sulama ve hasat kartları gösterilir.',
+          ),
+        ],
+        if (v2.pests.isNotEmpty) ...[
+          const SizedBox(height: 14),
+          _v2MapSection(
+            'Özel Zararlılar',
+            Icons.pest_control_rounded,
+            v2.pests,
+            Colors.red.shade700,
+            showControls: true,
+          ),
+        ],
+        if (v2.weeds.isNotEmpty) ...[
+          const SizedBox(height: 14),
+          _v2MapSection(
+            'Özel Yabancı Otlar',
+            Icons.grass_rounded,
+            v2.weeds,
+            Colors.green.shade700,
+            showControls: true,
+          ),
+        ],
+        if (v2.fertilizerRules.isNotEmpty) ...[
+          const SizedBox(height: 14),
+          _v2MapSection(
+            'Gübreleme Güvenlik Kuralı',
+            Icons.scatter_plot_rounded,
+            v2.fertilizerRules,
+            Colors.brown.shade700,
+            showGuardrail: true,
+          ),
+        ],
+        if (v2.irrigationRules.isNotEmpty) ...[
+          const SizedBox(height: 14),
+          _v2MapSection(
+            'Sulama Güvenlik Kuralı',
+            Icons.water_drop_rounded,
+            v2.irrigationRules,
+            Colors.blue.shade700,
+          ),
+        ],
+        if (v2.rules.isNotEmpty) ...[
+          const SizedBox(height: 14),
+          _sectionTitle('Özel Çözüm Kartları', Icons.rule_rounded),
+          const SizedBox(height: 8),
+          ...v2.rules.map((rule) => _v2RuleCard(rule, v2)),
+        ],
+        if (v2.evidence.isNotEmpty) ...[
+          const SizedBox(height: 14),
+          _v2MapSection(
+            'Kaynak Kanıtları',
+            Icons.source_rounded,
+            v2.evidence,
+            Colors.blueGrey,
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _v2MapSection(
+    String title,
+    IconData icon,
+    List<Map<String, dynamic>> items,
+    Color color, {
+    bool showControls = false,
+    bool showGuardrail = false,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionTitle(title, icon),
+        const SizedBox(height: 8),
+        ...items.map(
+          (item) => _v2RecordCard(
+            item,
+            color,
+            showControls: showControls,
+            showGuardrail: showGuardrail,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _v2RecordCard(
+    Map<String, dynamic> item,
+    Color color, {
+    bool showControls = false,
+    bool showGuardrail = false,
+  }) {
+    final title = _firstText(item, const ['name_tr', 'title', 'label_tr']) ??
+        _firstText(item, const ['id']) ??
+        'Kayıt';
+    final scientificName = _firstText(item, const ['scientific_name']);
+    final summary = _firstText(item, const ['summary']);
+    final guardrail = _firstText(item, const ['guardrail']);
+    final controls = showControls
+        ? _stringList(item, 'control_methods_cultural')
+        : const <String>[];
+    final evidence = _firstEvidence(item);
+    final requiresBku = item['requires_bku_check'] == true;
+    final requiresExpert = item['requires_expert_confirmation'] == true;
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withValues(alpha: 0.18)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: GoogleFonts.inter(
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              color: color.withValues(alpha: 0.95),
+            ),
+          ),
+          if (scientificName != null) ...[
+            const SizedBox(height: 2),
+            Text(
+              scientificName,
+              style: GoogleFonts.inter(
+                fontSize: 12,
+                fontStyle: FontStyle.italic,
+                color: Colors.grey.shade700,
+              ),
+            ),
+          ],
+          if (summary != null) ...[
+            const SizedBox(height: 6),
+            _paragraph(summary),
+          ],
+          if (showGuardrail && guardrail != null) ...[
+            const SizedBox(height: 6),
+            _inlineWarning(guardrail),
+          ],
+          if (requiresBku || requiresExpert) ...[
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                if (requiresBku) _chip('BKÜ kontrolü', Colors.red.shade700),
+                if (requiresExpert) _chip('Uzman onayı', Colors.indigo),
+              ],
+            ),
+          ],
+          if (controls.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            ...controls.map(_bullet),
+          ],
+          if (evidence != null) ...[
+            const SizedBox(height: 8),
+            _evidenceLine(evidence),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _v2RuleCard(Rule rule, CropV2Bundle v2) {
+    final color = _riskColor(rule.result.riskLevel);
+    final title =
+        _problemLabel(v2, rule.result.possibleProblemId, rule.category);
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withValues(alpha: 0.18)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
+                  title,
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: color.withValues(alpha: 0.95),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              _chip(_riskLabel(rule.result.riskLevel), color),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              _chip(_categoryLabel(rule.category), Colors.blueGrey),
+              if (rule.result.requiresBkuCheck)
+                _chip('BKÜ kontrolü', Colors.red.shade700),
+              if (rule.result.requiresExpertConfirmation)
+                _chip('Uzman onayı', Colors.indigo),
+            ],
+          ),
+          if (rule.explanation != null && rule.explanation!.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            _paragraph(rule.explanation!),
+          ],
+          if (rule.result.recommendations.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            ...rule.result.recommendations
+                .where((r) => r.isNotEmpty)
+                .map(_bullet),
+          ],
+          if (rule.evidence.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            _ruleEvidenceLine(rule.evidence.first),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _noticeCard(String text) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.amber.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.amber.withValues(alpha: 0.35)),
+      ),
+      child: Text(
+        text,
+        style: GoogleFonts.inter(
+          fontSize: 13,
+          height: 1.45,
+          color: Colors.grey.shade800,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
+  Widget _inlineWarning(String text) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Colors.amber.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        text,
+        style: GoogleFonts.inter(
+          fontSize: 12,
+          height: 1.4,
+          color: Colors.brown.shade800,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+
+  Widget _bullet(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 7),
+            child: Container(
+              width: 5,
+              height: 5,
+              decoration: BoxDecoration(
+                color: AppColors.emeraldDark,
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(child: _paragraph(text)),
+        ],
+      ),
+    );
+  }
+
+  Widget _evidenceLine(Map<String, dynamic> evidence) {
+    final text = _firstText(evidence, const ['evidence_text']);
+    if (text == null || text.isEmpty) return const SizedBox.shrink();
+    final source = _sourceLabel(_firstText(evidence, const ['source_id']));
+    final page = evidence['page'];
+    final pageText = page == null ? '' : ', s. $page';
+    return Text(
+      '$source$pageText: $text',
+      style: GoogleFonts.inter(
+        fontSize: 11,
+        height: 1.4,
+        color: Colors.grey.shade700,
+        fontWeight: FontWeight.w500,
+      ),
+    );
+  }
+
+  Widget _ruleEvidenceLine(RuleEvidence evidence) {
+    final pageText = evidence.page == null ? '' : ', s. ${evidence.page}';
+    return Text(
+      '${_sourceLabel(evidence.sourceId)}$pageText: ${evidence.evidenceText}',
+      style: GoogleFonts.inter(
+        fontSize: 11,
+        height: 1.4,
+        color: Colors.grey.shade700,
+        fontWeight: FontWeight.w500,
+      ),
+    );
+  }
+
+  Map<String, dynamic>? _firstEvidence(Map<String, dynamic> item) {
+    final raw = item['evidence'];
+    if (raw is! List || raw.isEmpty) return null;
+    final first = raw.first;
+    if (first is! Map) return null;
+    return Map<String, dynamic>.from(first);
+  }
+
+  String? _firstText(Map<String, dynamic> item, List<String> keys) {
+    for (final key in keys) {
+      final value = item[key];
+      if (value is String && value.trim().isNotEmpty) return value.trim();
+    }
+    return null;
+  }
+
+  List<String> _stringList(Map<String, dynamic> item, String key) {
+    final raw = item[key];
+    if (raw is! List) return const [];
+    return raw
+        .map((e) => e?.toString().trim() ?? '')
+        .where((e) => e.isNotEmpty)
+        .toList(growable: false);
+  }
+
+  String _problemLabel(
+    CropV2Bundle v2,
+    String? problemId,
+    String category,
+  ) {
+    if (problemId != null && problemId.isNotEmpty) {
+      for (final item in [...v2.diseases, ...v2.pests, ...v2.weeds]) {
+        if (item['id'] == problemId) {
+          return _firstText(item, const ['name_tr', 'title']) ??
+              _categoryLabel(category);
+        }
+      }
+      const custom = {
+        'physiology.tomato.blossom_end_rot': 'Çiçek burnu çürüklüğü',
+        'physiology.tomato.flower_drop': 'Çiçek dökülmesi',
+      };
+      final label = custom[problemId];
+      if (label != null) return label;
+    }
+    return _categoryLabel(category);
+  }
+
+  String _categoryLabel(String category) => switch (category) {
+        'disease_risk' => 'Hastalık riski',
+        'pest_risk' => 'Zararlı riski',
+        'physiological_risk' => 'Fizyolojik risk',
+        'soil_analysis' => 'Toprak analizi',
+        'irrigation' => 'Sulama',
+        'nutrition_risk' => 'Besleme riski',
+        'harvest_quality' => 'Hasat kalitesi',
+        _ => 'Kaynaklı kural',
+      };
+
+  String _statusLabel(String? status) => switch (status) {
+        'approved' => 'Onaylı',
+        'review' => 'İncelemede',
+        'draft' => 'Taslak',
+        'pending_sources' => 'Kaynak bekliyor',
+        _ => 'Kaynaklı',
+      };
+
+  String _confidenceLabel(String? confidence) => switch (confidence) {
+        'high' => 'Yüksek güven',
+        'medium' => 'Orta güven',
+        'low' => 'Düşük güven',
+        _ => 'Güven belirtilmedi',
+      };
+
+  String _riskLabel(String? risk) => switch (risk) {
+        'high' => 'Yüksek',
+        'medium' => 'Orta',
+        'low' => 'Düşük',
+        _ => 'Risk',
+      };
+
+  Color _riskColor(String? risk) => switch (risk) {
+        'high' => Colors.red.shade700,
+        'medium' => Colors.orange.shade800,
+        'low' => AppColors.emeraldDark,
+        _ => Colors.blueGrey,
+      };
+
+  String _sourceLabel(String? sourceId) {
+    final id = sourceId ?? '';
+    if (id.contains('caykur')) return 'ÇAYKUR';
+    if (id.contains('tagem')) return 'TAGEM';
+    if (id.contains('mgm')) return 'MGM';
+    return 'Kaynak';
   }
 
   Widget _header() {

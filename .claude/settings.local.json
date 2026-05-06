@@ -65,7 +65,8 @@
       "Bash(/c/Users/eness/AppData/Roaming/uv/python/cpython-3.14.4-windows-x86_64-none/python.exe data_pipeline/_pdf_extract.py corn_ipm.pdf 1 5)",
       "Bash(/c/Users/eness/AppData/Roaming/uv/python/cpython-3.14.4-windows-x86_64-none/python.exe data_pipeline/_pdf_extract.py corn_ipm.pdf 16 22)",
       "Bash(/c/Users/eness/AppData/Roaming/uv/python/cpython-3.14.4-windows-x86_64-none/python.exe data_pipeline/_pdf_extract.py corn_ipm.pdf 22 28)",
-      "Bash(/c/Users/eness/AppData/Roaming/uv/python/cpython-3.14.4-windows-x86_64-none/python.exe data_pipeline/_pdf_extract.py corn_ipm.pdf 43 50)"
+      "Bash(/c/Users/eness/AppData/Roaming/uv/python/cpython-3.14.4-windows-x86_64-none/python.exe data_pipeline/_pdf_extract.py corn_ipm.pdf 43 50)",
+      "Bash(python data_pipeline/enforce_guardrails.py)"
     ]
   }
 }

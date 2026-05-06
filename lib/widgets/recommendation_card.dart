@@ -118,6 +118,11 @@ class _RecommendationCardState extends ConsumerState<RecommendationCard> {
     return ActivityType.actionLabel(command.activityType);
   }
 
+  bool _isDeadRemoval(Recommendation r) {
+    return r.command?.metadata['dead_plant_removal'] == true ||
+        r.ruleKey.startsWith('plant.dead.remove.');
+  }
+
   Future<void> _runCommand() async {
     final r = widget.recommendation;
     final command = r.command;
@@ -174,11 +179,22 @@ class _RecommendationCardState extends ConsumerState<RecommendationCard> {
           'recommendation_title': r.title,
         },
       );
+      if (command.metadata['remove_plant_instance_after_log'] == true &&
+          r.target.plantInstanceId != null) {
+        await ref.read(localDataRepositoryProvider).setPlantHealth(
+              instanceId: r.target.plantInstanceId!,
+              healthStatus: 'removed',
+              notes: 'Cansız bitki söküldü ve haritadan kaldırıldı',
+              writeActivityLog: false,
+            );
+      }
       widget.onLogged?.call();
       if (!mounted) return;
       AppToast.show(
         context,
-        message: '${ActivityType.actionLabel(command.activityType)} kaydedildi',
+        message: _isDeadRemoval(r)
+            ? 'Sökme işlemi günlüğe kaydedildi'
+            : '${ActivityType.actionLabel(command.activityType)} kaydedildi',
         type: ToastType.success,
       );
     } catch (e) {
@@ -198,13 +214,23 @@ class _RecommendationCardState extends ConsumerState<RecommendationCard> {
     final r = widget.recommendation;
     final color = _severityColor(r.severity);
     final hasBullets = r.reasonBullets.isNotEmpty;
+    final isDeadRemoval = _isDeadRemoval(r);
+    final cardBg = isDeadRemoval ? const Color(0xFF0B0B0B) : AppColors.surface;
+    final cardBorder = isDeadRemoval ? Colors.black : AppColors.border;
+    final primaryText = isDeadRemoval ? Colors.white : AppColors.textPrimary;
+    final secondaryText =
+        isDeadRemoval ? Colors.white70 : AppColors.textSecondary;
+    final tertiaryText =
+        isDeadRemoval ? Colors.white54 : AppColors.textTertiary;
+    final expandText =
+        isDeadRemoval ? Colors.white : AppColors.emeraldDark;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: cardBg,
         borderRadius: AppRadius.md,
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: cardBorder),
       ),
       child: ClipRRect(
         borderRadius: AppRadius.md,
@@ -254,22 +280,28 @@ class _RecommendationCardState extends ConsumerState<RecommendationCard> {
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 8, vertical: 3),
                             decoration: BoxDecoration(
-                              color: AppColors.surfaceAlt,
+                              color: isDeadRemoval
+                                  ? Colors.white.withValues(alpha: 0.10)
+                                  : AppColors.surfaceAlt,
                               borderRadius: AppRadius.sm,
-                              border: Border.all(color: AppColors.border),
+                              border: Border.all(
+                                color: isDeadRemoval
+                                    ? Colors.white24
+                                    : AppColors.border,
+                              ),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Icon(_scopeIcon(r.target.scope),
-                                    size: 12, color: AppColors.textSecondary),
+                                    size: 12, color: secondaryText),
                                 const SizedBox(width: 4),
                                 Text(
                                   _scopeLabel(r.target.scope),
                                   style: TextStyle(
                                     fontSize: 11,
                                     fontWeight: FontWeight.w600,
-                                    color: AppColors.textSecondary,
+                                    color: secondaryText,
                                   ),
                                 ),
                               ],
@@ -287,15 +319,15 @@ class _RecommendationCardState extends ConsumerState<RecommendationCard> {
                         r.title,
                         style: AppText.bodyMd(context).copyWith(
                           fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
+                          color: primaryText,
                         ),
                       ),
                       const SizedBox(height: 4),
                       // Tek satır neden
                       Text(
                         r.reasonText,
-                        style: AppText.sm(context)
-                            .copyWith(color: AppColors.textSecondary),
+                        style:
+                            AppText.sm(context).copyWith(color: secondaryText),
                       ),
                       // Neden ▾ expander
                       if (hasBullets) ...[
@@ -312,7 +344,7 @@ class _RecommendationCardState extends ConsumerState<RecommendationCard> {
                                   style: TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w600,
-                                    color: AppColors.emeraldDark,
+                                    color: expandText,
                                   ),
                                 ),
                                 Icon(
@@ -320,7 +352,7 @@ class _RecommendationCardState extends ConsumerState<RecommendationCard> {
                                       ? Icons.expand_less_rounded
                                       : Icons.expand_more_rounded,
                                   size: 16,
-                                  color: AppColors.emeraldDark,
+                                  color: expandText,
                                 ),
                               ],
                             ),
@@ -347,7 +379,7 @@ class _RecommendationCardState extends ConsumerState<RecommendationCard> {
                                             width: 4,
                                             height: 4,
                                             decoration: BoxDecoration(
-                                              color: AppColors.textTertiary,
+                                              color: tertiaryText,
                                               shape: BoxShape.circle,
                                             ),
                                           ),
@@ -357,7 +389,7 @@ class _RecommendationCardState extends ConsumerState<RecommendationCard> {
                                           child: Text(
                                             b,
                                             style: AppText.sm(context).copyWith(
-                                                color: AppColors.textSecondary),
+                                                color: secondaryText),
                                           ),
                                         ),
                                       ],
@@ -405,7 +437,7 @@ class _RecommendationCardState extends ConsumerState<RecommendationCard> {
                               child: Text(
                                 r.actionHint,
                                 style: AppText.sm(context).copyWith(
-                                  color: AppColors.textPrimary,
+                                  color: primaryText,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),

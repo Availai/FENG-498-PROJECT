@@ -105,6 +105,16 @@ class SunflowerRules extends CropRuleSet {
         },
       );
     }
+    if (f == null || f.areaSqm <= 0) {
+      return const RecommendationCommand(
+        activityType: ActivityType.watering,
+        buttonLabel: 'Suladım',
+        metadata: {
+          'irrigation_method': 'Tarla sulaması',
+          'quantity_status': 'field_area_missing',
+        },
+      );
+    }
     final missing = f.weeklyWaterMissingMm.clamp(0.0, 60.0).toDouble();
     final stress =
         (ctx.growth?.waterDeficitMm ?? 0).clamp(0.0, 60.0).toDouble();

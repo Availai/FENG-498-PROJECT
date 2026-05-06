@@ -7,6 +7,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 import '../data/disease_types.dart';
+import '../data/turkish_crops_repository.dart';
 import '../services/app_providers.dart';
 import '../services/disease_diagnosis_service.dart';
 import '../theme/app_theme.dart';
@@ -62,6 +63,43 @@ class _DiseaseCaptureScreenState extends ConsumerState<DiseaseCaptureScreen> {
   bool _isOther = false;
 
   @override
+  void initState() {
+    super.initState();
+    TurkishCropsRepository.instance.ensureReady().then((_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  bool get _useTrustedDiseaseOptions {
+    final repo = TurkishCropsRepository.instance;
+    if (!repo.isReady) return false;
+    final crop = repo.findByName(widget.cropName);
+    final stableId = crop?.stableId;
+    if (stableId == null || stableId.isEmpty) return false;
+    return repo.findV2ByStableId(stableId) != null;
+  }
+
+  List<String> get _availableDiseases {
+    final repo = TurkishCropsRepository.instance;
+    if (!_useTrustedDiseaseOptions || !repo.isReady) {
+      return DiseaseTypes.commonTurkish;
+    }
+    final crop = repo.findByName(widget.cropName);
+    final stableId = crop?.stableId;
+    final v2 = stableId == null ? null : repo.findV2ByStableId(stableId);
+    final out = <String>[];
+    final seen = <String>{};
+    for (final disease in v2?.diseases ?? const <Map<String, dynamic>>[]) {
+      final name = disease['name_tr']?.toString().trim();
+      if (name == null || name.isEmpty || seen.contains(name)) continue;
+      seen.add(name);
+      out.add(name);
+    }
+    if (!seen.contains('Bilinmiyor')) out.add('Bilinmiyor');
+    return out;
+  }
+
+  @override
   void dispose() {
     _otherCtrl.dispose();
     super.dispose();
@@ -108,11 +146,13 @@ class _DiseaseCaptureScreenState extends ConsumerState<DiseaseCaptureScreen> {
         _diagnosing = false;
         // AI sonucu varsa preset'lerden eşleştirip otomatik seç
         if (result.diseaseType != null) {
-          if (DiseaseTypes.commonTurkish.contains(result.diseaseType)) {
+          if (_availableDiseases.contains(result.diseaseType)) {
             _selectedDisease = result.diseaseType;
-          } else {
+          } else if (!_useTrustedDiseaseOptions) {
             _isOther = true;
             _otherCtrl.text = result.diseaseType!;
+          } else {
+            _selectedDisease = 'Bilinmiyor';
           }
         }
       });
@@ -178,6 +218,25 @@ class _DiseaseCaptureScreenState extends ConsumerState<DiseaseCaptureScreen> {
           const SizedBox(height: 12),
           Text('Hastalık Türü', style: AppText.label(context)),
           const SizedBox(height: 8),
+          if (_useTrustedDiseaseOptions)
+            Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppColors.emerald.withValues(alpha: 0.08),
+                borderRadius: AppRadius.sm,
+                border: Border.all(
+                  color: AppColors.emerald.withValues(alpha: 0.22),
+                ),
+              ),
+              child: Text(
+                'Hastalık seçimi bu bitkinin kaynaklı JSON hastalıklarıyla sınırlıdır.',
+                style: AppText.sm(context).copyWith(
+                  color: AppColors.textSecondary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
           DropdownButtonFormField<String>(
             initialValue:
                 _isOther ? DiseaseTypes.otherKey : _selectedDisease,
@@ -194,12 +253,13 @@ class _DiseaseCaptureScreenState extends ConsumerState<DiseaseCaptureScreen> {
             ),
             hint: const Text('Hastalık seçin…'),
             items: [
-              ...DiseaseTypes.commonTurkish.map(
+              ..._availableDiseases.map(
                   (d) => DropdownMenuItem(value: d, child: Text(d))),
-              DropdownMenuItem(
-                value: DiseaseTypes.otherKey,
-                child: Text('${DiseaseTypes.otherKey} (manuel girin)'),
-              ),
+              if (!_useTrustedDiseaseOptions)
+                DropdownMenuItem(
+                  value: DiseaseTypes.otherKey,
+                  child: Text('${DiseaseTypes.otherKey} (manuel girin)'),
+                ),
             ],
             onChanged: (v) {
               setState(() {

@@ -200,6 +200,7 @@ class ActivityRecord {
 class PlantInstanceSnapshot {
   final String id;
   final String? cropId;
+  final String? cropName;
 
   /// 'healthy' | 'diseased' | 'dead' — mevcut 3-değerli durum.
   final String healthStatus;
@@ -210,6 +211,7 @@ class PlantInstanceSnapshot {
   const PlantInstanceSnapshot({
     required this.id,
     this.cropId,
+    this.cropName,
     required this.healthStatus,
     this.conditionFlags = const [],
   });
