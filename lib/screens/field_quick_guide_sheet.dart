@@ -623,11 +623,18 @@ class _PlantHealthAlertState extends ConsumerState<_PlantHealthAlert> {
     try {
       final advice = _primaryAdvice;
       final logger = ref.read(activityLoggerProvider);
-      // Tarlaya ilaçlama aktivitesi log'la
+      // Tarlaya ilaçlama aktivitesi log'la (Tarlam Günlüğünde zengin görünüm için)
       await logger.log(
         fieldId: widget.fieldId,
         type: ActivityType.spraying,
-        note: 'Hastalık tedavisi: ${advice.name}',
+        note: '${widget.cropName} bitkilerinde tespit edilen ${advice.name} için tedavi ve ilaçlama başlatıldı',
+        metadata: {
+          'pesticide_name': advice.chemicalTreatments.isNotEmpty ? advice.chemicalTreatments.first.split('—').first.trim() : 'Sistem Tavsiyesi İlaç',
+          'active_ingredient': advice.chemicalTreatments.isNotEmpty ? advice.chemicalTreatments.first : 'Belirtilmedi',
+          'target_pest': advice.name,
+          'crop_name': widget.cropName,
+          'treatment_days': _parseTreatmentDays(advice),
+        },
       );
 
       // Hasta bitkileri "tedavi ediliyor" durumuna çevir (kırmızı → turuncu)

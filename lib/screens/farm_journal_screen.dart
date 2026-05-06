@@ -415,27 +415,69 @@ class _FarmJournalScreenState extends ConsumerState<FarmJournalScreen> {
     final meta = entry['metadata'] as Map<String, dynamic>?;
     final isSystemAlert = type == ActivityType.systemAlert;
     final severity = ActivityType.normalizeAlertSeverity(meta?['severity']);
-    final color = isSystemAlert
-        ? ActivityType.alertSeverityColor(severity)
-        : ActivityType.color(type);
+    
+    final noteStr = _stringValue(meta?['message']) ?? _stringValue(meta?['note']);
+    
+    final isDiseaseDetection = type == ActivityType.scouting && 
+        (meta?['threshold_status'] == 'criticalNoChemical' || meta?['scouting_target']?.toString().contains('Hastalık') == true);
+        
+    final isTreatmentStart = type == ActivityType.spraying && 
+        (meta?['treatment_days'] != null || noteStr?.toLowerCase().contains('tedavi') == true);
+
+    Color iconBgColor;
+    Color iconColor;
+    Color bgColor;
+    Color borderColor;
+    Color primaryText;
+    Color secondaryText;
+    Color tertiaryText;
+    Color pillBg;
+    Color pillBorder;
+
+    if (isDiseaseDetection) {
+      bgColor = const Color(0xFFD32F2F); // Kırmızı
+      borderColor = const Color(0xFFB71C1C);
+      iconColor = Colors.white;
+      iconBgColor = Colors.white.withValues(alpha: 0.2);
+      primaryText = Colors.white;
+      secondaryText = Colors.white.withValues(alpha: 0.9);
+      tertiaryText = Colors.white.withValues(alpha: 0.7);
+      pillBg = Colors.black.withValues(alpha: 0.2);
+      pillBorder = Colors.transparent;
+    } else if (isTreatmentStart) {
+      bgColor = const Color(0xFFF57C00); // Turuncu
+      borderColor = const Color(0xFFE65100);
+      iconColor = Colors.white;
+      iconBgColor = Colors.white.withValues(alpha: 0.2);
+      primaryText = Colors.white;
+      secondaryText = Colors.white.withValues(alpha: 0.9);
+      tertiaryText = Colors.white.withValues(alpha: 0.7);
+      pillBg = Colors.black.withValues(alpha: 0.15);
+      pillBorder = Colors.transparent;
+    } else {
+      iconColor = isSystemAlert ? ActivityType.alertSeverityColor(severity) : ActivityType.color(type);
+      iconBgColor = iconColor.withValues(alpha: 0.15);
+      bgColor = isSystemAlert ? ActivityType.alertSeverityBackground(severity) : AppColors.surface;
+      borderColor = isSystemAlert ? iconColor.withValues(alpha: 0.45) : AppColors.border;
+      primaryText = AppColors.textPrimary;
+      secondaryText = AppColors.textSecondary;
+      tertiaryText = AppColors.textTertiary;
+      pillBg = AppColors.bg;
+      pillBorder = AppColors.border;
+    }
+
     final fieldName = entry['field_name'] as String?;
-    final cropName =
-        entry['crop_name'] as String? ?? _stringValue(meta?['crop_name']);
+    final cropName = entry['crop_name'] as String? ?? _stringValue(meta?['crop_name']);
+    
     return TapScale(
       onTap: () => _showEntryOptions(entry),
       child: Container(
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: isSystemAlert
-              ? ActivityType.alertSeverityBackground(severity)
-              : AppColors.surface,
+          color: bgColor,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: isSystemAlert
-                ? color.withValues(alpha: 0.45)
-                : AppColors.border,
-          ),
+          border: Border.all(color: borderColor),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -444,14 +486,12 @@ class _FarmJournalScreenState extends ConsumerState<FarmJournalScreen> {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.15),
+                color: iconBgColor,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(
-                isSystemAlert
-                    ? ActivityType.alertSeverityIcon(severity)
-                    : ActivityType.icon(type),
-                color: color,
+                isSystemAlert ? ActivityType.alertSeverityIcon(severity) : ActivityType.icon(type),
+                color: iconColor,
                 size: 22,
               ),
             ),
@@ -465,21 +505,19 @@ class _FarmJournalScreenState extends ConsumerState<FarmJournalScreen> {
                     children: [
                       Expanded(
                         child: Text(
-                          isSystemAlert
-                              ? _systemAlertTitle(entry, meta)
-                              : _entryTitle(type),
-                          style: const TextStyle(
+                          isSystemAlert ? _systemAlertTitle(entry, meta) : _entryTitle(type),
+                          style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w800,
-                            color: AppColors.textPrimary,
+                            color: primaryText,
                           ),
                         ),
                       ),
                       Text(
                         _formatTime(date),
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 13,
-                          color: AppColors.textTertiary,
+                          color: tertiaryText,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -492,15 +530,15 @@ class _FarmJournalScreenState extends ConsumerState<FarmJournalScreen> {
                         if (fieldName != null) fieldName,
                         if (cropName != null) cropName,
                       ].join(' · '),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: AppColors.textSecondary,
+                        color: secondaryText,
                       ),
                     ),
                   ],
-                  _buildDetailPills(entry, type, meta),
-                  _buildNoteBlock(meta),
+                  _buildDetailPills(entry, type, meta, primaryText, secondaryText, pillBg, pillBorder),
+                  _buildNoteBlock(meta, secondaryText, tertiaryText, pillBg, pillBorder),
                 ],
               ),
             ),
@@ -514,6 +552,10 @@ class _FarmJournalScreenState extends ConsumerState<FarmJournalScreen> {
     Map<String, dynamic> entry,
     String type,
     Map<String, dynamic>? meta,
+    Color primaryText,
+    Color secondaryText,
+    Color pillBg,
+    Color pillBorder,
   ) {
     final details = _entryDetails(entry, type, meta);
     if (details.isEmpty) return const SizedBox.shrink();
@@ -523,33 +565,33 @@ class _FarmJournalScreenState extends ConsumerState<FarmJournalScreen> {
         spacing: 8,
         runSpacing: 8,
         children: details
-            .map((item) => _detailPill(item.$1, item.$2))
+            .map((item) => _detailPill(item.$1, item.$2, primaryText, secondaryText, pillBg, pillBorder))
             .toList(growable: false),
       ),
     );
   }
 
-  Widget _detailPill(String label, String value) {
+  Widget _detailPill(String label, String value, Color primaryText, Color secondaryText, Color bg, Color border) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
-        color: AppColors.bg,
+        color: bg,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: border),
       ),
       child: RichText(
         text: TextSpan(
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 13,
             height: 1.25,
-            color: AppColors.textSecondary,
+            color: secondaryText,
           ),
           children: [
             TextSpan(
               text: '$label: ',
-              style: const TextStyle(
+              style: TextStyle(
                 fontWeight: FontWeight.w800,
-                color: AppColors.textPrimary,
+                color: primaryText,
               ),
             ),
             TextSpan(text: value),
@@ -559,7 +601,7 @@ class _FarmJournalScreenState extends ConsumerState<FarmJournalScreen> {
     );
   }
 
-  Widget _buildNoteBlock(Map<String, dynamic>? meta) {
+  Widget _buildNoteBlock(Map<String, dynamic>? meta, Color secondaryText, Color tertiaryText, Color bg, Color border) {
     final note = _stringValue(meta?['message']) ?? _stringValue(meta?['note']);
     if (note == null) return const SizedBox.shrink();
     return Container(
@@ -567,22 +609,21 @@ class _FarmJournalScreenState extends ConsumerState<FarmJournalScreen> {
       margin: const EdgeInsets.only(top: 10),
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: AppColors.bg,
+        color: bg,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: border),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.notes_rounded,
-              size: 16, color: AppColors.textTertiary),
+          Icon(Icons.notes_rounded, size: 16, color: tertiaryText),
           const SizedBox(width: 6),
           Expanded(
             child: Text(
               note,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 13,
-                color: AppColors.textSecondary,
+                color: secondaryText,
                 height: 1.35,
               ),
             ),

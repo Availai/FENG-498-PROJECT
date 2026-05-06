@@ -1874,6 +1874,32 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
       diseasePhotoPath: result.photoPath,
     );
 
+    // TARLAM GÜNLÜĞÜ: Hastalık kaydı
+    if (result.status == DiseaseTypes.statusDiseased) {
+      await ref.read(activityLoggerProvider).log(
+        fieldId: fieldId,
+        type: ActivityType.scouting,
+        cropId: cropId,
+        note: '${result.diseaseType ?? 'Bilinmeyen hastalık'} tespit edildi',
+        metadata: {
+          'scouting_target': 'Hastalık Taraması',
+          'target_pest': result.diseaseType ?? 'Bilinmeyen',
+          'threshold_status': 'criticalNoChemical',
+          'crop_name': cropName,
+        },
+      );
+    } else if (result.status == DiseaseTypes.statusHealthy) {
+       await ref.read(activityLoggerProvider).log(
+        fieldId: fieldId,
+        type: ActivityType.scouting,
+        cropId: cropId,
+        note: 'Bitki iyileşti, sağlıklı olarak işaretlendi',
+        metadata: {
+          'crop_name': cropName,
+        },
+      );
+    }
+
     if (!mounted) return;
     AppToast.show(
       context,
@@ -2250,6 +2276,30 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
         healthStatus: result.status,
         diseaseType: result.diseaseType,
         diseasePhotoPath: result.photoPath,
+      );
+    }
+
+    // TARLAM GÜNLÜĞÜ: Çoklu hastalık kaydı
+    if (result.status == DiseaseTypes.statusDiseased) {
+      await ref.read(activityLoggerProvider).log(
+        fieldId: fieldId,
+        type: ActivityType.scouting,
+        note: '$count adet bitkide ${result.diseaseType ?? 'hastalık'} tespit edildi',
+        metadata: {
+          'scouting_target': 'Çoklu Hastalık Taraması',
+          'target_pest': result.diseaseType ?? 'Bilinmeyen',
+          'quantity': count,
+          'threshold_status': 'criticalNoChemical',
+        },
+      );
+    } else if (result.status == DiseaseTypes.statusHealthy) {
+       await ref.read(activityLoggerProvider).log(
+        fieldId: fieldId,
+        type: ActivityType.scouting,
+        note: '$count adet bitki iyileşti, sağlıklı işaretlendi',
+        metadata: {
+          'quantity': count,
+        },
       );
     }
 
