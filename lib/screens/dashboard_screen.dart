@@ -59,6 +59,40 @@ final dashboardWeeklyPlanProvider = FutureProvider.autoDispose<List<Map<String, 
   return plans;
 });
 
+final dashboardEmergencyProvider = FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
+  final fieldsAsync = ref.watch(fieldMapsProvider);
+  final fields = fieldsAsync.asData?.value ?? <Map<String, dynamic>>[];
+  
+  final alerts = <Map<String, dynamic>>[];
+
+  for (final f in fields) {
+    final fieldId = f['id']?.toString() ?? '';
+    if (fieldId.isNotEmpty) {
+      final plants = await ref.watch(fieldPlantInstancesProvider(fieldId).future);
+      
+      final diseased = plants.where((p) => p.healthStatus == 'diseased').toList();
+      if (diseased.isNotEmpty) {
+        final groups = <String, int>{};
+        for (final p in diseased) {
+          final d = (p.diseaseType == null || p.diseaseType!.trim().isEmpty) 
+            ? 'Bilinmeyen Hastalık' 
+            : p.diseaseType!;
+          groups[d] = (groups[d] ?? 0) + 1;
+        }
+
+        final primaryDisease = groups.entries.reduce((a, b) => a.value >= b.value ? a : b);
+        
+        alerts.add({
+          'field': f,
+          'count': diseased.length,
+          'disease': primaryDisease.key,
+        });
+      }
+    }
+  }
+  return alerts;
+});
+
 class AgriDashboard extends ConsumerStatefulWidget {
   const AgriDashboard({super.key});
 
@@ -348,6 +382,7 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          _buildEmergencyBanners(),
                           _buildFieldOverview(),
                           const SizedBox(height: 24),
                           _buildSectionHeader('Bugün Yapılacaklar',
@@ -1296,7 +1331,160 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
       },
     );
   }
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // ACİL DURUM BANNERLARI (Hastalık Uyarıları)
+  // ───────────────────────────────────────────────────────────────────────────
+  Widget _buildEmergencyBanners() {
+    final emergencyAsync = ref.watch(dashboardEmergencyProvider);
+
+    return emergencyAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
+      data: (alerts) {
+        if (alerts.isEmpty) return const SizedBox.shrink();
+
+        return Column(
+          children: alerts.map((alert) {
+            final field = alert['field'];
+            final fieldName = field['name']?.toString() ?? 'Tarla';
+            final count = alert['count'];
+            final disease = alert['disease'];
+
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 20),
+              child: TapScale(
+                scale: 0.95,
+                onTap: () {
+                  Navigator.of(context).push(
+                    AnimatedRoute.scaleFade(FieldDetailScreen(fieldData: field)),
+                  );
+                },
+                child: Container(
+                  width: double.infinity,
+                  clipBehavior: Clip.hardEdge,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFD32F2F), Color(0xFFC62828), Color(0xFFB71C1C)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFFD32F2F).withValues(alpha: 0.35),
+                        blurRadius: 24,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: Stack(
+                    children: [
+                      Positioned(
+                        right: -30,
+                        top: -30,
+                        child: Icon(Icons.warning_amber_rounded, size: 160, color: Colors.white.withValues(alpha: 0.08)),
+                      ),
+                      Positioned(
+                        right: 20,
+                        bottom: -15,
+                        child: Icon(Icons.pest_control_rounded, size: 80, color: Colors.black.withValues(alpha: 0.04)),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.all(22),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.2),
+                                    blurRadius: 12,
+                                    offset: const Offset(0, 4),
+                                  )
+                                ],
+                              ),
+                              child: const Icon(Icons.local_hospital_rounded, color: Color(0xFFD32F2F), size: 32),
+                            ),
+                            const SizedBox(width: 18),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: Colors.black.withValues(alpha: 0.3),
+                                          borderRadius: BorderRadius.circular(6),
+                                        ),
+                                        child: const Text(
+                                          'ACİL EYLEM',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w900,
+                                            letterSpacing: 1.2,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          fieldName,
+                                          style: const TextStyle(
+                                            color: Colors.white70,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Text(
+                                    '$count BİTKİNİZ $disease HASTASI!',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w900,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    'Daha fazla yayılmadan hemen tedaviye başlamak için tıklayın.',
+                                    style: TextStyle(
+                                      color: Colors.white.withValues(alpha: 0.9),
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500,
+                                      height: 1.3,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        );
+      },
+    );
+  }
 }
+
 
 /// Tek tarla için 1-3 acil/yaklaşan yönergeyi özetler.
 class _FieldDirectivesStrip extends ConsumerWidget {
