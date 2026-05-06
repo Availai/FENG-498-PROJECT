@@ -33,7 +33,32 @@
       "Bash(python data_pipeline/sync_crop_images.py --dry-run)",
       "Bash(grep -n \"cropName.*'\\\\\\\\\\(Portakal\\\\\\\\|Çay\\\\\\\\|Ayçiçeği\\\\\\\\|Domates\\\\\\\\|Mısır\\\\\\\\\\)'\" lib/data/turkiye_crop_guides.dart)",
       "Bash(grep -n \"id: '\\\\\\\\\\(portakal\\\\\\\\|cay\\\\\\\\|aycicegi\\\\\\\\|domates\\\\\\\\|misir\\\\\\\\\\)'\" lib/data/turkiye_crop_guides.dart)",
-      "Bash(grep -v \"^.*//.*\")"
+      "Bash(grep -v \"^.*//.*\")",
+      "Bash(python -c \"import json; d=json.load\\(open\\('backend/data_pipeline/seed_plants.json',encoding='utf-8'\\)\\); priority=['Domates','Mısır','Ayçiçeği','Çay','Portakal']; print\\('TOTAL:',len\\(d\\)\\); [print\\(f\\\\\"--- {p['name']} ---\\\\\\\\nfields: {sorted\\(p.keys\\(\\)\\)}\\\\\"\\) for p in d if p.get\\('name'\\) in priority]\")",
+      "Bash(python)",
+      "Bash(python data_pipeline/migrate_v2.py)",
+      "Bash(python data_pipeline/validate_rule_pack.py)",
+      "WebSearch",
+      "WebFetch(domain:www.tarimorman.gov.tr)",
+      "WebFetch(domain:caykur.gov.tr)",
+      "Bash(python \"backend/data_pipeline/build_turkish_crops_db.py\")",
+      "Bash(python -c \"import pdfminer; print\\('pdfminer:', pdfminer.__version__\\)\")",
+      "Bash(python -c \"import pdfplumber; print\\('pdfplumber:', pdfplumber.__version__\\)\")",
+      "Bash(python -c \"import fitz; print\\('PyMuPDF:', fitz.__version__\\)\")",
+      "Bash(python -m pip install --quiet pymupdf)",
+      "Bash(./venv/Scripts/python.exe -m pip install --quiet pymupdf)",
+      "Bash(./venv/Scripts/python.exe -c \"import fitz; print\\('PyMuPDF:', fitz.__version__\\)\")",
+      "Bash(curl -s -L -o \"sources_pdf/tomato_open_field_ipm.pdf\" \"https://www.tarimorman.gov.tr/TAGEM/Belgeler/Entegre/A%C3%A7%C4%B1k%20Alan%20Domates%20Entegre%20M%C3%BCcadele%20Teknik%20Talimat%C4%B1.pdf\")",
+      "Bash(./venv/Scripts/python.exe)",
+      "Bash(./venv/Scripts/python.exe -c ' *)",
+      "Bash(python data_pipeline/populate_priority_crops.py)",
+      "Bash(curl -s -L -o \"corn_ipm.pdf\" \"https://www.tarimorman.gov.tr/TAGEM/Belgeler/Entegre/M%C4%B1s%C4%B1r%20Entegre%20M%C3%BCcadele%20Teknik%20Talimat%C4%B1.pdf\")",
+      "Bash(curl -s -L -o \"sunflower_ipm.pdf\" \"https://www.tarimorman.gov.tr/TAGEM/Belgeler/Entegre/Ay%C3%A7i%C3%A7e%C4%9Fi%20Entegre%20M%C3%BCcadele%20Teknik%20Talimat%C4%B1.pdf\")",
+      "Bash(curl -s -L -o \"tea_caykur_2025.pdf\" \"https://caykur.gov.tr/uploads/8.tarim_kisim_mudurlugu_ders_notlari.pdf\")",
+      "Bash(curl -s -L -o \"citrus_ipm.pdf\" \"https://www.tarimorman.gov.tr/TAGEM/Belgeler/Entegre/Turun%C3%A7gil%20Entegre%20M%C3%BCcadele%20Teknik%20Talimat%C4%B1.pdf\")",
+      "Bash(wait)",
+      "Bash(curl -L -o \"corn_ipm.pdf\" \"https://www.tarimorman.gov.tr/TAGEM/Belgeler/Entegre/M%C4%B1s%C4%B1r%20Entegre%20M%C3%BCcadele%20Teknik%20Talimat%C4%B1.pdf\")",
+      "Bash(./venv/Scripts/python.exe data_pipeline/extract_main_sections.py)"
     ]
   }
 }

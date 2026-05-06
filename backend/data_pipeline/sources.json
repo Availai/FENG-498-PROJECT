@@ -1,0 +1,93 @@
+{
+  "_schema": {
+    "description": "CLAUDE.md sec 13 — Source metadata kayıtları. Her source.* id buradan referanslanır. ASLA uydurulmuş URL/yayın eklenmez; her kayıt resmî kaynaktan kullanıcı veya operatör tarafından doğrulanmış olmalıdır.",
+    "record": {
+      "id": "source.{kurum}.{kısa_başlık}  — örn. source.tagem.tomato_integrated_management",
+      "title": "Yayının tam Türkçe başlığı",
+      "institution": "Tarım ve Orman Bakanlığı / TAGEM | Üniversite Ziraat Fakültesi | …",
+      "source_type": ["official", "research_institute", "university", "public_agency", "private"],
+      "url": "Resmî yayın URL'si (https://...)",
+      "publication_year": "Yayın yılı (int) veya null",
+      "retrieved_at": "YYYY-MM-DD — kayıt eklendiği gün",
+      "reliability": ["high", "medium", "low"],
+      "notes": "İsteğe bağlı kısa not"
+    },
+    "priority_order": [
+      "Tarım ve Orman Bakanlığı",
+      "TAGEM",
+      "Bakanlığa bağlı araştırma enstitüleri",
+      "ÇAYKUR / TEPGE / resmî ürün raporları",
+      "Üniversite ziraat fakültesi yayınları",
+      "Ziraat odası / kamu eğitim notları",
+      "Özel firma kaynakları (yalnızca destekleyici)"
+    ]
+  },
+  "sources": [
+    {
+      "id": "source.tagem.tomato_open_field_ipm",
+      "title": "Açık Alan Domates Entegre Mücadele Teknik Talimatı",
+      "institution": "T.C. Tarım ve Orman Bakanlığı / TAGEM",
+      "source_type": "official",
+      "url": "https://www.tarimorman.gov.tr/TAGEM/Belgeler/Entegre/A%C3%A7%C4%B1k%20Alan%20Domates%20Entegre%20M%C3%BCcadele%20Teknik%20Talimat%C4%B1.pdf",
+      "publication_year": null,
+      "retrieved_at": "2026-05-06",
+      "reliability": "high",
+      "notes": "URL ve başlık WebSearch sonucundan doğrulandı. PDF içeriği WebFetch tarafından OCR edilemedi; evidence kayıtları manuel doldurulmalı."
+    },
+    {
+      "id": "source.tagem.greenhouse_vegetables_ipm",
+      "title": "Örtüaltı Sebze Entegre Mücadele Teknik Talimatı",
+      "institution": "T.C. Tarım ve Orman Bakanlığı / TAGEM",
+      "source_type": "official",
+      "url": "https://www.tarimorman.gov.tr/TAGEM/Belgeler/Entegre/%C3%96rt%C3%BCalt%C4%B1%20Entegre%20M%C3%BCcadele%20Teknik%20Talimat%C4%B1.pdf",
+      "publication_year": null,
+      "retrieved_at": "2026-05-06",
+      "reliability": "high",
+      "notes": "Sera koşullarındaki domates, biber, hıyar vb. için. URL doğrulandı."
+    },
+    {
+      "id": "source.tagem.corn_ipm",
+      "title": "Mısır Entegre Mücadele Teknik Talimatı",
+      "institution": "T.C. Tarım ve Orman Bakanlığı / TAGEM",
+      "source_type": "official",
+      "url": "https://www.tarimorman.gov.tr/TAGEM/Belgeler/Entegre/M%C4%B1s%C4%B1r%20Entegre%20M%C3%BCcadele%20Teknik%20Talimat%C4%B1.pdf",
+      "publication_year": null,
+      "retrieved_at": "2026-05-06",
+      "reliability": "high",
+      "notes": "URL ve başlık WebSearch sonucundan doğrulandı. PDF içeriği WebFetch tarafından OCR edilemedi; evidence kayıtları manuel doldurulmalı."
+    },
+    {
+      "id": "source.tagem.sunflower_ipm",
+      "title": "Ayçiçeği Entegre Mücadele Teknik Talimatı",
+      "institution": "T.C. Tarım ve Orman Bakanlığı / TAGEM",
+      "source_type": "official",
+      "url": "https://www.tarimorman.gov.tr/TAGEM/Belgeler/Entegre/Ay%C3%A7i%C3%A7e%C4%9Fi%20Entegre%20M%C3%BCcadele%20Teknik%20Talimat%C4%B1.pdf",
+      "publication_year": 2022,
+      "retrieved_at": "2026-05-06",
+      "reliability": "high",
+      "notes": "2022'de yayınlanan 25 talimat setinin parçası (WebSearch sonucu). URL doğrulandı; PDF OCR edilemedi."
+    },
+    {
+      "id": "source.caykur.tea_cultivation_lecture_notes_2025",
+      "title": "Çay Tarımı Ders Notları 2025 — Tarım Kısım Müdürlüğü",
+      "institution": "ÇAYKUR (Çay İşletmeleri Genel Müdürlüğü)",
+      "source_type": "public_agency",
+      "url": "https://caykur.gov.tr/uploads/8.tarim_kisim_mudurlugu_ders_notlari.pdf",
+      "publication_year": 2025,
+      "retrieved_at": "2026-05-06",
+      "reliability": "high",
+      "notes": "ÇAYKUR resmî ders notları. URL doğrulandı; PDF içeriği WebFetch tarafından güvenilir biçimde okunamadı (Exobasidium=kırmızı örümcek gibi halüsinasyonlar)."
+    },
+    {
+      "id": "source.tagem.citrus_ipm",
+      "title": "Turunçgil Entegre Mücadele Teknik Talimatı",
+      "institution": "T.C. Tarım ve Orman Bakanlığı / TAGEM",
+      "source_type": "official",
+      "url": "https://www.tarimorman.gov.tr/TAGEM/Belgeler/Entegre/Turun%C3%A7gil%20Entegre%20M%C3%BCcadele%20Teknik%20Talimat%C4%B1.pdf",
+      "publication_year": null,
+      "retrieved_at": "2026-05-06",
+      "reliability": "high",
+      "notes": "Portakal, mandalina, limon, greyfurt için. URL doğrulandı; PDF OCR edilemedi."
+    }
+  ]
+}
