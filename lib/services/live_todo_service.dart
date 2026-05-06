@@ -96,6 +96,7 @@ class LiveDecisionContextBuilder {
       plantInstances.add(PlantInstanceSnapshot(
         id: p.id,
         cropId: p.cropId,
+        cropName: p.cropName,
         healthStatus: p.healthStatus,
         conditionFlags: _decodeStringList(p.conditionFlagsJson),
       ));
@@ -168,6 +169,7 @@ class LiveTodoService {
 
   List<Recommendation> generate(LiveDecisionContext ctx) {
     final out = <Recommendation>[
+      ..._deadPlantRecommendations(ctx),
       ..._directiveRecommendations(ctx),
       ..._ruleRecommendations(ctx),
     ];
@@ -176,6 +178,53 @@ class LiveTodoService {
     final deduped = _dedupe(conflictFree);
     deduped.sort(_compare);
     return deduped;
+  }
+
+  List<Recommendation> _deadPlantRecommendations(LiveDecisionContext ctx) {
+    final out = <Recommendation>[];
+    for (final plant in ctx.plantInstances) {
+      if (plant.healthStatus != 'dead') continue;
+      final cropName = plant.cropName?.isNotEmpty == true
+          ? plant.cropName!
+          : 'Bitki';
+      out.add(Recommendation(
+        ruleKey: 'plant.dead.remove.${plant.id}.v1',
+        severity: AlertSeverity.critical,
+        target: RecommendationTarget.plant(
+          fieldId: ctx.fieldId,
+          plantInstanceId: plant.id,
+          cropId: plant.cropId,
+        ),
+        title: '$cropName cansız bitki: sök',
+        reasonText: 'Bitki cansız işaretlendi; tarlada bırakılmamalı.',
+        reasonBullets: const [
+          'Bitkiyi köküyle birlikte söküp tarladan uzaklaştırın.',
+          'Belirti çevresine yayıldıysa yakın çevrede hastalık ve zararlı takibi yapın.',
+          'Yayılım doğrulanırsa BKÜ etiketi ve uzman onayıyla çevresel ilaçlama gerekebilir.',
+        ],
+        actionHint: 'Tekil sökme kaydı oluştur ve bitkiyi haritadan kaldır.',
+        gate: RecommendationGate.actionable,
+        evidence: [
+          const RecommendationEvidence(label: 'Bitki durumu', value: 'Cansız'),
+          RecommendationEvidence(label: 'Bitki', value: cropName),
+        ],
+        command: RecommendationCommand(
+          activityType: ActivityType.scouting,
+          subtype: ActivitySubtype.note,
+          buttonLabel: 'Söktüm, haritadan kaldır',
+          note: '$cropName cansız bitki söküldü ve tarladan uzaklaştırıldı',
+          metadata: {
+            'dead_plant_removal': true,
+            'remove_plant_instance_after_log': true,
+            'health_status': 'dead',
+            'crop_name': cropName,
+            'spread_warning': true,
+          },
+        ),
+        cooldownHours: 0,
+      ));
+    }
+    return out;
   }
 
   List<Recommendation> _directiveRecommendations(LiveDecisionContext ctx) {
@@ -211,7 +260,8 @@ class LiveTodoService {
           value: '${d.areaDekar!.toStringAsFixed(2)} da',
         ),
       if (d.plantCount != null)
-        RecommendationEvidence(label: 'Tahmini bitki', value: '${d.plantCount}'),
+        RecommendationEvidence(
+            label: 'Tahmini bitki', value: '${d.plantCount}'),
     ];
     return Recommendation(
       ruleKey: 'directive.${d.kind}.${d.cropId ?? fieldId}.v1',
@@ -231,8 +281,7 @@ class LiveTodoService {
               activityType: commandType,
               quantity: d.suggestedQuantity,
               quantityUnit: d.quantityUnit,
-              recommendedQuantity:
-                  d.recommendedQuantity ?? d.suggestedQuantity,
+              recommendedQuantity: d.recommendedQuantity ?? d.suggestedQuantity,
               buttonLabel: ActivityType.actionLabel(commandType),
               metadata: {
                 'directive_kind': d.kind,
@@ -361,9 +410,15 @@ class LiveTodoService {
     if (severity != 0) return severity;
     final gate = _gateOrder(a.gate).compareTo(_gateOrder(b.gate));
     if (gate != 0) return gate;
+    final origin = _originOrder(a).compareTo(_originOrder(b));
+    if (origin != 0) return origin;
     final sources = b.sourceRefs.length.compareTo(a.sourceRefs.length);
     if (sources != 0) return sources;
     return a.ruleKey.compareTo(b.ruleKey);
+  }
+
+  int _originOrder(Recommendation r) {
+    return r.ruleKey.startsWith('directive.') ? 1 : 0;
   }
 
   int _severityOrder(AlertSeverity severity) {

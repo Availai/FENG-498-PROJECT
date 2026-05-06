@@ -246,6 +246,9 @@ class TurkishCrop {
   final List<String> commonDiseases;
   final String? growingTips;
   final int? daysToHarvest;
+  final String? stableId;
+  final String? v2Status;
+  final String? v2Confidence;
 
   const TurkishCrop({
     required this.id,
@@ -269,6 +272,9 @@ class TurkishCrop {
     this.commonDiseases = const [],
     this.growingTips,
     this.daysToHarvest,
+    this.stableId,
+    this.v2Status,
+    this.v2Confidence,
   });
 
   factory TurkishCrop.fromRow(Map<String, dynamic> r) {
@@ -280,6 +286,56 @@ class TurkishCrop {
       } catch (_) {}
       return <T>[];
     }
+
+    Map<String, dynamic>? decodeMap(dynamic raw) {
+      if (raw == null || raw.toString().isEmpty) return null;
+      try {
+        final parsed = jsonDecode(raw as String);
+        if (parsed is Map) return Map<String, dynamic>.from(parsed);
+      } catch (_) {}
+      return null;
+    }
+
+    List<Map<String, dynamic>> recordsFrom(
+      Map<String, dynamic>? v2,
+      String key,
+    ) {
+      final raw = v2?[key];
+      if (raw is! List) return const [];
+      return raw
+          .whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList(growable: false);
+    }
+
+    List<String> namesFrom(Map<String, dynamic>? v2, String key) {
+      final out = <String>[];
+      final seen = <String>{};
+      for (final item in recordsFrom(v2, key)) {
+        final name = item['name_tr']?.toString().trim();
+        if (name == null || name.isEmpty || seen.contains(name)) continue;
+        seen.add(name);
+        out.add(name);
+      }
+      return out;
+    }
+
+    String? summariesFrom(Map<String, dynamic>? v2, String key) {
+      final out = <String>[];
+      for (final item in recordsFrom(v2, key)) {
+        final summary = item['summary']?.toString().trim();
+        if (summary != null && summary.isNotEmpty) out.add(summary);
+        if (out.length >= 2) break;
+      }
+      return out.isEmpty ? null : out.join(' ');
+    }
+
+    final v2Data = decodeMap(r['v2_data']);
+    final hasTrustedV2 = v2Data != null &&
+        ((r['stable_id'] as String?)?.isNotEmpty ?? false);
+    final v2Pests = namesFrom(v2Data, 'pests_v2');
+    final v2Diseases = namesFrom(v2Data, 'diseases_v2');
+    final v2Fertilizer = summariesFrom(v2Data, 'fertilizer_rules');
 
     return TurkishCrop(
       id: r['id'] as int,
@@ -299,11 +355,19 @@ class TurkishCrop {
       soilType: decodeList(r['soil_type'], (v) => v.toString()),
       regionSuitability:
           decodeList(r['region_suitability'], (v) => v.toString()),
-      fertilizerNotes: r['fertilizer_notes'] as String?,
-      commonPests: decodeList(r['common_pests'], (v) => v.toString()),
-      commonDiseases: decodeList(r['common_diseases'], (v) => v.toString()),
-      growingTips: r['growing_tips'] as String?,
+      fertilizerNotes:
+          hasTrustedV2 ? v2Fertilizer : r['fertilizer_notes'] as String?,
+      commonPests: hasTrustedV2
+          ? v2Pests
+          : decodeList(r['common_pests'], (v) => v.toString()),
+      commonDiseases: hasTrustedV2
+          ? v2Diseases
+          : decodeList(r['common_diseases'], (v) => v.toString()),
+      growingTips: hasTrustedV2 ? null : r['growing_tips'] as String?,
       daysToHarvest: (r['days_to_harvest'] as num?)?.toInt(),
+      stableId: r['stable_id'] as String?,
+      v2Status: r['v2_status'] as String?,
+      v2Confidence: r['v2_confidence'] as String?,
     );
   }
 
@@ -442,6 +506,8 @@ class CropV2Bundle {
   final List<Map<String, dynamic>> pests;
   final List<Map<String, dynamic>> weeds;
   final List<Map<String, dynamic>> growthStages;
+  final List<Map<String, dynamic>> fertilizerRules;
+  final List<Map<String, dynamic>> irrigationRules;
   final List<Map<String, dynamic>> evidence;
   final List<String> missingInformation;
 
@@ -456,6 +522,8 @@ class CropV2Bundle {
     this.pests = const [],
     this.weeds = const [],
     this.growthStages = const [],
+    this.fertilizerRules = const [],
+    this.irrigationRules = const [],
     this.evidence = const [],
     this.missingInformation = const [],
   });
@@ -516,6 +584,8 @@ class CropV2Bundle {
       pests: mapList('pests_v2'),
       weeds: mapList('weeds_v2'),
       growthStages: mapList('growth_stages'),
+      fertilizerRules: mapList('fertilizer_rules'),
+      irrigationRules: mapList('irrigation_rules'),
       evidence: mapList('evidence'),
       missingInformation: missing,
     );

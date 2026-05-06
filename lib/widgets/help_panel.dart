@@ -305,11 +305,11 @@ class HelpContent {
             '"Kayıt" düğmesiyle sulama, gübreleme, ilaçlama, hasat veya gözlem girin. Bu kayıtlar günlük rehberde ve tarla günlüğünde görünür.',
       ),
       HelpItem(
-        icon: Icons.more_horiz_rounded,
+        icon: Icons.event_note_rounded,
         iconColor: Color(0xFF8D6E63),
-        title: 'Cüzdan ve günlük nerede?',
+        title: 'Günlük ve cüzdan nerede?',
         description:
-            'Alt bardaki "Diğer" menüsü tarla günlüğünü ve masraf defterini açar. Sezon sonu kâr/zarar hesabı cüzdan içinde görünür.',
+            'Alt bardaki "Günlük" düğmesi tarla günlüğünü açar. Sağ üstteki cüzdan simgesi masraf defterini açar.',
       ),
     ],
     items: [
@@ -355,10 +355,8 @@ class HelpContent {
         icon: Icons.assistant_rounded,
         iconColor: Color(0xFF2E7D32),
         title: 'Günlük Rehber',
-        description:
-            'Üst bardaki "Rehber" düğmesi "Bugünün Rehberi" ekranını açar. '
-            'Bu ekranda tarlaya özel bugünün görevleri, ekili bitkilerin gün gün planı, hava uyarıları, '
-            'bitki sağlığı durumu ve uygulamalı tarım önerileri bir arada sunulur.',
+        description: 'Alt bardaki "Rehber" düğmesi bugünün tavsiyelerini açar. '
+            'Bu ekranda tarlaya özel görevler, hava uyarıları, bitki sağlığı durumu ve uygulamalı tarım önerileri bir arada sunulur.',
       ),
       HelpItem(
         icon: Icons.stacked_line_chart_rounded,
@@ -380,9 +378,9 @@ class HelpContent {
       HelpItem(
         icon: Icons.account_balance_wallet_rounded,
         iconColor: Color(0xFF9C27B0),
-        title: 'Diğer — Cüzdan ve Günlük',
+        title: 'Günlük ve Cüzdan',
         description:
-            '"Diğer" menüsünden tarla günlüğüne ve bu tarlaya özel masraf defterine ulaşabilirsiniz. Tohum, gübre, yakıt, işçilik gibi '
+            'Alt bardaki "Günlük" düğmesi aktivite geçmişini açar. Sağ üstteki cüzdan simgesi bu tarlaya özel masraf defterine götürür. Tohum, gübre, yakıt, işçilik gibi '
             'harcamaları girdikçe toplam masraf otomatik güncellenir. '
             'Tahmini Sezon Sonu Kârı masraf defteri ekranında hesaplanır.',
       ),
@@ -466,7 +464,7 @@ class HelpContent {
         iconColor: Color(0xFF9C27B0),
         title: 'Tahmini Kâr Nerede Görünür?',
         description:
-            'Kâr tahmini artık bu ekranda değil — Tarla Detay ekranından Cüzdan (masraf defteri) '
+            'Kâr tahmini artık bu ekranda değil — Tarla Detay ekranının sağ üstündeki Cüzdan (masraf defteri) '
             'bölümüne girdiğinizde hesaplanır. '
             'Toplam masraf girişine göre Net Kâr = Rekolte Geliri − Toplam Masraf formülüyle gösterilir.',
       ),

@@ -1,15 +1,18 @@
 """5 öncelikli bitki için v2 evidence kayıtlarını seed_plants.json'a yazar.
 
 CLAUDE.md sec 0/10/12/14/17 sıkı uyumluluk:
-- Evidence metinleri TAGEM/ÇAYKUR resmî PDF'lerinden bire-bir alıntı (PyMuPDF ile çıkarıldı).
-- Hiçbir ilaç/aktif madde/doz tavsiyesi yok — sadece risk koşulu, belirti, kültürel önlem.
-- Tüm hastalık ve hasta-tedavisi kuralları requires_bku_check + requires_expert_confirmation: true.
+- Evidence metinleri TAGEM/ÇAYKUR resmî PDF'lerinden doğrulanmış alıntıdır.
+- İlaç/aktif madde/doz uydurulmaz; BKÜ gerektiren yerde sadece kontrol
+  zorunluluğu ve uzman onayı işaretlenir.
+- Hastalık ve zararlı risk kuralları requires_expert_confirmation kullanır.
 - v2_status="draft" — uzman/kullanıcı onayı sonrası "review" veya "approved" olur.
 
-Şu an dolu: Domates (TAGEM Açık Alan Domates EM Talimatı, Ankara-2022).
-İskelet bekleyen: Mısır, Ayçiçeği, Çay, Portakal — PDF'leri indirilip okunduğunda eklenir.
+Kapsam: Domates, Mısır, Ayçiçeği, Portakal ve Çay için hastalık/zararlı,
+fenolojik dönem, gübreleme, sulama ve özel çözüm kartlarını kaynak kanıtıyla
+günceller. Çayda doğrulanmış hastalık profili olmadığı için hastalık adı
+uydurulmaz; kaynaklı zararlı/toprak/sulama/hasat bilgileri uygulanır.
 
-İdempotent: aynı evidence iki kez yazmaz, mevcut yapıyı güvenle günceller.
+İdempotent: aynı id ikinci kez yazılmaz, mevcut yapı güvenle güncellenir.
 
 Kullanım:
     cd backend
@@ -373,12 +376,8 @@ TOMATO_DATA: dict = {
     ],
     "v2_status": "draft",
     "missing_information": [
-        "growth_stages[] — TAGEM yayını fenoloji bölümü ayrı, henüz çıkarılmadı.",
-        "fertilizer_rules[] — toprak analizi koşullu kurallar henüz yazılmadı (CLAUDE.md sec 16 guardrail'lerine uygun).",
-        "irrigation_rules[] — bölge + dönem bazlı sulama kuralları henüz yazılmadı.",
-        "Diğer 11 zararlı (kırmızı örümcek, beyazsinekler, yaprakbiti, thrips, vb.) için pests_v2 kayıtları açılacak.",
-        "14+ diğer hastalık (külleme, kurşuni küf, sclerotinia, septorya, bakteriyeller, virüsler) için diseases_v2 kayıtları açılacak.",
-        "test_cases — her rule_engine_rule için pozitif/negatif örnek girdiler (CLAUDE.md sec 21).",
+        "İkincil domates hastalık/zararlılarının tamamı ayrı v2 profiline açılmadı; mevcut uygulama kapsamı mildiyö, erken yaprak yanıklığı, domates güvesi, yeşilkurt ve kaynaklı fizyolojik besleme/sulama riskleridir.",
+        "test_cases — her rule_engine_rule için pozitif/negatif örnek girdiler eklenecek.",
         "v2_status='draft' — uzman onayı sonrası 'review' veya 'approved' yapılacak.",
     ],
 }
@@ -876,12 +875,7 @@ CORN_DATA: dict = {
     ],
     "v2_status": "draft",
     "missing_information": [
-        "growth_stages[] — TAGEM 9. Mücadelenin Yönetimi bölümünde fenoloji çizelgesi var; henüz ayrı çıkarılmadı.",
-        "fertilizer_rules[] — toprak analizi koşullu kurallar (CLAUDE.md sec 16) henüz yazılmadı.",
-        "irrigation_rules[] — bölge + dönem bazlı sulama kuralları (Karadeniz/Ege/Marmara/Akdeniz) henüz yazılmadı.",
-        "Diğer hastalıklar (Güney Yaprak Yanıklığı/Bipolaris maydis, Pas, Antraknoz, Cüceleşme virüsü) için diseases_v2 kayıtları açılacak.",
-        "Diğer zararlılar (Bozkurtlar, Mısır Maymuncuğu, Danaburnu, Çizgili Yaprakkurdu, Yaprakbitleri, Kırmızı Örümcekler, Tripsler) için pests_v2 kayıtları açılacak.",
-        "weeds_v2[] — Pp.73-87 yabancı ot bölümü (İmam pamuğu, Horoz ibiği, Sirken, Topalak, Kanyaş vb.) eklenecek.",
+        "Mısırda ikincil hastalık/zararlı ve yabancı otların tamamı ayrı v2 profiline açılmadı; mevcut kapsam mısır rastığı, Fusarium kompleksi, koçankurdu, mısırkurdu, yeşilkurt ve kaynaklı su/besleme riskleridir.",
         "test_cases — her rule_engine_rule için pozitif/negatif örnek girdiler eklenecek.",
     ],
 }
@@ -1380,11 +1374,7 @@ SUNFLOWER_DATA: dict = {
     ],
     "v2_status": "draft",
     "missing_information": [
-        "growth_stages[] — TAGEM yayınında fenoloji çizelgesi yok; yardımcı kaynaktan eklenebilir.",
-        "fertilizer_rules[] — toprak analizi koşullu kurallar henüz yazılmadı (CLAUDE.md sec 16).",
-        "irrigation_rules[] — Trakya/Ege/Karadeniz bölgesel sulama kuralları henüz yazılmadı.",
-        "Diğer zararlılar (Çayır Tırtılı, Makaslıböcek, Avrupa Güvesi, Telkurtları) için pests_v2 kayıtları açılacak.",
-        "Diğer yabancı otlar (Kırmızı Köklü Tilki Kuyruğu, Sirken, Tarla Sarmaşığı, Domuz Pıtrağı, Yabani Hardal) için weeds_v2 kayıtları açılacak.",
+        "Ayçiçeğinde ikincil zararlı ve yabancı otların tamamı ayrı v2 profiline açılmadı; mevcut kapsam ana hastalıklar, bozkurt/yeşilkurt, canavar otu ve kaynaklı bor/sulama riskleridir.",
         "test_cases — her rule_engine_rule için pozitif/negatif örnek girdiler eklenecek.",
     ],
 }
@@ -1753,11 +1743,7 @@ ORANGE_DATA: dict = {
     ],
     "v2_status": "draft",
     "missing_information": [
-        "growth_stages[] — turunçgillerde fenoloji çizelgesi (tomurcuk, çiçek, meyve tutumu, vurma olgunluğu, hasat) ayrı çıkarılmadı.",
-        "fertilizer_rules[] — yaprak/toprak analizi koşullu kurallar henüz yazılmadı.",
-        "irrigation_rules[] — Akdeniz/Ege bölgesel sulama kuralları henüz yazılmadı.",
-        "Diğer zararlılar (Turunçgil kırmızıörümceği, Pasböcüsü, Tomurcukakarı, Yaprakbitleri, Beyazsinekler, Koşniller, Yaprakpireleri, Nematod) için pests_v2 kayıtları açılacak.",
-        "Diğer hastalıklar (Depo çürüklükleri, Kahverengi leke, Dal yanıklığı, Tristeza virüsü, Psorosis virüsü, Stubborn) için diseases_v2 kayıtları açılacak.",
+        "Turunçgilde ikincil hastalık/zararlıların tamamı ayrı v2 profiline açılmadı; mevcut kapsam uçkurutan, Phytophthora, unlubiti, kabuklubiti, Akdeniz meyvesineği ve analiz/sulama güvenlik kurallarıdır.",
         "test_cases — her rule_engine_rule için pozitif/negatif örnek girdiler eklenecek.",
     ],
 }
@@ -2139,15 +2125,875 @@ TEA_DATA: dict = {
     ],
     "v2_status": "draft",
     "missing_information": [
-        "diseases_v2[] — ÇAYKUR ders notlarında 'ekonomik boyutta hastalık tespit edilmemiştir' deniyor; gelecekte iklim değişikliği ile çıkabilecek hastalıklar için ayrıca kaynak takip edilmelidir.",
-        "growth_stages[] — sürgün dönemleri (1./2./3. sürgün) ve dormansi/aktif dönemler ayrı çıkarılmadı.",
-        "irrigation_rules[] — Doğu Karadeniz iklimi yağışlı, ancak yıllık < 1150 mm yerlerde sulama gerekli (ders notu sayfa 12).",
-        "fertilizer_rules[] — yaprak/toprak analizi koşullu N/P/K reçeteleri eklenecek.",
+        "Çay için kaynaklı hastalık profili eklenmedi; ÇAYKUR kaynağı ekonomik boyutta hastalık/zararlı için kimyasal mücadele önermeyen kültürel yaklaşımı esas alıyor.",
         "weeds_v2[] — çay bahçelerinde kontrol edilen yabancı otlar listelenecek.",
         "test_cases — her rule_engine_rule için pozitif/negatif örnek girdiler eklenecek.",
         "Karadeniz Araştırma Enstitüsü ve Atatürk Çay Araştırma Enstitüsü kaynakları sources.json'a eklenmesi önerilir.",
     ],
 }
+
+
+def _rule(
+    *,
+    id: str,
+    crop_id: str,
+    category: str,
+    priority: int,
+    conditions: list[dict],
+    recommendations: list[str],
+    evidence: list[dict],
+    risk_level: str = "medium",
+    possible_problem_id: str | None = None,
+    explanation: str,
+    confidence: str = "high",
+    requires_expert_confirmation: bool = True,
+    requires_bku_check: bool = False,
+) -> dict:
+    return {
+        "id": id,
+        "crop_id": crop_id,
+        "category": category,
+        "priority": priority,
+        "enabled": True,
+        "conditions": [
+            {"field": "crop_id", "operator": "equals", "value": crop_id},
+            *conditions,
+        ],
+        "result": {
+            "risk_level": risk_level,
+            "possible_problem_id": possible_problem_id,
+            "recommendations": recommendations,
+            "requires_expert_confirmation": requires_expert_confirmation,
+            "requires_bku_check": requires_bku_check,
+        },
+        "explanation": explanation,
+        "confidence": confidence,
+        "evidence": evidence,
+    }
+
+
+PRIORITY_COMPLETIONS: dict[str, dict] = {
+    "crop.tomato": {
+        "growth_stages": [
+            {
+                "key": "seedling",
+                "label_tr": "Fide ve erken gelişme",
+                "evidence": [
+                    {
+                        "source_id": "source.tagem.tomato_open_field_ipm",
+                        "page": 12,
+                        "section": "5.3. Hastalıkların örnekleme yöntemleri",
+                        "evidence_text": "Fungal hastalıkların varlığı fide döneminden itibaren kontrol edilir.",
+                    }
+                ],
+            },
+            {
+                "key": "flowering_fruit_set",
+                "label_tr": "Çiçeklenme ve meyve tutumu",
+                "evidence": [
+                    {
+                        "source_id": "source.tagem.tomato_open_field_ipm",
+                        "page": 90,
+                        "section": "7.3.3. Çiçekte ve yaprakta görülen fizyolojik bozukluklar",
+                        "evidence_text": "Domates bitkisi uygun olmayan hava sıcaklıklarında çiçek döker. Gece sıcaklığının 21°C'den büyük veya 13°C'den küçük, gündüz sıcaklığının 32°C'den büyük olması halinde polen canlılığı ve tozlaşma özelliği kaybolduğu için döllenme olmaz ve çiçek kuruyarak dökülür.",
+                    }
+                ],
+            },
+            {
+                "key": "fruit_development",
+                "label_tr": "Meyve gelişimi",
+                "evidence": [
+                    {
+                        "source_id": "source.tagem.tomato_open_field_ipm",
+                        "page": 85,
+                        "section": "7.3.2. Meyvede görülen fizyolojik bozukluklar",
+                        "evidence_text": "Çiçek burnu çürüklüğü; bitkinin genetik özellikleri, iklim faktörü, bitki besleme ve sulama ile doğrudan ilişkilidir.",
+                    }
+                ],
+            },
+        ],
+        "fertilizer_rules": [
+            {
+                "id": "fertilizer.tomato.soil_analysis_balance",
+                "title": "Toprak analizine dayalı dengeli gübreleme",
+                "summary": "Azot fazlası hastalık ve zararlı duyarlılığını artırır; fosfor, potasyum, kalsiyum ve mikro elementler gelişme dönemine göre dengelenmelidir.",
+                "guardrail": "Toprak analizi olmadan net gübre miktarı verilmez.",
+                "evidence": [
+                    {
+                        "source_id": "source.tagem.tomato_open_field_ipm",
+                        "page": 59,
+                        "section": "7.2.4. Solgunluk ve kök çürüklükleri — Kültürel önlemler",
+                        "evidence_text": "Dengeli gübreleme ve iyi bakım yapılmalı, aşırı azotlu gübrelemeden kaçınılmalıdır. Toprak analizi sonuçlarına göre gübreleme yapılmalıdır.",
+                    },
+                    {
+                        "source_id": "source.tagem.tomato_open_field_ipm",
+                        "page": 80,
+                        "section": "7.3.1. Azot",
+                        "evidence_text": "Aşırı azotlu gübreleme sonucu bitkiler, hastalık ve zararlı etmenleri ile diğer abiyotik stres koşullarından daha çok etkilenir.",
+                    },
+                ],
+            },
+            {
+                "id": "fertilizer.tomato.calcium_fruit_disorder",
+                "title": "Çiçek burnu çürüklüğünde kalsiyum-su dengesi",
+                "summary": "Meyve gelişiminde kalsiyum eksikliği, su stresi ve düzensiz sulama birlikte değerlendirilmelidir.",
+                "guardrail": "Kalsiyum uygulaması toprak/pH/tuzluluk analizi ve uzman yorumu olmadan net dozla verilmez.",
+                "evidence": [
+                    {
+                        "source_id": "source.tagem.tomato_open_field_ipm",
+                        "page": 85,
+                        "section": "7.3.2. Çiçek burnu çürüklüğü",
+                        "evidence_text": "Aşırı azotlu gübrelemeden kaçınılmalıdır. Toprağın pH ve tuz düzeyi kontrol edilmelidir. Sulama düzensizlikleri ortadan kaldırılmalı, bitkiye yeterli miktarda ve sıklıkta su verilmeli, drenaj koşulları düzeltilmelidir.",
+                    }
+                ],
+            },
+        ],
+        "irrigation_rules": [
+            {
+                "id": "irrigation.tomato.root_collar_drainage",
+                "title": "Kök boğazında su birikimini önle",
+                "summary": "Solgunluk ve kök çürüklüğü riskinde aşırı sulama, kök boğazında su birikimi ve zayıf drenaj ana risklerdir.",
+                "evidence": [
+                    {
+                        "source_id": "source.tagem.tomato_open_field_ipm",
+                        "page": 59,
+                        "section": "7.2.4. Solgunluk ve kök çürüklükleri — Kültürel önlemler",
+                        "evidence_text": "Aşırı sulamadan kaçınılmalı özellikle sulama suyunun kök boğazı çevresinde birikmesi önlenmeli, salma sulama yerine tercihen damla sulama yapılmalıdır.",
+                    }
+                ],
+            },
+            {
+                "id": "irrigation.tomato.fruit_cracking_consistency",
+                "title": "Meyve döneminde sulama dalgalanmasını azalt",
+                "summary": "Kurak dönemden sonra gelen aşırı yağış veya sulama meyve çatlamasını artırır.",
+                "evidence": [
+                    {
+                        "source_id": "source.tagem.tomato_open_field_ipm",
+                        "page": 87,
+                        "section": "7.3.2. Meyve çatlaması",
+                        "evidence_text": "Sulamada dalgalanmalara izin verilmemelidir. Yaprak budaması meyve üzerine direk güneş ışığının gelmesini engelleyecek şekilde yapılmalıdır. Aşırı azotlu gübrelemeden kaçınılmalıdır.",
+                    }
+                ],
+            },
+        ],
+        "rule_engine_rules": [
+            _rule(
+                id="rule.tomato.physiology.blossom_end_rot.water_calcium",
+                crop_id="crop.tomato",
+                category="physiological_risk",
+                priority=82,
+                conditions=[
+                    {"field": "growth_stage", "operator": "equals", "value": "fruit_development"},
+                    {"field": "irrigation_irregularity", "operator": "equals", "value": True},
+                ],
+                possible_problem_id="physiology.tomato.blossom_end_rot",
+                recommendations=[
+                    "Çiçek burnu çürüklüğü riski için sulama dalgalanmasını azaltın; kök bölgesinde yeterli ve sürekli nem hedefleyin.",
+                    "Toprağın pH ve tuz düzeyini kontrol edin; kalsiyum eksikliği varsa analize göre uzman tavsiyesi alın.",
+                    "Aşırı azotlu gübrelemeden kaçının.",
+                ],
+                evidence=[
+                    {
+                        "source_id": "source.tagem.tomato_open_field_ipm",
+                        "page": 85,
+                        "section": "7.3.2. Çiçek burnu çürüklüğü",
+                        "evidence_text": "Sulama düzensizlikleri ortadan kaldırılmalı, bitkiye yeterli miktarda ve sıklıkta su verilmeli, drenaj koşulları düzeltilmelidir.",
+                    }
+                ],
+                explanation="Domateste çiçek burnu çürüklüğü kalsiyum taşınımı, su stresi, pH/tuz ve besleme dengesi ile ilişkilidir.",
+            ),
+            _rule(
+                id="rule.tomato.physiology.flower_drop.temperature_nitrogen",
+                crop_id="crop.tomato",
+                category="physiological_risk",
+                priority=78,
+                conditions=[
+                    {"field": "growth_stage", "operator": "equals", "value": "flowering_fruit_set"},
+                    {"field": "temperature_flower_drop_risk", "operator": "equals", "value": True},
+                ],
+                possible_problem_id="physiology.tomato.flower_drop",
+                recommendations=[
+                    "Çiçeklenmede gece 13°C altı veya 21°C üstü, gündüz 32°C üstü sıcaklıklar meyve tutumunu bozabilir.",
+                    "Aşırı azotlu gübreleme yeşil aksamı artırıp meyve tutumunu azaltabilir; gübrelemeyi analizle dengeleyin.",
+                    "Toprak nemini çok düşük ya da aşırı yüksek bırakmayın.",
+                ],
+                evidence=[
+                    {
+                        "source_id": "source.tagem.tomato_open_field_ipm",
+                        "page": 90,
+                        "section": "7.3.3. Çiçek dökülmesi",
+                        "evidence_text": "Aşırı azotlu gübreleme ile aşırı yeşil aksam gelişimi meyve tutumunun azalmasına neden olabilir. Düşük veya aşırı toprak nemi bitki için stres faktörü oluşturduğu için çiçek dökümüne sebep olabilir.",
+                    }
+                ],
+                explanation="Çiçek dökülmesi sıcaklık, bağıl nem, azot dengesi ve toprak nemi stresleriyle birlikte değerlendirilir.",
+            ),
+        ],
+        "missing_information": [
+            "İkincil domates hastalık/zararlılarının tamamı ayrı v2 profiline açılmadı; mevcut uygulama kapsamı mildiyö, erken yaprak yanıklığı, domates güvesi, yeşilkurt ve kaynaklı fizyolojik besleme/sulama riskleridir.",
+            "test_cases — her rule_engine_rule için pozitif/negatif örnek girdiler eklenecek.",
+            "v2_status='draft' — uzman onayı sonrası 'review' veya 'approved' yapılacak.",
+        ],
+    },
+    "crop.corn": {
+        "growth_stages": [
+            {
+                "key": "seedling",
+                "label_tr": "Çimlenme-fide",
+                "evidence": [
+                    {
+                        "source_id": "source.tagem.corn_ipm",
+                        "page": 63,
+                        "section": "7.2.2. Tohum ve fide çürüklüğü",
+                        "evidence_text": "Henüz çimlenmemiş veya çimlenen mısır tohumları; tohum çürüklüğü ve fide yanıklığını oluşturan toprak ve tohum kaynaklı birçok etmen tarafından enfekte edilebilir.",
+                    }
+                ],
+            },
+            {
+                "key": "tasseling",
+                "label_tr": "Tepe püskülü",
+                "evidence": [
+                    {
+                        "source_id": "source.tagem.corn_ipm",
+                        "page": 64,
+                        "section": "7.2.2. Fusarium spp.",
+                        "evidence_text": "Bu etmenler kurak ve sıcak bölgelerde özellikle tepe püskülü çıkarma devresinde etkilidir.",
+                    }
+                ],
+            },
+            {
+                "key": "silking",
+                "label_tr": "Koçan püskülü",
+                "evidence": [
+                    {
+                        "source_id": "source.tagem.corn_ipm",
+                        "page": 46,
+                        "section": "7.1.7. Yeşilkurt — Mücadele eşiği",
+                        "evidence_text": "Mısır koçan püskülü döneminde tarlanın 5 farklı yerinde aynı sıra üzerinde yanyana 5 bitkinin koçan püskülü üzerinde yapılan larva kontrolünde bitki başına ortalama 1 adet 1.-3. dönem larva belirlendiğinde ilaçlama yapılmalıdır.",
+                    }
+                ],
+            },
+        ],
+        "fertilizer_rules": [
+            {
+                "id": "fertilizer.corn.soil_analysis_fusarium_guardrail",
+                "title": "Toprak analizine göre gübreleme",
+                "summary": "Fusarium/kök-sap çürüklüğü baskısında gübreleme toprak analizine göre yapılmalı; aşırı azot ve sık ekimden kaçınılmalıdır.",
+                "guardrail": "Analiz yoksa net NPK miktarı verilmez.",
+                "evidence": [
+                    {
+                        "source_id": "source.tagem.corn_ipm",
+                        "page": 66,
+                        "section": "7.2.2. Mısırda kök/sap/koçan çürüklükleri — Kültürel önlemler",
+                        "evidence_text": "Gübreler toprak analizi sonuçlarına göre uygulanmalıdır. Hastalığın yoğun olduğu yerlerde münavebe uygulanmalıdır. Sık ekimden ve aşırı sulamadan kaçınılmalıdır.",
+                    }
+                ],
+            },
+            {
+                "id": "fertilizer.corn.aphid_leafhopper_nitrogen",
+                "title": "Aşırı azotu zararlı baskısıyla birlikte değerlendir",
+                "summary": "Yaprakbiti ve yaprakpirelerinde aşırı azotlu gübreleme ile aşırı sulama zararlı baskısını artıran yönetim riskleridir.",
+                "guardrail": "Azot artırımı zararlı gözlemi ve toprak analizi olmadan önerilmez.",
+                "evidence": [
+                    {
+                        "source_id": "source.tagem.corn_ipm",
+                        "page": 51,
+                        "section": "7.1.9. Yaprakbitleri — Kültürel önlemler",
+                        "evidence_text": "Sık ekim, aşırı azotlu gübreleme ve aşırı sulamadan kaçınılmalıdır.",
+                    },
+                    {
+                        "source_id": "source.tagem.corn_ipm",
+                        "page": 60,
+                        "section": "8.1.13. Yaprakpireleri — Kültürel önlemler",
+                        "evidence_text": "Aşırı sulama ve aşırı azotlu gübre kullanımından kaçınılmalıdır.",
+                    },
+                ],
+            },
+        ],
+        "irrigation_rules": [
+            {
+                "id": "irrigation.corn.seedling_cold_wet_soil",
+                "title": "Soğuk ve rutubetli toprakta ekim/sulama riski",
+                "summary": "10-13°C altı, drenajı zayıf ve rutubetli topraklarda tohum-fide çürüklüğü artar.",
+                "evidence": [
+                    {
+                        "source_id": "source.tagem.corn_ipm",
+                        "page": 63,
+                        "section": "7.2.2. Tohum/kök/kökboğazı çürüklükleri",
+                        "evidence_text": "Bu durum özellikle drenajı zayıf, aşırı killi, soğuk (10-13°C'den az) ve rutubetli topraklarda daha çok görülür.",
+                    }
+                ],
+            },
+            {
+                "id": "irrigation.corn.spider_mite_water_stress",
+                "title": "Kırmızı örümcekte su stresini önle",
+                "summary": "Kırmızı örümcek riskinde bitki su stresine sokulmamalı ve sulama zamanı izlenmelidir.",
+                "evidence": [
+                    {
+                        "source_id": "source.tagem.corn_ipm",
+                        "page": 54,
+                        "section": "7.1.10. Kırmızı Örümcekler — Kültürel mücadele",
+                        "evidence_text": "Bitkinin su stresine girmesi önlenmelidir ve sulama zamanına dikkat edilmelidir.",
+                    }
+                ],
+            },
+        ],
+        "rule_engine_rules": [
+            _rule(
+                id="rule.corn.pest.spider_mite.water_stress",
+                crop_id="crop.corn",
+                category="pest_risk",
+                priority=72,
+                conditions=[
+                    {"field": "water_stress", "operator": "equals", "value": True},
+                    {"field": "average_temperature_c", "operator": "greater_or_equal", "value": 25},
+                ],
+                possible_problem_id="pest.corn.tetranychus",
+                recommendations=[
+                    "Alt yaprakların alt yüzünde ağlanma, sararma ve kurumayı kontrol edin.",
+                    "Bitkiyi su stresine sokmayın; sulama zamanını düzenleyin.",
+                    "Doğal düşmanların korunması esastır; kaynak, kimyasal mücadeleyi önermemektedir.",
+                ],
+                evidence=[
+                    {
+                        "source_id": "source.tagem.corn_ipm",
+                        "page": 54,
+                        "section": "7.1.10. Kırmızı Örümcekler",
+                        "evidence_text": "Bitkinin su stresine girmesi önlenmelidir ve sulama zamanına dikkat edilmelidir. Doğal düşmanların bu zararlıyı baskı altında tutması nedeni ile kimyasal mücadeleye gerek görülmemektedir.",
+                    }
+                ],
+                explanation="Mısırda kırmızı örümcekler su stresi ve sıcak-kuru koşullarda izlenmelidir; kimyasal öneri yerine kültürel ve biyolojik koruma öne çıkar.",
+                requires_bku_check=True,
+            ),
+            _rule(
+                id="rule.corn.pest.leafhopper.nitrogen_irrigation_excess",
+                crop_id="crop.corn",
+                category="pest_risk",
+                priority=70,
+                conditions=[
+                    {"field": "excess_nitrogen_or_irrigation", "operator": "equals", "value": True},
+                    {"field": "leafhopper_adults_per_plant", "operator": "greater_or_equal", "value": 13},
+                ],
+                possible_problem_id="pest.corn.leafhopper",
+                recommendations=[
+                    "Tarla içi ve kenarındaki konukçu yabancı otları kontrol edin.",
+                    "Aşırı sulama ve aşırı azotlu gübre kullanımından kaçının.",
+                    "Eşik üstü durumda BKÜ kontrolü ve uzman onayı olmadan kimyasal mücadeleye geçmeyin.",
+                ],
+                evidence=[
+                    {
+                        "source_id": "source.tagem.corn_ipm",
+                        "page": 60,
+                        "section": "8.1.13. Yaprakpireleri — Mücadelesi",
+                        "evidence_text": "Aşırı sulama ve aşırı azotlu gübre kullanımından kaçınılmalıdır. ... Zyginidia pullula'nın ekonomik zarar eşiği 13 ergin/bitki olarak belirlenmiştir.",
+                    }
+                ],
+                explanation="Yaprakpireleri için kaynak kültürel önlemi ve 13 ergin/bitki eşiğini birlikte verir.",
+                requires_bku_check=True,
+            ),
+        ],
+        "missing_information": [
+            "Mısırda ikincil hastalık/zararlı/yabancı otların tamamı ayrı v2 profiline açılmadı; mevcut kapsam ana zararlılar, Fusarium/rastık ve kaynaklı sulama-gübreleme riskleridir.",
+            "test_cases — her rule_engine_rule için pozitif/negatif örnek girdiler eklenecek.",
+        ],
+    },
+    "crop.sunflower": {
+        "growth_stages": [
+            {
+                "key": "V0",
+                "label_tr": "Kotiledon dönemi",
+                "evidence": [
+                    {
+                        "source_id": "source.tagem.sunflower_ipm",
+                        "page": 69,
+                        "section": "EK-2 Ayçiçeğinin Fenolojik Dönemleri",
+                        "evidence_text": "V0 Kotiledon dönemidir. Çimlenme sonrası fidenin toprak üstünde gözüktüğü ve gerçek yaprakların yeni oluşmaya başladığı dönemdir.",
+                    }
+                ],
+            },
+            {
+                "key": "R1",
+                "label_tr": "Tomurcuk başlangıcı",
+                "evidence": [
+                    {
+                        "source_id": "source.tagem.sunflower_ipm",
+                        "page": 69,
+                        "section": "EK-2 Ayçiçeğinin Fenolojik Dönemleri",
+                        "evidence_text": "R1 Çiçek tomurcuklarının 0.5-2.0 cm olduğu ve yaprak sayısının 8-12 arasında değiştiği dönemdir.",
+                    }
+                ],
+            },
+            {
+                "key": "R5",
+                "label_tr": "Çiçeklenme",
+                "evidence": [
+                    {
+                        "source_id": "source.tagem.sunflower_ipm",
+                        "page": 70,
+                        "section": "EK-2 Ayçiçeğinin Fenolojik Dönemleri",
+                        "evidence_text": "R5.1: Çiçeklenmenin başlangıç evresidir. Gerçek çiçekler %10 gözükmeye başlar. R5.5: Gerçek çiçeklerin %50'sinin açtığı dönemdir. R5.9: Gerçek çiçeklerin %90'ının açtığı dönemdir.",
+                    }
+                ],
+            },
+            {
+                "key": "R9",
+                "label_tr": "Fizyolojik olgunluk başlangıcı",
+                "evidence": [
+                    {
+                        "source_id": "source.tagem.sunflower_ipm",
+                        "page": 70,
+                        "section": "EK-2 Ayçiçeğinin Fenolojik Dönemleri",
+                        "evidence_text": "R9 Brakteler sarı ve kahverengiye dönmeye başlamıştır. Bu dönem fizyolojik olgunluk başlangıcı olarak kabul edilir.",
+                    }
+                ],
+            },
+        ],
+        "fertilizer_rules": [
+            {
+                "id": "fertilizer.sunflower.boron_guardrail",
+                "title": "Bor noksanlığı ve toksisitesini birlikte kontrol et",
+                "summary": "Ayçiçeği bor noksanlığına duyarlıdır; ancak yüksek bor da toksisite yapar. Sulama suyu ve önceki bor uygulamaları sorgulanmalıdır.",
+                "guardrail": "Bor uygulaması toprak/yaprak analizi olmadan net dozla önerilmez.",
+                "evidence": [
+                    {
+                        "source_id": "source.tagem.sunflower_ipm",
+                        "page": 50,
+                        "section": "7.4. Fizyolojik Hastalıklar — Bor Noksanlığı",
+                        "evidence_text": "Ayçiçeği bitkilerinde suyun köklerden bitkinin üst kısımlarına taşınmasında önemli rol oynayan bor elementine olan ihtiyaç özellikle kurak şartlarda daha da artar.",
+                    },
+                    {
+                        "source_id": "source.tagem.sunflower_ipm",
+                        "page": 51,
+                        "section": "7.4. Fizyolojik Hastalıklar — Bor Toksisitesi",
+                        "evidence_text": "Bor toksisitesini düzeltmek için sadece yüksek bor içeren sulama suyu veya aşırı bor gübrelemesinden kaçınmak yeterli olmayıp, kireç ve azotlu gübre özellikle de kalsiyum nitrat uygulaması yapılmalıdır.",
+                    },
+                ],
+            },
+            {
+                "id": "fertilizer.sunflower.nitrogen_oil_guardrail",
+                "title": "Azotu verim ve yağ oranı dengesiyle planla",
+                "summary": "Kaynak kuru koşulda hedeflenen verim için azot bilgisini verir; fazla azot yağ oranını düşürebilir.",
+                "guardrail": "Bölge, sulama ve toprak analizi olmadan kesin azot miktarı önerilmez.",
+                "evidence": [
+                    {
+                        "source_id": "source.tagem.sunflower_ipm",
+                        "page": 52,
+                        "section": "7.4. Fizyolojik Hastalıklar — Azot Noksanlığı",
+                        "evidence_text": "Ayçiçeğinde yapılan araştırmalar, genelde 8-12 kg/da saf azot uygulaması, kuru şartlarda hedeflenen 250-300 kg/da tane verimi için yeterli olduğunu göstermektedir. Ancak sulu koşullarda bu oranı arttırılması ... şarttır. Yapılan fazla azotlu gübrelemenin tanedeki yağ oranını %2,5-3,8 oranında azalttığı görülmüştür.",
+                    }
+                ],
+            },
+        ],
+        "irrigation_rules": [
+            {
+                "id": "irrigation.sunflower.charcoal_rot_water_stress",
+                "title": "Sıcak aylarda su stresini azalt",
+                "summary": "Kömür çürüklüğü ve bor noksanlığı riskinde sıcak-kurak dönemde düzenli sulama koruyucu önlemdir.",
+                "evidence": [
+                    {
+                        "source_id": "source.tagem.sunflower_ipm",
+                        "page": 42,
+                        "section": "7.2.1. Kömür Çürüklüğü — Kültürel önlemler",
+                        "evidence_text": "Özellikle sıcak aylarda bitkileri su stresine sokmayacak şekilde düzenli sulama yapılmalıdır.",
+                    }
+                ],
+            },
+            {
+                "id": "irrigation.sunflower.boron_toxicity_water_quality",
+                "title": "Sulama suyunda bor riskini izle",
+                "summary": "Yüksek bor içeren sulama suyu bor toksisitesine yol açabilir; su analizi önemlidir.",
+                "evidence": [
+                    {
+                        "source_id": "source.tagem.sunflower_ipm",
+                        "page": 50,
+                        "section": "7.4. Fizyolojik Hastalıklar — Bor Toksisitesi",
+                        "evidence_text": "Ayçiçeğinde nadir görünen bor toksisitesi daha çok, sulama suyundaki yüksek bor konsantrasyonu veya rotasyonda bir önceki bitkiye uygulanan aşırı bor gübrelemesi vb. uygulamalar sonucu ortaya çıkar.",
+                    }
+                ],
+            },
+        ],
+        "rule_engine_rules": [
+            _rule(
+                id="rule.sunflower.physiology.boron_drought",
+                crop_id="crop.sunflower",
+                category="physiological_risk",
+                priority=76,
+                conditions=[
+                    {"field": "drought_stress", "operator": "equals", "value": True},
+                    {"field": "boron_symptom_observed", "operator": "equals", "value": True},
+                ],
+                possible_problem_id="physiology.sunflower.boron_disorder",
+                recommendations=[
+                    "Bor noksanlığı ile kalsiyum/bakır eksikliği ve mekanik zararı karıştırmayın; belirtiyi fotoğraf + uzman gözlemiyle doğrulayın.",
+                    "Sulama suyu ve önceki bor gübrelemesi geçmişini kontrol edin.",
+                    "Toprak/yaprak analizi olmadan bor uygulaması yapmayın; yüksek bor toksisite oluşturabilir.",
+                ],
+                evidence=[
+                    {
+                        "source_id": "source.tagem.sunflower_ipm",
+                        "page": 50,
+                        "section": "7.4. Bor Noksanlığı",
+                        "evidence_text": "Ayçiçeği her ne kadar bor noksanlığına aşırı duyarlı ise de, yüksek oranda bor oranları da bitkiye toksik etki yapar.",
+                    }
+                ],
+                explanation="Ayçiçeğinde bor hem noksanlık hem toksisite açısından hassastır; kaynak, kuraklık ve sulama suyu borunu birlikte ele alır.",
+            ),
+            _rule(
+                id="rule.sunflower.disease.charcoal_rot.water_stress_guard",
+                crop_id="crop.sunflower",
+                category="disease_risk",
+                priority=84,
+                conditions=[
+                    {"field": "average_temperature_c", "operator": "greater_or_equal", "value": 28},
+                    {"field": "water_stress", "operator": "equals", "value": True},
+                ],
+                possible_problem_id="disease.sunflower.charcoal_rot",
+                recommendations=[
+                    "Kök boğazı ve gövdede kömürleşme/mikrosklerot belirtisini kontrol edin.",
+                    "Sıcak aylarda bitkiyi su stresine sokmayacak düzenli sulama planlayın.",
+                    "Hastalıklı bitki ve hasat artıklarını tarladan uzaklaştırın.",
+                ],
+                evidence=[
+                    {
+                        "source_id": "source.tagem.sunflower_ipm",
+                        "page": 42,
+                        "section": "7.2.1. Kömür Çürüklüğü — Kültürel önlemler",
+                        "evidence_text": "Özellikle sıcak aylarda bitkileri su stresine sokmayacak şekilde düzenli sulama yapılmalıdır.",
+                    }
+                ],
+                explanation="Kömür çürüklüğü sıcak ve su stresi koşullarında yönetim uyarısı gerektirir.",
+                requires_bku_check=True,
+            ),
+        ],
+        "missing_information": [
+            "Ayçiçeğinde ikincil zararlı ve yabancı otların tamamı ayrı v2 profiline açılmadı; mevcut kapsam ana hastalıklar, bozkurt/yeşilkurt, canavar otu ve kaynaklı bor/sulama riskleridir.",
+            "test_cases — her rule_engine_rule için pozitif/negatif örnek girdiler eklenecek.",
+        ],
+    },
+    "crop.orange": {
+        "growth_stages": [
+            {
+                "key": "pre_bloom",
+                "label_tr": "Çiçeklenme öncesi tomurcuk",
+                "evidence": [
+                    {
+                        "source_id": "source.tagem.citrus_ipm",
+                        "page": 11,
+                        "section": "1.8. Göz ile inceleme yöntemi",
+                        "evidence_text": "Fenolojik döneme bağlı olarak, çiçeklenme öncesinde tomurcuk, çiçeklenme döneminde çiçek, daha sonra yaprak ve meyve üzerinde bulunan böcekler, zararlı ve yararlı akarlar ve yenikler sayılır.",
+                    }
+                ],
+            },
+            {
+                "key": "bloom",
+                "label_tr": "Çiçeklenme",
+                "evidence": [
+                    {
+                        "source_id": "source.tagem.citrus_ipm",
+                        "page": 11,
+                        "section": "1.8. Göz ile inceleme yöntemi",
+                        "evidence_text": "Fenolojik döneme bağlı olarak, çiçeklenme öncesinde tomurcuk, çiçeklenme döneminde çiçek, daha sonra yaprak ve meyve üzerinde bulunan böcekler, zararlı ve yararlı akarlar ve yenikler sayılır.",
+                    }
+                ],
+            },
+            {
+                "key": "fruit_leaf_monitoring",
+                "label_tr": "Yaprak ve meyve izleme",
+                "evidence": [
+                    {
+                        "source_id": "source.tagem.citrus_ipm",
+                        "page": 11,
+                        "section": "1.8. Göz ile inceleme yöntemi",
+                        "evidence_text": "Vejetasyon süresince 1-2 hafta aralıklarla yapılır. Bunun için, bahçeyi temsil edecek şekilde 10 ağaç seçilir ve bu ağaçların her birinden 10'ar olmak üzere, toplam 100 adet bitki örneği ... sayılır.",
+                    }
+                ],
+            },
+        ],
+        "fertilizer_rules": [
+            {
+                "id": "fertilizer.orange.leaf_soil_sampling",
+                "title": "Yaprak ve toprak analizine göre gübreleme",
+                "summary": "Dengeli beslenme ve noksanlık takibi için eylül-ekimde 4-7 aylık yapraklar ve 0-30 cm toprak örneği ile analiz yapılmalıdır.",
+                "guardrail": "Analiz olmadan turunçgil için net gübre miktarı önerilmez.",
+                "evidence": [
+                    {
+                        "source_id": "source.tagem.citrus_ipm",
+                        "page": 13,
+                        "section": "1.16. Bitki besin elementleri ile ilgili örnekleme yöntemleri",
+                        "evidence_text": "Turunçgil ağaçlarının dengeli beslenmeleri ve bitki besin elementleri noksanlıklarının belirlenmesi için, yaprak ve toprak analizleri yaptırılması gerekir.",
+                    },
+                    {
+                        "source_id": "source.tagem.citrus_ipm",
+                        "page": 14,
+                        "section": "1.16. Bitki besin elementleri ile ilgili örnekleme yöntemleri",
+                        "evidence_text": "Alınan yaprak ve toprak örnekleri gerekli bilgileri taşıyan etiketleriyle birlikte analize gönderilir ve öneriler doğrultusunda gübreleme uygulamaları yapılır.",
+                    },
+                ],
+            },
+        ],
+        "irrigation_rules": [
+            {
+                "id": "irrigation.orange.nematode_sampling_after_irrigation",
+                "title": "Sulama sonrası örnekleme zamanını doğru seç",
+                "summary": "Nematod/kök örnekleri için sulamayı izleyen üçüncü gün daha uygundur; örnekler serin korunmalıdır.",
+                "evidence": [
+                    {
+                        "source_id": "source.tagem.citrus_ipm",
+                        "page": 12,
+                        "section": "1.11. Nematodlar için örnekleme yöntemleri",
+                        "evidence_text": "Kurulu bahçelerden örnek almak için en uygun zaman nisan-mayıs aylarıdır. Sulamayı izleyen üçüncü günde örneklerin alınması daha uygundur.",
+                    }
+                ],
+            },
+            {
+                "id": "irrigation.orange.phytophthora_root_collar",
+                "title": "Kök boğazını ıslak bırakma",
+                "summary": "Phytophthora/kahverengi çürüklük riskinde drenaj ve kök boğazı su temasını önlemek ana kültürel önlemdir.",
+                "evidence": [
+                    {
+                        "source_id": "source.tagem.citrus_ipm",
+                        "page": 67,
+                        "section": "1.41. Phytophthora — Mücadelesi",
+                        "evidence_text": "Salma sulama yerine damla sulama tercih edilmeli, suyun kök boğazına değmesi engellenmelidir.",
+                    }
+                ],
+            },
+        ],
+        "rule_engine_rules": [
+            _rule(
+                id="rule.orange.nutrition.leaf_soil_analysis_due",
+                crop_id="crop.orange",
+                category="soil_analysis",
+                priority=72,
+                conditions=[
+                    {"field": "month", "operator": "in", "value": [9, 10]},
+                    {"field": "has_recent_leaf_soil_analysis", "operator": "equals", "value": False},
+                ],
+                recommendations=[
+                    "Eylül-ekim döneminde meyvesiz sürgünün uçtan 2-4. yapraklarından yaprak örneği alın.",
+                    "0-30 cm toprak örneğini 8-10 farklı noktadan karıştırarak oluşturun.",
+                    "Gübreleme önerisini analiz sonucuna göre planlayın.",
+                ],
+                evidence=[
+                    {
+                        "source_id": "source.tagem.citrus_ipm",
+                        "page": 14,
+                        "section": "1.16. Bitki besin elementleri",
+                        "evidence_text": "Bir örnek, 20 da alanı temsil edecek şekilde 100 yaprak veya 50 g yaş ağırlıktaki yapraktan oluşmalıdır. Toprak örneklemesi yapılırken de bahçenin 8-10 farklı noktasından 0-30 cm derinlikten alınacak toprakların karıştırılmasıyla bir örnek oluşturulur.",
+                    }
+                ],
+                explanation="Turunçgil gübreleme kararı yaprak ve toprak analizine bağlanır; doz uygulama önerisi analizsiz verilmez.",
+            ),
+            _rule(
+                id="rule.orange.irrigation.phytophthora.root_collar_wet",
+                crop_id="crop.orange",
+                category="disease_risk",
+                priority=83,
+                conditions=[
+                    {"field": "root_collar_wet", "operator": "equals", "value": True},
+                    {"field": "recent_heavy_rain", "operator": "equals", "value": True},
+                ],
+                possible_problem_id="disease.orange.brown_rot",
+                recommendations=[
+                    "Kök boğazında zamk akıntısı ve alt meyvelerde kahverengi çürüklük belirtisini kontrol edin.",
+                    "Drenajı iyileştirin; salma sulama yerine damla sulama tercih edin.",
+                    "Suyun kök boğazına değmesini engelleyin.",
+                ],
+                evidence=[
+                    {
+                        "source_id": "source.tagem.citrus_ipm",
+                        "page": 67,
+                        "section": "1.41. Phytophthora — Mücadelesi",
+                        "evidence_text": "Fidanlar derin dikilmemeli, aşı yerleri toprak üstünden en az 20 cm yukarıda bırakılmalıdır. ... Salma sulama yerine damla sulama tercih edilmeli, suyun kök boğazına değmesi engellenmelidir.",
+                    }
+                ],
+                explanation="Phytophthora toprak/su sıçraması ve kök boğazı ıslaklığıyla ilişkilidir; kültürel önlem drenaj ve sulama biçimidir.",
+                requires_bku_check=True,
+            ),
+        ],
+        "missing_information": [
+            "Turunçgilde ikincil hastalık/zararlıların tamamı ayrı v2 profiline açılmadı; mevcut kapsam uçkurutan, Phytophthora, unlubiti, kabuklubiti, Akdeniz meyvesineği ve analiz/sulama güvenlik kurallarıdır.",
+            "test_cases — her rule_engine_rule için pozitif/negatif örnek girdiler eklenecek.",
+        ],
+    },
+    "crop.tea": {
+        "growth_stages": [
+            {
+                "key": "dormant_bud",
+                "label_tr": "Dormant tomurcuk",
+                "evidence": [
+                    {
+                        "source_id": "source.caykur.tea_cultivation_lecture_notes_2025",
+                        "page": 21,
+                        "section": "7.4.5. Çay sürgününün oluşum safhaları",
+                        "evidence_text": "Tomurcuk dormant durumdan aktif duruma geçerken, sırası ile; Pulcuk (katafil), janam yaprak, balık yaprak ve normal yapraklar oluşur.",
+                    }
+                ],
+            },
+            {
+                "key": "shoot_growth",
+                "label_tr": "Sürgün gelişimi",
+                "evidence": [
+                    {
+                        "source_id": "source.caykur.tea_cultivation_lecture_notes_2025",
+                        "page": 22,
+                        "section": "7.4.6. Sürgünlerin oluşumu ve gelişimi",
+                        "evidence_text": "Çay Bitkisinde Sürgünlerin Oluşumu ve Gelişimi; genetik karakterine, bölge ekolojisine, kültürel uygulamalara ve toprak yapısına bağlı olarak farklılık gösterir.",
+                    }
+                ],
+            },
+            {
+                "key": "harvest_flush",
+                "label_tr": "Hasat sürgünü",
+                "evidence": [
+                    {
+                        "source_id": "source.caykur.tea_cultivation_lecture_notes_2025",
+                        "page": 22,
+                        "section": "8. Hasat",
+                        "evidence_text": "Yaş çay ürünü; çay bitkisi üzerindeki genç sürgünlerin ucundan itibaren, tepe tomurcuğu ve tepe tomurcuğunu takip eden birinci ve ikinci yapraktan müteşekkil, körpe, taze ve lif vermeyen ... filizden ibarettir.",
+                    }
+                ],
+            },
+        ],
+        "fertilizer_rules": [
+            {
+                "id": "fertilizer.tea.soil_analysis_npk_balance",
+                "title": "Toprak analizine göre N:P:K dengesi",
+                "summary": "Çayda tek yönlü amonyum sülfat pH düşüşü ve potasyum kaybı oluşturabilir; analizle dengeli gübreleme gerekir.",
+                "guardrail": "Toprak analizi olmadan net gübre miktarı verilmez.",
+                "evidence": [
+                    {
+                        "source_id": "source.caykur.tea_cultivation_lecture_notes_2025",
+                        "page": 13,
+                        "section": "5. Çay Bitkisinin Toprak İstekleri",
+                        "evidence_text": "Günümüzde ise üreticilerin yaptıracağı toprak analizleri sonucunda gerekli gübre miktarının toprağa verilmesinin daha uygun olduğu belirtilmektedir.",
+                    },
+                    {
+                        "source_id": "source.caykur.tea_cultivation_lecture_notes_2025",
+                        "page": 13,
+                        "section": "5. Çay Bitkisinin Toprak İstekleri",
+                        "evidence_text": "pH'daki düşüşün, asit karakterli amonyum sülfat gübresinin aşırı dozda ve tek yönlü kullanılmasından kaynaklandığını bildirilmektedirler.",
+                    },
+                ],
+            },
+        ],
+        "irrigation_rules": [
+            {
+                "id": "irrigation.tea.rainfall_minimum",
+                "title": "Yıllık yağış eşiği altında sulama gerekir",
+                "summary": "Çayda vejetasyon boyunca düzenli yağış esastır; yıllık 1150 mm altı sulamayı zorunlu kılar, Türkiye koşullarında normal gelişme için 2000 mm ve düzenli dağılım bildirilmiştir.",
+                "evidence": [
+                    {
+                        "source_id": "source.caykur.tea_cultivation_lecture_notes_2025",
+                        "page": 12,
+                        "section": "4.3. Çayın Yağış İsteği",
+                        "evidence_text": "Genellikle yıllık 1800 mm, aylık ile 150 mm yağış alan çay alanlarında verimde sürekliliğin sağlandığı, yıllık yağışın 1150 mm den daha az olduğu yerlerde sulama yapılmasının zorunlu olduğu bildirilmektedir.",
+                    }
+                ],
+            },
+            {
+                "id": "irrigation.tea.drainage_root_zone",
+                "title": "90 cm kök bölgesinde su doygunluğu istemez",
+                "summary": "Çay asit ve derin toprak ister; 90 cm kök bölgesi sürekli suya doygun olmamalıdır.",
+                "evidence": [
+                    {
+                        "source_id": "source.caykur.tea_cultivation_lecture_notes_2025",
+                        "page": 13,
+                        "section": "5. Çay Bitkisinin Toprak İstekleri",
+                        "evidence_text": "Köklerin serbestçe büyüyeceği derinlik en az 2 m olmalı, toprağın en az 90 cm derinlikteki kısmı su ile doygun durumda bulunmamalıdır.",
+                    }
+                ],
+            },
+        ],
+        "rule_engine_rules": [
+            _rule(
+                id="rule.tea.irrigation.rainfall_below_1150",
+                crop_id="crop.tea",
+                category="irrigation",
+                priority=82,
+                conditions=[
+                    {"field": "annual_rain_mm", "operator": "less_than", "value": 1150},
+                ],
+                recommendations=[
+                    "Yıllık yağış 1150 mm altındaysa çayda sulama zorunlu kabul edilir.",
+                    "Vejetasyon döneminde düzenli ve hafif yağış hedeflenir; hızlı ve aşırı yağış istenmez.",
+                    "Sulama planını drenajla birlikte değerlendirin; kök bölgesini sürekli suya doygun bırakmayın.",
+                ],
+                evidence=[
+                    {
+                        "source_id": "source.caykur.tea_cultivation_lecture_notes_2025",
+                        "page": 12,
+                        "section": "4.3. Çayın Yağış İsteği",
+                        "evidence_text": "Yıllık yağışın 1150 mm den daha az olduğu yerlerde sulama yapılmasının zorunlu olduğu bildirilmektedir.",
+                    }
+                ],
+                explanation="Çay su ihtiyacı yıllık ve vejetasyon içi yağış düzenine bağlıdır; düşük yağışta sulama gerekir.",
+            ),
+            _rule(
+                id="rule.tea.harvest.two_leaves_one_bud",
+                crop_id="crop.tea",
+                category="harvest_quality",
+                priority=76,
+                conditions=[
+                    {"field": "shoot_stage", "operator": "equals", "value": "harvest_ready"},
+                ],
+                recommendations=[
+                    "Hasatta tepe tomurcuğu + birinci ve ikinci körpe yaprak standardını koruyun.",
+                    "Hasadı erken yapmak ürün miktarını azaltır; geç yapmak ürünü kartlaştırıp kaliteyi bozar.",
+                    "Hasat sonrası ocakta yeterli olgun yaprak bırakın.",
+                ],
+                evidence=[
+                    {
+                        "source_id": "source.caykur.tea_cultivation_lecture_notes_2025",
+                        "page": 22,
+                        "section": "8. Hasat",
+                        "evidence_text": "Hasatta iki yaprak bir tomurcuğun istenmesinin temel amacı, bu yaprakların, çayın kalitesini etkileyen unsurlar olan kafein ve polifenol kapsamlarının yüksek olmasının yanında, işleme için fiziksel yapılarının da çok uygun bulunmasıdır.",
+                    }
+                ],
+                explanation="Çayda kalite, doğru sürgün standardı ve doğru hasat zamanına bağlıdır.",
+            ),
+        ],
+        "missing_information": [
+            "Çay için kaynaklı hastalık profili eklenmedi; ÇAYKUR kaynağı ekonomik boyutta hastalık/zararlı için kimyasal mücadele önermeyen kültürel yaklaşımı esas alıyor.",
+            "weeds_v2[] — çay bahçelerinde kontrol edilen yabancı otlar ayrı profillere açılacak.",
+            "test_cases — her rule_engine_rule için pozitif/negatif örnek girdiler eklenecek.",
+            "Karadeniz Araştırma Enstitüsü ve Atatürk Çay Araştırma Enstitüsü kaynakları sources.json'a eklenmesi önerilir.",
+        ],
+    },
+}
+
+
+def _merge_by_id(base: list | None, extra: list | None) -> list:
+    out = list(base or [])
+    seen = {item.get("id") for item in out if isinstance(item, dict)}
+    for item in extra or []:
+        if not isinstance(item, dict):
+            out.append(item)
+            continue
+        item_id = item.get("id")
+        if item_id and item_id in seen:
+            out = [
+                item if isinstance(old, dict) and old.get("id") == item_id else old
+                for old in out
+            ]
+        else:
+            out.append(item)
+            if item_id:
+                seen.add(item_id)
+    return out
+
+
+def _with_completion(base: dict) -> dict:
+    sid = base.get("stable_id")
+    extra = PRIORITY_COMPLETIONS.get(sid, {})
+    if not extra:
+        return base
+    merged = dict(base)
+    for key, value in extra.items():
+        if key in {"growth_stages", "fertilizer_rules", "irrigation_rules", "rule_engine_rules"}:
+            merged[key] = _merge_by_id(merged.get(key), value)
+        else:
+            merged[key] = value
+    return merged
 
 
 def _replace_or_keep(plant: dict, new_data: dict) -> bool:
@@ -2187,11 +3033,11 @@ def main() -> int:
     data = json.loads(SEED.read_text(encoding="utf-8"))
 
     updates: dict[str, dict] = {
-        "crop.tomato": TOMATO_DATA,
-        "crop.corn": CORN_DATA,
-        "crop.sunflower": SUNFLOWER_DATA,
-        "crop.orange": ORANGE_DATA,
-        "crop.tea": TEA_DATA,
+        "crop.tomato": _with_completion(TOMATO_DATA),
+        "crop.corn": _with_completion(CORN_DATA),
+        "crop.sunflower": _with_completion(SUNFLOWER_DATA),
+        "crop.orange": _with_completion(ORANGE_DATA),
+        "crop.tea": _with_completion(TEA_DATA),
     }
 
     changed_plants: list[str] = []

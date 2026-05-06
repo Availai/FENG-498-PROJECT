@@ -15,6 +15,8 @@ class DiseasePickerSheet extends StatefulWidget {
     this.currentStatus,
     this.currentDiseaseType,
     this.currentPhotoPath,
+    this.diseaseOptions = const [],
+    this.useTrustedDiseaseOptions = false,
     this.onCapturePhoto,
   });
 
@@ -22,6 +24,8 @@ class DiseasePickerSheet extends StatefulWidget {
   final String? currentStatus;
   final String? currentDiseaseType;
   final String? currentPhotoPath;
+  final List<String> diseaseOptions;
+  final bool useTrustedDiseaseOptions;
 
   /// Çağıran tarafın sağladığı foto yakalama akışı. Null değilse "Foto Çek"
   /// butonu gösterilir; null'sa gizlenir. Geri dönen path foto yolu.
@@ -33,6 +37,8 @@ class DiseasePickerSheet extends StatefulWidget {
     String? currentStatus,
     String? currentDiseaseType,
     String? currentPhotoPath,
+    List<String> diseaseOptions = const [],
+    bool useTrustedDiseaseOptions = false,
     Future<String?> Function()? onCapturePhoto,
   }) {
     return showModalBottomSheet<DiseaseSheetResult>(
@@ -47,6 +53,8 @@ class DiseasePickerSheet extends StatefulWidget {
         currentStatus: currentStatus,
         currentDiseaseType: currentDiseaseType,
         currentPhotoPath: currentPhotoPath,
+        diseaseOptions: diseaseOptions,
+        useTrustedDiseaseOptions: useTrustedDiseaseOptions,
         onCapturePhoto: onCapturePhoto,
       ),
     );
@@ -63,6 +71,24 @@ class _DiseasePickerSheetState extends State<DiseasePickerSheet> {
   final TextEditingController _otherCtrl = TextEditingController();
   bool _isOther = false;
 
+  List<String> get _availableDiseases {
+    final source = widget.useTrustedDiseaseOptions
+        ? widget.diseaseOptions
+        : DiseaseTypes.commonTurkish;
+    final out = <String>[];
+    final seen = <String>{};
+    for (final raw in source) {
+      final value = raw.trim();
+      if (value.isEmpty || seen.contains(value)) continue;
+      seen.add(value);
+      out.add(value);
+    }
+    if (widget.useTrustedDiseaseOptions && !seen.contains('Bilinmiyor')) {
+      out.add('Bilinmiyor');
+    }
+    return out;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -70,9 +96,9 @@ class _DiseasePickerSheetState extends State<DiseasePickerSheet> {
     _photoPath = widget.currentPhotoPath;
     final preset = widget.currentDiseaseType;
     if (preset != null && preset.isNotEmpty) {
-      if (DiseaseTypes.commonTurkish.contains(preset)) {
+      if (_availableDiseases.contains(preset)) {
         _diseaseType = preset;
-      } else {
+      } else if (!widget.useTrustedDiseaseOptions) {
         _isOther = true;
         _otherCtrl.text = preset;
       }
@@ -116,6 +142,28 @@ class _DiseasePickerSheetState extends State<DiseasePickerSheet> {
             const SizedBox(height: 16),
             Text('Hastalık Türü', style: AppText.label(context)),
             const SizedBox(height: 8),
+            if (widget.useTrustedDiseaseOptions)
+              Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppColors.emerald.withValues(alpha: 0.08),
+                  borderRadius: AppRadius.sm,
+                  border: Border.all(
+                    color: AppColors.emerald.withValues(alpha: 0.22),
+                  ),
+                ),
+                child: Text(
+                  widget.diseaseOptions.isEmpty
+                      ? 'Bu bitki için kaynaklı hastalık profili yok; hastalık adı uydurulmadan gözlem kaydedilir.'
+                      : 'Liste, bu bitki için kaynaklı JSON hastalıklarından gelir.',
+                  style: AppText.sm(context).copyWith(
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
             DropdownButtonFormField<String>(
               initialValue: _isOther ? DiseaseTypes.otherKey : _diseaseType,
               isExpanded: true,
@@ -131,12 +179,13 @@ class _DiseasePickerSheetState extends State<DiseasePickerSheet> {
               ),
               hint: const Text('Hastalık seçin…'),
               items: [
-                ...DiseaseTypes.commonTurkish.map((d) =>
-                    DropdownMenuItem(value: d, child: Text(d))),
-                DropdownMenuItem(
-                  value: DiseaseTypes.otherKey,
-                  child: Text('${DiseaseTypes.otherKey} (manuel girin)'),
-                ),
+                ..._availableDiseases
+                    .map((d) => DropdownMenuItem(value: d, child: Text(d))),
+                if (!widget.useTrustedDiseaseOptions)
+                  DropdownMenuItem(
+                    value: DiseaseTypes.otherKey,
+                    child: Text('${DiseaseTypes.otherKey} (manuel girin)'),
+                  ),
               ],
               onChanged: (v) {
                 setState(() {

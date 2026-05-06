@@ -95,7 +95,16 @@ class SunflowerRules extends CropRuleSet {
 
   RecommendationCommand? _waterCommand(RuleEvaluationContext ctx) {
     final f = ctx.fieldState;
-    if (f == null || f.areaSqm <= 0) return null;
+    if (f == null || f.areaSqm <= 0) {
+      return const RecommendationCommand(
+        activityType: ActivityType.watering,
+        buttonLabel: 'Suladım',
+        metadata: {
+          'irrigation_method': 'Tarla sulaması',
+          'quantity_status': 'field_area_missing',
+        },
+      );
+    }
     final missing = f.weeklyWaterMissingMm.clamp(0.0, 60.0).toDouble();
     final stress =
         (ctx.growth?.waterDeficitMm ?? 0).clamp(0.0, 60.0).toDouble();
@@ -478,11 +487,12 @@ class SunflowerRules extends CropRuleSet {
       actionHint: phOut
           ? 'Yaprak rengi ve gelişmeyi kontrol edin; pH için toprak analiziyle kireç/kükürt planlayın, gübreyi bölerek uygulayın.'
           : 'Yaprak rengi soluksa üst gübrelemeyi bölerek yapın; dekara dozu alan ve bitki sayısına göre ayarlayın.',
-      gate: phOut ? RecommendationGate.observeFirst : RecommendationGate.actionable,
+      gate: phOut
+          ? RecommendationGate.observeFirst
+          : RecommendationGate.actionable,
       evidence: _evidence(ctx),
       command: RecommendationCommand(
-        activityType:
-            phOut ? ActivityType.scouting : ActivityType.fertilizing,
+        activityType: phOut ? ActivityType.scouting : ActivityType.fertilizing,
         subtype: phOut ? ActivitySubtype.note : null,
         buttonLabel: phOut ? 'Kontrol ettim' : 'Gübreledim',
         metadata: {

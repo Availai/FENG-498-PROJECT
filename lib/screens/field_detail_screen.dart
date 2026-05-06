@@ -429,6 +429,12 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
         centerTitle: false,
         actions: [
           IconButton(
+            icon: const Icon(Icons.account_balance_wallet_outlined,
+                color: Colors.white70),
+            tooltip: 'ÇKS Cüzdanı',
+            onPressed: _openCostLedger,
+          ),
+          IconButton(
             icon: const Icon(Icons.help_outline_rounded, color: Colors.white70),
             tooltip: 'Yardım',
             onPressed: () => HelpPanel.show(context, HelpContent.fieldDetail),
@@ -1214,9 +1220,9 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
           ),
           Expanded(
             child: _buildNavBtn(
-              Icons.more_horiz_rounded,
-              'Diğer',
-              _showFieldMoreActions,
+              Icons.event_note_rounded,
+              'Günlük',
+              _openFarmJournal,
               color: AppColors.soil,
             ),
           ),
@@ -1362,60 +1368,6 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
       context,
       MaterialPageRoute(
         builder: (_) => FarmJournalScreen(fieldId: id),
-      ),
-    );
-  }
-
-  void _showFieldMoreActions() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: AppColors.bg,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 40,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 14),
-                decoration: BoxDecoration(
-                  color: AppColors.borderDark,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading:
-                    const Icon(Icons.event_note_rounded, color: AppColors.info),
-                title: const Text('Tarla Günlüğü'),
-                subtitle: const Text('Sulama, gübreleme ve hasat geçmişi'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _openFarmJournal();
-                },
-              ),
-              const Divider(),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.account_balance_wallet_rounded,
-                    color: AppColors.soil),
-                title: const Text('ÇKS Cüzdanı'),
-                subtitle: const Text('Maliyet, satış ve kâr takibi'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _openCostLedger();
-                },
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }
@@ -1855,6 +1807,49 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
     });
   }
 
+  bool _hasTrustedDiseaseProfile(String cropName) {
+    final repo = TurkishCropsRepository.instance;
+    if (!repo.isReady) return false;
+    final crop = repo.findByName(cropName);
+    final stableId = crop?.stableId;
+    if (stableId == null || stableId.isEmpty) return false;
+    return repo.findV2ByStableId(stableId) != null;
+  }
+
+  List<String> _trustedDiseaseOptionsForCrop(String cropName) {
+    final repo = TurkishCropsRepository.instance;
+    if (!repo.isReady) return const [];
+    final crop = repo.findByName(cropName);
+    final stableId = crop?.stableId;
+    if (stableId == null || stableId.isEmpty) return const [];
+    final v2 = repo.findV2ByStableId(stableId);
+    if (v2 == null) return const [];
+    final seen = <String>{};
+    final out = <String>[];
+    for (final disease in v2.diseases) {
+      final name = disease['name_tr']?.toString().trim();
+      if (name == null || name.isEmpty || seen.contains(name)) continue;
+      seen.add(name);
+      out.add(name);
+    }
+    return out;
+  }
+
+  List<String> _trustedDiseaseOptionsForTargets(
+    List<_PlantDeleteTarget> targets,
+  ) {
+    final seen = <String>{};
+    final out = <String>[];
+    for (final target in targets) {
+      for (final name in _trustedDiseaseOptionsForCrop(target.cropName)) {
+        if (seen.contains(name)) continue;
+        seen.add(name);
+        out.add(name);
+      }
+    }
+    return out;
+  }
+
   Future<void> _onPlantMarkerTap({
     required Map<String, dynamic> crop,
     required int? plantIndex,
@@ -1865,8 +1860,10 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
 
     final fieldId = widget.fieldData['id']?.toString();
     if (fieldId == null || fieldId.isEmpty) return;
+    await TurkishCropsRepository.instance.ensureReady();
     final cropId = crop['id']?.toString();
     final cropName = crop['name']?.toString() ?? 'Bitki';
+    final useTrustedDiseaseOptions = _hasTrustedDiseaseProfile(cropName);
 
     final result = await DiseasePickerSheet.show(
       context,
@@ -1874,6 +1871,8 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
       currentStatus: existing?.healthStatus,
       currentDiseaseType: existing?.diseaseType,
       currentPhotoPath: existing?.diseasePhotoPath,
+      diseaseOptions: _trustedDiseaseOptionsForCrop(cropName),
+      useTrustedDiseaseOptions: useTrustedDiseaseOptions,
       onCapturePhoto: () async {
         final captured = await DiseaseCaptureScreen.show(
           context,
@@ -1965,6 +1964,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
     // Hasta veya ölü işaretlendiyse — Tarım Bakanlığı/TAGEM bültenleri
     // tabanlı tavsiye panelini aç. Sağlıklı durumda gösterme.
     if (mounted &&
+        !useTrustedDiseaseOptions &&
         (result.status == DiseaseTypes.statusDiseased ||
             result.status == DiseaseTypes.statusDead)) {
       await DiseaseAdviceSheet.show(
@@ -2294,10 +2294,15 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
     final count = targets.length;
     final fieldId = widget.fieldData['id']?.toString();
     if (fieldId == null || fieldId.isEmpty) return;
+    await TurkishCropsRepository.instance.ensureReady();
+    final useTrustedDiseaseOptions =
+        targets.every((t) => _hasTrustedDiseaseProfile(t.cropName));
 
     final result = await DiseasePickerSheet.show(
       context,
       cropName: '$count bitki',
+      diseaseOptions: _trustedDiseaseOptionsForTargets(targets),
+      useTrustedDiseaseOptions: useTrustedDiseaseOptions,
       onCapturePhoto: null,
     );
     if (result == null || !mounted) return;
@@ -2388,6 +2393,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
 
     // Toplu işaretlemede de hasta/ölü için tavsiye sheet'i göster.
     if (mounted &&
+        !useTrustedDiseaseOptions &&
         (result.status == DiseaseTypes.statusDiseased ||
             result.status == DiseaseTypes.statusDead)) {
       await DiseaseAdviceSheet.show(
@@ -2403,35 +2409,55 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
     final fieldId = widget.fieldData['id']?.toString();
     if (fieldId == null || fieldId.isEmpty) return;
     final repo = ref.read(localDataRepositoryProvider);
+    String? removedInstanceId;
 
     if (target.isStandalone) {
       final existingId = target.existing?.id;
       if (existingId == null) return;
       await repo.deletePlantInstance(existingId);
-      return;
-    }
-
-    final cropId = target.cropId;
-    final plantIndex = target.plantIndex;
-    if (cropId == null || cropId.isEmpty || plantIndex == null) return;
-
-    final existingId = target.existing?.id;
-    if (existingId != null) {
-      await repo.setPlantHealth(
-        instanceId: existingId,
-        healthStatus: _removedPlantStatus,
-      );
+      removedInstanceId = existingId;
     } else {
-      await repo.insertPlantInstance(
-        fieldId: fieldId,
-        cropId: cropId,
-        plantIndex: plantIndex,
-        cropName: target.cropName,
-        lat: target.pos.latitude,
-        lng: target.pos.longitude,
-        healthStatus: _removedPlantStatus,
-      );
+      final cropId = target.cropId;
+      final plantIndex = target.plantIndex;
+      if (cropId == null || cropId.isEmpty || plantIndex == null) return;
+
+      final existingId = target.existing?.id;
+      if (existingId != null) {
+        await repo.setPlantHealth(
+          instanceId: existingId,
+          healthStatus: _removedPlantStatus,
+          writeActivityLog: false,
+        );
+        removedInstanceId = existingId;
+      } else {
+        removedInstanceId = await repo.insertPlantInstance(
+          fieldId: fieldId,
+          cropId: cropId,
+          plantIndex: plantIndex,
+          cropName: target.cropName,
+          lat: target.pos.latitude,
+          lng: target.pos.longitude,
+          healthStatus: _removedPlantStatus,
+        );
+      }
     }
+
+    if (removedInstanceId == null) return;
+    await ref.read(activityLoggerProvider).log(
+      fieldId: fieldId,
+      type: ActivityType.scouting,
+      cropId: target.cropId,
+      plantInstanceId: removedInstanceId,
+      scope: ActivityScope.plant,
+      subtype: ActivitySubtype.note,
+      note: '${target.cropName} haritadan tekil olarak kaldırıldı',
+      metadata: {
+        'plant_instance_removed': true,
+        'health_status': _removedPlantStatus,
+        'crop_name': target.cropName,
+        'offline_queued': true,
+      },
+    );
   }
 
   /// Bildirim payload'ı — `type:"field"` tarla harita ekranına gider.
@@ -3281,6 +3307,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
     // Standalone tekil bitki marker'ları (cropId=null instance'lar) —
     // kullanıcının "Tekil Bitki Ekle" ile haritaya yerleştirdiği bitkiler.
     for (final inst in standaloneInstances) {
+      if (inst.healthStatus == _removedPlantStatus) continue;
       final pos = LatLng(inst.lat, inst.lng);
       final markerKey = 'single:${inst.id}';
       final marker = Marker(

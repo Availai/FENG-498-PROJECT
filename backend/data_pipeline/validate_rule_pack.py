@@ -92,12 +92,14 @@ def _validate_disease_or_pest(record: dict, kind: str, ctx: str,
         rep.err(f"{ctx}: name_tr boş olamaz.")
     _validate_evidence_list(record.get("evidence", []), ctx,
                             known_source_ids, rep)
-    # CLAUDE.md sec 17 — BKÜ guardrail
-    if kind == "disease":
+    # CLAUDE.md sec 17/18 — BKÜ + uzman onayı guardrail'i hem disease hem pest
+    # için zorunludur (zararlı içeren her tavsiye kimyasal mücadeleye
+    # götürebilir). Eksik flag = hata.
+    if kind in ("disease", "pest"):
         if record.get("requires_bku_check") is not True:
-            rep.err(f"{ctx}: requires_bku_check zorunlu olarak true olmalı (sec 17).")
+            rep.err(f"{ctx}: requires_bku_check=true zorunlu (sec 17).")
         if record.get("requires_expert_confirmation") is not True:
-            rep.err(f"{ctx}: requires_expert_confirmation zorunlu (sec 18).")
+            rep.err(f"{ctx}: requires_expert_confirmation=true zorunlu (sec 18).")
 
 
 def _validate_rule_engine_rule(rule: dict, ctx: str,
@@ -188,7 +190,7 @@ def validate_priority_crops(seed_doc: dict, known_source_ids: set[str],
             if s not in known_source_ids:
                 rep.err(f"{ctx}.source_ids: '{s}' sources.json'da yok.")
 
-        # Hastalıklar / zararlılar — BKÜ guardrail
+        # Hastalıklar / zararlılar / yabancı otlar — BKÜ guardrail
         for i, d in enumerate(plant.get("diseases_v2", [])):
             _validate_disease_or_pest(d, "disease",
                                       f"{ctx}.diseases_v2[{i}]",
@@ -197,11 +199,56 @@ def validate_priority_crops(seed_doc: dict, known_source_ids: set[str],
             _validate_disease_or_pest(p, "pest",
                                       f"{ctx}.pests_v2[{i}]",
                                       known_source_ids, rep)
+        for i, w in enumerate(plant.get("weeds_v2", [])):
+            wid = w.get("id", "")
+            _validate_stable_id(wid, f"{ctx}.weeds_v2[{i}].id", rep)
+            if not wid.startswith("weed."):
+                rep.err(f"{ctx}.weeds_v2[{i}].id: 'weed.*' ile başlamalı (bulundu: '{wid}').")
+            if not w.get("name_tr"):
+                rep.err(f"{ctx}.weeds_v2[{i}]: name_tr boş olamaz.")
+            _validate_evidence_list(w.get("evidence", []),
+                                    f"{ctx}.weeds_v2[{i}]",
+                                    known_source_ids, rep)
 
         # Kurallar
         for i, r in enumerate(plant.get("rule_engine_rules", [])):
             _validate_rule_engine_rule(r, f"{ctx}.rule_engine_rules[{i}]",
                                        known_source_ids, rep)
+
+        # Fenoloji — her aşamada key + label_tr beklenir
+        for i, gs in enumerate(plant.get("growth_stages", [])):
+            sub = f"{ctx}.growth_stages[{i}]"
+            if not isinstance(gs, dict):
+                rep.err(f"{sub}: dict olmalı.")
+                continue
+            if not gs.get("key"):
+                rep.err(f"{sub}: key boş olamaz.")
+            if not (gs.get("label_tr") or gs.get("name_tr")):
+                rep.err(f"{sub}: label_tr veya name_tr zorunlu.")
+
+        # Gübreleme/sulama kuralları — kaynak gerektirir (sec 16)
+        for i, r in enumerate(plant.get("fertilizer_rules", [])):
+            sub = f"{ctx}.fertilizer_rules[{i}]"
+            if not isinstance(r, dict):
+                rep.err(f"{sub}: dict olmalı.")
+                continue
+            if not r.get("id"):
+                rep.err(f"{sub}: id boş olamaz.")
+            ev = r.get("evidence", [])
+            if isinstance(ev, list) and ev:
+                _validate_evidence_list(ev, sub, known_source_ids, rep)
+            else:
+                rep.warn(f"{sub}: evidence[] boş — kaynak kanıtı önerilir.")
+        for i, r in enumerate(plant.get("irrigation_rules", [])):
+            sub = f"{ctx}.irrigation_rules[{i}]"
+            if not isinstance(r, dict):
+                rep.err(f"{sub}: dict olmalı.")
+                continue
+            if not r.get("id"):
+                rep.err(f"{sub}: id boş olamaz.")
+            ev = r.get("evidence", [])
+            if isinstance(ev, list) and ev:
+                _validate_evidence_list(ev, sub, known_source_ids, rep)
 
         # approved durumdaysa kanıt zorunlu
         if status == "approved":

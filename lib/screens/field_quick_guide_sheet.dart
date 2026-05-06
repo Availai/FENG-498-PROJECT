@@ -2,9 +2,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/rule_engine/rule.dart';
 import '../data/activity_types.dart';
 import '../data/app_database.dart';
 import '../data/disease_advice.dart';
+import '../data/turkish_crops_repository.dart';
 import '../services/app_providers.dart';
 import '../services/guide_engine.dart' show AlertSeverity;
 import '../services/notification_service.dart';
@@ -81,129 +83,146 @@ class _QuickGuideBodyState extends ConsumerState<_QuickGuideBody> {
   @override
   Widget build(BuildContext context) {
     final cropsAsync = ref.watch(fieldCropsStreamProvider(widget.fieldId));
-    final activitiesAsync =
-        ref.watch(fieldActivityLogProvider(widget.fieldId));
-    final growthAsync =
-        ref.watch(fieldGrowthStatesProvider(widget.fieldId));
-    final plantsAsync =
-        ref.watch(fieldPlantInstancesProvider(widget.fieldId));
+    final growthAsync = ref.watch(fieldGrowthStatesProvider(widget.fieldId));
+    final plantsAsync = ref.watch(fieldPlantInstancesProvider(widget.fieldId));
 
-    final crops =
-        cropsAsync.valueOrNull ?? const <Map<String, dynamic>>[];
-    final activities =
-        activitiesAsync.valueOrNull ?? const <Map<String, dynamic>>[];
+    final crops = cropsAsync.valueOrNull ?? const <Map<String, dynamic>>[];
     final growthList = growthAsync.valueOrNull ?? const <CropGrowthState>[];
     final plants = plantsAsync.valueOrNull ?? const <FieldPlantInstance>[];
 
-    final diseasedCount = plants.where((p) => p.healthStatus == 'diseased').length;
+    final diseasedCount =
+        plants.where((p) => p.healthStatus == 'diseased').length;
     final deadCount = plants.where((p) => p.healthStatus == 'dead').length;
 
-    // Son 8 saat içindeki aktiviteler
-    final cutoff = DateTime.now().subtract(const Duration(hours: 8));
-    final recentActs = activities.where((a) {
-      final d = a['date'];
-      return d is DateTime && d.isAfter(cutoff);
-    }).toList();
-
     return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: () => Navigator.of(context).pop(),
-      child: DraggableScrollableSheet(
-        initialChildSize: 0.55,
-        minChildSize: 0.35,
-        maxChildSize: 0.9,
-        builder: (_, ctrl) {
-          return GestureDetector(
-            onTap: () {}, // İçeriğe tıklamayı yut ki dışarıya taşmasın
-            child: Container(
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.15),
-                blurRadius: 20,
-                offset: const Offset(0, -4),
-              ),
-            ],
-          ),
-          child: Column(
-            children: [
-              // Tutma çubuğu
-              Container(
-                margin: const EdgeInsets.only(top: 10, bottom: 4),
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: AppColors.border,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              // Başlık
-              _Header(
-                fieldName: widget.fieldName,
-                crops: crops,
-                growthList: growthList,
-              ),
-              const Divider(height: 1, thickness: 1),
-              // Durum şeridi
-              _StatusStrip(
-                growthList: growthList,
-                diseasedCount: diseasedCount,
-                deadCount: deadCount,
-              ),
-              const Divider(height: 1, thickness: 1),
-              // Kaydırılabilir içerik
-              Expanded(
-                child: ListView(
-                  controller: ctrl,
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-                  children: [
-                    // Son aktiviteler
-                    if (recentActs.isNotEmpty)
-                      _RecentActivityBanner(activities: recentActs),
-                    // Hasta / ölü / tedavi gören bitkileri ismine göre grupla
-                    ...() {
-                      final problematic = plants.where((p) => p.healthStatus != 'healthy').toList();
-                      if (problematic.isEmpty) return <Widget>[];
+        behavior: HitTestBehavior.opaque,
+        onTap: () => Navigator.of(context).pop(),
+        child: DraggableScrollableSheet(
+          initialChildSize: 0.55,
+          minChildSize: 0.35,
+          maxChildSize: 0.9,
+          builder: (_, ctrl) {
+            return GestureDetector(
+                onTap: () {}, // İçeriğe tıklamayı yut ki dışarıya taşmasın
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius:
+                        const BorderRadius.vertical(top: Radius.circular(20)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.15),
+                        blurRadius: 20,
+                        offset: const Offset(0, -4),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      // Tutma çubuğu
+                      Container(
+                        margin: const EdgeInsets.only(top: 10, bottom: 4),
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: AppColors.border,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                      // Başlık
+                      _Header(
+                        fieldName: widget.fieldName,
+                        crops: crops,
+                        growthList: growthList,
+                      ),
+                      const Divider(height: 1, thickness: 1),
+                      // Durum şeridi
+                      _StatusStrip(
+                        growthList: growthList,
+                        diseasedCount: diseasedCount,
+                        deadCount: deadCount,
+                      ),
+                      const Divider(height: 1, thickness: 1),
+                      // Kaydırılabilir içerik
+                      Expanded(
+                        child: ListView(
+                          controller: ctrl,
+                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                          children: [
+                            // Hasta / ölü / tedavi gören bitkileri ismine göre grupla
+                            ...() {
+                              final problematic = plants
+                                  .where((p) =>
+                                      p.healthStatus != 'healthy' &&
+                                      p.healthStatus != 'removed')
+                                  .toList();
+                              if (problematic.isEmpty) return <Widget>[];
 
-                      final grouped = <String, List<FieldPlantInstance>>{};
-                      for (final p in problematic) {
-                        grouped.putIfAbsent(p.cropName, () => []).add(p);
-                      }
+                              final grouped =
+                                  <String, List<FieldPlantInstance>>{};
+                              for (final p in problematic) {
+                                grouped
+                                    .putIfAbsent(p.cropName, () => [])
+                                    .add(p);
+                              }
 
-                      return grouped.entries.map((entry) {
-                        final cropName = entry.key;
-                        final cropPlants = entry.value;
-                        final dCount = cropPlants.where((p) => p.healthStatus == 'diseased').length;
-                        final tCount = cropPlants.where((p) => p.healthStatus == 'treating').length;
-                        final ddCount = cropPlants.where((p) => p.healthStatus == 'dead').length;
+                              final widgets = <Widget>[];
+                              for (final entry in grouped.entries) {
+                                final cropName = entry.key;
+                                final cropPlants = entry.value;
+                                final activePlants = cropPlants
+                                    .where((p) => p.healthStatus != 'dead')
+                                    .toList(growable: false);
+                                final deadPlants = cropPlants
+                                    .where((p) => p.healthStatus == 'dead')
+                                    .toList(growable: false);
+                                final dCount = cropPlants
+                                    .where((p) => p.healthStatus == 'diseased')
+                                    .length;
+                                final tCount = cropPlants
+                                    .where((p) => p.healthStatus == 'treating')
+                                    .length;
+                                final ddCount = cropPlants
+                                    .where((p) => p.healthStatus == 'dead')
+                                    .length;
 
-                        return _PlantHealthAlert(
-                          fieldId: widget.fieldId,
-                          fieldName: widget.fieldName,
-                          cropName: cropName,
-                          diseasedCount: dCount,
-                          treatingCount: tCount,
-                          deadCount: ddCount,
-                          plants: cropPlants,
-                        );
-                      }).toList();
-                    }(),
-                    // Direktifler
-                    _DirectiveList(
-                      recs: _recs,
-                      crops: crops,
-                      growthList: growthList,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+                                if (dCount > 0 || tCount > 0) {
+                                  widgets.add(_PlantHealthAlert(
+                                    fieldId: widget.fieldId,
+                                    fieldName: widget.fieldName,
+                                    cropName: cropName,
+                                    diseasedCount: dCount,
+                                    treatingCount: tCount,
+                                    deadCount: 0,
+                                    plants: activePlants,
+                                  ));
+                                }
+                                if (ddCount > 0) {
+                                  for (final plant in deadPlants) {
+                                    widgets.add(_DeadPlantRemovalAlert(
+                                      fieldId: widget.fieldId,
+                                      cropName: cropName,
+                                      plants: [plant],
+                                    ));
+                                  }
+                                }
+                              }
+                              return widgets;
+                            }(),
+                            // Direktifler
+                            _DirectiveList(
+                              recs: _recs,
+                              crops: crops,
+                              growthList: growthList,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ));
+          },
         ));
-      },
-    ));
   }
 }
 
@@ -277,9 +296,7 @@ class _Header extends StatelessWidget {
               .inDays
           : null;
       final stageLabel = _translateStage(key);
-      return day != null && day >= 0
-          ? '$stageLabel · $day. gün'
-          : stageLabel;
+      return day != null && day >= 0 ? '$stageLabel · $day. gün' : stageLabel;
     } catch (_) {}
     return '';
   }
@@ -466,81 +483,139 @@ class _StatusDot extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Son aktivite bandı — "✅ Sulandı · 2s önce"
+// Hasta / ölü bitki uyarısı + tedavi önerisi + ilaçlama akışı
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _RecentActivityBanner extends StatelessWidget {
-  final List<Map<String, dynamic>> activities;
+class _DeadPlantRemovalAlert extends ConsumerStatefulWidget {
+  final String fieldId;
+  final String cropName;
+  final List<FieldPlantInstance> plants;
 
-  const _RecentActivityBanner({required this.activities});
+  const _DeadPlantRemovalAlert({
+    required this.fieldId,
+    required this.cropName,
+    required this.plants,
+  });
+
+  @override
+  ConsumerState<_DeadPlantRemovalAlert> createState() =>
+      _DeadPlantRemovalAlertState();
+}
+
+class _DeadPlantRemovalAlertState
+    extends ConsumerState<_DeadPlantRemovalAlert> {
+  bool _logging = false;
+
+  Future<void> _removeDeadPlants() async {
+    if (_logging) return;
+    setState(() => _logging = true);
+    try {
+      final repo = ref.read(localDataRepositoryProvider);
+      final logger = ref.read(activityLoggerProvider);
+      for (final plant in widget.plants) {
+        await logger.log(
+          fieldId: widget.fieldId,
+          type: ActivityType.scouting,
+          cropId: plant.cropId,
+          plantInstanceId: plant.id,
+          scope: ActivityScope.plant,
+          subtype: ActivitySubtype.note,
+          note:
+              '${widget.cropName} cansız bitki söküldü ve tarladan uzaklaştırıldı',
+          metadata: {
+            'dead_plant_removal': true,
+            'remove_plant_instance_after_log': true,
+            'health_status': 'dead',
+            'crop_name': widget.cropName,
+            'spread_warning': true,
+          },
+        );
+        await repo.setPlantHealth(
+          instanceId: plant.id,
+          healthStatus: 'removed',
+          diseaseType: plant.diseaseType,
+          diseasePhotoPath: plant.diseasePhotoPath,
+          notes: 'Cansız bitki söküldü ve haritadan kaldırıldı',
+          writeActivityLog: false,
+        );
+      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Sökme işlemi günlüğe kaydedildi.')),
+      );
+    } finally {
+      if (mounted) setState(() => _logging = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final count = widget.plants.length;
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.emerald.withValues(alpha: 0.08),
+        color: const Color(0xFF0B0B0B),
         borderRadius: AppRadius.sm,
-        border: Border.all(color: AppColors.emerald.withValues(alpha: 0.2)),
+        border: Border.all(color: Colors.black),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          for (final a in activities.take(3))
-            _ActivityLine(activity: a),
-        ],
-      ),
-    );
-  }
-}
-
-class _ActivityLine extends StatelessWidget {
-  final Map<String, dynamic> activity;
-
-  const _ActivityLine({required this.activity});
-
-  @override
-  Widget build(BuildContext context) {
-    final type = activity['type']?.toString() ?? '';
-    final date = activity['date'] as DateTime?;
-    final ago = date != null ? _ago(date) : '';
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Row(
-        children: [
-          Icon(ActivityType.icon(type), color: AppColors.emerald, size: 16),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Text(
-              '${ActivityType.label(type)} yapıldı',
-              style: AppText.sm(context).copyWith(
-                fontWeight: FontWeight.w700,
-                color: AppColors.emeraldDark,
+          Row(
+            children: [
+              const Icon(Icons.delete_forever_rounded,
+                  color: Colors.white, size: 22),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  count == 1
+                      ? '${widget.cropName} cansız bitki: sökme işlemi'
+                      : '${widget.cropName}: $count cansız bitki sökülecek',
+                  style: AppText.bodyMd(context).copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'Bitkiyi köküyle birlikte söküp tarladan uzaklaştırın. Belirti çevresine yayıldıysa yakın çevrede gözlem yapın; yayılım doğrulanırsa BKÜ etiketi ve uzman onayıyla çevresel ilaçlama gerekebilir.',
+            style: AppText.sm(context).copyWith(
+              color: Colors.white.withValues(alpha: 0.82),
+              height: 1.35,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 12),
+          FilledButton.icon(
+            onPressed: _logging ? null : _removeDeadPlants,
+            icon: _logging
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.check_rounded),
+            label: Text(_logging
+                ? 'Kaydediliyor...'
+                : 'Söktüm, haritadan kaldır'),
+            style: FilledButton.styleFrom(
+              backgroundColor: Colors.white,
+              foregroundColor: Colors.black,
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              shape: const RoundedRectangleBorder(
+                borderRadius: AppRadius.sm,
               ),
             ),
           ),
-          Text(
-            ago,
-            style: AppText.xs(context).copyWith(color: AppColors.textSecondary),
-          ),
         ],
       ),
     );
   }
-
-  static String _ago(DateTime d) {
-    final diff = DateTime.now().difference(d);
-    if (diff.inMinutes < 60) return '${diff.inMinutes}dk önce';
-    if (diff.inHours < 24) return '${diff.inHours}s önce';
-    return '${diff.inDays}g önce';
-  }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Hasta / ölü bitki uyarısı + tedavi önerisi + ilaçlama akışı
-// ─────────────────────────────────────────────────────────────────────────────
 
 class _PlantHealthAlert extends ConsumerStatefulWidget {
   final String fieldId;
@@ -571,6 +646,179 @@ class _PlantHealthAlertState extends ConsumerState<_PlantHealthAlert> {
   _TreatmentPhase _phase = _TreatmentPhase.alert;
   bool _logging = false;
 
+  CropV2Bundle? get _trustedV2 {
+    final repo = TurkishCropsRepository.instance;
+    if (!repo.isReady) return null;
+    final crop = repo.findByName(widget.cropName);
+    final stableId = crop?.stableId;
+    if (stableId == null || stableId.isEmpty) return null;
+    return repo.findV2ByStableId(stableId);
+  }
+
+  List<Rule> _matchingRules(CropV2Bundle v2, Map<String, dynamic>? disease) {
+    final problemId = disease?['id']?.toString();
+    if (problemId == null || problemId.isEmpty) return const [];
+    return v2.rules
+        .where((r) => r.enabled && r.result.possibleProblemId == problemId)
+        .toList(growable: false);
+  }
+
+  Map<String, dynamic>? _trustedDiseaseRecord(CropV2Bundle v2) {
+    final counts = <String, int>{};
+    for (final p in widget.plants) {
+      if (p.healthStatus != 'diseased') continue;
+      final name = p.diseaseType?.trim();
+      if (name == null || name.isEmpty) continue;
+      counts[name] = (counts[name] ?? 0) + 1;
+    }
+    if (counts.isEmpty) return null;
+    final top = counts.entries.reduce((a, b) => a.value >= b.value ? a : b);
+    for (final disease in v2.diseases) {
+      if (disease['name_tr']?.toString().trim() == top.key) return disease;
+    }
+    return null;
+  }
+
+  Widget _trustedDiseaseCard(
+    BuildContext context,
+    CropV2Bundle v2,
+    Map<String, dynamic>? disease,
+  ) {
+    final title = disease?['name_tr']?.toString() ?? 'Kaynaklı hastalık gözlemi';
+    final summary = disease?['summary']?.toString();
+    final controls = ((disease?['control_methods_cultural'] as List?) ??
+            const [])
+        .map((e) => e?.toString() ?? '')
+        .where((e) => e.isNotEmpty)
+        .take(4)
+        .toList(growable: false);
+    final requiresBku = disease?['requires_bku_check'] == true;
+    final requiresExpert = disease?['requires_expert_confirmation'] == true;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.error.withValues(alpha: 0.08),
+        borderRadius: AppRadius.sm,
+        border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.verified_rounded,
+                  color: AppColors.error, size: 20),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  '${widget.diseasedCount} ${widget.cropName} hasta — $title',
+                  style: AppText.bodyMd(context).copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.error,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            summary ??
+                'Bu kart yalnızca kaynaklı JSON kaydındaki hastalık adlarıyla çalışır; kaynakta olmayan hastalık adı uydurulmaz.',
+            style: AppText.sm(context).copyWith(
+              color: AppColors.textSecondary,
+              height: 1.35,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          ...() {
+            final matched = _matchingRules(v2, disease);
+            if (matched.isEmpty) return <Widget>[];
+            final explanation = matched.first.explanation;
+            if (explanation == null || explanation.isEmpty) return <Widget>[];
+            return [
+              const SizedBox(height: 8),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppColors.warning.withValues(alpha: 0.07),
+                  borderRadius: AppRadius.xs,
+                  border: Border.all(
+                      color: AppColors.warning.withValues(alpha: 0.22)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(children: [
+                      const Icon(Icons.biotech_rounded,
+                          size: 12, color: AppColors.warning),
+                      const SizedBox(width: 5),
+                      Text('TAGEM koşul eşiği',
+                          style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.warning)),
+                    ]),
+                    const SizedBox(height: 4),
+                    Text(
+                      explanation,
+                      style: AppText.sm(context).copyWith(
+                        color: AppColors.textSecondary,
+                        fontStyle: FontStyle.italic,
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ];
+          }(),
+          if (controls.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            ...controls.map((text) => Padding(
+                  padding: const EdgeInsets.only(bottom: 5),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Padding(
+                        padding: EdgeInsets.only(top: 7),
+                        child: Icon(Icons.circle,
+                            size: 5, color: AppColors.error),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          text,
+                          style: AppText.sm(context).copyWith(
+                            color: AppColors.textPrimary,
+                            height: 1.3,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                )),
+          ],
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              _Pill(label: 'Kaynaklı JSON', color: AppColors.emeraldDark),
+              if (requiresBku) _Pill(label: 'BKÜ kontrolü', color: AppColors.error),
+              if (requiresExpert)
+                _Pill(label: 'Uzman onayı', color: Colors.indigo),
+              if (v2.confidence != null)
+                _Pill(label: 'Güven: ${v2.confidence}', color: Colors.blueGrey),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   /// Hastalık dağılımını hesapla — öncelikle 'diseased' ve 'dead' olanlara odaklan.
   /// Eğer onlardan hiç yoksa, 'treating' olanlara bak.
   DiseaseAdvice get _primaryAdvice {
@@ -578,9 +826,10 @@ class _PlantHealthAlertState extends ConsumerState<_PlantHealthAlert> {
         .where((p) => p.healthStatus == 'diseased' || p.healthStatus == 'dead')
         .toList();
     if (relevant.isEmpty) {
-      relevant = widget.plants.where((p) => p.healthStatus == 'treating').toList();
+      relevant =
+          widget.plants.where((p) => p.healthStatus == 'treating').toList();
     }
-    
+
     final counts = <String, int>{};
     for (final p in relevant) {
       final d = p.diseaseType?.trim();
@@ -597,10 +846,14 @@ class _PlantHealthAlertState extends ConsumerState<_PlantHealthAlert> {
   String _shortDoseGuide(DiseaseAdvice advice) {
     for (final t in advice.chemicalTreatments) {
       final stripped = t.trim();
-      if (stripped.isEmpty || stripped.toLowerCase().startsWith('not')) continue;
+      if (stripped.isEmpty || stripped.toLowerCase().startsWith('not')) {
+        continue;
+      }
       // "Mancozeb (%80 WP) — 250 g / 100 L su, koruyucu olarak 10 gün arayla"
       // → tamamını döndür, kısa olsun diye ilk 120 karakter
-      return stripped.length > 120 ? '${stripped.substring(0, 117)}…' : stripped;
+      return stripped.length > 120
+          ? '${stripped.substring(0, 117)}…'
+          : stripped;
     }
     return 'Etiketteki doz talimatına uygun uygulama yapın.';
   }
@@ -627,10 +880,15 @@ class _PlantHealthAlertState extends ConsumerState<_PlantHealthAlert> {
       await logger.log(
         fieldId: widget.fieldId,
         type: ActivityType.spraying,
-        note: '${widget.cropName} bitkilerinde tespit edilen ${advice.name} için tedavi ve ilaçlama başlatıldı',
+        note:
+            '${widget.cropName} bitkilerinde tespit edilen ${advice.name} için tedavi ve ilaçlama başlatıldı',
         metadata: {
-          'pesticide_name': advice.chemicalTreatments.isNotEmpty ? advice.chemicalTreatments.first.split('—').first.trim() : 'Sistem Tavsiyesi İlaç',
-          'active_ingredient': advice.chemicalTreatments.isNotEmpty ? advice.chemicalTreatments.first : 'Belirtilmedi',
+          'pesticide_name': advice.chemicalTreatments.isNotEmpty
+              ? advice.chemicalTreatments.first.split('—').first.trim()
+              : 'Sistem Tavsiyesi İlaç',
+          'active_ingredient': advice.chemicalTreatments.isNotEmpty
+              ? advice.chemicalTreatments.first
+              : 'Belirtilmedi',
           'target_pest': advice.name,
           'crop_name': widget.cropName,
           'treatment_days': _parseTreatmentDays(advice),
@@ -639,8 +897,7 @@ class _PlantHealthAlertState extends ConsumerState<_PlantHealthAlert> {
 
       // Hasta bitkileri "tedavi ediliyor" durumuna çevir (kırmızı → turuncu)
       final repo = ref.read(localDataRepositoryProvider);
-      final diseased = widget.plants
-          .where((p) => p.healthStatus == 'diseased');
+      final diseased = widget.plants.where((p) => p.healthStatus == 'diseased');
       for (final p in diseased) {
         await repo.setPlantHealth(
           instanceId: p.id,
@@ -736,7 +993,9 @@ class _PlantHealthAlertState extends ConsumerState<_PlantHealthAlert> {
     }
 
     // Eğer sadece tedavi ediliyor durumunda bitkiler varsa (reopen sonrası)
-    if (widget.diseasedCount == 0 && widget.deadCount == 0 && widget.treatingCount > 0) {
+    if (widget.diseasedCount == 0 &&
+        widget.deadCount == 0 &&
+        widget.treatingCount > 0) {
       return Container(
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -761,6 +1020,15 @@ class _PlantHealthAlertState extends ConsumerState<_PlantHealthAlert> {
             ),
           ],
         ),
+      );
+    }
+
+    final trustedV2 = _trustedV2;
+    if (trustedV2 != null && widget.diseasedCount > 0) {
+      return _trustedDiseaseCard(
+        context,
+        trustedV2,
+        _trustedDiseaseRecord(trustedV2),
       );
     }
 
@@ -1025,14 +1293,14 @@ class _DirectiveList extends StatelessWidget {
             const SizedBox(height: 10),
             Text(
               'Her şey yolunda',
-              style: AppText.bodyMd(context)
-                  .copyWith(fontWeight: FontWeight.w800),
+              style:
+                  AppText.bodyMd(context).copyWith(fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 4),
             Text(
               'Bugün aksiyon gerektiren bir şey yok.',
-              style: AppText.sm(context)
-                  .copyWith(color: AppColors.textSecondary),
+              style:
+                  AppText.sm(context).copyWith(color: AppColors.textSecondary),
               textAlign: TextAlign.center,
             ),
           ],
@@ -1041,7 +1309,10 @@ class _DirectiveList extends StatelessWidget {
     }
 
     // Kritikler önce, max 5
-    final sorted = [...recs!]..sort((a, b) => b.severity.index.compareTo(a.severity.index));
+    final sorted = recs!
+        .where((r) => !r.ruleKey.startsWith('plant.dead.remove.'))
+        .toList()
+      ..sort((a, b) => b.severity.index.compareTo(a.severity.index));
     final top = sorted.take(5).toList();
 
     return Column(
@@ -1160,8 +1431,7 @@ class _WaterSummaryCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.frost.withValues(alpha: 0.12),
         borderRadius: AppRadius.sm,
-        border: Border.all(
-            color: AppColors.frost.withValues(alpha: 0.3)),
+        border: Border.all(color: AppColors.frost.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
