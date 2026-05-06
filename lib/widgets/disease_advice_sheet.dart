@@ -52,12 +52,14 @@ class DiseaseAdviceSheet extends StatelessWidget {
     final advice = DiseaseAdvice.forName(diseaseType);
     final isDead = healthStatus == DiseaseTypes.statusDead;
 
-    final urgencyColor = switch (advice.urgency) {
-      'Çok Yüksek' => const Color(0xFFB71C1C),
-      'Yüksek' => const Color(0xFFD32F2F),
-      'Orta' => const Color(0xFFF57C00),
-      _ => const Color(0xFF558B2F),
-    };
+    final urgencyColor = isDead
+        ? const Color(0xFF424242)
+        : switch (advice.urgency) {
+            'Çok Yüksek' => const Color(0xFFB71C1C),
+            'Yüksek' => const Color(0xFFD32F2F),
+            'Orta' => const Color(0xFFF57C00),
+            _ => const Color(0xFF558B2F),
+          };
 
     final activeIngredients = _topActiveIngredients(advice.chemicalTreatments);
 
@@ -139,9 +141,9 @@ class DiseaseAdviceSheet extends StatelessWidget {
             const SizedBox(height: 14),
             if (isDead)
               _CompactList(
-                title: 'Güvenli koparma',
+                title: 'Sökme önerisi',
                 icon: Icons.delete_forever_rounded,
-                color: const Color(0xFF6A1B9A),
+                color: const Color(0xFF424242),
                 items: advice.deadPlantProtocol.take(3).toList(),
               )
             else if (activeIngredients.isNotEmpty)

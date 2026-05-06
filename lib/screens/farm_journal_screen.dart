@@ -445,6 +445,10 @@ class _FarmJournalScreenState extends ConsumerState<FarmJournalScreen> {
         (meta?['treatment_days'] != null ||
             noteStr?.toLowerCase().contains('tedavi') == true);
 
+    final isDead = type == ActivityType.scouting &&
+        (meta?['health_status'] == 'dead' ||
+            noteStr?.toLowerCase().contains('ölü') == true);
+
     Color iconBgColor;
     Color iconColor;
     Color bgColor;
@@ -455,7 +459,17 @@ class _FarmJournalScreenState extends ConsumerState<FarmJournalScreen> {
     Color pillBg;
     Color pillBorder;
 
-    if (isDiseaseDetection) {
+    if (isDead) {
+      bgColor = const Color(0xFF383838); // Açık siyah
+      borderColor = const Color(0xFF2C2C2C);
+      iconColor = Colors.white;
+      iconBgColor = Colors.white.withValues(alpha: 0.15);
+      primaryText = Colors.white;
+      secondaryText = Colors.white.withValues(alpha: 0.9);
+      tertiaryText = Colors.white.withValues(alpha: 0.7);
+      pillBg = Colors.black.withValues(alpha: 0.2);
+      pillBorder = Colors.transparent;
+    } else if (isDiseaseDetection) {
       bgColor = const Color(0xFFD32F2F); // Kırmızı
       borderColor = const Color(0xFFB71C1C);
       iconColor = Colors.white;
