@@ -9,23 +9,28 @@ import '../services/weather_soil_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/location_utils.dart';
 import '../widgets/animated_route.dart';
+import '../widgets/contextual_tip.dart';
 import '../widgets/help_panel.dart';
 import '../widgets/tap_scale.dart';
 import 'farm_journal_screen.dart';
 import 'field_detail_screen.dart';
-final dashboardWeeklyPlanProvider = FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
+
+final dashboardWeeklyPlanProvider =
+    FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
   final fieldsAsync = ref.watch(fieldMapsProvider);
   final fields = fieldsAsync.asData?.value ?? <Map<String, dynamic>>[];
-  
+
   final plans = <Map<String, dynamic>>[];
 
   for (final f in fields) {
     final fieldId = f['id']?.toString() ?? '';
     final name = f['name']?.toString() ?? 'Tarla';
-    
+
     // Check Irrigation
     final analysis = f['analysis'];
-    final moisture = analysis is Map ? (analysis['soil_moisture'] as num?)?.toDouble() : null;
+    final moisture = analysis is Map
+        ? (analysis['soil_moisture'] as num?)?.toDouble()
+        : null;
     if (moisture != null && moisture < 0.45) {
       plans.add({
         'title': '$name Sulama',
@@ -40,8 +45,10 @@ final dashboardWeeklyPlanProvider = FutureProvider.autoDispose<List<Map<String, 
 
     // Check Treatment
     if (fieldId.isNotEmpty) {
-      final plants = await ref.watch(fieldPlantInstancesProvider(fieldId).future);
-      final treating = plants.where((p) => p.healthStatus == 'treating').toList();
+      final plants =
+          await ref.watch(fieldPlantInstancesProvider(fieldId).future);
+      final treating =
+          plants.where((p) => p.healthStatus == 'treating').toList();
       if (treating.isNotEmpty) {
         plans.add({
           'title': '$name İlaçlama',
@@ -59,29 +66,33 @@ final dashboardWeeklyPlanProvider = FutureProvider.autoDispose<List<Map<String, 
   return plans;
 });
 
-final dashboardEmergencyProvider = FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
+final dashboardEmergencyProvider =
+    FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
   final fieldsAsync = ref.watch(fieldMapsProvider);
   final fields = fieldsAsync.asData?.value ?? <Map<String, dynamic>>[];
-  
+
   final alerts = <Map<String, dynamic>>[];
 
   for (final f in fields) {
     final fieldId = f['id']?.toString() ?? '';
     if (fieldId.isNotEmpty) {
-      final plants = await ref.watch(fieldPlantInstancesProvider(fieldId).future);
-      
-      final diseased = plants.where((p) => p.healthStatus == 'diseased').toList();
+      final plants =
+          await ref.watch(fieldPlantInstancesProvider(fieldId).future);
+
+      final diseased =
+          plants.where((p) => p.healthStatus == 'diseased').toList();
       if (diseased.isNotEmpty) {
         final groups = <String, int>{};
         for (final p in diseased) {
-          final d = (p.diseaseType == null || p.diseaseType!.trim().isEmpty) 
-            ? 'Bilinmeyen Hastalık' 
-            : p.diseaseType!;
+          final d = (p.diseaseType == null || p.diseaseType!.trim().isEmpty)
+              ? 'Bilinmeyen Hastalık'
+              : p.diseaseType!;
           groups[d] = (groups[d] ?? 0) + 1;
         }
 
-        final primaryDisease = groups.entries.reduce((a, b) => a.value >= b.value ? a : b);
-        
+        final primaryDisease =
+            groups.entries.reduce((a, b) => a.value >= b.value ? a : b);
+
         alerts.add({
           'field': f,
           'count': diseased.length,
@@ -383,6 +394,15 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           _buildEmergencyBanners(),
+                          ActionTipCard(
+                            id: 'dashboard_daily_help_tip',
+                            icon: Icons.tips_and_updates_rounded,
+                            color: AppColors.emerald,
+                            title: 'İşler nerede görünür?',
+                            message:
+                                'Acil sulama, gübreleme ve hasat işleri "Bugün Yapılacaklar" bölümünde çıkar. Bir tarlanın ayrıntısı için kartındaki "Rehber" düğmesine dokunun.',
+                          ),
+                          const SizedBox(height: 16),
                           _buildFieldOverview(),
                           const SizedBox(height: 24),
                           _buildSectionHeader('Bugün Yapılacaklar',
@@ -1246,7 +1266,8 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
                 scale: 0.96,
                 onTap: () {
                   Navigator.of(context).push(
-                    AnimatedRoute.scaleFade(FieldDetailScreen(fieldData: p['field'])),
+                    AnimatedRoute.scaleFade(
+                        FieldDetailScreen(fieldData: p['field'])),
                   );
                 },
                 child: Container(
@@ -1281,7 +1302,8 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
                               color: Colors.white.withValues(alpha: 0.25),
                               borderRadius: BorderRadius.circular(10),
                             ),
-                            child: Icon(p['icon'], color: Colors.white, size: 18),
+                            child:
+                                Icon(p['icon'], color: Colors.white, size: 18),
                           ),
                           const Spacer(),
                           Text(
@@ -1309,7 +1331,8 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
                       const SizedBox(height: 6),
                       Row(
                         children: [
-                          const Icon(Icons.schedule_rounded, color: Colors.white70, size: 14),
+                          const Icon(Icons.schedule_rounded,
+                              color: Colors.white70, size: 14),
                           const SizedBox(width: 4),
                           Text(
                             p['time'],
@@ -1357,7 +1380,8 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
                 scale: 0.95,
                 onTap: () {
                   Navigator.of(context).push(
-                    AnimatedRoute.scaleFade(FieldDetailScreen(fieldData: field)),
+                    AnimatedRoute.scaleFade(
+                        FieldDetailScreen(fieldData: field)),
                   );
                 },
                 child: Container(
@@ -1365,7 +1389,11 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
                   clipBehavior: Clip.hardEdge,
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
-                      colors: [Color(0xFFD32F2F), Color(0xFFC62828), Color(0xFFB71C1C)],
+                      colors: [
+                        Color(0xFFD32F2F),
+                        Color(0xFFC62828),
+                        Color(0xFFB71C1C)
+                      ],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
@@ -1383,12 +1411,16 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
                       Positioned(
                         right: -30,
                         top: -30,
-                        child: Icon(Icons.warning_amber_rounded, size: 160, color: Colors.white.withValues(alpha: 0.08)),
+                        child: Icon(Icons.warning_amber_rounded,
+                            size: 160,
+                            color: Colors.white.withValues(alpha: 0.08)),
                       ),
                       Positioned(
                         right: 20,
                         bottom: -15,
-                        child: Icon(Icons.pest_control_rounded, size: 80, color: Colors.black.withValues(alpha: 0.04)),
+                        child: Icon(Icons.pest_control_rounded,
+                            size: 80,
+                            color: Colors.black.withValues(alpha: 0.04)),
                       ),
                       Padding(
                         padding: const EdgeInsets.all(22),
@@ -1407,7 +1439,8 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
                                   )
                                 ],
                               ),
-                              child: const Icon(Icons.local_hospital_rounded, color: Color(0xFFD32F2F), size: 32),
+                              child: const Icon(Icons.local_hospital_rounded,
+                                  color: Color(0xFFD32F2F), size: 32),
                             ),
                             const SizedBox(width: 18),
                             Expanded(
@@ -1417,10 +1450,13 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
                                   Row(
                                     children: [
                                       Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 8, vertical: 4),
                                         decoration: BoxDecoration(
-                                          color: Colors.black.withValues(alpha: 0.3),
-                                          borderRadius: BorderRadius.circular(6),
+                                          color: Colors.black
+                                              .withValues(alpha: 0.3),
+                                          borderRadius:
+                                              BorderRadius.circular(6),
                                         ),
                                         child: const Text(
                                           'ACİL EYLEM',
@@ -1461,7 +1497,8 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
                                   Text(
                                     'Daha fazla yayılmadan hemen tedaviye başlamak için tıklayın.',
                                     style: TextStyle(
-                                      color: Colors.white.withValues(alpha: 0.9),
+                                      color:
+                                          Colors.white.withValues(alpha: 0.9),
                                       fontSize: 13,
                                       fontWeight: FontWeight.w500,
                                       height: 1.3,
@@ -1484,7 +1521,6 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
     );
   }
 }
-
 
 /// Tek tarla için 1-3 acil/yaklaşan yönergeyi özetler.
 class _FieldDirectivesStrip extends ConsumerWidget {

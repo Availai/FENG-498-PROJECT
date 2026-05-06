@@ -7,6 +7,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:maps_toolkit/maps_toolkit.dart' as toolkit;
 
 import '../theme/app_theme.dart';
+import '../widgets/contextual_tip.dart';
 import '../widgets/help_panel.dart';
 import '../widgets/zone_drawing_toolbar.dart';
 
@@ -261,6 +262,48 @@ class _PlantZoneDrawingScreenState extends State<PlantZoneDrawingScreen>
           .toList(),
     );
     Navigator.of(context).pop(json);
+  }
+
+  Widget _buildDrawingTip() {
+    if (_zonePoints.isEmpty) {
+      return ActionTipCard(
+        icon: Icons.gesture_rounded,
+        color: widget.plantColor,
+        title: 'Ekim bölgesini çizin',
+        message:
+            '${widget.plantName} nereye ekilecekse o alanın köşelerine dokunun. Bütün tarlayı kullanacaksanız üstteki "Tarlanın tamamı" düğmesini seçin.',
+        dark: true,
+        compact: true,
+        dismissible: false,
+      );
+    }
+
+    if (_zonePoints.length < 3) {
+      return ActionTipCard(
+        icon: Icons.polyline_rounded,
+        color: AppColors.warning,
+        title: '${_zonePoints.length} köşe seçildi',
+        message:
+            'Bölgeyi tamamlamak için en az ${3 - _zonePoints.length} köşe daha ekleyin. Yanlış köşe için alttaki "Geri Al" düğmesini kullanın.',
+        dark: true,
+        compact: true,
+        dismissible: false,
+      );
+    }
+
+    final dekar = (_zoneAreaSqm / 1000).toStringAsFixed(2);
+    return ActionTipCard(
+      icon: Icons.check_circle_outline_rounded,
+      color: widget.plantColor,
+      title: '$dekar dönüm bölge hazır',
+      message:
+          'Tamamla dediğinizde bu alan tarla haritasında renkli ekim bölgesi olarak görünür; sulama, takvim ve rehber bu kayda bağlanır.',
+      actionLabel: 'Tamamla',
+      onAction: _complete,
+      dark: true,
+      compact: true,
+      dismissible: false,
+    );
   }
 
   @override
@@ -637,6 +680,13 @@ class _PlantZoneDrawingScreenState extends State<PlantZoneDrawingScreen>
             ),
           ),
 
+          Positioned(
+            left: 12,
+            right: 12,
+            bottom: MediaQuery.of(context).padding.bottom + 142,
+            child: _buildDrawingTip(),
+          ),
+
           // Alt çizim araç çubuğu
           Positioned(
             left: 12,
@@ -651,29 +701,6 @@ class _PlantZoneDrawingScreenState extends State<PlantZoneDrawingScreen>
               onCancel: _cancel,
             ),
           ),
-
-          // Boş durumda merkez ipucu
-          if (_zonePoints.isEmpty)
-            IgnorePointer(
-              child: Center(
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.55),
-                    borderRadius: AppRadius.lg,
-                  ),
-                  child: const Text(
-                    'Tarla içinde köşe noktalarına dokunun',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
-            ),
         ],
       ),
     );

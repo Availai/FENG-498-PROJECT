@@ -23,6 +23,7 @@ import '../data/turkiye_crop_guides.dart';
 import '../data/verified_agri_database.dart';
 import '../data/turkish_crops_repository.dart';
 import '../widgets/activity_quick_log.dart';
+import '../widgets/contextual_tip.dart';
 import '../widgets/floating_toast.dart';
 import '../widgets/glass_panel.dart';
 import '../widgets/season_summary_card.dart';
@@ -448,6 +449,31 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
               child: _buildPlantMultiSelectBar(),
             ),
 
+          if (!_isPlantMultiSelectMode &&
+              !_isZoneDrawingMode &&
+              !_isPlacingSinglePlantMode &&
+              _fieldCropsLoaded &&
+              _fieldCrops.isEmpty &&
+              !_isLoading &&
+              _error == null)
+            Positioned(
+              left: 16,
+              right: 16,
+              top: MediaQuery.of(context).padding.top + 68,
+              child: ActionTipCard(
+                id: 'field_detail_first_crop_tip',
+                icon: Icons.add_location_alt_rounded,
+                color: AppColors.emerald,
+                title: 'Bu tarlaya ürün ekleyin',
+                message:
+                    'Alt bardaki "Ekle" düğmesiyle ürünü seçin ve ekim bölgesini tarlanın üstüne çizin. Kayıtlar sonra rehber, takvim ve sulama planında görünür.',
+                actionLabel: 'Ekle',
+                onAction: _showPlantPicker,
+                dark: true,
+                compact: true,
+              ),
+            ),
+
           // 2. Zoom kontrolleri
           Positioned(
             left: 16,
@@ -512,6 +538,34 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
             Positioned(
               left: 16,
               right: 16,
+              bottom: MediaQuery.of(context).padding.bottom + 158,
+              child: ActionTipCard(
+                icon: _zoneDrawingPoints.length >= 3
+                    ? Icons.check_circle_outline_rounded
+                    : Icons.gesture_rounded,
+                color: _pendingPlant?.renderColor ?? AppColors.emerald,
+                title: _zoneDrawingPoints.length >= 3
+                    ? '${_zoneDrawingPoints.length} köşe hazır'
+                    : 'Ekim bölgesini çizin',
+                message: _zoneDrawingPoints.length >= 3
+                    ? 'Tamamla dediğinizde bu bölge ürüne bağlanır; takvim, sulama ve rehber kayıtları buradan hesaplanır.'
+                    : 'Haritada ürünün ekileceği alanın köşelerine dokunun. En az 3 köşe seçince tamamlayabilirsiniz.',
+                actionLabel: _zoneDrawingPoints.length >= 3 ? 'Tamamla' : null,
+                onAction: _zoneDrawingPoints.length >= 3
+                    ? () {
+                        _completeZoneDrawing();
+                      }
+                    : null,
+                dark: true,
+                compact: true,
+                dismissible: false,
+              ),
+            ),
+
+          if (_isZoneDrawingMode)
+            Positioned(
+              left: 16,
+              right: 16,
               bottom: MediaQuery.of(context).padding.bottom + 20,
               child: ZoneDrawingToolbar(
                 plantName: _pendingPlant?.nameTr ?? 'Bitki',
@@ -530,36 +584,18 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
               left: 16,
               right: 16,
               bottom: MediaQuery.of(context).padding.bottom + 20,
-              child: Container(
-                padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF14241B),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.emerald, width: 1.2),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.eco_rounded,
-                        color: AppColors.emerald, size: 20),
-                    const SizedBox(width: 8),
-                    const Expanded(
-                      child: Text(
-                        'Tekil bitki yerleştirme aktif — boş bir noktaya dokun.',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: () =>
-                          setState(() => _isPlacingSinglePlantMode = false),
-                      child: const Text('İptal',
-                          style: TextStyle(color: Colors.white)),
-                    ),
-                  ],
-                ),
+              child: ActionTipCard(
+                icon: Icons.eco_rounded,
+                color: AppColors.emerald,
+                title: 'Tekil bitki yerleştirme',
+                message:
+                    'Tarlanın içinde boş bir noktaya dokunun. Eklenen bitki marker olarak görünür; sağlık durumunu daha sonra marker menüsünden değiştirebilirsiniz.',
+                actionLabel: 'İptal',
+                onAction: () =>
+                    setState(() => _isPlacingSinglePlantMode = false),
+                dark: true,
+                compact: true,
+                dismissible: false,
               ),
             ),
 
@@ -1889,7 +1925,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
         },
       );
     } else if (result.status == DiseaseTypes.statusHealthy) {
-       await ref.read(activityLoggerProvider).log(
+      await ref.read(activityLoggerProvider).log(
         fieldId: fieldId,
         type: ActivityType.scouting,
         cropId: cropId,
@@ -2284,7 +2320,8 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
       await ref.read(activityLoggerProvider).log(
         fieldId: fieldId,
         type: ActivityType.scouting,
-        note: '$count adet bitkide ${result.diseaseType ?? 'hastalık'} tespit edildi',
+        note:
+            '$count adet bitkide ${result.diseaseType ?? 'hastalık'} tespit edildi',
         metadata: {
           'scouting_target': 'Çoklu Hastalık Taraması',
           'target_pest': result.diseaseType ?? 'Bilinmeyen',
@@ -2293,7 +2330,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
         },
       );
     } else if (result.status == DiseaseTypes.statusHealthy) {
-       await ref.read(activityLoggerProvider).log(
+      await ref.read(activityLoggerProvider).log(
         fieldId: fieldId,
         type: ActivityType.scouting,
         note: '$count adet bitki iyileşti, sağlıklı işaretlendi',

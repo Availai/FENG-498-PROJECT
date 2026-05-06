@@ -13,6 +13,7 @@ import '../services/notification_service.dart';
 import '../services/offline_encyclopedia.dart';
 import '../services/rules/recommendation.dart';
 import '../theme/app_theme.dart';
+import '../widgets/contextual_tip.dart';
 import '../widgets/help_panel.dart';
 import '../widgets/recommendation_card.dart';
 import 'crop_daily_plan_screen.dart';
@@ -179,6 +180,16 @@ class DailyGuideScreen extends ConsumerWidget {
             asyncValue: liveTodosAsync,
             onRefresh: () => ref.read(recomputeNowProvider(fieldId))(),
           ),
+          const SizedBox(height: 12),
+          const ActionTipCard(
+            id: 'daily_guide_action_tip',
+            icon: Icons.done_all_rounded,
+            color: AppColors.emerald,
+            title: 'Öneriyi yaptıysanız kaydedin',
+            message:
+                '"Yapıldı", "Suladım" veya benzeri düğmeler aktivite kaydı oluşturur. Kayıt girildiğinde aynı öneri azalır ve tarla günlüğünde görünür.',
+          ),
+          const SizedBox(height: 12),
           // Alerts banner
           if (result.alerts.isNotEmpty) ...[
             for (final alert in result.alerts) _AlertBanner(alert: alert),
@@ -507,8 +518,7 @@ class _MiniWeekStrip extends StatelessWidget {
       ),
       child: Row(
         children: [
-          for (final day in visible)
-            Expanded(child: _MiniDayCell(day: day)),
+          for (final day in visible) Expanded(child: _MiniDayCell(day: day)),
         ],
       ),
     );
@@ -571,9 +581,7 @@ class _MiniDayCell extends StatelessWidget {
           ),
           const SizedBox(height: 3),
           Icon(
-            hasOpen
-                ? Icons.radio_button_unchecked
-                : Icons.check_circle_rounded,
+            hasOpen ? Icons.radio_button_unchecked : Icons.check_circle_rounded,
             size: 12,
             color: hasOpen ? AppColors.warning : AppColors.emerald,
           ),
@@ -678,8 +686,10 @@ class _CropEncyclopediaPanelState extends State<_CropEncyclopediaPanel> {
     final tMin = (data?['ideal_temp_min'] as num?)?.toDouble();
     final tMax = (data?['ideal_temp_max'] as num?)?.toDouble();
     if (tMin != null && tMax != null) {
-      rows.add(_kvRow('İdeal sıcaklık', '${tMin.toStringAsFixed(0)}-'
-          '${tMax.toStringAsFixed(0)} °C'));
+      rows.add(_kvRow(
+          'İdeal sıcaklık',
+          '${tMin.toStringAsFixed(0)}-'
+              '${tMax.toStringAsFixed(0)} °C'));
     }
     final phMin = (data?['ideal_ph_min'] as num?)?.toDouble();
     final phMax = (data?['ideal_ph_max'] as num?)?.toDouble();
@@ -701,21 +711,20 @@ class _CropEncyclopediaPanelState extends State<_CropEncyclopediaPanel> {
       rows.add(_kvRow('Çoğaltma', data!['propagation'].toString()));
     }
     if (data?['pest_susceptibility'] != null) {
-      rows.add(_kvRow(
-          'Zararlılar', data!['pest_susceptibility'].toString(),
+      rows.add(_kvRow('Zararlılar', data!['pest_susceptibility'].toString(),
           multiline: true));
     }
 
     if (plan != null) {
       rows.add(const Divider(height: 18));
-      rows.add(_kvRow('Sezon hedefi',
-          '${plan.seasonTargetMm.toStringAsFixed(0)} mm'));
+      rows.add(_kvRow(
+          'Sezon hedefi', '${plan.seasonTargetMm.toStringAsFixed(0)} mm'));
       rows.add(_kvRow('Uygulanan sulama',
           '${plan.appliedIrrigationMm.toStringAsFixed(0)} mm'));
       rows.add(_kvRow('Yağışla karşılanan',
           '${plan.accountedRainMm.toStringAsFixed(0)} mm'));
-      rows.add(_kvRow('Sezon kalan',
-          '${plan.remainingSeasonMm.toStringAsFixed(0)} mm'));
+      rows.add(_kvRow(
+          'Sezon kalan', '${plan.remainingSeasonMm.toStringAsFixed(0)} mm'));
       rows.add(_kvRow('Hasat günü',
           '${plan.harvestDate.day}.${plan.harvestDate.month}.${plan.harvestDate.year}'));
     }
@@ -734,7 +743,8 @@ class _CropEncyclopediaPanelState extends State<_CropEncyclopediaPanel> {
         style: AppText.sm(context),
       );
     }
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: rows);
+    return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch, children: rows);
   }
 
   Widget _kvRow(String label, String value,
@@ -1537,8 +1547,7 @@ class _DiseaseAdviceSection extends ConsumerWidget {
     final plantsAsync = ref.watch(fieldPlantInstancesProvider(fieldId));
     final activitiesAsync = ref.watch(fieldActivityLogProvider(fieldId));
 
-    final plants =
-        plantsAsync.valueOrNull ?? const <FieldPlantInstance>[];
+    final plants = plantsAsync.valueOrNull ?? const <FieldPlantInstance>[];
     final activities =
         activitiesAsync.valueOrNull ?? const <Map<String, dynamic>>[];
 
@@ -1566,11 +1575,9 @@ class _DiseaseAdviceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final accent = entry.resolved ? AppColors.emerald : AppColors.error;
-    final icon = entry.resolved
-        ? Icons.verified_rounded
-        : Icons.coronavirus_rounded;
-    final statusLabel =
-        entry.resolved ? 'SORUN ÇÖZÜLDÜ' : 'AKTİF HASTALIK';
+    final icon =
+        entry.resolved ? Icons.verified_rounded : Icons.coronavirus_rounded;
+    final statusLabel = entry.resolved ? 'SORUN ÇÖZÜLDÜ' : 'AKTİF HASTALIK';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -1610,8 +1617,8 @@ class _DiseaseAdviceCard extends StatelessWidget {
               ),
               if (entry.affectedCount > 1)
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 8, vertical: 3),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
                     color: accent.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(10),
@@ -1633,8 +1640,8 @@ class _DiseaseAdviceCard extends StatelessWidget {
             const SizedBox(height: 10),
             Text(
               'Aciliyet: ${entry.urgency}  ·  Patojen: ${entry.pathogenType}',
-              style: AppText.xs(context)
-                  .copyWith(color: AppColors.textSecondary),
+              style:
+                  AppText.xs(context).copyWith(color: AppColors.textSecondary),
             ),
             const SizedBox(height: 12),
             _TreatmentList(suggestions: entry.chemicalSuggestions),
@@ -1666,8 +1673,7 @@ class _ResolvedBanner extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.emerald.withValues(alpha: 0.12),
         borderRadius: AppRadius.sm,
-        border:
-            Border.all(color: AppColors.emerald.withValues(alpha: 0.35)),
+        border: Border.all(color: AppColors.emerald.withValues(alpha: 0.35)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,

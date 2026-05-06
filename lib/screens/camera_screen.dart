@@ -9,6 +9,7 @@ import '../utils/location_utils.dart';
 import 'analysis_result_screen.dart';
 import '../theme/app_theme.dart';
 import '../widgets/animated_route.dart';
+import '../widgets/contextual_tip.dart';
 import '../widgets/floating_toast.dart';
 import '../widgets/glass_panel.dart';
 import '../widgets/help_panel.dart';
@@ -84,6 +85,24 @@ class _CameraScreenState extends State<CameraScreen> {
                   ),
                 ),
               ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            child: ActionTipCard(
+              id: _photos.isEmpty
+                  ? 'camera_before_photo_tip'
+                  : 'camera_after_photo_tip',
+              icon: _photos.isEmpty
+                  ? Icons.center_focus_strong_rounded
+                  : Icons.psychology_rounded,
+              color: _photos.isEmpty ? AppColors.info : AppColors.emerald,
+              title: _photos.isEmpty
+                  ? 'Net yaprak görüntüsü seçin'
+                  : 'Analiz sonucu nerede görünür?',
+              message: _photos.isEmpty
+                  ? 'Hasta görünen yaprağı yakın ve gölgesiz çekin. Mümkünse sağlam yapraktan küçük bir parça da kadraja girsin.'
+                  : 'Görselin altındaki "YARDIM AL" düğmesi analizi başlatır. Sonuç daha sonra "Kaydedilmiş Veriler" ekranında kalır.',
             ),
           ),
           if (_isLoading)

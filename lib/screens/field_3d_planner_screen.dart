@@ -6,6 +6,7 @@ import 'package:maps_toolkit/maps_toolkit.dart' as toolkit;
 import 'package:intl/intl.dart';
 import '../services/app_providers.dart';
 import '../theme/app_theme.dart';
+import '../widgets/contextual_tip.dart';
 import '../widgets/floating_toast.dart';
 import '../widgets/glass_panel.dart';
 import '../widgets/help_panel.dart';
@@ -138,8 +139,7 @@ class _Field3DPlannerScreenState extends ConsumerState<Field3DPlannerScreen> {
     centerLng /= _points.length;
     final dekar = _calculatedAreaSqm / 1000;
 
-    String name =
-        widget.existingField?['name']?.split(' ').first ?? '';
+    String name = widget.existingField?['name']?.split(' ').first ?? '';
 
     showDialog(
       context: context,
@@ -360,6 +360,48 @@ class _Field3DPlannerScreenState extends ConsumerState<Field3DPlannerScreen> {
     ];
   }
 
+  Widget _buildPlannerTip() {
+    if (_points.isEmpty) {
+      return const ActionTipCard(
+        icon: Icons.touch_app_rounded,
+        color: AppColors.emerald,
+        title: 'Tarlanın köşelerine dokunun',
+        message:
+            'Dış sınırı dolaşıyormuş gibi köşeleri sırayla işaretleyin. Konum alınamazsa haritayı elinizle kaydırıp tarlanızı bulun.',
+        dark: true,
+        compact: true,
+        dismissible: false,
+      );
+    }
+
+    if (_points.length < 3) {
+      return ActionTipCard(
+        icon: Icons.polyline_rounded,
+        color: AppColors.warning,
+        title: '${_points.length} köşe seçildi',
+        message:
+            'Alanı kapatmak için en az ${3 - _points.length} köşe daha ekleyin. Yanlış nokta koyduysanız sağ üstteki geri al simgesini kullanın.',
+        dark: true,
+        compact: true,
+        dismissible: false,
+      );
+    }
+
+    final dekar = (_calculatedAreaSqm / 1000).toStringAsFixed(2);
+    return ActionTipCard(
+      icon: Icons.check_circle_outline_rounded,
+      color: AppColors.emerald,
+      title: '$dekar dekar alan hazır',
+      message:
+          'Kaydedince tarla "Tarlalarım" listesinde, takvimde ve harita merkezinde görünür. Ürün eklemeyi tarla detayındaki "Ekle" düğmesinden yapabilirsiniz.',
+      actionLabel: 'Kaydet',
+      onAction: _saveField,
+      dark: true,
+      compact: true,
+      dismissible: false,
+    );
+  }
+
   // Shrinks polygon to create a pseudo 3d 'top' surface
   List<LatLng> _calculateInnerPolygon() {
     if (_points.length < 3) return [];
@@ -452,6 +494,13 @@ class _Field3DPlannerScreenState extends ConsumerState<Field3DPlannerScreen> {
             ],
           ),
 
+          Positioned(
+            left: 12,
+            right: 72,
+            top: MediaQuery.of(context).padding.top + 70,
+            child: _buildPlannerTip(),
+          ),
+
           // ── ZOOM KONTROLLERİ (sağ kenar) ──
           Positioned(
             right: 12,
@@ -522,7 +571,6 @@ class _Field3DPlannerScreenState extends ConsumerState<Field3DPlannerScreen> {
       ),
     );
   }
-
 
   Widget _zoomBtn(IconData icon, VoidCallback onTap, {String? tooltip}) {
     final btn = Material(

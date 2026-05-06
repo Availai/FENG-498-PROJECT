@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/app_providers.dart';
 import '../utils/location_utils.dart';
 import '../widgets/animated_route.dart';
+import '../widgets/contextual_tip.dart';
 import '../widgets/floating_toast.dart';
 import '../widgets/help_panel.dart';
 import '../widgets/shimmer_loader.dart';
@@ -137,6 +138,17 @@ class MyCropsScreen extends ConsumerWidget {
                       textAlign: TextAlign.center,
                       style: AppText.body(context),
                     ),
+                    const SizedBox(height: 18),
+                    ActionTipCard(
+                      id: 'my_crops_empty_first_field',
+                      icon: Icons.satellite_alt_rounded,
+                      color: AppColors.emerald,
+                      title: 'İlk tarla kaydı',
+                      message:
+                          'Yeni Tarla Çiz ile köşeleri işaretleyin. Kaydedince bu alan takvimde, rehberde ve harita merkezinde görünür.',
+                      actionLabel: 'Tarla çiz',
+                      onAction: () => _openFieldPlanner(context),
+                    ),
                   ],
                 ),
               ),
@@ -145,9 +157,23 @@ class MyCropsScreen extends ConsumerWidget {
 
           return ListView.builder(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-            itemCount: fields.length,
+            itemCount: fields.length + 1,
             itemBuilder: (context, i) {
-              final item = fields[i];
+              if (i == 0) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: ActionTipCard(
+                    id: 'my_crops_list_detail_tip',
+                    icon: Icons.touch_app_rounded,
+                    color: AppColors.info,
+                    title: 'Tarla yönetimi nerede?',
+                    message:
+                        'Bir tarla kartına dokununca ürün yerleşimi, kayıt, günlük rehber, cüzdan ve tarla günlüğü açılır.',
+                  ),
+                );
+              }
+
+              final item = fields[i - 1];
               final hasLocation = item['latitude'] != null;
               final areaDekar = item['area_dekar'];
               final cropName = item['crop'] ?? 'Bilinmiyor';
