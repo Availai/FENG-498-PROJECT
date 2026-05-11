@@ -74,6 +74,20 @@ double _facingYawForCameraRadians(
   return delta * math.pi / 180.0;
 }
 
+/// Yaw'ı tanh eğrisiyle ±[maxYawDegrees] aralığına yumuşatır — 2D sprite'ın
+/// kameraya dik açıda incelip kaybolmasını engeller (klasik 2.5D billboarding
+/// tekniği). Küçük açılarda doğal davranış, büyük açılarda yön ipucu olarak
+/// hafif eğiklik korunur ama sprite hep "kalın" görünür.
+double _softenYaw(double rawYawRadians, {double maxYawDegrees = 38.0}) {
+  final maxRad = maxYawDegrees * math.pi / 180.0;
+  if (maxRad <= 0) return 0.0;
+  // tanh(x/k)*k → küçük x'te ≈ x, büyük x'te → ±k.
+  final t = math.exp(rawYawRadians / maxRad);
+  final invT = 1.0 / t;
+  final tanh = (t - invT) / (t + invT);
+  return maxRad * tanh;
+}
+
 bool _usesLayeredFacing(String cropName, String assetPath) {
   final name = cropName.toLowerCase();
   final asset = assetPath.toLowerCase();
@@ -193,16 +207,16 @@ Widget buildCropMarkerWidget({
     builder: (context) {
       final camera = MapCamera.maybeOf(context);
       final rawZoom = camera?.zoom ?? 18.0;
-      // Zoom'u 0.5 birime yuvarla — kamera her küçük zoom değişikliğinde
-      // 200+ marker yeniden boyutlanmasın. Çiftçi gözüyle 0.25'lik bir
-      // farkı zaten algılayamaz; ama performans iki katına çıkar.
-      final currentZoom = (rawZoom * 2.0).round() / 2.0;
+      // Zoom'u 0.25 birime yuvarla — kamera her küçük zoom değişikliğinde
+      // 200+ marker yeniden rasterize edilmesin, ama büyüme yine de akıcı görünsün.
+      final currentZoom = (rawZoom * 4.0).round() / 4.0;
       final currentRotation = camera?.rotation ?? 0.0;
 
-      // Harita zoom seviyesine göre büyüme çarpanı
+      // Harita zoom seviyesine göre büyüme çarpanı.
       // zoom 18 referans alınarak (2^(zoom-18)), crop'lar harita büyüklüğüne kitlenir.
+      // Aralık (0.4, 4.0) — uzaklaştıkça okunabilir kalır, yakınlaştıkça gerçekten büyür.
       double zoomScale = math.pow(2.0, currentZoom - 18.0).toDouble();
-      zoomScale = zoomScale.clamp(0.24, 2.7).toDouble();
+      zoomScale = zoomScale.clamp(0.4, 4.0).toDouble();
 
       final phase = getGrowthPhase(maturityPercent);
       final phaseScale = _getScaleMultiplier(phase);
@@ -225,10 +239,12 @@ Widget buildCropMarkerWidget({
       Widget buildSpriteImage() {
         final devicePixelRatio =
             MediaQuery.maybeDevicePixelRatioOf(context) ?? 1.0;
+        // Floor 36 → uzaklaştığında bile sprite supersampling ile keskin kalır.
+        // Ceiling 1024/1280 → yakınlaştığında büyüyen sprite pikselleşmez.
         final cacheW =
-            (spriteW * devicePixelRatio).round().clamp(24, 512).toInt();
+            (spriteW * devicePixelRatio).round().clamp(36, 1024).toInt();
         final cacheH =
-            (spriteH * devicePixelRatio).round().clamp(24, 768).toInt();
+            (spriteH * devicePixelRatio).round().clamp(36, 1280).toInt();
         return Image.asset(
           pngPath,
           width: spriteW,
@@ -255,8 +271,9 @@ Widget buildCropMarkerWidget({
       }
 
       final sprite = buildSpriteImage();
-      final facingYaw =
-          _facingYawForCameraRadians(facingDirection, currentRotation);
+      final facingYaw = _softenYaw(
+        _facingYawForCameraRadians(facingDirection, currentRotation),
+      );
 
       // Hafif yol: vurgulu/hasta/hasat-aşamasındaki olmayan markerlar için
       // ColorFilter.matrix ve TweenAnimationBuilder devreye sokulmuyor.
