@@ -9,6 +9,7 @@ import 'dashboard_screen.dart';
 import 'my_crops_screen.dart';
 import 'camera_screen.dart';
 import 'plant_database_screen.dart';
+import 'plant_growth_guide_screen.dart';
 import 'crop_calendar_screen.dart';
 import 'map_hub_screen.dart';
 import 'about_screen.dart';
@@ -99,6 +100,31 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
                   providerLabel: providerLabel,
                 ),
                 const SizedBox(height: 14),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade50,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(Icons.eco_rounded,
+                      color: Colors.green.shade700, size: 20),
+                ),
+                title: const Text('Bitki Gelişim Rehberi'),
+                subtitle: const Text(
+                    'TAGEM/BATEM/ÇAYKUR kaynaklı yetiştirme yönergeleri'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const PlantGrowthGuideScreen(),
+                    ),
+                  );
+                },
+              ),
+              const Divider(),
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: Container(

@@ -335,8 +335,7 @@ class _CropTile extends StatelessWidget {
             // kanıtları gösteriyor; bu pin kullanıcıya v2 olduğunu belli eder.
             if (crop.stableId != null) ...[
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                 decoration: BoxDecoration(
                   color: AppColors.emerald.withValues(alpha: 0.10),
                   borderRadius: BorderRadius.circular(6),
@@ -551,7 +550,7 @@ class _CropDetailSheet extends StatelessWidget {
           _sectionTitle('Özel Hastalıklar', Icons.sick_rounded),
           const SizedBox(height: 8),
           _noticeCard(
-            'Çay için okunan resmi kaynakta doğrulanmış özel hastalık profili yok. Bu yüzden uygulama hastalık adı uydurmaz; çayda kaynaklı zararlı, toprak, sulama ve hasat kartları gösterilir.',
+            'Çay için doğrulanmış özel hastalık profili henüz eklenmedi. Zararlı, toprak, sulama ve hasat uyarıları gösterilir; yaygın belirti görürseniz uzmanla doğrulayın.',
           ),
         ],
         if (v2.pests.isNotEmpty) ...[

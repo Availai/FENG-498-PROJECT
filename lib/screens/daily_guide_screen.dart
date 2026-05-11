@@ -17,6 +17,7 @@ import '../widgets/contextual_tip.dart';
 import '../widgets/help_panel.dart';
 import '../widgets/recommendation_card.dart';
 import 'crop_daily_plan_screen.dart';
+import 'turkiye_crop_guide_screen.dart';
 
 final _dailyGuideFieldContextProvider = FutureProvider.family
     .autoDispose<_DailyGuideFieldContext, String>((ref, fieldId) async {
@@ -465,28 +466,43 @@ class _CropDailyGuideCard extends StatelessWidget {
           const SizedBox(height: 8),
           _CropEncyclopediaPanel(cropName: cropName, plan: plan),
           const SizedBox(height: 8),
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton.icon(
-              onPressed: cropId.isEmpty
-                  ? null
-                  : () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => CropDailyPlanScreen(
-                            fieldId: fieldId,
-                            cropId: cropId,
-                            fieldName: fieldName,
-                            latitude: fieldContext.latitude,
-                            longitude: fieldContext.longitude,
-                            areaDekar: fieldContext.areaDekar,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              if (guide != null)
+                TextButton.icon(
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            TurkiyeCropGuideScreen(guide: guide!),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.menu_book_rounded, size: 18),
+                  label: const Text('Yetiştirme Rehberi'),
+                ),
+              TextButton.icon(
+                onPressed: cropId.isEmpty
+                    ? null
+                    : () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => CropDailyPlanScreen(
+                              fieldId: fieldId,
+                              cropId: cropId,
+                              fieldName: fieldName,
+                              latitude: fieldContext.latitude,
+                              longitude: fieldContext.longitude,
+                              areaDekar: fieldContext.areaDekar,
+                            ),
                           ),
-                        ),
-                      );
-                    },
-              icon: const Icon(Icons.calendar_month_rounded, size: 18),
-              label: const Text('Tam Günlük Rehber'),
-            ),
+                        );
+                      },
+                icon: const Icon(Icons.calendar_month_rounded, size: 18),
+                label: const Text('Tam Günlük Rehber'),
+              ),
+            ],
           ),
         ],
       ),

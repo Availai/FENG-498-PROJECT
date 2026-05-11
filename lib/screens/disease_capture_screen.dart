@@ -230,7 +230,7 @@ class _DiseaseCaptureScreenState extends ConsumerState<DiseaseCaptureScreen> {
                 ),
               ),
               child: Text(
-                'Hastalık seçimi bu bitkinin kaynaklı JSON hastalıklarıyla sınırlıdır.',
+                'Bu bitkide yalnız doğrulanmış hastalık seçenekleri gösterilir.',
                 style: AppText.sm(context).copyWith(
                   color: AppColors.textSecondary,
                   fontWeight: FontWeight.w600,
@@ -238,8 +238,7 @@ class _DiseaseCaptureScreenState extends ConsumerState<DiseaseCaptureScreen> {
               ),
             ),
           DropdownButtonFormField<String>(
-            initialValue:
-                _isOther ? DiseaseTypes.otherKey : _selectedDisease,
+            initialValue: _isOther ? DiseaseTypes.otherKey : _selectedDisease,
             isExpanded: true,
             decoration: InputDecoration(
               filled: true,
@@ -253,8 +252,8 @@ class _DiseaseCaptureScreenState extends ConsumerState<DiseaseCaptureScreen> {
             ),
             hint: const Text('Hastalık seçin…'),
             items: [
-              ..._availableDiseases.map(
-                  (d) => DropdownMenuItem(value: d, child: Text(d))),
+              ..._availableDiseases
+                  .map((d) => DropdownMenuItem(value: d, child: Text(d))),
               if (!_useTrustedDiseaseOptions)
                 DropdownMenuItem(
                   value: DiseaseTypes.otherKey,
@@ -326,8 +325,8 @@ class _DiseaseCaptureScreenState extends ConsumerState<DiseaseCaptureScreen> {
               children: [
                 ElevatedButton.icon(
                   onPressed: () => _pickPhoto(ImageSource.camera),
-                  icon: const Icon(Icons.camera_alt_rounded,
-                      color: Colors.white),
+                  icon:
+                      const Icon(Icons.camera_alt_rounded, color: Colors.white),
                   label: const Text('Kamera'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.emerald,

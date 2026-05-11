@@ -37,7 +37,7 @@ import '../data/disease_types.dart';
 import 'cost_ledger_screen.dart';
 import 'disease_capture_screen.dart';
 import 'farm_journal_screen.dart';
-import 'field_quick_guide_sheet.dart';
+import 'field_tracking_screen.dart';
 import 'plant_zone_drawing_screen.dart';
 import 'turkish_crops_search_screen.dart';
 import '../widgets/animated_route.dart';
@@ -1205,15 +1205,15 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
           Expanded(
             child: _buildNavBtn(
               Icons.check_circle_outline_rounded,
-              'Kayıt',
+              'Aktivite',
               _showActivityQuickLog,
               color: AppColors.warning,
             ),
           ),
           Expanded(
             child: _buildNavBtn(
-              Icons.lightbulb_rounded,
-              'Rehber',
+              Icons.monitor_heart_rounded,
+              'Takip',
               _showDetailModal,
               color: AppColors.info,
             ),
@@ -2031,7 +2031,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
         );
         break;
       case _PlantAction.editFacingDirection:
-        await _editCropFacingDirection(crop);
+        await _editPlantFacingDirection(crop: crop, target: target);
         break;
       case _PlantAction.deletePlant:
         await _confirmDeletePlantTarget(target);
@@ -2045,13 +2045,19 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
     }
   }
 
-  /// Bir bitkinin baktığı yönü düzenler — sheet açar, seçimi DB'ye kaydeder
-  /// ve listeyi yeniler. Toast ile kullanıcıya geri bildirim verir.
-  Future<void> _editCropFacingDirection(Map<String, dynamic> crop) async {
+  /// Bir bitkinin baktığı yönü düzenler — toplu ekimde crop satırını, tekil
+  /// bitkide instance satırını günceller.
+  Future<void> _editPlantFacingDirection({
+    required Map<String, dynamic> crop,
+    required _PlantDeleteTarget target,
+  }) async {
     final cropId = crop['id']?.toString();
-    if (cropId == null || cropId.isEmpty) return;
-    final cropName = crop['name']?.toString() ?? 'Bitki';
-    final currentRaw = crop['facing_direction']?.toString();
+    final cropName = target.cropName;
+    final isStandalone = target.isStandalone && target.existing != null;
+    if ((cropId == null || cropId.isEmpty) && !isStandalone) return;
+    final currentRaw = isStandalone
+        ? target.existing?.facingDirection
+        : crop['facing_direction']?.toString();
 
     final result = await _showFacingDirectionSheet(
       context,
@@ -2063,11 +2069,20 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
 
     final picked = result is String ? result : null;
 
-    await ref.read(localDataRepositoryProvider).updateCropFacingDirection(
-          cropId: cropId,
-          facingDirection: picked,
-        );
-    await _loadFieldCrops();
+    if (isStandalone) {
+      await ref
+          .read(localDataRepositoryProvider)
+          .updatePlantInstanceFacingDirection(
+            instanceId: target.existing!.id,
+            facingDirection: picked,
+          );
+    } else {
+      await ref.read(localDataRepositoryProvider).updateCropFacingDirection(
+            cropId: cropId!,
+            facingDirection: picked,
+          );
+      await _loadFieldCrops();
+    }
     if (!mounted) return;
     AppToast.show(
       context,
@@ -2102,6 +2117,8 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
     required _PlantDeleteTarget target,
   }) {
     final cropId = crop['id']?.toString();
+    final canEditFacingDirection =
+        (cropId != null && cropId.isNotEmpty) || target.existing != null;
     return showModalBottomSheet<_PlantAction>(
       context: context,
       backgroundColor: AppColors.surface,
@@ -2138,9 +2155,11 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
                 title: const Text('Sağlık durumunu düzenle'),
                 onTap: () => Navigator.pop(ctx, _PlantAction.editHealth),
               ),
-              if (cropId != null && cropId.isNotEmpty)
+              if (canEditFacingDirection)
                 Builder(builder: (_) {
-                  final raw = crop['facing_direction']?.toString();
+                  final raw = target.isStandalone
+                      ? target.existing?.facingDirection
+                      : crop['facing_direction']?.toString();
                   return ListTile(
                     leading: const Icon(Icons.explore_rounded,
                         color: AppColors.emerald),
@@ -2512,6 +2531,10 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
     );
     if (picked == null || !mounted) return;
 
+    final facingDirection =
+        await _askFacingDirection(context, plantName: picked.nameTr);
+    if (!mounted) return;
+
     await ref.read(localDataRepositoryProvider).insertPlantInstance(
           fieldId: fieldId,
           cropId: null,
@@ -2519,13 +2542,16 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
           cropName: picked.nameTr,
           lat: point.latitude,
           lng: point.longitude,
+          facingDirection: facingDirection,
         );
 
     if (!mounted) return;
     setState(() => _isPlacingSinglePlantMode = false);
     AppToast.show(
       context,
-      message: '${picked.nameTr} eklendi.',
+      message: facingDirection == null
+          ? '${picked.nameTr} eklendi.'
+          : '${picked.nameTr} yön oku ile eklendi.',
       type: ToastType.success,
     );
   }
@@ -3001,6 +3027,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
           healthStatus: healthStatus,
           diseaseType: diseaseType,
           isHighlighted: _isPlantMarkerHighlighted(markerKey),
+          isHovered: _hoveredPlantMarkerKey == markerKey,
           facingDirection: facingDirection,
           onHover: (hovering) => _setHoveredPlantMarker(markerKey, hovering),
           onTap: onTap,
@@ -3324,6 +3351,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
             markerKey: markerKey,
             healthStatus: inst.healthStatus,
             diseaseType: inst.diseaseType,
+            facingDirection: inst.facingDirection,
             onTap: () {
               _handlePlantMarkerTap(
                 markerKey: markerKey,
@@ -3569,10 +3597,13 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
         ref.read(growthEngineProvider).recompute(cropId: cropId);
       }
     }
-    FieldQuickGuideSheet.show(
-      context,
-      fieldId: fieldId,
-      fieldName: widget.fieldData['name']?.toString() ?? 'Tarla',
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => FieldTrackingScreen(
+          fieldId: fieldId,
+          fieldName: widget.fieldData['name']?.toString() ?? 'Tarla',
+        ),
+      ),
     );
   }
 
@@ -6658,7 +6689,7 @@ class _FacingDirectionPreview extends StatelessWidget {
                   ),
                   const SizedBox(height: 6),
                   const Text(
-                    'Bu ekim grubundaki tüm bitkiler aynı yöne döner.',
+                    'Seçilen yön haritada bitkinin dibindeki ince okla görünür.',
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(

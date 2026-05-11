@@ -1890,6 +1890,7 @@ class LocalDataRepository {
     required double lat,
     required double lng,
     String healthStatus = 'healthy',
+    String? facingDirection,
   }) async {
     final now = DateTime.now().toUtc();
     final id = _newId('plant');
@@ -1903,6 +1904,7 @@ class LocalDataRepository {
             lat: Value(lat),
             lng: Value(lng),
             healthStatus: Value(healthStatus),
+            facingDirection: Value(facingDirection),
             farmerUid: Value(currentUid),
             plantedAt: Value(now),
             createdAt: Value(now),
@@ -1922,6 +1924,7 @@ class LocalDataRepository {
         'lat': lat,
         'lng': lng,
         'health_status': healthStatus,
+        'facing_direction': facingDirection,
         'updated_at': now.toIso8601String(),
       },
       updatedAt: now,
@@ -2085,6 +2088,38 @@ class LocalDataRepository {
         'field_id': inst.fieldId,
         'condition_flags': cleaned,
         'last_observed_at': now.toIso8601String(),
+        'updated_at': now.toIso8601String(),
+      },
+      updatedAt: now,
+    );
+  }
+
+  /// Standalone tekil bitkinin baktığı yönünü günceller.
+  Future<void> updatePlantInstanceFacingDirection({
+    required String instanceId,
+    String? facingDirection,
+  }) async {
+    final now = DateTime.now().toUtc();
+    final inst = await (_db.select(_db.fieldPlantInstances)
+          ..where((tbl) => tbl.id.equals(instanceId)))
+        .getSingleOrNull();
+    if (inst == null) return;
+
+    await (_db.update(_db.fieldPlantInstances)
+          ..where((tbl) => tbl.id.equals(instanceId)))
+        .write(FieldPlantInstancesCompanion(
+      facingDirection: Value(facingDirection),
+      updatedAt: Value(now),
+    ));
+
+    await _enqueueSyncJob(
+      entityType: 'field_plant_instances',
+      entityId: instanceId,
+      operation: 'upsert',
+      payload: {
+        'id': instanceId,
+        'field_id': inst.fieldId,
+        'facing_direction': facingDirection,
         'updated_at': now.toIso8601String(),
       },
       updatedAt: now,

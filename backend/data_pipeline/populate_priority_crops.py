@@ -2574,6 +2574,140 @@ def _rule(
     }
 
 
+def _different_value(value):
+    if isinstance(value, bool):
+        return not value
+    if isinstance(value, (int, float)):
+        return value + 1
+    if isinstance(value, str):
+        return f"{value}_degil"
+    if isinstance(value, list) and value:
+        return "__liste_disi__"
+    return "__uyumsuz__"
+
+
+def _positive_fact_value(condition: dict):
+    op = condition.get("operator", "equals")
+    value = condition.get("value")
+    if op == "exists":
+        return value if value is not None else True
+    if op == "missing":
+        return None
+    if op == "equals":
+        return value
+    if op == "not_equals":
+        return _different_value(value)
+    if op == "greater_than":
+        return value + 1 if isinstance(value, (int, float)) else 1
+    if op == "less_than":
+        return value - 1 if isinstance(value, (int, float)) else -1
+    if op == "greater_or_equal":
+        return value
+    if op == "less_or_equal":
+        return value
+    if op == "between":
+        if isinstance(value, list) and len(value) == 2:
+            lo, hi = value
+            if isinstance(lo, (int, float)) and isinstance(hi, (int, float)):
+                return (lo + hi) / 2
+            return lo
+        return value
+    if op == "contains":
+        return [value]
+    if op == "in":
+        return value[0] if isinstance(value, list) and value else value
+    if op == "not_in":
+        return "__liste_disi__"
+    return value
+
+
+def _negative_fact_value(condition: dict, positive_value):
+    op = condition.get("operator", "equals")
+    value = condition.get("value")
+    if op == "exists":
+        return None
+    if op == "missing":
+        return True
+    if op == "equals":
+        return _different_value(value)
+    if op == "not_equals":
+        return value
+    if op == "greater_than":
+        return value if isinstance(value, (int, float)) else positive_value
+    if op == "less_than":
+        return value if isinstance(value, (int, float)) else positive_value
+    if op == "greater_or_equal":
+        return value - 1 if isinstance(value, (int, float)) else positive_value
+    if op == "less_or_equal":
+        return value + 1 if isinstance(value, (int, float)) else positive_value
+    if op == "between":
+        if isinstance(value, list) and value:
+            lo = value[0]
+            return lo - 1 if isinstance(lo, (int, float)) else "__aralik_disi__"
+        return "__aralik_disi__"
+    if op == "contains":
+        return []
+    if op == "in":
+        return "__liste_disi__"
+    if op == "not_in":
+        return value[0] if isinstance(value, list) and value else positive_value
+    return _different_value(positive_value)
+
+
+def _positive_facts(rule: dict) -> dict:
+    facts = {}
+    for condition in rule.get("conditions", []):
+        field = condition.get("field")
+        if not field:
+            continue
+        if condition.get("operator") == "missing":
+            facts.pop(field, None)
+            continue
+        facts[field] = _positive_fact_value(condition)
+    return facts
+
+
+def _negative_facts(rule: dict, positive: dict) -> dict:
+    facts = dict(positive)
+    conditions = [
+        c for c in rule.get("conditions", [])
+        if c.get("field") and c.get("field") != "crop_id"
+    ]
+    if not conditions:
+        conditions = [c for c in rule.get("conditions", []) if c.get("field")]
+    if not conditions:
+        return facts
+
+    condition = conditions[0]
+    field = condition["field"]
+    if condition.get("operator") == "exists":
+        facts.pop(field, None)
+    else:
+        facts[field] = _negative_fact_value(condition, facts.get(field))
+    return facts
+
+
+def _test_cases_for_rules(rules: list | None) -> list:
+    cases = []
+    for rule in rules or []:
+        if not isinstance(rule, dict) or not rule.get("id"):
+            continue
+        positive = _positive_facts(rule)
+        cases.append({
+            "id": f"test.{rule['id']}.positive",
+            "rule_id": rule["id"],
+            "facts": positive,
+            "expected_match": True,
+        })
+        cases.append({
+            "id": f"test.{rule['id']}.negative",
+            "rule_id": rule["id"],
+            "facts": _negative_facts(rule, positive),
+            "expected_match": False,
+        })
+    return cases
+
+
 PRIORITY_COMPLETIONS: dict[str, dict] = {
     "crop.tomato": {
         "growth_stages": [
@@ -3398,6 +3532,29 @@ def _with_completion(base: dict) -> dict:
     return merged
 
 
+def _with_test_cases(data: dict) -> dict:
+    merged = dict(data)
+    for key in ("diseases_v2", "pests_v2"):
+        guarded = []
+        for item in merged.get(key, []):
+            if isinstance(item, dict):
+                item = {
+                    **item,
+                    "requires_bku_check": item.get("requires_bku_check", True),
+                    "requires_expert_confirmation":
+                        item.get("requires_expert_confirmation", True),
+                }
+            guarded.append(item)
+        merged[key] = guarded
+    merged["test_cases"] = _test_cases_for_rules(merged.get("rule_engine_rules"))
+    merged["missing_information"] = [
+        item
+        for item in merged.get("missing_information", [])
+        if "test_cases" not in item
+    ]
+    return merged
+
+
 def _replace_or_keep(plant: dict, new_data: dict) -> bool:
     """Plant kaydında v2 alanlarını günceller. Returns True if changed."""
     changed = False
@@ -3434,12 +3591,23 @@ def main() -> int:
 
     data = json.loads(SEED.read_text(encoding="utf-8"))
 
+    schema_changed = False
+    optional = data.setdefault("_schema", {}).setdefault("v2_optional_fields", {})
+    test_case_schema = (
+        "[{id: 'test.{rule_id}.positive|negative', rule_id, facts{}, "
+        "expected_match: bool}] — her rule_engine_rule için pozitif ve "
+        "negatif örnek zorunlu."
+    )
+    if optional.get("test_cases") != test_case_schema:
+        optional["test_cases"] = test_case_schema
+        schema_changed = True
+
     updates: dict[str, dict] = {
-        "crop.tomato": _with_completion(TOMATO_DATA),
-        "crop.corn": _with_completion(CORN_DATA),
-        "crop.sunflower": _with_completion(SUNFLOWER_DATA),
-        "crop.orange": _with_completion(ORANGE_DATA),
-        "crop.tea": _with_completion(TEA_DATA),
+        "crop.tomato": _with_test_cases(_with_completion(TOMATO_DATA)),
+        "crop.corn": _with_test_cases(_with_completion(CORN_DATA)),
+        "crop.sunflower": _with_test_cases(_with_completion(SUNFLOWER_DATA)),
+        "crop.orange": _with_test_cases(_with_completion(ORANGE_DATA)),
+        "crop.tea": _with_test_cases(_with_completion(TEA_DATA)),
     }
 
     changed_plants: list[str] = []
@@ -3452,12 +3620,14 @@ def main() -> int:
                          "weeds_v2", "rule_engine_rules"])
                 changed_plants.append(f"{plant['name_tr']:<10} ({sid}) -> {d} v2 kaydı")
 
-    if not changed_plants:
+    if not changed_plants and not schema_changed:
         print("[OK] Değişiklik yok.")
         return 0
 
     SEED.write_text(_serialize(data), encoding="utf-8")
     print("== populate_priority_crops raporu ==")
+    if schema_changed:
+        print("  + _schema.v2_optional_fields.test_cases eklendi")
     for line in changed_plants:
         print(f"  + {line}")
     print(f"\n[OK] {SEED.name} güncellendi.")

@@ -4884,6 +4884,12 @@ class $FieldPlantInstancesTable extends FieldPlantInstances
   late final GeneratedColumn<String> phenologyStageKey =
       GeneratedColumn<String>('phenology_stage_key', aliasedName, true,
           type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _facingDirectionMeta =
+      const VerificationMeta('facingDirection');
+  @override
+  late final GeneratedColumn<String> facingDirection = GeneratedColumn<String>(
+      'facing_direction', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _lastObservedAtMeta =
       const VerificationMeta('lastObservedAt');
   @override
@@ -4932,6 +4938,7 @@ class $FieldPlantInstancesTable extends FieldPlantInstances
         healthChangedAt,
         conditionFlagsJson,
         phenologyStageKey,
+        facingDirection,
         lastObservedAt,
         farmerUid,
         createdAt,
@@ -5039,6 +5046,12 @@ class $FieldPlantInstancesTable extends FieldPlantInstances
           phenologyStageKey.isAcceptableOrUnknown(
               data['phenology_stage_key']!, _phenologyStageKeyMeta));
     }
+    if (data.containsKey('facing_direction')) {
+      context.handle(
+          _facingDirectionMeta,
+          facingDirection.isAcceptableOrUnknown(
+              data['facing_direction']!, _facingDirectionMeta));
+    }
     if (data.containsKey('last_observed_at')) {
       context.handle(
           _lastObservedAtMeta,
@@ -5106,6 +5119,8 @@ class $FieldPlantInstancesTable extends FieldPlantInstances
           DriftSqlType.string, data['${effectivePrefix}condition_flags_json']),
       phenologyStageKey: attachedDatabase.typeMapping.read(
           DriftSqlType.string, data['${effectivePrefix}phenology_stage_key']),
+      facingDirection: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}facing_direction']),
       lastObservedAt: attachedDatabase.typeMapping.read(
           DriftSqlType.dateTime, data['${effectivePrefix}last_observed_at']),
       farmerUid: attachedDatabase.typeMapping
@@ -5159,6 +5174,10 @@ class FieldPlantInstance extends DataClass
   /// CropGrowthStates.currentStageKey değerinden miras alınır. (v8)
   final String? phenologyStageKey;
 
+  /// Tekil bitkinin baktığı yön. Toplu ekimlerde FieldCrops.facingDirection
+  /// kullanılır; standalone bitkiler kendi yönünü burada tutar. (v10)
+  final String? facingDirection;
+
   /// Son kullanıcı/AI gözlem tarihi — durum geçmişi sıralaması için. (v8)
   final DateTime? lastObservedAt;
   final String? farmerUid;
@@ -5182,6 +5201,7 @@ class FieldPlantInstance extends DataClass
       this.healthChangedAt,
       this.conditionFlagsJson,
       this.phenologyStageKey,
+      this.facingDirection,
       this.lastObservedAt,
       this.farmerUid,
       required this.createdAt,
@@ -5221,6 +5241,9 @@ class FieldPlantInstance extends DataClass
     }
     if (!nullToAbsent || phenologyStageKey != null) {
       map['phenology_stage_key'] = Variable<String>(phenologyStageKey);
+    }
+    if (!nullToAbsent || facingDirection != null) {
+      map['facing_direction'] = Variable<String>(facingDirection);
     }
     if (!nullToAbsent || lastObservedAt != null) {
       map['last_observed_at'] = Variable<DateTime>(lastObservedAt);
@@ -5268,6 +5291,9 @@ class FieldPlantInstance extends DataClass
       phenologyStageKey: phenologyStageKey == null && nullToAbsent
           ? const Value.absent()
           : Value(phenologyStageKey),
+      facingDirection: facingDirection == null && nullToAbsent
+          ? const Value.absent()
+          : Value(facingDirection),
       lastObservedAt: lastObservedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(lastObservedAt),
@@ -5304,6 +5330,7 @@ class FieldPlantInstance extends DataClass
           serializer.fromJson<String?>(json['conditionFlagsJson']),
       phenologyStageKey:
           serializer.fromJson<String?>(json['phenologyStageKey']),
+      facingDirection: serializer.fromJson<String?>(json['facingDirection']),
       lastObservedAt: serializer.fromJson<DateTime?>(json['lastObservedAt']),
       farmerUid: serializer.fromJson<String?>(json['farmerUid']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
@@ -5331,6 +5358,7 @@ class FieldPlantInstance extends DataClass
       'healthChangedAt': serializer.toJson<DateTime?>(healthChangedAt),
       'conditionFlagsJson': serializer.toJson<String?>(conditionFlagsJson),
       'phenologyStageKey': serializer.toJson<String?>(phenologyStageKey),
+      'facingDirection': serializer.toJson<String?>(facingDirection),
       'lastObservedAt': serializer.toJson<DateTime?>(lastObservedAt),
       'farmerUid': serializer.toJson<String?>(farmerUid),
       'createdAt': serializer.toJson<DateTime>(createdAt),
@@ -5356,6 +5384,7 @@ class FieldPlantInstance extends DataClass
           Value<DateTime?> healthChangedAt = const Value.absent(),
           Value<String?> conditionFlagsJson = const Value.absent(),
           Value<String?> phenologyStageKey = const Value.absent(),
+          Value<String?> facingDirection = const Value.absent(),
           Value<DateTime?> lastObservedAt = const Value.absent(),
           Value<String?> farmerUid = const Value.absent(),
           DateTime? createdAt,
@@ -5386,6 +5415,9 @@ class FieldPlantInstance extends DataClass
         phenologyStageKey: phenologyStageKey.present
             ? phenologyStageKey.value
             : this.phenologyStageKey,
+        facingDirection: facingDirection.present
+            ? facingDirection.value
+            : this.facingDirection,
         lastObservedAt:
             lastObservedAt.present ? lastObservedAt.value : this.lastObservedAt,
         farmerUid: farmerUid.present ? farmerUid.value : this.farmerUid,
@@ -5425,6 +5457,9 @@ class FieldPlantInstance extends DataClass
       phenologyStageKey: data.phenologyStageKey.present
           ? data.phenologyStageKey.value
           : this.phenologyStageKey,
+      facingDirection: data.facingDirection.present
+          ? data.facingDirection.value
+          : this.facingDirection,
       lastObservedAt: data.lastObservedAt.present
           ? data.lastObservedAt.value
           : this.lastObservedAt,
@@ -5454,6 +5489,7 @@ class FieldPlantInstance extends DataClass
           ..write('healthChangedAt: $healthChangedAt, ')
           ..write('conditionFlagsJson: $conditionFlagsJson, ')
           ..write('phenologyStageKey: $phenologyStageKey, ')
+          ..write('facingDirection: $facingDirection, ')
           ..write('lastObservedAt: $lastObservedAt, ')
           ..write('farmerUid: $farmerUid, ')
           ..write('createdAt: $createdAt, ')
@@ -5481,6 +5517,7 @@ class FieldPlantInstance extends DataClass
         healthChangedAt,
         conditionFlagsJson,
         phenologyStageKey,
+        facingDirection,
         lastObservedAt,
         farmerUid,
         createdAt,
@@ -5507,6 +5544,7 @@ class FieldPlantInstance extends DataClass
           other.healthChangedAt == this.healthChangedAt &&
           other.conditionFlagsJson == this.conditionFlagsJson &&
           other.phenologyStageKey == this.phenologyStageKey &&
+          other.facingDirection == this.facingDirection &&
           other.lastObservedAt == this.lastObservedAt &&
           other.farmerUid == this.farmerUid &&
           other.createdAt == this.createdAt &&
@@ -5531,6 +5569,7 @@ class FieldPlantInstancesCompanion extends UpdateCompanion<FieldPlantInstance> {
   final Value<DateTime?> healthChangedAt;
   final Value<String?> conditionFlagsJson;
   final Value<String?> phenologyStageKey;
+  final Value<String?> facingDirection;
   final Value<DateTime?> lastObservedAt;
   final Value<String?> farmerUid;
   final Value<DateTime> createdAt;
@@ -5554,6 +5593,7 @@ class FieldPlantInstancesCompanion extends UpdateCompanion<FieldPlantInstance> {
     this.healthChangedAt = const Value.absent(),
     this.conditionFlagsJson = const Value.absent(),
     this.phenologyStageKey = const Value.absent(),
+    this.facingDirection = const Value.absent(),
     this.lastObservedAt = const Value.absent(),
     this.farmerUid = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -5578,6 +5618,7 @@ class FieldPlantInstancesCompanion extends UpdateCompanion<FieldPlantInstance> {
     this.healthChangedAt = const Value.absent(),
     this.conditionFlagsJson = const Value.absent(),
     this.phenologyStageKey = const Value.absent(),
+    this.facingDirection = const Value.absent(),
     this.lastObservedAt = const Value.absent(),
     this.farmerUid = const Value.absent(),
     required DateTime createdAt,
@@ -5609,6 +5650,7 @@ class FieldPlantInstancesCompanion extends UpdateCompanion<FieldPlantInstance> {
     Expression<DateTime>? healthChangedAt,
     Expression<String>? conditionFlagsJson,
     Expression<String>? phenologyStageKey,
+    Expression<String>? facingDirection,
     Expression<DateTime>? lastObservedAt,
     Expression<String>? farmerUid,
     Expression<DateTime>? createdAt,
@@ -5634,6 +5676,7 @@ class FieldPlantInstancesCompanion extends UpdateCompanion<FieldPlantInstance> {
       if (conditionFlagsJson != null)
         'condition_flags_json': conditionFlagsJson,
       if (phenologyStageKey != null) 'phenology_stage_key': phenologyStageKey,
+      if (facingDirection != null) 'facing_direction': facingDirection,
       if (lastObservedAt != null) 'last_observed_at': lastObservedAt,
       if (farmerUid != null) 'farmer_uid': farmerUid,
       if (createdAt != null) 'created_at': createdAt,
@@ -5660,6 +5703,7 @@ class FieldPlantInstancesCompanion extends UpdateCompanion<FieldPlantInstance> {
       Value<DateTime?>? healthChangedAt,
       Value<String?>? conditionFlagsJson,
       Value<String?>? phenologyStageKey,
+      Value<String?>? facingDirection,
       Value<DateTime?>? lastObservedAt,
       Value<String?>? farmerUid,
       Value<DateTime>? createdAt,
@@ -5683,6 +5727,7 @@ class FieldPlantInstancesCompanion extends UpdateCompanion<FieldPlantInstance> {
       healthChangedAt: healthChangedAt ?? this.healthChangedAt,
       conditionFlagsJson: conditionFlagsJson ?? this.conditionFlagsJson,
       phenologyStageKey: phenologyStageKey ?? this.phenologyStageKey,
+      facingDirection: facingDirection ?? this.facingDirection,
       lastObservedAt: lastObservedAt ?? this.lastObservedAt,
       farmerUid: farmerUid ?? this.farmerUid,
       createdAt: createdAt ?? this.createdAt,
@@ -5743,6 +5788,9 @@ class FieldPlantInstancesCompanion extends UpdateCompanion<FieldPlantInstance> {
     if (phenologyStageKey.present) {
       map['phenology_stage_key'] = Variable<String>(phenologyStageKey.value);
     }
+    if (facingDirection.present) {
+      map['facing_direction'] = Variable<String>(facingDirection.value);
+    }
     if (lastObservedAt.present) {
       map['last_observed_at'] = Variable<DateTime>(lastObservedAt.value);
     }
@@ -5783,6 +5831,7 @@ class FieldPlantInstancesCompanion extends UpdateCompanion<FieldPlantInstance> {
           ..write('healthChangedAt: $healthChangedAt, ')
           ..write('conditionFlagsJson: $conditionFlagsJson, ')
           ..write('phenologyStageKey: $phenologyStageKey, ')
+          ..write('facingDirection: $facingDirection, ')
           ..write('lastObservedAt: $lastObservedAt, ')
           ..write('farmerUid: $farmerUid, ')
           ..write('createdAt: $createdAt, ')
@@ -9878,6 +9927,7 @@ typedef $$FieldPlantInstancesTableCreateCompanionBuilder
   Value<DateTime?> healthChangedAt,
   Value<String?> conditionFlagsJson,
   Value<String?> phenologyStageKey,
+  Value<String?> facingDirection,
   Value<DateTime?> lastObservedAt,
   Value<String?> farmerUid,
   required DateTime createdAt,
@@ -9903,6 +9953,7 @@ typedef $$FieldPlantInstancesTableUpdateCompanionBuilder
   Value<DateTime?> healthChangedAt,
   Value<String?> conditionFlagsJson,
   Value<String?> phenologyStageKey,
+  Value<String?> facingDirection,
   Value<DateTime?> lastObservedAt,
   Value<String?> farmerUid,
   Value<DateTime> createdAt,
@@ -10000,6 +10051,10 @@ class $$FieldPlantInstancesTableFilterComposer
 
   ColumnFilters<String> get phenologyStageKey => $composableBuilder(
       column: $table.phenologyStageKey,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get facingDirection => $composableBuilder(
+      column: $table.facingDirection,
       builder: (column) => ColumnFilters(column));
 
   ColumnFilters<DateTime> get lastObservedAt => $composableBuilder(
@@ -10116,6 +10171,10 @@ class $$FieldPlantInstancesTableOrderingComposer
       column: $table.phenologyStageKey,
       builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get facingDirection => $composableBuilder(
+      column: $table.facingDirection,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<DateTime> get lastObservedAt => $composableBuilder(
       column: $table.lastObservedAt,
       builder: (column) => ColumnOrderings(column));
@@ -10224,6 +10283,9 @@ class $$FieldPlantInstancesTableAnnotationComposer
   GeneratedColumn<String> get phenologyStageKey => $composableBuilder(
       column: $table.phenologyStageKey, builder: (column) => column);
 
+  GeneratedColumn<String> get facingDirection => $composableBuilder(
+      column: $table.facingDirection, builder: (column) => column);
+
   GeneratedColumn<DateTime> get lastObservedAt => $composableBuilder(
       column: $table.lastObservedAt, builder: (column) => column);
 
@@ -10322,6 +10384,7 @@ class $$FieldPlantInstancesTableTableManager extends RootTableManager<
             Value<DateTime?> healthChangedAt = const Value.absent(),
             Value<String?> conditionFlagsJson = const Value.absent(),
             Value<String?> phenologyStageKey = const Value.absent(),
+            Value<String?> facingDirection = const Value.absent(),
             Value<DateTime?> lastObservedAt = const Value.absent(),
             Value<String?> farmerUid = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
@@ -10346,6 +10409,7 @@ class $$FieldPlantInstancesTableTableManager extends RootTableManager<
             healthChangedAt: healthChangedAt,
             conditionFlagsJson: conditionFlagsJson,
             phenologyStageKey: phenologyStageKey,
+            facingDirection: facingDirection,
             lastObservedAt: lastObservedAt,
             farmerUid: farmerUid,
             createdAt: createdAt,
@@ -10370,6 +10434,7 @@ class $$FieldPlantInstancesTableTableManager extends RootTableManager<
             Value<DateTime?> healthChangedAt = const Value.absent(),
             Value<String?> conditionFlagsJson = const Value.absent(),
             Value<String?> phenologyStageKey = const Value.absent(),
+            Value<String?> facingDirection = const Value.absent(),
             Value<DateTime?> lastObservedAt = const Value.absent(),
             Value<String?> farmerUid = const Value.absent(),
             required DateTime createdAt,
@@ -10394,6 +10459,7 @@ class $$FieldPlantInstancesTableTableManager extends RootTableManager<
             healthChangedAt: healthChangedAt,
             conditionFlagsJson: conditionFlagsJson,
             phenologyStageKey: phenologyStageKey,
+            facingDirection: facingDirection,
             lastObservedAt: lastObservedAt,
             farmerUid: farmerUid,
             createdAt: createdAt,

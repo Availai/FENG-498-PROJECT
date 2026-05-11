@@ -46,15 +46,15 @@ class HelpContent {
         title: 'Acil iş nerede görünür?',
         description:
             '"Bugün Yapılacaklar" bölümünde sulama, gübreleme, ilaçlama ve hasat işleri çıkar. '
-            'Aynı işlerin tarla detayındaki "Rehber" düğmesinde daha ayrıntılı açıklaması bulunur.',
+            'Aynı işlerin tarla detayındaki "Takip" düğmesinde daha ayrıntılı açıklaması bulunur.',
       ),
       HelpItem(
         icon: Icons.add_task_rounded,
         iconColor: Color(0xFFE67E22),
         title: 'Yaptığınız işi nereden kaydedersiniz?',
         description:
-            'Tarla kartındaki kayıt kısa yolunu veya tarla detayındaki "Kayıt" düğmesini kullanın. '
-            'Kayıt girince rehber, sulama ve büyüme göstergeleri kendini günceller.',
+            'Tarla kartındaki kayıt kısa yolunu veya tarla detayındaki "Aktivite" düğmesini kullanın. '
+            'Aktivite girince Takip ekranındaki tavsiyeler ve büyüme göstergeleri kendini günceller.',
       ),
     ],
     items: [
@@ -82,12 +82,12 @@ class HelpContent {
             'Karta tıklayarak o tarlaya ait detaylar, ekim bilgisi ve günlük rehbere ulaşabilirsiniz.',
       ),
       HelpItem(
-        icon: Icons.assistant_rounded,
+        icon: Icons.monitor_heart_rounded,
         iconColor: Color(0xFF2E7D32),
-        title: 'Rehbere Git Bağlantısı',
+        title: 'Takibe Git Bağlantısı',
         description:
-            'Her tarla kartında uyarı sayısını gösteren "Rehber" düğmesi bulunur. '
-            'Düğmeye basarak o tarlaya ait "Bugünün Rehberi" ekranına doğrudan atlarsınız.',
+            'Her tarla kartında uyarı sayısını gösteren "Takip" düğmesi bulunur. '
+            'Düğmeye basarak o tarlanın canlı sulama, hastalık ve gübreleme takip ekranına atlarsınız.',
       ),
       HelpItem(
         icon: Icons.refresh_rounded,
@@ -302,7 +302,7 @@ class HelpContent {
         iconColor: Color(0xFFE67E22),
         title: 'Bir işi yaptıysanız',
         description:
-            '"Kayıt" düğmesiyle sulama, gübreleme, ilaçlama, hasat veya gözlem girin. Bu kayıtlar günlük rehberde ve tarla günlüğünde görünür.',
+            '"Aktivite" düğmesiyle sulama, gübreleme, ilaçlama, hasat veya gözlem girin. Her aktivite Takip ekranındaki ilgili tavsiyeyi anında kapatır.',
       ),
       HelpItem(
         icon: Icons.event_note_rounded,
@@ -352,11 +352,13 @@ class HelpContent {
             '"Sil" düğmesiyle ise hepsini birden silebilirsiniz.',
       ),
       HelpItem(
-        icon: Icons.assistant_rounded,
+        icon: Icons.monitor_heart_rounded,
         iconColor: Color(0xFF2E7D32),
-        title: 'Günlük Rehber',
-        description: 'Alt bardaki "Rehber" düğmesi bugünün tavsiyelerini açar. '
-            'Bu ekranda tarlaya özel görevler, hava uyarıları, bitki sağlığı durumu ve uygulamalı tarım önerileri bir arada sunulur.',
+        title: 'Tarla Takibi',
+        description:
+            'Alt bardaki "Takip" düğmesi tarlanın canlı durumunu açar. '
+            'Bu ekranda tarlaya özel sulama, gübreleme, hastalık takibi ve hava uyarıları bir arada akar; '
+            'her yeni kayıttan sonra liste otomatik tazelenir.',
       ),
       HelpItem(
         icon: Icons.stacked_line_chart_rounded,
@@ -369,11 +371,11 @@ class HelpContent {
       HelpItem(
         icon: Icons.event_note_rounded,
         iconColor: Color(0xFF8D6E63),
-        title: 'Kayıt — Aktivite Girişi',
+        title: 'Aktivite Girişi',
         description:
-            'Alt bardaki "Kayıt" düğmesiyle sulama, gübreleme, ilaçlama ve hasat gibi faaliyetleri kayıt altına alın. '
-            'Her kayıt büyüme motorunu canlı olarak günceller: "Suladım" dediğinizde '
-            'su açığı göstergesi ve rehber önerisi anında değişir.',
+            'Alt bardaki "Aktivite" düğmesiyle sulama, gübreleme, ilaçlama ve hasat gibi faaliyetleri kayıt altına alın. '
+            'Her aktivite hem büyüme motorunu hem de Takip ekranını canlı günceller: "Suladım" dediğinizde '
+            'su açığı göstergesi ve sulama tavsiyesi anında düşer.',
       ),
       HelpItem(
         icon: Icons.account_balance_wallet_rounded,
@@ -668,12 +670,12 @@ class HelpContent {
             'Bir sonraki işleme kaç gün kaldığı ve tahmini miktar da listelenir.',
       ),
       HelpItem(
-        icon: Icons.assistant_rounded,
+        icon: Icons.monitor_heart_rounded,
         iconColor: Color(0xFF2E7D32),
-        title: 'Bugünün Rehberi\'ne Git',
+        title: 'Takip Ekranına Git',
         description:
-            'Her tarla kartındaki "Rehber" düğmesine basarak o tarlaya özel '
-            '"Bugünün Rehberi" ekranına geçin. Detaylı görevler ve hava uyarıları orada görünür.',
+            'Her tarla kartındaki "Takip" düğmesine basarak o tarlaya özel canlı '
+            'sulama, gübreleme ve hastalık takip ekranına geçin. Detaylı görevler ve hava uyarıları orada görünür.',
       ),
       HelpItem(
         icon: Icons.book_rounded,

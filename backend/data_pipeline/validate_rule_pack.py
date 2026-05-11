@@ -123,6 +123,121 @@ def _validate_rule_engine_rule(rule: dict, ctx: str,
                         f"requires_bku_check true olmalı (sec 17).")
 
 
+def _as_num(value: object) -> float | None:
+    if isinstance(value, bool):
+        return 1.0 if value else 0.0
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, str):
+        try:
+            return float(value)
+        except ValueError:
+            return None
+    return None
+
+
+def _condition_matches(cond: dict, facts: dict) -> bool:
+    field = cond.get("field")
+    op = cond.get("operator", "equals")
+    expected = cond.get("value")
+    actual = facts.get(field)
+
+    if op == "exists":
+        return actual is not None
+    if op == "missing":
+        return actual is None
+    if op == "equals":
+        return actual == expected
+    if op == "not_equals":
+        return actual != expected
+    if op == "greater_than":
+        a, e = _as_num(actual), _as_num(expected)
+        return a is not None and e is not None and a > e
+    if op == "less_than":
+        a, e = _as_num(actual), _as_num(expected)
+        return a is not None and e is not None and a < e
+    if op == "greater_or_equal":
+        a, e = _as_num(actual), _as_num(expected)
+        return a is not None and e is not None and a >= e
+    if op == "less_or_equal":
+        a, e = _as_num(actual), _as_num(expected)
+        return a is not None and e is not None and a <= e
+    if op == "between":
+        if not isinstance(expected, list) or len(expected) != 2:
+            return False
+        a, lo, hi = _as_num(actual), _as_num(expected[0]), _as_num(expected[1])
+        return a is not None and lo is not None and hi is not None and lo <= a <= hi
+    if op == "contains":
+        if isinstance(actual, list):
+            return expected in actual
+        if isinstance(actual, str) and isinstance(expected, str):
+            return expected in actual
+        return False
+    if op == "in":
+        return isinstance(expected, list) and actual in expected
+    if op == "not_in":
+        return isinstance(expected, list) and actual not in expected
+    return False
+
+
+def _rule_matches(rule: dict, facts: dict) -> bool:
+    return all(_condition_matches(c, facts) for c in rule.get("conditions", []))
+
+
+def _validate_test_cases(plant: dict, ctx: str, rep: Report) -> None:
+    rules = {
+        rule.get("id"): rule
+        for rule in plant.get("rule_engine_rules", [])
+        if isinstance(rule, dict) and rule.get("id")
+    }
+    if not rules:
+        return
+
+    cases = plant.get("test_cases")
+    if not isinstance(cases, list) or not cases:
+        rep.err(f"{ctx}.test_cases: her rule_engine_rule için test case zorunlu.")
+        return
+
+    by_rule: dict[str, set[bool]] = {rule_id: set() for rule_id in rules}
+    seen_case_ids: set[str] = set()
+    for i, case in enumerate(cases):
+        sub = f"{ctx}.test_cases[{i}]"
+        if not isinstance(case, dict):
+            rep.err(f"{sub}: dict olmalı.")
+            continue
+
+        case_id = case.get("id", "")
+        _validate_stable_id(case_id, f"{sub}.id", rep)
+        if not str(case_id).startswith("test."):
+            rep.err(f"{sub}.id: 'test.*' ile başlamalı.")
+        if case_id in seen_case_ids:
+            rep.err(f"{sub}.id: tekrarlanmış test id '{case_id}'.")
+        seen_case_ids.add(case_id)
+
+        rule_id = case.get("rule_id")
+        if rule_id not in rules:
+            rep.err(f"{sub}.rule_id: rule_engine_rules içinde yok ('{rule_id}').")
+            continue
+
+        facts = case.get("facts")
+        if not isinstance(facts, dict):
+            rep.err(f"{sub}.facts: dict olmalı.")
+            continue
+        expected = case.get("expected_match")
+        if not isinstance(expected, bool):
+            rep.err(f"{sub}.expected_match: bool olmalı.")
+            continue
+
+        actual = _rule_matches(rules[rule_id], facts)
+        if actual != expected:
+            rep.err(f"{sub}: beklenen eşleşme {expected}, hesaplanan {actual}.")
+        by_rule[rule_id].add(expected)
+
+    for rule_id, outcomes in by_rule.items():
+        if outcomes != {False, True}:
+            rep.err(f"{ctx}.test_cases: '{rule_id}' için pozitif ve negatif test zorunlu.")
+
+
 def validate_sources(sources_doc: dict, rep: Report) -> set[str]:
     known: set[str] = set()
     src_list = sources_doc.get("sources", [])
@@ -214,6 +329,7 @@ def validate_priority_crops(seed_doc: dict, known_source_ids: set[str],
         for i, r in enumerate(plant.get("rule_engine_rules", [])):
             _validate_rule_engine_rule(r, f"{ctx}.rule_engine_rules[{i}]",
                                        known_source_ids, rep)
+        _validate_test_cases(plant, ctx, rep)
 
         # Fenoloji — her aşamada key + label_tr beklenir
         for i, gs in enumerate(plant.get("growth_stages", [])):

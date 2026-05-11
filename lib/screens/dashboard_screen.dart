@@ -400,7 +400,7 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
                             color: AppColors.emerald,
                             title: 'İşler nerede görünür?',
                             message:
-                                'Acil sulama, gübreleme ve hasat işleri "Bugün Yapılacaklar" bölümünde çıkar. Bir tarlanın ayrıntısı için kartındaki "Rehber" düğmesine dokunun.',
+                                'Acil sulama, gübreleme ve hasat işleri "Bugün Yapılacaklar" bölümünde çıkar. Bir tarlanın ayrıntısı için kartındaki "Takip" düğmesine dokunun.',
                           ),
                           const SizedBox(height: 16),
                           _buildFieldOverview(),

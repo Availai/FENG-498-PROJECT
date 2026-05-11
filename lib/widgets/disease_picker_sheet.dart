@@ -156,8 +156,8 @@ class _DiseasePickerSheetState extends State<DiseasePickerSheet> {
                 ),
                 child: Text(
                   widget.diseaseOptions.isEmpty
-                      ? 'Bu bitki için kaynaklı hastalık profili yok; hastalık adı uydurulmadan gözlem kaydedilir.'
-                      : 'Liste, bu bitki için kaynaklı JSON hastalıklarından gelir.',
+                      ? 'Bu bitki için doğrulanmış hastalık listesi yok; gözlemi not olarak kaydedebilirsiniz.'
+                      : 'Liste, bu bitki için doğrulanmış hastalık kayıtlarından hazırlanır.',
                   style: AppText.sm(context).copyWith(
                     color: AppColors.textSecondary,
                     fontWeight: FontWeight.w600,

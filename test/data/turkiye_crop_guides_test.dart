@@ -9,10 +9,14 @@ void main() {
       expect(TurkiyeCropGuides.lookup('mısır')?.id, 'misir');
       expect(TurkiyeCropGuides.lookup('misir')?.id, 'misir');
       expect(TurkiyeCropGuides.lookup('domates')?.id, 'domates');
+      expect(TurkiyeCropGuides.lookup('portakal')?.id, 'portakal');
+      expect(TurkiyeCropGuides.lookup('turunçgil')?.id, 'portakal');
+      expect(TurkiyeCropGuides.lookup('çay')?.id, 'cay');
+      expect(TurkiyeCropGuides.lookup('cay')?.id, 'cay');
     });
 
-    test('Üç ürün için teknik ölçüler doludur', () {
-      for (final name in ['ayçiçeği', 'domates', 'mısır']) {
+    test('Beş asset bitkisi için teknik ölçüler doludur', () {
+      for (final name in ['ayçiçeği', 'domates', 'mısır', 'portakal', 'çay']) {
         final guide = TurkiyeCropGuides.lookup(name);
         expect(guide, isNotNull);
         expect(guide!.technicalMetrics, isNotEmpty);

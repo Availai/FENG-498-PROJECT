@@ -231,6 +231,10 @@ class FieldPlantInstances extends Table {
   /// CropGrowthStates.currentStageKey değerinden miras alınır. (v8)
   TextColumn get phenologyStageKey => text().nullable()();
 
+  /// Tekil bitkinin baktığı yön. Toplu ekimlerde FieldCrops.facingDirection
+  /// kullanılır; standalone bitkiler kendi yönünü burada tutar. (v10)
+  TextColumn get facingDirection => text().nullable()();
+
   /// Son kullanıcı/AI gözlem tarihi — durum geçmişi sıralaması için. (v8)
   DateTimeColumn get lastObservedAt => dateTime().nullable()();
   TextColumn get farmerUid => text().nullable()();
@@ -310,7 +314,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 10;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -354,25 +358,28 @@ class AppDatabase extends _$AppDatabase {
             }
             if (from < 8) {
               // v8: aktivite kapsamı + tekil-bitki scope + alt-tip + foto + not.
-              await m.addColumn(
-                  calendarEvents, calendarEvents.targetScope);
-              await m.addColumn(
-                  calendarEvents, calendarEvents.plantInstanceId);
+              await m.addColumn(calendarEvents, calendarEvents.targetScope);
+              await m.addColumn(calendarEvents, calendarEvents.plantInstanceId);
               await m.addColumn(calendarEvents, calendarEvents.subtype);
               await m.addColumn(calendarEvents, calendarEvents.photoPath);
               await m.addColumn(calendarEvents, calendarEvents.noteText);
               // v8: tekil bitki nüans bayrakları + fenoloji override + son
               // gözlem zamanı.
-              await m.addColumn(fieldPlantInstances,
-                  fieldPlantInstances.conditionFlagsJson);
-              await m.addColumn(fieldPlantInstances,
-                  fieldPlantInstances.phenologyStageKey);
+              await m.addColumn(
+                  fieldPlantInstances, fieldPlantInstances.conditionFlagsJson);
+              await m.addColumn(
+                  fieldPlantInstances, fieldPlantInstances.phenologyStageKey);
               await m.addColumn(
                   fieldPlantInstances, fieldPlantInstances.lastObservedAt);
             }
             if (from < 9) {
               // v9: tekil bitki durum gözlem geçmişi tablosu.
               await m.createTable(plantConditionEvents);
+            }
+            if (from < 10) {
+              // v10: standalone tekil bitkiler için baktığı yön oku.
+              await m.addColumn(
+                  fieldPlantInstances, fieldPlantInstances.facingDirection);
             }
           } catch (e, st) {
             debugPrint('Drift migration $from→$to hata: $e\n$st');

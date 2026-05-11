@@ -599,9 +599,8 @@ class _DeadPlantRemovalAlertState
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : const Icon(Icons.check_rounded),
-            label: Text(_logging
-                ? 'Kaydediliyor...'
-                : 'Söktüm, haritadan kaldır'),
+            label:
+                Text(_logging ? 'Kaydediliyor...' : 'Söktüm, haritadan kaldır'),
             style: FilledButton.styleFrom(
               backgroundColor: Colors.white,
               foregroundColor: Colors.black,
@@ -684,14 +683,15 @@ class _PlantHealthAlertState extends ConsumerState<_PlantHealthAlert> {
     CropV2Bundle v2,
     Map<String, dynamic>? disease,
   ) {
-    final title = disease?['name_tr']?.toString() ?? 'Kaynaklı hastalık gözlemi';
+    final title =
+        disease?['name_tr']?.toString() ?? 'Kaynaklı hastalık gözlemi';
     final summary = disease?['summary']?.toString();
-    final controls = ((disease?['control_methods_cultural'] as List?) ??
-            const [])
-        .map((e) => e?.toString() ?? '')
-        .where((e) => e.isNotEmpty)
-        .take(4)
-        .toList(growable: false);
+    final controls =
+        ((disease?['control_methods_cultural'] as List?) ?? const [])
+            .map((e) => e?.toString() ?? '')
+            .where((e) => e.isNotEmpty)
+            .take(4)
+            .toList(growable: false);
     final requiresBku = disease?['requires_bku_check'] == true;
     final requiresExpert = disease?['requires_expert_confirmation'] == true;
 
@@ -725,7 +725,7 @@ class _PlantHealthAlertState extends ConsumerState<_PlantHealthAlert> {
           const SizedBox(height: 8),
           Text(
             summary ??
-                'Bu kart yalnızca kaynaklı JSON kaydındaki hastalık adlarıyla çalışır; kaynakta olmayan hastalık adı uydurulmaz.',
+                'Bu hastalık için doğrulanmış kısa açıklama henüz eklenmedi. Belirtiyi kayda alın; yayılım varsa ziraat mühendisi veya il/ilçe tarım müdürlüğüyle doğrulayın.',
             style: AppText.sm(context).copyWith(
               color: AppColors.textSecondary,
               height: 1.35,
@@ -784,8 +784,8 @@ class _PlantHealthAlertState extends ConsumerState<_PlantHealthAlert> {
                     children: [
                       const Padding(
                         padding: EdgeInsets.only(top: 7),
-                        child: Icon(Icons.circle,
-                            size: 5, color: AppColors.error),
+                        child:
+                            Icon(Icons.circle, size: 5, color: AppColors.error),
                       ),
                       const SizedBox(width: 8),
                       Expanded(
@@ -806,12 +806,11 @@ class _PlantHealthAlertState extends ConsumerState<_PlantHealthAlert> {
             spacing: 6,
             runSpacing: 6,
             children: [
-              _Pill(label: 'Kaynaklı JSON', color: AppColors.emeraldDark),
-              if (requiresBku) _Pill(label: 'BKÜ kontrolü', color: AppColors.error),
+              _Pill(label: 'Doğrulanmış bilgi', color: AppColors.emeraldDark),
+              if (requiresBku)
+                _Pill(label: 'BKÜ kontrolü', color: AppColors.error),
               if (requiresExpert)
                 _Pill(label: 'Uzman onayı', color: Colors.indigo),
-              if (v2.confidence != null)
-                _Pill(label: 'Güven: ${v2.confidence}', color: Colors.blueGrey),
             ],
           ),
         ],

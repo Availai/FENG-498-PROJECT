@@ -88,6 +88,83 @@
       "retrieved_at": "2026-05-06",
       "reliability": "high",
       "notes": "Portakal, mandalina, limon, greyfurt için. URL doğrulandı; PDF OCR edilemedi."
+    },
+    {
+      "id": "source.batem.orange_cultivation_2020",
+      "title": "Portakal Yetiştiriciliği",
+      "institution": "T.C. Tarım ve Orman Bakanlığı / TAGEM / Batı Akdeniz Tarımsal Araştırma Enstitüsü",
+      "source_type": "research_institute",
+      "url": "https://arastirma.tarimorman.gov.tr/batem/Belgeler/Kutuphane/Teknik%20Bilgiler/Portakal%20Yeti%C5%9Ftiricili%C4%9Fi.pdf",
+      "publication_year": 2020,
+      "retrieved_at": "2026-05-11",
+      "reliability": "high",
+      "notes": "Portakal çeşitleri, Türkiye üretim alanları, hasat dönemi ve yetiştiricilik bilgileri için eklendi."
+    },
+    {
+      "id": "source.tagem.citrus_sector_policy_2025_2029",
+      "title": "Turunçgil Sektör Politika Belgesi 2025-2029",
+      "institution": "T.C. Tarım ve Orman Bakanlığı / TAGEM",
+      "source_type": "official",
+      "url": "https://www.tarimorman.gov.tr/TAGEM/Belgeler/yayin/Turun%C3%A7gil%20Sekt%C3%B6r%20Politika%20Belgesi%20%282025-2029%29.pdf",
+      "publication_year": 2025,
+      "retrieved_at": "2026-05-11",
+      "reliability": "high",
+      "notes": "Turunçgil ekolojisi, sektör durumu ve bölgesel değerlendirme için destekleyici resmi kaynak."
+    },
+    {
+      "id": "source.bugem.citrus_farmer_training_2012",
+      "title": "Turunçgil Yetiştiriciliği",
+      "institution": "T.C. Tarım ve Orman Bakanlığı / Eğitim, Yayım ve Yayınlar Dairesi Başkanlığı",
+      "source_type": "official",
+      "url": "https://kutuphane.tarimorman.gov.tr/vufind/Record/1177802",
+      "publication_year": 2012,
+      "retrieved_at": "2026-05-11",
+      "reliability": "high",
+      "notes": "Çiftçi eğitim serisi kaydı; turunçgil çeşitleri, hastalıkları ve zararlıları için kaynakça takibi."
+    },
+    {
+      "id": "source.gkgm.citrus_producer_info",
+      "title": "Turunçgil Üretici Bilgi Köşesi Dokümanı",
+      "institution": "T.C. Tarım ve Orman Bakanlığı / Gıda ve Kontrol Genel Müdürlüğü",
+      "source_type": "official",
+      "url": "https://www.tarimorman.gov.tr/GKGM/Belgeler/Uretici_Bilgi_Kosesi/Dokumanlar/temp/turuncgil.pdf",
+      "publication_year": null,
+      "retrieved_at": "2026-05-11",
+      "reliability": "high",
+      "notes": "Turunçgil yetiştiriciliği, hastalık ve zararlı başlıkları için resmi üretici bilgi dokümanı; site PDF isteğini araçta reddettiği için içerik doğrudan işlenmedi."
+    },
+    {
+      "id": "source.caykur.tea_producer_handbook_1983",
+      "title": "Çay Üreticisi El Kitabı",
+      "institution": "ÇAYKUR (Çay İşletmeleri Genel Müdürlüğü)",
+      "source_type": "public_agency",
+      "url": "https://kutuphane.tarimorman.gov.tr/vufind/Record/14454",
+      "publication_year": 1983,
+      "retrieved_at": "2026-05-11",
+      "reliability": "high",
+      "notes": "Çaylık tesisi ve çayın üretilmesi için ÇAYKUR yayını; güncel ÇAYKUR 2025 ders notlarına destekleyici kaynak."
+    },
+    {
+      "id": "source.tarim.tea_cultivation_brochure_1962",
+      "title": "Çay Yetiştiriciliği",
+      "institution": "T.C. Tarım Bakanlığı",
+      "source_type": "official",
+      "url": "https://kutuphane.tarimorman.gov.tr/vufind/Record/19301",
+      "publication_year": 1962,
+      "retrieved_at": "2026-05-11",
+      "reliability": "medium",
+      "notes": "Tarihsel çiftçi broşürü; güncel uygulama kararı için tek başına kullanılmaz."
+    },
+    {
+      "id": "source.rize_tarim.tea_ph_liming_2021",
+      "title": "Çayda Dolomit Kalsiyum Granül Oksit Formunda Tarım Kireci Uygulaması Yerinde İncelendi",
+      "institution": "T.C. Tarım ve Orman Bakanlığı / Rize İl Tarım ve Orman Müdürlüğü",
+      "source_type": "official",
+      "url": "https://rize.tarimorman.gov.tr/Haber/650/Cayda-Dolomit-Kalsiyum-Granul-Oksit-Formunda-Tarim-Kireci-Uygulanmasi-Yerinde-Incelendi",
+      "publication_year": 2021,
+      "retrieved_at": "2026-05-11",
+      "reliability": "high",
+      "notes": "Çayda düşük pH düzeltmesi ve sürdürülebilir pH hedefi için resmi il müdürlüğü haberi."
     }
   ]
 }

@@ -1,7 +1,7 @@
 /// Türkiye koşullarına göre hazırlanmış çevrimdışı ürün rehberleri.
 ///
 /// Bu veri katmanı, mobil rehber ekranının internet olmadan da ayçiçeği,
-/// domates ve mısır için teknik, ürün özelinde ve Türkiye standartlarına
+/// domates, mısır, portakal ve çay için teknik, ürün özelinde ve Türkiye standartlarına
 /// yakın bilgi gösterebilmesi için kullanılır.
 library;
 
@@ -110,6 +110,10 @@ class TurkiyeCropGuide {
   final String scientificName;
   final String category;
   final String summary;
+  final String lifeCycle;
+  final String sunlight;
+  final String growthSpeed;
+  final String careLevel;
   final List<String> sourceRefs;
   final String sowingWindow;
   final String harvestWindow;
@@ -150,6 +154,10 @@ class TurkiyeCropGuide {
     required this.scientificName,
     required this.category,
     required this.summary,
+    this.lifeCycle = 'Tek yıllık',
+    this.sunlight = 'Tam güneş',
+    this.growthSpeed = 'Orta-Hızlı',
+    this.careLevel = 'Orta',
     required this.sourceRefs,
     required this.sowingWindow,
     required this.harvestWindow,
@@ -201,10 +209,10 @@ class TurkiyeCropGuide {
   Map<String, dynamic> get cropDataOverrides => {
         'scientific': scientificName,
         'desc': summary,
-        'cycle': 'Tek yıllık',
-        'sunlight': 'Tam güneş',
-        'growth': 'Orta-Hızlı',
-        'care': category == 'Sebze' ? 'Orta-Yüksek' : 'Orta',
+        'cycle': lifeCycle,
+        'sunlight': sunlight,
+        'growth': growthSpeed,
+        'care': careLevel,
         'indoor': false,
         'drought': droughtTolerant,
         'pruning': pruning,
@@ -527,8 +535,11 @@ class TurkiyeCropGuides {
       category: 'Sebze',
       summary:
           'Domates açık tarla ve örtü altı üretimde yüksek bakım isteyen, sıcak-ılıman iklim bitkisidir. Don, düzensiz sulama, aşırı nem ve kalsiyum dengesizliği kaliteyi hızla bozar; verim için fide kalitesi, destek, havalanma, dengeli sulama ve entegre zararlı takibi birlikte yürütülmelidir.',
+      careLevel: 'Orta-Yüksek',
       sourceRefs: [
         'TAGEM Açık Alan Domates Entegre Mücadele Teknik Talimatı, 2022',
+        'TAGEM Örtüaltı Sebze Entegre Mücadele Teknik Talimatı',
+        'Tarım ve Orman Bakanlığı Merkez Kütüphanesi, Domates yetiştiriciliği kaynak kayıtları',
         'Tarım ve Orman Bakanlığı il müdürlükleri açıkta domates yetiştiriciliği broşürleri',
       ],
       sowingWindow:
@@ -706,6 +717,8 @@ class TurkiyeCropGuides {
           'Mısır Türkiye’nin hemen her bölgesinde yetiştirilebilen, sıcak isteyen ve su-besin talebi yüksek bir tahıldır. Tepe püskülü, koçan bağlama ve tane dolumu dönemlerinde su stresi verimi doğrudan düşürür; düzgün bitki sıklığı, çinko takibi ve bölünmüş azot yönetimi ana başarı noktalarıdır.',
       sourceRefs: [
         'TAGEM Mısır Entegre Mücadele Teknik Talimatı, 2022',
+        'Tarım ve Orman Bakanlığı Eğitim, Yayım ve Yayınlar Dairesi, Mısır Yetiştiriciliği, 2012',
+        'Tohumluk Tescil ve Sertifikasyon Merkez Müdürlüğü Mısır Teknik Talimatı',
         'Trakya Tarımsal Araştırma Enstitüsü Mısır Tarımı notları',
       ],
       sowingWindow:
@@ -864,6 +877,390 @@ class TurkiyeCropGuides {
           timing: 'Püskül öncesi',
           recommendation:
               'Kalan azot ve kritik sulama tamamlanır; bu dönem verim potansiyeli için belirleyicidir.',
+        ),
+      ],
+    ),
+    TurkiyeCropGuide(
+      id: 'portakal',
+      cropName: 'Portakal',
+      aliases: [
+        'orange',
+        'citrus',
+        'turuncgil',
+        'turunçgil',
+        'narenciye',
+        'washington navel',
+        'valencia'
+      ],
+      scientificName: 'Citrus sinensis (L.) Osbeck',
+      category: 'Meyve',
+      lifeCycle: 'Çok yıllık ağaç',
+      sunlight: 'Tam güneş',
+      growthSpeed: 'Yavaş-Orta',
+      careLevel: 'Orta-Yüksek',
+      summary:
+          'Portakal Türkiye’de ağırlıkla Akdeniz ve Ege kıyı kuşağında yetişen çok yıllık turunçgil ağacıdır. Verim ve kalite; don riskinden korunmuş bahçe yeri, derin ve iyi drene toprak, uygun anaç, düzenli yaz sulaması, dengeli besleme ve hasatta çeşide göre doğru zamanlama ile korunur.',
+      sourceRefs: [
+        'BATEM Portakal Yetiştiriciliği, 2020',
+        'TAGEM Turunçgil Entegre Mücadele Teknik Talimatı',
+        'Tarım ve Orman Bakanlığı GKGM Turunçgil Üretici Bilgi Köşesi',
+        'TAGEM Turunçgil Sektör Politika Belgesi 2025-2029',
+      ],
+      sowingWindow:
+          'Aşılı fidan: don riski geçince Şubat-Mart; ılıman sahilde Ekim-Kasım',
+      harvestWindow:
+          'Kasım-Mayıs; Washington Navel kış, Valencia Late geç dönem',
+      sowingDepthCm: 60,
+      rowSpacingCm: 600,
+      plantSpacingCm: 500,
+      seedOrSeedlingRate: '5 x 6 m dikimde yaklaşık 33 ağaç/da aşılı fidan',
+      plantPopulationPerDekar: 33,
+      idealPhMin: 6,
+      idealPhMax: 6.5,
+      idealTempMin: 13,
+      idealTempMax: 32,
+      harvestDays: 1460,
+      seasonalWaterMm: 750,
+      irrigationSummary:
+          'Yaz kuraklığında düzenli ve derin sulama gerekir. Su kök boğazına değil taç izdüşümüne verilmeli; taban suyu yüksek veya ağır toprakta drenaj kurulmadan bahçe tesis edilmemelidir.',
+      fertilizerSummary:
+          'Toprak ve yaprak analizine göre planlanmalı. Genç ağaçta kök yakmayacak hafif besleme, verime yatmış ağaçta azotun bölünmesi, meyve büyüme döneminde potasyum ve mikro besin takibi öne çıkar.',
+      fertilizerType: 'Toprak/yaprak analizine göre N-K + mikro besin',
+      dailyWaterLitersPerPlant: 35,
+      companionPlants:
+          'Bahçe kenarında rüzgar kıran, örtü bitkisi ve yabancı otla rekabeti azaltan ara yönetim',
+      avoidPlants:
+          'Don çukuru, drenajı zayıf taban arazi, tuzlu su etkisi ve sert rüzgara açık parsel',
+      pruning:
+          'Hasat sonrası ve don riski geçince kuru, hasta, içe bakan ve çapraz dallar çıkarılır',
+      droughtTolerant: false,
+      plantingTip:
+          'Dikimden önce 0-30, 30-60 ve 60-90 cm toprak katmanlarından analiz yaptır; anaç seçimini kireç, tuzluluk, drenaj ve hastalık geçmişine göre yap.',
+      regionNote:
+          'Akdeniz sahil kuşağı ana üretim alanıdır. Ege’nin don riski düşük sahil kesimleri uygundur; iç kesimlerde düşük sıcaklık ve geç don kaliteyi ve ağaç sağlığını sınırlayabilir.',
+      integratedPestManagementNote:
+          'Turunçgilde kültürel önlem, sağlıklı fidan, budama-havalanma, tuzakla izleme ve doğal düşmanların korunması önceliklidir. Kimyasal mücadele yalnız teşhis, eşik ve güncel BKÜ etiketi kontrolüyle yapılmalıdır.',
+      rotationNotes:
+          'Çok yıllık bahçede münavebe yerine bahçe yenileme hijyeni önemlidir: eski kökler temizlenmeli, Phytophthora veya nematod geçmişi olan yerde drenaj ve anaç seçimi uzmanla planlanmalıdır.',
+      harvestQualityNotes:
+          'Meyve çeşide özgü renk, irilik, tat-asit dengesi ve pazar talebine göre toplanır. Islak meyve hasadı, yere düşürme ve güneşte bekletme depo çürüklüğü ve kabuk zararı riskini artırır.',
+      yieldExpectation:
+          'Verime yatmış sağlıklı bahçede çeşit, yaş ve bakım durumuna göre değişir',
+      stages: [
+        GuideStage(
+          title: 'Bahçe yeri ve fidan seçimi',
+          timing: 'Dikim öncesi',
+          action:
+              'Don çukuru olmayan, drenajı iyi, rüzgardan korunmuş parsel seç; sertifikalı aşılı fidan ve uygun anaç kullan.',
+          risk:
+              'Yanlış bahçe yeri ve anaç seçimi yıllarca süren sararma, kök çürüklüğü ve verim düşüklüğü oluşturur.',
+        ),
+        GuideStage(
+          title: 'Dikim ve ilk bakım',
+          timing: 'Şubat-Mart veya Ekim-Kasım',
+          action:
+              'Fidanı aşı yeri toprak üstünde kalacak şekilde dik, can suyu ver, fidan çanağını kök boğazında su biriktirmeyecek biçimde düzenle.',
+          risk:
+              'Derin dikim, kök boğazı ıslaklığı ve rüzgar sallanması fidan kaybını artırır.',
+        ),
+        GuideStage(
+          title: 'Çiçeklenme ve meyve tutumu',
+          timing: 'İlkbahar',
+          action:
+              'Aşırı su ve azot dalgalanmasından kaçın; arı faaliyeti, rüzgar ve sıcaklık stresini izle.',
+          risk:
+              'Şiddetli soğuk, sıcak-kuru rüzgar ve su stresi çiçek ve küçük meyve dökümünü artırabilir.',
+        ),
+        GuideStage(
+          title: 'Meyve büyümesi',
+          timing: 'Yaz',
+          action:
+              'Sulamayı düzenli tut, yaprak sararması ve tuzluluk belirtisi varsa analizle besleme planını düzelt.',
+          risk:
+              'Yaz susuzluğu meyve iriliğini düşürür; aşırı sulama kök havasızlığı ve Phytophthora riskini yükseltir.',
+        ),
+        GuideStage(
+          title: 'Renklenme ve hasat',
+          timing: 'Kasım-Mayıs',
+          action:
+              'Çeşide göre renklenme, irilik ve pazar dönemini izle; meyveyi zedelemeden kasaya al.',
+          risk:
+              'Geç hasat kabuk bozulması, meyve dökümü ve depo çürüklüğü riskini artırabilir.',
+        ),
+      ],
+      pests: [
+        PestDiseaseGuide(
+          name: 'Akdeniz meyve sineği',
+          type: 'Zararlı',
+          symptoms:
+              'Meyvede vuruk, yumuşama, dökülme ve pazarlanamaz hale gelen çürüme görülür.',
+          monitoring:
+              'Bahçe ve çevresinde tuzakla ergin çıkışı izlenir; yere dökülen meyveler düzenli toplanır.',
+          integratedControl:
+              'Erken uyarı tuzakları, yere düşen meyvenin imhası, hasadı geciktirmeme ve bahçe hijyeni uygulanır.',
+          escalation:
+              'Tuzak ve meyve kontrolü risk gösterirse güncel BKÜ etiketi ve il/ilçe teknik önerisiyle karar verilir.',
+        ),
+        PestDiseaseGuide(
+          name: 'Turunçgil unlubiti ve kabuklu bitler',
+          type: 'Zararlı',
+          symptoms:
+              'Dal, yaprak ve meyvede pamuksu kümeler, kabuklu yapışık bireyler, fumajin ve kalite kaybı.',
+          monitoring:
+              'İlkbahar-yaz döneminde iç taç, meyve sap çukuru ve yaprak altları kontrol edilir.',
+          integratedControl:
+              'Budama ile havalanma, karınca kontrolü, doğal düşmanları koruma ve bulaşık dalların uzaklaştırılması önceliklidir.',
+          escalation:
+              'Yoğunluk yayılıyorsa uygulama zamanı ve ürün seçimi BKÜ etiketiyle uzman tarafından netleştirilmelidir.',
+        ),
+        PestDiseaseGuide(
+          name: 'Phytophthora kök ve gövde zamklanması',
+          type: 'Hastalık',
+          symptoms:
+              'Kök boğazında zamk akıntısı, kabukta çökme, yaprak sararması ve zayıf sürgün gelişimi.',
+          monitoring:
+              'Kök boğazı, sulama noktası ve drenaj sorunu olan ocaklar yağış sonrası kontrol edilir.',
+          integratedControl:
+              'Kök boğazını kuru tut, drenajı düzelt, yaralanmayı azalt ve dayanıklı anaç seçimini önemse.',
+          escalation:
+              'Gövde belirtisi ilerliyorsa kimyasal karar öncesi hastalık teşhisi ve BKÜ kontrolü gerekir.',
+        ),
+      ],
+      regionalCalendar: [
+        RegionalCropCalendar(
+          region: 'Akdeniz',
+          plantingWindow: 'Şubat-Mart veya Ekim-Kasım',
+          harvestWindow: 'Kasım-Mayıs',
+          notes:
+              'Ana üretim kuşağıdır; yaz sulaması, tuzluluk ve Akdeniz meyve sineği takibi önemlidir.',
+        ),
+        RegionalCropCalendar(
+          region: 'Ege sahil',
+          plantingWindow: 'Mart veya Ekim-Kasım',
+          harvestWindow: 'Aralık-Nisan',
+          notes:
+              'Don riski düşük sahil ilçeleri uygundur; rüzgar kıran ve sulama suyu kalitesi izlenmelidir.',
+        ),
+        RegionalCropCalendar(
+          region: 'Doğu Akdeniz-Çukurova',
+          plantingWindow: 'Şubat-Mart',
+          harvestWindow: 'Kasım-Nisan',
+          notes:
+              'Sıcaklık ve yüksek verim potansiyeli vardır; yaz su stresi ve kabuklu bit takibi öne çıkar.',
+        ),
+      ],
+      nutritionPlan: [
+        NutritionGuide(
+          phase: 'Analiz ve organik madde',
+          timing: 'Kış sonu',
+          recommendation:
+              'Toprak ve yaprak analizi olmadan kesin doz verme; organik madde düşükse iyi yanmış organik materyal taç izdüşümüne yayılır.',
+        ),
+        NutritionGuide(
+          phase: 'Uyanma-çiçeklenme',
+          timing: 'İlkbahar',
+          recommendation:
+              'Azot bölünerek verilir; aşırı azot meyve kabuğu ve sürgün dengesini bozabileceği için analizle dengelenir.',
+        ),
+        NutritionGuide(
+          phase: 'Meyve büyümesi',
+          timing: 'Yaz',
+          recommendation:
+              'Potasyum, kalsiyum ve mikro besinler yaprak belirtisi ve analiz sonucuna göre planlanır.',
+        ),
+      ],
+    ),
+    TurkiyeCropGuide(
+      id: 'cay',
+      cropName: 'Çay',
+      aliases: ['cay', 'tea', 'camellia', 'siyah çay', 'yeşil çay'],
+      scientificName: 'Camellia sinensis (L.) Kuntze',
+      category: 'Endüstri bitkisi',
+      lifeCycle: 'Çok yıllık çalı',
+      sunlight: 'Nemli ışık, yarı gölgeye dayanıklı',
+      growthSpeed: 'Yavaş',
+      careLevel: 'Orta',
+      summary:
+          'Çay Türkiye’de Doğu Karadeniz’in nemli, bol yağışlı ve asit topraklı mikroklimasına bağlı çok yıllık bir endüstri bitkisidir. Başarılı üretimde derin-asit toprak, düzenli sürgün hasadı, yenileyici budama, pH takibi ve toprak analizine dayalı dengeli besleme temel rol oynar.',
+      sourceRefs: [
+        'ÇAYKUR Çay Tarımı Ders Notları, 2025',
+        'ÇAYKUR Çay Üreticisi El Kitabı, 1983',
+        'Tarım Bakanlığı Çay Yetiştiriciliği Çiftçi Broşürü, 1962',
+        'Tarım ve Orman Bakanlığı Rize İl Müdürlüğü sürdürülebilir çay tarımı pH notları',
+      ],
+      sowingWindow:
+          'Tohumla tesis: Kasım-Aralık; çelik alma/köklendirme: Temmuz-Ağustos',
+      harvestWindow: 'Mayıs-Ekim; bölgeye göre 3-4 sürgün hasadı',
+      sowingDepthCm: 4,
+      rowSpacingCm: 110,
+      plantSpacingCm: 55,
+      seedOrSeedlingRate:
+          '100-120 cm sıra arası, 50-60 cm sıra üzeri; 3-5 tohum/ocak veya klonal fidan',
+      plantPopulationPerDekar: 1650,
+      idealPhMin: 4.5,
+      idealPhMax: 6,
+      idealTempMin: 14,
+      idealTempMax: 30,
+      harvestDays: 1095,
+      seasonalWaterMm: 1800,
+      irrigationSummary:
+          'Çay yüksek ve düzenli yağış ister. Yıllık yağış düşükse veya yaz kuraklığı uzarsa sürgün kalitesi düşer; buna karşı sulama, malç ve gölge-rüzgar yönetimi birlikte düşünülmelidir.',
+      fertilizerSummary:
+          'Toprak analizine göre yapılmalı. ÇAYKUR kaynaklarında 25:5:10 N:P:K bileşimli özel çay gübresi ve çiftlik gübresi öne çıkar; tek yönlü azot pH düşüşü ve besin dengesizliği yaratabilir.',
+      fertilizerType: 'Toprak analizine göre özel çay gübresi + organik madde',
+      dailyWaterLitersPerPlant: 1.5,
+      companionPlants:
+          'Bahçe kenarında rüzgarı kesen yerel bitki örtüsü ve erozyonu azaltan örtü yönetimi',
+      avoidPlants:
+          'Kireçli toprak, suya doygun kök bölgesi, kurutucu rüzgar ve plansız yeni tesis',
+      pruning:
+          'İlk şekil budaması 3 yaş sonrası; ürün budaması ocak tablasını yenileyecek şekilde kademeli yapılır',
+      droughtTolerant: false,
+      plantingTip:
+          'Köklerin rahat gelişeceği derin asit toprak seç; 90 cm kök bölgesinde sürekli su doygunluğu bırakma ve eğimli arazide erozyon-su yollarını tesis öncesi planla.',
+      regionNote:
+          'Ana üretim Rize, Trabzon ve Artvin’de; Ordu ve Giresun tali çay alanlarıdır. Uygunluk yağış, bağıl nem, asit toprak ve don riskinin birlikte değerlendirilmesine bağlıdır.',
+      integratedPestManagementNote:
+          'ÇAYKUR kaynaklarında ülke koşullarında kültürel ve teknik uygulamalar önceliklidir. Hasat, budama, bahçe kenarı temizliği ve doğal düşmanların korunması; kimyasal uygulamadan önce değerlendirilir.',
+      rotationNotes:
+          'Çay çok yıllık olduğundan klasik münavebe yoktur. Bahçe yenilemede yaşlı ocak, kök ve drenaj sorunları temizlenmeli; pH ve organik madde yeni tesis öncesi düzeltilmelidir.',
+      harvestQualityNotes:
+          'Kaliteli yaş çayda tepe tomurcuğu ile ilk iki körpe yaprak hedeflenir. Odunlaşmış, lifli, yaşlı yaprak ve ıslak-kirli hasat kaliteyi düşürür.',
+      yieldExpectation:
+          'Türkiye koşullarında verim bölge, ocak yaşı, budama ve bakım düzenine göre büyük değişir',
+      stages: [
+        GuideStage(
+          title: 'Bahçe tesisi',
+          timing: 'Kasım-Aralık veya uygun fidan dönemi',
+          action:
+              'Asit, derin ve iyi drene toprakta ocak aralıklarını kur; eğimli arazide su yollarını ve erozyon önlemini baştan planla.',
+          risk:
+              'Kireçli veya suya doygun toprakta kök gelişimi zayıflar, ocaklar uzun yıllar düşük verim verir.',
+        ),
+        GuideStage(
+          title: 'Şekil budaması',
+          timing: '3 yaş sonrası Kasım-Aralık veya Mart',
+          action:
+              'Fidanı ocak haline getirmek için alçak şekil budaması yap; sürgünler yeterli boya gelmeden hasada girme.',
+          risk:
+              'Erken ve hatalı hasat, toplama tablasının oluşmasını geciktirir.',
+        ),
+        GuideStage(
+          title: 'İlk sürgün hasadı',
+          timing: 'Mayıs-Haziran',
+          action:
+              'Tepe tomurcuğu ve ilk iki körpe yaprağı hedefle; kör ve lifli sürgünleri kalite için ayır.',
+          risk:
+              'Yaşlı yaprak ve kaba hasat fabrika randımanını ve kuru çay kalitesini düşürür.',
+        ),
+        GuideStage(
+          title: 'Yaz sürgünleri',
+          timing: 'Temmuz-Ağustos',
+          action:
+              'Yabancı ot, sarı çay akarı, koşnil ve kuraklık stresini izle; hasat sonrası ocak altını temiz tut.',
+          risk:
+              'Sıcak-nemli dönemde akar ve koşnil baskısı sürgün kalitesini bozabilir.',
+        ),
+        GuideStage(
+          title: 'Son sürgün ve kış hazırlığı',
+          timing: 'Eylül-Ekim',
+          action:
+              'Son hasattan sonra ocak altı artıklarını düzenle, pH ve besin planını toprak analizine göre yenile.',
+          risk:
+              'Dengesiz azot ve düşük pH, gelecek yıl sürgün gücünü ve kök sağlığını zayıflatır.',
+        ),
+      ],
+      pests: [
+        PestDiseaseGuide(
+          name: 'Çay filiz güvesi',
+          type: 'Zararlı',
+          symptoms:
+              'Yaprak ve sürgünde galeri, yaprak dökümü ve taze sürgünde kalite kaybı.',
+          monitoring:
+              'Sürgün dönemlerinde genç yapraklar ve galeri sayısı düzenli kontrol edilir.',
+          integratedControl:
+              'Zamanında hasat, bahçe hijyeni ve doğal düşmanların korunması önceliklidir.',
+          escalation:
+              'Yoğunluk artarsa kimyasal karar vermeden önce ÇAYKUR/Bakanlık güncel teknik yaklaşımı ve uzman görüşü kontrol edilmelidir.',
+        ),
+        PestDiseaseGuide(
+          name: 'Çay koşnili',
+          type: 'Zararlı',
+          symptoms:
+              'Yaprak ve dallarda fumajin, siyah-isli görünüm, ocakta zayıflama ve verim düşüşü.',
+          monitoring:
+              'İç kısımdaki dallar, yaprak altları ve hava almayan ocaklar kontrol edilir.',
+          integratedControl:
+              'Tekniğine uygun budama, hava sirkülasyonu, bahçe kenarı temizliği ve doğal düşmanları koruma uygulanır.',
+          escalation:
+              'Yayılım büyürse uygulama kararı güncel resmi teknik öneri ve uzman incelemesiyle verilmelidir.',
+        ),
+        PestDiseaseGuide(
+          name: 'Sarı çay akarı',
+          type: 'Zararlı',
+          symptoms:
+              'Genç yapraklarda bronzlaşma, alt yüzeyde tırnaklanma, uç sürgünlerde kurumaya varan zarar.',
+          monitoring:
+              'Temmuz-Ağustos başta olmak üzere genç sürgünler ve yaprak altları büyüteçle kontrol edilir.',
+          integratedControl:
+              'Bulaşık yapraklar uzaklaştırılır, yabancı ot ve tozlu alanlar yönetilir, avcı akarları korumak için gereksiz ilaçlamadan kaçınılır.',
+          escalation:
+              'ÇAYKUR kaynaklarında kültürel-biyolojik yaklaşım öne çıkar; kimyasal uygulama için güncel resmi kayıt ve uzman onayı gerekir.',
+        ),
+        PestDiseaseGuide(
+          name: 'Ricania simulans',
+          type: 'Zararlı',
+          symptoms:
+              'Nimf ve ergin yoğunluğu, sürgünlerde beslenme stresi ve bahçe kenarı bitkilerinde yumurta varlığı.',
+          monitoring:
+              'Mayıs öncesi bahçe kenarındaki çit, çalı, böğürtlen ve çok yıllık otsu bitkiler kontrol edilir.',
+          integratedControl:
+              'Yumurta bırakılmış kenar bitkileri nimf çıkışından önce temizlenir; hasat popülasyonu baskılamaya yardımcı olur.',
+          escalation:
+              'Yoğun alanlarda komşu bahçelerle birlikte mekanik-kültürel mücadele planlanmalıdır.',
+        ),
+      ],
+      regionalCalendar: [
+        RegionalCropCalendar(
+          region: 'Rize-Trabzon-Artvin',
+          plantingWindow: 'Kasım-Aralık tohum; fidan dikimi yerel koşula göre',
+          harvestWindow: 'Mayıs-Ekim',
+          notes:
+              'Ana üretim kuşağıdır; yağış, nem ve asit toprak isteği en iyi bu mikroklimada karşılanır.',
+        ),
+        RegionalCropCalendar(
+          region: 'Ordu-Giresun',
+          plantingWindow: 'Yerel izin ve mikroklima uygunluğuna göre',
+          harvestWindow: 'Mayıs-Eylül',
+          notes:
+              'Tali üretim alanlarıdır; yağış dağılımı, pH ve kış zararları ayrıca değerlendirilir.',
+        ),
+        RegionalCropCalendar(
+          region: 'Yüksek rakım ve iç kesim',
+          plantingWindow: 'Genel öneri verilmez',
+          harvestWindow: 'Riskli',
+          notes:
+              'ÇAYKUR notlarına göre rakım arttıkça gelişme geriler; yeni tesis uzman ve resmi uygunluk değerlendirmesi gerektirir.',
+        ),
+      ],
+      nutritionPlan: [
+        NutritionGuide(
+          phase: 'Toprak analizi',
+          timing: 'Kış sonu-Şubat',
+          recommendation:
+              'pH, organik madde ve temel besinler ölçülmeden kesin gübre miktarı verme; çayda hedef asit aralık korunmalıdır.',
+        ),
+        NutritionGuide(
+          phase: 'Özel çay gübresi',
+          timing: 'Şubat-Mart',
+          recommendation:
+              'ÇAYKUR kaynaklarında 25:5:10 N:P:K özel çay gübresi öne çıkar; miktar toprak analizine ve ocak durumuna göre ayarlanır.',
+        ),
+        NutritionGuide(
+          phase: 'Organik madde ve pH dengesi',
+          timing: 'Budama yılı ve hasat sonrası',
+          recommendation:
+              'Çiftlik gübresi, budama artığı ve yabancı otların yönetimi organik maddeyi destekler; tek yönlü amonyumlu gübre pH düşüşü yaratabileceği için takip edilmelidir.',
         ),
       ],
     ),

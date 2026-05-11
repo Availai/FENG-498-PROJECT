@@ -99,6 +99,7 @@ V2_FIELDS = (
     "fertilizer_rules",
     "irrigation_rules",
     "rule_engine_rules",
+    "test_cases",
     "v2_status",
     "missing_information",
 )
