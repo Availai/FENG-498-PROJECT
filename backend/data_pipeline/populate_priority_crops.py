@@ -119,6 +119,35 @@ TOMATO_DATA: dict = {
                 "Sertifikalı tohum veya sağlıklı fide kullanılmalıdır.",
             ],
         },
+        {
+            "id": "disease.tomato.gray_mold",
+            "name_tr": "Kurşuni Küf",
+            "scientific_name": "Botrytis cinerea Pers.",
+            "source_ids": ["source.tagem.tomato_open_field_ipm"],
+            "evidence": [
+                {
+                    "source_id": "source.tagem.tomato_open_field_ipm",
+                    "page": 53,
+                    "section": "7.2.2. Kurşuni Küf Hastalığı — Tanımı, yaşayışı",
+                    "evidence_text": "Botrytis cinerea (teleomorph: Botryotinia fuckeliana) her yerde ve çok yaygın olarak bulunan polifag bir fungus olup, birçok bitkide hastalık oluşturabilmektedir. Etmen genellikle zayıflık patojenidir ve ancak enfeksiyon için uygun koşullarda bitkiyi hastalandırabilir. Bitkilere yaralı kısımlardan ve zayıflamış dokulardan kolayca giriş yapmaktadır. Bu hastalık etmeni serin, nemli ve bulutlu havalarda yaygın olarak görülebilmektedir. Gelişmesi için optimum koşullar 20-25°C sıcaklık ve %90-95 orantılı nemdir. B. cinerea, miselyum ve sklerot gibi değişik formlarda bitki artıkları üzerinde ve toprakta yaşamını sürdürür.",
+                },
+                {
+                    "source_id": "source.tagem.tomato_open_field_ipm",
+                    "page": 55,
+                    "section": "7.2.2. Kurşuni Küf Hastalığı — Kültürel önlemler",
+                    "evidence_text": "Bitkiler arasında hava akımının olabilmesi için sık dikimden kaçınılmalı, hastalık belirtisi gösteren bitki artıkları imha edilmeli, dengeli gübreleme ve iyi bakım yapılarak bitkilerin sağlıklı gelişmeleri sağlanmalı, aşırı azotlu gübrelemeden kaçınılmalıdır. Hasattan sonra sklerotların toprağa karışmasını önlemek için bitki artıkları toplanarak yakılmalıdır.",
+                },
+            ],
+            "requires_bku_check": True,
+            "requires_expert_confirmation": True,
+            "control_methods_cultural": [
+                "Bitkiler arasında hava akımının olabilmesi için sık dikimden kaçının.",
+                "Hastalık belirtisi gösteren bitki artıklarını imha edin.",
+                "Dengeli gübreleme yapın; aşırı azotlu gübrelemeden kaçının.",
+                "Hasat sonrası bitki artıklarını toplayıp yakın; sklerotların toprağa karışmasını önleyin.",
+                "Etmen yaralardan giriş yaptığı için budama ve mekanik işlemlerde dikkatli olun.",
+            ],
+        },
     ],
     "pests_v2": [
         {
@@ -190,6 +219,39 @@ TOMATO_DATA: dict = {
                 "Tarla ve çevresinde yabancı ot temizliği yapılmalıdır.",
                 "Zarar görmüş meyveler ortamdan uzaklaştırılmalıdır.",
                 "Doğal düşmanların korunması için kimyasal ilaçlarda yan etkisi en az olan pestisitler tercih edilmelidir.",
+            ],
+        },
+        {
+            "id": "pest.tomato.bemisia_tabaci",
+            "name_tr": "Tütün beyazsineği ve Sera beyazsineği",
+            "scientific_name": "Bemisia tabaci (Genn.), Trialeurodes vaporariorum (Westw.) (Hem.: Aleyrodidae)",
+            "source_ids": ["source.tagem.tomato_open_field_ipm"],
+            "evidence": [
+                {
+                    "source_id": "source.tagem.tomato_open_field_ipm",
+                    "page": 31,
+                    "section": "7.1.3. Tütün beyazsineği ve Sera beyazsineği — Biyoloji",
+                    "evidence_text": "Beyazsinekler sıcaklık ve neme bağlı olarak vejetasyon boyunca yaşamlarını sürdürebilirler. Erginlerin 14°C'nin altında yumurta bırakması, 10°C'nin altında ise faaliyetleri yavaşlar. Bir dişi ortalama 200-300 yumurta bırakır. Yılda ortalama 9-10 döl verebilir.",
+                },
+                {
+                    "source_id": "source.tagem.tomato_open_field_ipm",
+                    "page": 31,
+                    "section": "7.1.3. Tütün beyazsineği — Zarar şekli",
+                    "evidence_text": "Larva ve erginler bitki özsuyunu emerek yaprakta küçük lekeler halinde sararma meydana getirirler. Bitki zayıflar, meyve verimi azalır, zamanla kurur. Ayrıca beslenme esnasında tatlı ve yapışkan bir madde salgılarlar. Bu madde üzerinde saprofit funguslar gelişerek siyah bir tabaka şeklinde fumajin oluşmasına neden olurlar. Erginler domates sarı yaprak kıvırcıklık virüsü gibi önemli virüs hastalıklarının taşınmasında rol oynarlar.",
+                },
+                {
+                    "source_id": "source.tagem.tomato_open_field_ipm",
+                    "page": 33,
+                    "section": "7.1.3. Beyazsinekler — Mücadele eşiği",
+                    "evidence_text": "Beyazsineklere karşı ilaçlı mücadelede, göz önünde bulundurulması gereken mücadele eşiği, 'yaprak başına 5 larva+pupa'dır. Ancak Domates sarı yaprak kıvırcıklık virüsünün görüldüğü yerlerde bu eşik dikkate alınmadan mücadele yapılmalıdır.",
+                },
+            ],
+            "control_methods_cultural": [
+                "Fidelik giriş-çıkış ve havalandırma açıklıkları erginlerin girmesini önlemek için 462 µm tül ile kapatılmalıdır.",
+                "Tarla çevresinde ve içindeki yabancı otlar yok edilmelidir.",
+                "Nemi aşırı yükseltmemek için gereksiz sulamalardan kaçınılmalıdır.",
+                "Gereğinden fazla azotlu gübre uygulamasından kaçınılmalıdır.",
+                "Doğal düşman Macrolophus melanotoma (Ege Bölgesi'nde yaygın ve etkili) korunmalıdır.",
             ],
         },
     ],
@@ -373,10 +435,81 @@ TOMATO_DATA: dict = {
                 }
             ],
         },
+        {
+            "id": "rule.tomato.disease.gray_mold.cool_humid",
+            "crop_id": "crop.tomato",
+            "category": "disease_risk",
+            "priority": 85,
+            "enabled": True,
+            "conditions": [
+                {"field": "crop_id", "operator": "equals", "value": "crop.tomato"},
+                {"field": "average_temperature_c", "operator": "between", "value": [20, 25]},
+                {"field": "relative_humidity_percent", "operator": "greater_or_equal", "value": 90},
+            ],
+            "result": {
+                "risk_level": "high",
+                "possible_problem_id": "disease.tomato.gray_mold",
+                "recommendations": [
+                    "Çiçek, yaprak, gövde ve meyvelerde gri-kahverengi yumuşak çürüklük ve gri tozumsu sporulasyonu kontrol edin.",
+                    "Sık dikimden kaçının; hava sirkülasyonunu artırın.",
+                    "Aşırı azotlu gübrelemeden kaçının; dengeli gübreleme yapın.",
+                    "Yaralı bitki parçaları, hasat artıkları ve sklerot taşıyan dokuları toplayıp imha edin.",
+                    "Kimyasal mücadele gerekiyorsa BKÜ veritabanında güncel ruhsatlı ürün, etiket dozu ve son ilaçlama-hasat aralığını kontrol edin.",
+                ],
+                "requires_expert_confirmation": True,
+                "requires_bku_check": True,
+            },
+            "explanation": "Botrytis cinerea optimum 20-25°C ve %90-95 orantılı nemde gelişir; yaralı dokulardan giriş yapan zayıflık patojenidir.",
+            "confidence": "high",
+            "evidence": [
+                {
+                    "source_id": "source.tagem.tomato_open_field_ipm",
+                    "page": 53,
+                    "section": "7.2.2. Kurşuni Küf Hastalığı",
+                    "evidence_text": "Gelişmesi için optimum koşullar 20-25°C sıcaklık ve %90-95 orantılı nemdir.",
+                }
+            ],
+        },
+        {
+            "id": "rule.tomato.pest.bemisia.larva_pupa_threshold",
+            "crop_id": "crop.tomato",
+            "category": "pest_risk",
+            "priority": 88,
+            "enabled": True,
+            "conditions": [
+                {"field": "crop_id", "operator": "equals", "value": "crop.tomato"},
+                {"field": "bemisia_larva_pupa_per_leaf", "operator": "greater_or_equal", "value": 5},
+            ],
+            "result": {
+                "risk_level": "high",
+                "possible_problem_id": "pest.tomato.bemisia_tabaci",
+                "recommendations": [
+                    "Mücadele kararı alınmalıdır.",
+                    "Domates sarı yaprak kıvırcıklık virüsünün görüldüğü yerlerde bu eşik dikkate alınmadan mücadele yapılır.",
+                    "Fidelik girişleri 462 µm tül ile kapatılmalı; bulaşık fideler kullanılmamalıdır.",
+                    "Yabancı ot temizliği, gereksiz sulama ve aşırı azotlu gübreden kaçının.",
+                    "Doğal düşman Macrolophus melanotoma korunmalı; geniş etki spektrumlu ilaçtan kaçının.",
+                    "Kimyasal mücadele gerekiyorsa BKÜ kontrolü, etiket dozu ve uzman onayı zorunludur.",
+                ],
+                "requires_expert_confirmation": True,
+                "requires_bku_check": True,
+            },
+            "explanation": "TAGEM eşiği: yaprak başına 5 larva+pupa olduğunda mücadele kararı alınır; TYLCV varlığında eşik dikkate alınmaz.",
+            "confidence": "high",
+            "evidence": [
+                {
+                    "source_id": "source.tagem.tomato_open_field_ipm",
+                    "page": 33,
+                    "section": "7.1.3. Beyazsinekler — Mücadele eşiği",
+                    "evidence_text": "Beyazsineklere karşı ilaçlı mücadelede, göz önünde bulundurulması gereken mücadele eşiği, 'yaprak başına 5 larva+pupa'dır. Ancak Domates sarı yaprak kıvırcıklık virüsünün görüldüğü yerlerde bu eşik dikkate alınmadan mücadele yapılmalıdır.",
+                }
+            ],
+        },
     ],
     "v2_status": "draft",
     "missing_information": [
-        "İkincil domates hastalık/zararlılarının tamamı ayrı v2 profiline açılmadı; mevcut uygulama kapsamı mildiyö, erken yaprak yanıklığı, domates güvesi, yeşilkurt ve kaynaklı fizyolojik besleme/sulama riskleridir.",
+        "Mevcut uygulama kapsamı: mildiyö, erken yaprak yanıklığı, kurşuni küf hastalığı, domates güvesi, yeşilkurt, tütün/sera beyazsineği ve kaynaklı fizyolojik besleme/sulama riskleridir.",
+        "Külleme (Leveillula taurica), Septoria yaprak lekesi, Sclerotinia ve diğer ikincil hastalıklar henüz ayrı v2 profiline açılmadı.",
         "test_cases — her rule_engine_rule için pozitif/negatif örnek girdiler eklenecek.",
         "v2_status='draft' — uzman onayı sonrası 'review' veya 'approved' yapılacak.",
     ],
@@ -589,6 +722,38 @@ CORN_DATA: dict = {
                 "Hasattan sonra tarlalar sürülmelidir.",
                 "Yabancı ot mücadelesi önemlidir.",
                 "Doğal düşmanlar yeterli olduğunda kimyasal mücadeleye gerek duyulmamaktadır.",
+            ],
+        },
+        {
+            "id": "pest.corn.aphids",
+            "name_tr": "Mısır Yaprakbitleri",
+            "scientific_name": "Rhopalosiphum maidis Fitch., Rhopalosiphum padi L. (Hemiptera: Aphididae)",
+            "source_ids": ["source.tagem.corn_ipm"],
+            "evidence": [
+                {
+                    "source_id": "source.tagem.corn_ipm",
+                    "page": 49,
+                    "section": "7.1.9. Yaprakbitleri — Zarar şekli",
+                    "evidence_text": "Yaprakbitleri'nin ergin ve nimfleri, yaprak, tepe püskülü ve koçan yaprağında büyük koloniler meydana getirerek, bitki özsuyunu emmek suretiyle zarar yaparlar. Emgi sonucunda bitki zayıflar, gelişme durur, tanenin olgunlaşması engellenerek buruşmasına ve kurumasına sebep olurlar. Ürün verim azalır ve kalite bozulur. Beslenmeleri esnasında salgıladıkları toksik maddeler yüzünden bitkilerde anormal büyümeler ve yaprakların kıvrılması gibi şekil bozuklukları meydana gelir. Virüs taşımak ve bulaştırmak suretiyle de zararlı olurlar.",
+                },
+                {
+                    "source_id": "source.tagem.corn_ipm",
+                    "page": 51,
+                    "section": "7.1.9. Yaprakbitleri — Kültürel önlemler",
+                    "evidence_text": "Sık ekim, aşırı azotlu gübreleme ve aşırı sulamadan kaçınılmalıdır.",
+                },
+                {
+                    "source_id": "source.tagem.corn_ipm",
+                    "page": 52,
+                    "section": "7.1.9. Yaprakbitleri — Kimyasal mücadele tutumu",
+                    "evidence_text": "Doğal düşmanların bu zararlıyı baskı altında tutması nedeni ile kimyasal mücadeleye gerek görülmemektedir. Ülkemizde kimyasal mücadelesi önerilmemektedir.",
+                },
+            ],
+            "control_methods_cultural": [
+                "Sık ekim, aşırı azotlu gübreleme ve aşırı sulamadan kaçının.",
+                "Doğal düşmanları (Coccinellidae, Chrysoperla carnea, Aphidius spp., Syrphidae) koruyun.",
+                "TAGEM tutumu: Türkiye'de kimyasal mücadele önerilmemektedir; biyolojik kontrol ve kültürel önlemler esastır.",
+                "Fumajin oluşumu özümlemeye engel olabilir — yoğun koloniler izlenmelidir.",
             ],
         },
     ],
@@ -872,10 +1037,45 @@ CORN_DATA: dict = {
                 }
             ],
         },
+        {
+            "id": "rule.corn.pest.aphids.colony_observed_management",
+            "crop_id": "crop.corn",
+            "category": "pest_risk",
+            "priority": 70,
+            "enabled": True,
+            "conditions": [
+                {"field": "crop_id", "operator": "equals", "value": "crop.corn"},
+                {"field": "aphid_colony_observed", "operator": "equals", "value": True},
+            ],
+            "result": {
+                "risk_level": "medium",
+                "possible_problem_id": "pest.corn.aphids",
+                "recommendations": [
+                    "Yaprak, tepe püskülü ve koçan yaprağında koloni varlığını ve fumajin/şekil bozukluğunu kontrol edin.",
+                    "Sık ekim, aşırı azotlu gübreleme ve aşırı sulamadan kaçının.",
+                    "Doğal düşmanları (Coccinella, Chrysoperla, Aphidius, Syrphidae) koruyun.",
+                    "TAGEM tutumu: Türkiye'de bu zararlıya karşı kimyasal mücadele önerilmemektedir; biyolojik baskı esastır.",
+                    "Virüs taşıyıcı oldukları için yoğun popülasyon erken sezonda izlenmelidir.",
+                ],
+                "requires_expert_confirmation": True,
+                "requires_bku_check": False,
+            },
+            "explanation": "TAGEM: Rhopalosiphum maidis ve R. padi için Türkiye'de kimyasal mücadele önerilmemektedir; sık ekim/azot/sulama kültürel önlemlerle baskı altına alınır.",
+            "confidence": "high",
+            "evidence": [
+                {
+                    "source_id": "source.tagem.corn_ipm",
+                    "page": 52,
+                    "section": "7.1.9. Yaprakbitleri — Kimyasal mücadele tutumu",
+                    "evidence_text": "Doğal düşmanların bu zararlıyı baskı altında tutması nedeni ile kimyasal mücadeleye gerek görülmemektedir. Ülkemizde kimyasal mücadelesi önerilmemektedir.",
+                }
+            ],
+        },
     ],
     "v2_status": "draft",
     "missing_information": [
-        "Mısırda ikincil hastalık/zararlı ve yabancı otların tamamı ayrı v2 profiline açılmadı; mevcut kapsam mısır rastığı, Fusarium kompleksi, koçankurdu, mısırkurdu, yeşilkurt ve kaynaklı su/besleme riskleridir.",
+        "Mevcut kapsam: mısır rastığı, Fusarium kompleksi, koçankurdu, mısırkurdu, yeşilkurt, mısır yaprakbitleri (Rhopalosiphum maidis/padi) ve kaynaklı su/besleme riskleridir.",
+        "Yaprakpireleri, kırmızı örümcek, çizgili yaprakkurdu (Spodoptera exigua), pamuk yaprakkurdu (S. littoralis) ve yaprak yanıklıkları (Bipolaris, Exserohilum) ayrı v2 profiline açılmadı.",
         "test_cases — her rule_engine_rule için pozitif/negatif örnek girdiler eklenecek.",
     ],
 }
@@ -1085,6 +1285,34 @@ SUNFLOWER_DATA: dict = {
             "control_methods_cultural": [
                 "Baharda toprak iyi bir şekilde işlenerek kışlayan pupalar yok edilmeye çalışılmalıdır.",
                 "Apanteles sp. doğal düşmanı korunmalı (Çukurova'da %60 etkinlik sağlayabilir).",
+            ],
+        },
+        {
+            "id": "pest.sunflower.loxostege_sticticalis",
+            "name_tr": "Çayır Tırtılı",
+            "scientific_name": "Loxostege sticticalis (L.) (Lepidoptera: Pyralidae)",
+            "source_ids": ["source.tagem.sunflower_ipm"],
+            "evidence": [
+                {
+                    "source_id": "source.tagem.sunflower_ipm",
+                    "page": 33,
+                    "section": "7.1.1. Çayır Tırtılı — Zarar şekli",
+                    "evidence_text": "Larvalar, bitkilerin yaprak, tomurcuk ve çiçeklerini yiyerek beslenirler. Popülasyonun yüksek olduğu yerlerde tüm yeşil aksam zarar görür. Kültür bitkilerinin yapraklarında oburca beslenerek yaprakların sadece damarlarını bırakırlar. Zararlı ülkemizde Marmara, Ege ve Karadeniz Bölgeleri'nde saptanmıştır.",
+                },
+                {
+                    "source_id": "source.tagem.sunflower_ipm",
+                    "page": 34,
+                    "section": "7.1.1. Çayır Tırtılı — İlaçlama zamanı",
+                    "evidence_text": "Tarlanın köşegenleri doğrultusunda zikzak yürünerek her 25-30 m'de bir olmak üzere metrekarede 20 adet larva saptandığında mücadeleye başlanmalıdır. Mücadele en geç üçüncü dönem larvalara karşı yapılmalıdır.",
+                },
+            ],
+            "control_methods_cultural": [
+                "Sonbaharda derin sürüm yapın; pupa kokonlarının bir kısmı derine düşer veya kuş yemi olur.",
+                "İlkbaharda yabancı ot mücadelesi yapın; yumurtalar sirken ve diğer yabancı otlara bırakılır.",
+                "İlkbaharda diskaro ile toprak işlemesi yapın.",
+                "Yonca/tirfil/çayır gibi yem bitkilerini erken biçin (popülasyonu kırar).",
+                "Erken ekim yapın.",
+                "Bacillus thuringiensis var. kurstaki biyolojik etmen olarak değerlendirilebilir.",
             ],
         },
     ],
@@ -1371,10 +1599,46 @@ SUNFLOWER_DATA: dict = {
                 }
             ],
         },
+        {
+            "id": "rule.sunflower.pest.loxostege.larva_density_threshold",
+            "crop_id": "crop.sunflower",
+            "category": "pest_risk",
+            "priority": 85,
+            "enabled": True,
+            "conditions": [
+                {"field": "crop_id", "operator": "equals", "value": "crop.sunflower"},
+                {"field": "loxostege_larvae_per_m2", "operator": "greater_or_equal", "value": 20},
+            ],
+            "result": {
+                "risk_level": "high",
+                "possible_problem_id": "pest.sunflower.loxostege_sticticalis",
+                "recommendations": [
+                    "Mücadeleye başlanmalıdır.",
+                    "Mücadele en geç üçüncü dönem larvalara karşı yapılmalıdır.",
+                    "Tarlanın köşegenleri doğrultusunda zikzak yürünerek her 25-30 m'de sayım doğrulaması yapın.",
+                    "Sonbaharda derin sürüm + ilkbaharda yabancı ot mücadelesi kültürel önlem olarak uygulanmalıdır.",
+                    "Bacillus thuringiensis var. kurstaki biyolojik mücadele alternatifi olabilir.",
+                    "Kimyasal mücadele gerekiyorsa BKÜ veritabanında güncel ruhsatlı ürün, etiket dozu ve son ilaçlama-hasat aralığı kontrolü zorunludur.",
+                ],
+                "requires_expert_confirmation": True,
+                "requires_bku_check": True,
+            },
+            "explanation": "TAGEM eşiği: metrekarede 20 adet larva saptandığında Çayır Tırtılı mücadelesine başlanır; mücadele en geç 3. dönem larvalara karşı yapılır.",
+            "confidence": "high",
+            "evidence": [
+                {
+                    "source_id": "source.tagem.sunflower_ipm",
+                    "page": 34,
+                    "section": "7.1.1. Çayır Tırtılı — İlaçlama zamanı",
+                    "evidence_text": "Tarlanın köşegenleri doğrultusunda zikzak yürünerek her 25-30 m'de bir olmak üzere metrekarede 20 adet larva saptandığında mücadeleye başlanmalıdır. Mücadele en geç üçüncü dönem larvalara karşı yapılmalıdır.",
+                }
+            ],
+        },
     ],
     "v2_status": "draft",
     "missing_information": [
-        "Ayçiçeğinde ikincil zararlı ve yabancı otların tamamı ayrı v2 profiline açılmadı; mevcut kapsam ana hastalıklar, bozkurt/yeşilkurt, canavar otu ve kaynaklı bor/sulama riskleridir.",
+        "Mevcut kapsam: ana hastalıklar (mildiyö, kömür çürüklüğü, siyah gövde lekesi, pas), bozkurt, yeşilkurt, çayır tırtılı, canavar otu ve kaynaklı bor/sulama riskleridir.",
+        "Makaslıböcek (Lethrus brachiicollis), telkurtları (Agriotes spp.), Avrupa Güvesi (Homoeosoma nebulellum) ve ikincil yabancı otların tamamı henüz ayrı v2 profiline açılmadı.",
         "test_cases — her rule_engine_rule için pozitif/negatif örnek girdiler eklenecek.",
     ],
 }
@@ -1556,6 +1820,39 @@ ORANGE_DATA: dict = {
                 "İhraç edilen greyfurt ve limon meyvelerinde hasat sonrası soğuk uygulama zorunludur.",
                 "Kitle Halinde Tuzakla Yakalama (KHTY) ile feromon/cezbedici tuzaklar kullanılmalıdır.",
                 "SIT (Steril Böcek Salım) yöntemi geniş alan uygulamasında etkilidir.",
+            ],
+        },
+        {
+            "id": "pest.orange.panonychus_citri",
+            "name_tr": "Turunçgil Kırmızıörümceği",
+            "scientific_name": "Panonychus citri McGregor (Acarina: Tetranychidae)",
+            "source_ids": ["source.tagem.citrus_ipm"],
+            "evidence": [
+                {
+                    "source_id": "source.tagem.citrus_ipm",
+                    "page": 28,
+                    "section": "1.21. Turunçgil kırmızıörümceği — Biyoloji",
+                    "evidence_text": "Ergin dişiler 0,32-0,37 mm boyunda oval şekilli olup, genellikle kırmızı kadife rengindedir. Bir dişi günde 2-3 adet olmak üzere ömrü boyunca 20-50 adet yumurta bırakabilir. Yumurtalarını yaprak, meyve ve sürgünlere bırakabilir.",
+                },
+                {
+                    "source_id": "source.tagem.citrus_ipm",
+                    "page": 31,
+                    "section": "1.21. Turunçgil kırmızıörümceği — Kimyasal mücadele eşiği",
+                    "evidence_text": "Bölgelere göre değişmek üzere şubat-mart aylarında yaprakların alt ve üst yüzlerindeki hareketli bireyler sayılır. Alınan 10 yaprakta 3'ten az sayıda kırmızı örümcek varsa ilaçlama yapılmamalı, 4-9 arasında ise yazlık yağlarla ilaçlama yapılmalı, 10 ve daha fazla ise yani yaprak başına 1'den fazla kırmızıörümcek bulunuyorsa akarisitlerden birisi kullanılmalıdır.",
+                },
+                {
+                    "source_id": "source.tagem.citrus_ipm",
+                    "page": 31,
+                    "section": "1.21. Turunçgil kırmızıörümceği — Biyolojik mücadele",
+                    "evidence_text": "Turunçgil kırmızıörümceği tozlu olmayan, geniş etki spektrumlu insektisitlerin kullanılmadığı bahçelerde genellikle doğal düşmanları tarafından baskı altında tutulmaktadır. Doğal dengeyi korumak için tavsiye dışı ilaç kullanılmamalıdır. Yazlık yağların predatör akarlara önemli olumsuz etkisi yoktur.",
+                },
+            ],
+            "control_methods_cultural": [
+                "Bahçenin temiz ve bakımlı olmasına özen gösterin; tozlu yol kenarlarından kaçının veya yolları asfaltlayın.",
+                "Güneşlenme ve hava akımını sağlayacak şekilde tekniğine uygun budama yapın.",
+                "Phytoseiidae predatör akarlarını koruyun (Amblyseius spp., Typhlodromus spp., Euseius scutalis).",
+                "Geniş etki spektrumlu insektisit kullanımından kaçının (predatör popülasyonunu azaltır).",
+                "Kükürtlü ilaç kullanıldıysa en az 1 ay geçmeden yazlık yağ kullanılmamalıdır.",
             ],
         },
     ],
@@ -1740,10 +2037,47 @@ ORANGE_DATA: dict = {
                 }
             ],
         },
+        {
+            "id": "rule.orange.pest.panonychus.spring_leaf_count_threshold",
+            "crop_id": "crop.orange",
+            "category": "pest_risk",
+            "priority": 80,
+            "enabled": True,
+            "conditions": [
+                {"field": "crop_id", "operator": "equals", "value": "crop.orange"},
+                {"field": "month", "operator": "in", "value": [2, 3]},
+                {"field": "panonychus_mites_per_10_leaves", "operator": "greater_or_equal", "value": 4},
+            ],
+            "result": {
+                "risk_level": "medium",
+                "possible_problem_id": "pest.orange.panonychus_citri",
+                "recommendations": [
+                    "10 yaprakta 4-9 hareketli birey: yazlık yağlarla ilaçlama uygulanabilir.",
+                    "10 yaprakta 10 veya daha fazla birey (yaprak başına >1): akarisit kullanımı değerlendirilir, BKÜ kontrolü zorunludur.",
+                    "İlaçlamaya zararlı taze sürgünlere geçmeden, çiçeklenmeden önceki devrede başlanmalıdır; bu devre geçirildiyse meyve bağladıktan bir hafta sonra ilaçlama yapılabilir.",
+                    "Tozlu yol kenarlarından kaçının veya yolları asfaltlayın; bahçe içi hava akımını sağlayın.",
+                    "Phytoseiidae predatörlerini koruyun; geniş etki spektrumlu insektisit kullanmayın.",
+                    "Kükürtlü ilaç sonrası en az 1 ay yazlık yağ kullanmayın.",
+                ],
+                "requires_expert_confirmation": True,
+                "requires_bku_check": True,
+            },
+            "explanation": "TAGEM eşiği: şubat-mart aylarında 10 yaprak sayımında 3'ten az birey ilaçlama gerektirmez; 4-9 arasında yazlık yağ, 10+ akarisit kullanımı değerlendirilir.",
+            "confidence": "high",
+            "evidence": [
+                {
+                    "source_id": "source.tagem.citrus_ipm",
+                    "page": 31,
+                    "section": "1.21. Turunçgil kırmızıörümceği — Kimyasal mücadele eşiği",
+                    "evidence_text": "Bölgelere göre değişmek üzere şubat-mart aylarında yaprakların alt ve üst yüzlerindeki hareketli bireyler sayılır. Alınan 10 yaprakta 3'ten az sayıda kırmızı örümcek varsa ilaçlama yapılmamalı, 4-9 arasında ise yazlık yağlarla ilaçlama yapılmalı, 10 ve daha fazla ise yani yaprak başına 1'den fazla kırmızıörümcek bulunuyorsa akarisitlerden birisi kullanılmalıdır.",
+                }
+            ],
+        },
     ],
     "v2_status": "draft",
     "missing_information": [
-        "Turunçgilde ikincil hastalık/zararlıların tamamı ayrı v2 profiline açılmadı; mevcut kapsam uçkurutan, Phytophthora, unlubiti, kabuklubiti, Akdeniz meyvesineği ve analiz/sulama güvenlik kurallarıdır.",
+        "Mevcut kapsam: uçkurutan, Phytophthora, unlubiti, kabuklubiti, Akdeniz meyvesineği, turunçgil kırmızıörümceği ve analiz/sulama güvenlik kurallarıdır.",
+        "Turunçgil pasböcüsü (Phyllocoptruta oleivora), tomurcuk akarı (Aceria sheldoni), yaprak galerigüvesi (Phyllocnistis citrella) ve yaprakbitleri ayrı v2 profiline açılmadı.",
         "test_cases — her rule_engine_rule için pozitif/negatif örnek girdiler eklenecek.",
     ],
 }
@@ -1884,6 +2218,41 @@ TEA_DATA: dict = {
                 "Yumurta bırakılmış dallar mekanik olarak çıkarılıp imha edilmelidir.",
                 "Çay sürgün hasadı ile populasyon doğal olarak düşmektedir.",
                 "ÇAYKUR resmî tutumu: kimyasal mücadele tavsiye edilmemektedir.",
+            ],
+        },
+    ],
+    "weeds_v2": [
+        {
+            "id": "weed.tea.green_manure_cultural",
+            "name_tr": "Çay bahçesi yabancı ot ve yeşil gübre yönetimi",
+            "scientific_name": None,
+            "source_ids": ["source.caykur.tea_cultivation_lecture_notes_2025"],
+            "summary": "ÇAYKUR kültürel yaklaşımı: yabancı otlar yok edilmek yerine biçilip, budama ve çırpma artıklarıyla birlikte ocak altına serilerek yeşil gübre olarak değerlendirilir.",
+            "evidence": [
+                {
+                    "source_id": "source.caykur.tea_cultivation_lecture_notes_2025",
+                    "page": 27,
+                    "section": "9.2.1. Doğal gübreler — Yeşil gübre",
+                    "evidence_text": "Yeşil gübreleri oluşturan yabancı ot ve budama artıkları ile topraktan sömürülen besin maddeleri tekrar toprağa döndürüldüğü gibi aynı zamanda toprağın fiziksel yapısı da iyileştirilmiş olur.",
+                },
+                {
+                    "source_id": "source.caykur.tea_cultivation_lecture_notes_2025",
+                    "page": 28,
+                    "section": "9.2. Gübreleme — Uygulama yöntemi",
+                    "evidence_text": "Çay bahçelerimize gübre uygulanmadan önce kesilen yabancı otlar, budama ve çırpma artıkları parçalanarak çay ocaklarının altına düzgün bir şekilde serilmeli ve yağmur suyu kanalları temizlenmelidir.",
+                },
+                {
+                    "source_id": "source.caykur.tea_cultivation_lecture_notes_2025",
+                    "page": 32,
+                    "section": "10.1.4. Sarı çay akarı — Mücadele yöntemleri",
+                    "evidence_text": "Yabancı otlar temizlenerek çay bahçesinin dışında imha edilmelidir.",
+                },
+            ],
+            "control_methods_cultural": [
+                "Yabancı otları biçip parçalayarak, budama/çırpma artıklarıyla birlikte ocak altına serin — yeşil gübre olarak değerlendirilir.",
+                "Sarı çay akarı ve diğer zararlı baskısının yüksek olduğu kesimlerde yabancı otlar bahçe dışında imha edilmelidir.",
+                "Gübre uygulaması öncesi yağmur suyu kanalları temizlenmelidir; yabancı ot temizliği bu adımla birleştirilir.",
+                "ÇAYKUR: çay bahçesinde herbisit uygulaması rutin olarak önerilmez; mekanik biçim ve mulçlama tercih edilir.",
             ],
         },
     ],
@@ -2122,11 +2491,44 @@ TEA_DATA: dict = {
                 }
             ],
         },
+        {
+            "id": "rule.tea.weed.cultural_green_manure_before_fertilization",
+            "crop_id": "crop.tea",
+            "category": "weed_management",
+            "priority": 65,
+            "enabled": True,
+            "conditions": [
+                {"field": "crop_id", "operator": "equals", "value": "crop.tea"},
+                {"field": "fertilization_planned", "operator": "equals", "value": True},
+            ],
+            "result": {
+                "risk_level": "low",
+                "possible_problem_id": "weed.tea.green_manure_cultural",
+                "recommendations": [
+                    "Gübre uygulamadan önce yabancı otları kesip parçalayın; budama ve çırpma artıklarıyla birlikte ocak altına serin (yeşil gübre).",
+                    "Yağmur suyu kanallarını temizleyin.",
+                    "Sarı çay akarı baskısının yüksek olduğu kesimlerde yabancı otlar bahçe dışında imha edilmelidir.",
+                    "ÇAYKUR herbisit rutin önermez — mekanik biçim ve mulçlama tercih edilir.",
+                ],
+                "requires_expert_confirmation": True,
+                "requires_bku_check": False,
+            },
+            "explanation": "ÇAYKUR ders notu: gübre uygulanmadan önce yabancı otlar biçilerek ocak altına serilir; bu hem yabancı ot baskısını azaltır hem de yeşil gübre etkisi sağlar.",
+            "confidence": "high",
+            "evidence": [
+                {
+                    "source_id": "source.caykur.tea_cultivation_lecture_notes_2025",
+                    "page": 28,
+                    "section": "9.2. Gübreleme — Uygulama yöntemi",
+                    "evidence_text": "Çay bahçelerimize gübre uygulanmadan önce kesilen yabancı otlar, budama ve çırpma artıkları parçalanarak çay ocaklarının altına düzgün bir şekilde serilmeli ve yağmur suyu kanalları temizlenmelidir.",
+                }
+            ],
+        },
     ],
     "v2_status": "draft",
     "missing_information": [
         "Çay için kaynaklı hastalık profili eklenmedi; ÇAYKUR kaynağı ekonomik boyutta hastalık/zararlı için kimyasal mücadele önermeyen kültürel yaklaşımı esas alıyor.",
-        "weeds_v2[] — çay bahçelerinde kontrol edilen yabancı otlar listelenecek.",
+        "Mevcut weeds_v2 kapsamı: ÇAYKUR kültürel yabancı ot + yeşil gübre yönetimi; tür bazlı çay bahçesi yabancı otları (örn. Rubus spp., Pteridium aquilinum) henüz ayrı profile açılmadı.",
         "test_cases — her rule_engine_rule için pozitif/negatif örnek girdiler eklenecek.",
         "Karadeniz Araştırma Enstitüsü ve Atatürk Çay Araştırma Enstitüsü kaynakları sources.json'a eklenmesi önerilir.",
     ],

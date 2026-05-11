@@ -282,7 +282,6 @@ class LiveTodoService {
               quantity: d.suggestedQuantity,
               quantityUnit: d.quantityUnit,
               recommendedQuantity: d.recommendedQuantity ?? d.suggestedQuantity,
-              recommendedQuantity: d.recommendedQuantity ?? d.suggestedQuantity,
               buttonLabel: ActivityType.actionLabel(commandType),
               metadata: {
                 'directive_kind': d.kind,
