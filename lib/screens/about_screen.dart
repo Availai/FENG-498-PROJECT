@@ -92,17 +92,17 @@ class AboutScreen extends StatelessWidget {
           const SizedBox(height: 16),
           _SectionTitle('Bitki ve Tarım Veritabanı'),
           _ReferenceTile(
-            title: 'Tarlam Türk Bitkileri Veritabanı',
+            title: 'BÜGEM — Bitkisel Üretim Genel Müdürlüğü',
             description:
-                '292 Türkiye bitkisi için ekim/hasat dönemleri, sıcaklık-pH-yağış aralıkları. Tarım ve Orman Bakanlığı yayınları, üniversite tarım fakülteleri çalışmaları ve TAGEM raporları temel alınarak derlenmiştir.',
-            url: 'assets/data/turkish_crops.sqlite',
+                'Uygulamadaki 292 Türkiye bitkisinin ekim/hasat takvimi, çeşit önerileri ve bölgesel uygunluk verisi BÜGEM yetiştiricilik kılavuzlarından derlenmiştir.',
+            url: 'https://www.tarimorman.gov.tr/BUGEM',
             icon: Icons.eco_rounded,
             color: Color(0xFF2E7D32),
           ),
           _ReferenceTile(
             title: 'T.C. Tarım ve Orman Bakanlığı',
             description:
-                'Türkiye için bitki yetiştiricilik kılavuzları ve resmi tarım istatistikleri.',
+                'Bitki yetiştiricilik kılavuzları, çeşit tescili ve resmi tarım istatistikleri — uygulamadaki ürün profillerinin ana referansıdır.',
             url: 'https://www.tarimorman.gov.tr',
             icon: Icons.account_balance_rounded,
             color: Color(0xFF1B5E20),
@@ -110,10 +110,18 @@ class AboutScreen extends StatelessWidget {
           _ReferenceTile(
             title: 'TAGEM (Tarımsal Araştırmalar Genel Müdürlüğü)',
             description:
-                'Bölgesel ekim takvimleri ve çeşit önerileri için kullanılan akademik kaynaktır.',
+                'Sıcaklık, pH ve yağış toleransları, hastalık eşik değerleri ve Zirai Mücadele Teknik Talimatları TAGEM yayınlarından alınmıştır.',
             url: 'https://www.tarimorman.gov.tr/TAGEM',
             icon: Icons.science_rounded,
             color: Color(0xFF558B2F),
+          ),
+          _ReferenceTile(
+            title: 'BKÜ — Bitki Koruma Ürünleri Veritabanı',
+            description:
+                'Aktif madde, ruhsatlı ticari ürün ve hasada bekleme süresi (PHI) doğrulaması için bu resmi veritabanına yönlendirme yapılır.',
+            url: 'https://bku.tarim.gov.tr',
+            icon: Icons.medication_liquid_rounded,
+            color: Color(0xFFEF6C00),
           ),
           _ReferenceTile(
             title: 'Perenual Plant API',
@@ -133,19 +141,43 @@ class AboutScreen extends StatelessWidget {
           ),
 
           const SizedBox(height: 16),
-          _SectionTitle('Tarım Kural Motoru'),
+          _SectionTitle('Tarım Kural Motoru — Bilimsel Referanslar'),
           _ReferenceTile(
-            title: 'Deterministik Kural Tabanı',
+            title: 'FAO Irrigation & Drainage Paper No. 56',
             description:
-                'Sulama, gübreleme ve don uyarıları FAO-56, USDA NRCS yayınları ve Türkiye Ziraat Fakülteleri kaynak kitaplarından derlenen kurallarla çalışır. Yapay zekâ tahmini değil, deterministik akademik formüllerdir.',
-            url: 'backend/rule_engine.py',
-            icon: Icons.rule_rounded,
+                'Sulama suyu hesabı (ETo, Kc katsayıları) ve haftalık su açığı kuralları, FAO-56 Crop Evapotranspiration metodolojisine göre uygulanır.',
+            url: 'https://www.fao.org/3/x0490e/x0490e00.htm',
+            icon: Icons.calculate_rounded,
+            color: Color(0xFF00897B),
+          ),
+          _ReferenceTile(
+            title: 'EPPO Global Database',
+            description:
+                'Hastalık ve zararlı kuralları, EPPO Bayer kodları (BOTRCI, PHYTIN, PUCCST, TUTAAB vb.) ile etiketlenmiştir — AB resmi taksonomi standardı.',
+            url: 'https://gd.eppo.int',
+            icon: Icons.bug_report_rounded,
+            color: Color(0xFF6D4C41),
+          ),
+          _ReferenceTile(
+            title: 'FAO Frost Protection Rehberi',
+            description:
+                'Don uyarı eşikleri (0 °C kritik, +2 °C uyarı) FAO Frost Protection rehberi ve WMO ground-frost tanımına dayanır.',
+            url: 'https://www.fao.org/3/y7223e/y7223e00.htm',
+            icon: Icons.ac_unit_rounded,
+            color: Color(0xFF0277BD),
+          ),
+          _ReferenceTile(
+            title: 'WMO — Beaufort Rüzgâr Ölçeği',
+            description:
+                'Şiddetli rüzgâr ve fırtına uyarıları (≥10.8 m/s uyarı, ≥17.2 m/s fırtına) WMO Beaufort ölçeği standardına göre üretilir.',
+            url: 'https://library.wmo.int/idurl/4/41650',
+            icon: Icons.air_rounded,
             color: Color(0xFF455A64),
           ),
           _ReferenceTile(
             title: 'USDA Natural Resources Conservation Service',
             description:
-                'Toprak sınıflandırması ve tarla kapasitesi referansları.',
+                'Toprak sınıflandırması, pH limitleri ve tarla kapasitesi eşik değerleri NRCS yayınlarından alınmıştır.',
             url: 'https://www.nrcs.usda.gov',
             icon: Icons.grass_rounded,
             color: Color(0xFF689F38),
