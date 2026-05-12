@@ -420,11 +420,6 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
                           const SizedBox(height: 12),
                           _buildMyFieldsSection(),
                           const SizedBox(height: 24),
-                          _buildSectionHeader(
-                              'Hava Durumu', Icons.wb_sunny_rounded),
-                          const SizedBox(height: 12),
-                          _buildWeatherStrip(),
-                          const SizedBox(height: 24),
                           _buildJournalButton(),
                         ],
                       ),
@@ -479,53 +474,78 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
                 bottom: 22,
                 left: 20,
                 right: 20,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Icon(_weatherIcon, color: Colors.white70, size: 36),
-                        const SizedBox(width: 12),
-                        Text(
-                          _temp != '--' ? '$_temp°C' : '--',
-                          style: const TextStyle(
-                            fontSize: 56,
-                            fontWeight: FontWeight.w200,
-                            color: Colors.white,
-                            height: 1.0,
+                    // SOL: Ana sıcaklık + açıklama + konum
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Icon(_weatherIcon,
+                                  color: Colors.white70, size: 36),
+                              const SizedBox(width: 10),
+                              Text(
+                                _temp != '--' ? '$_temp°C' : '--',
+                                style: const TextStyle(
+                                  fontSize: 52,
+                                  fontWeight: FontWeight.w200,
+                                  color: Colors.white,
+                                  height: 1.0,
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    if (_weatherDesc.isNotEmpty)
-                      Text(
-                        _weatherDesc,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          color: Colors.white70,
-                          fontWeight: FontWeight.w300,
-                        ),
-                      ),
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        const Icon(Icons.location_on_outlined,
-                            color: Colors.white54, size: 14),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            _location,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: Colors.white54,
+                          const SizedBox(height: 4),
+                          if (_weatherDesc.isNotEmpty)
+                            Text(
+                              _weatherDesc,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                color: Colors.white70,
+                                fontWeight: FontWeight.w300,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              const Icon(Icons.location_on_outlined,
+                                  color: Colors.white54, size: 13),
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: Text(
+                                  _location,
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.white54,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    // SAĞ: Nem + rüzgar yan yana
+                    _HeroWeatherSideChip(
+                      icon: Icons.water_drop_rounded,
+                      value: _humidity != '--' ? '%$_humidity' : '--',
+                      label: 'Nem',
+                    ),
+                    const SizedBox(width: 8),
+                    _HeroWeatherSideChip(
+                      icon: Icons.air_rounded,
+                      value: _wind != '--' ? _wind : '--',
+                      label: 'm/s',
                     ),
                   ],
                 ),
@@ -758,87 +778,6 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
             fontWeight: FontWeight.w600,
             color: AppColors.textTertiary,
             letterSpacing: 0.3,
-          ),
-        ),
-      ],
-    );
-  }
-
-  // ───────────────────────────────────────────────────────────────────────────
-  // WEATHER STRIP — Kompakt, opsiyonel detay
-  // ───────────────────────────────────────────────────────────────────────────
-  Widget _buildWeatherStrip() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.95),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.6)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.12),
-            blurRadius: 14,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: _weatherChip(
-              icon: Icons.thermostat_rounded,
-              value: _temp != '--' ? '$_temp°' : '--',
-              label: 'Sıcaklık',
-              color: const Color(0xFFE64A19),
-            ),
-          ),
-          _verticalDivider(),
-          Expanded(
-            child: _weatherChip(
-              icon: Icons.water_drop_rounded,
-              value: _humidity != '--' ? '%$_humidity' : '--',
-              label: 'Nem',
-              color: const Color(0xFF0277BD),
-            ),
-          ),
-          _verticalDivider(),
-          Expanded(
-            child: _weatherChip(
-              icon: Icons.air_rounded,
-              value: _wind != '--' ? _wind : '--',
-              label: 'm/s',
-              color: AppColors.textSecondary,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _weatherChip({
-    required IconData icon,
-    required String value,
-    required String label,
-    required Color color,
-  }) {
-    return Column(
-      children: [
-        Icon(icon, color: color, size: 20),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 17,
-            fontWeight: FontWeight.w800,
-            color: color,
-          ),
-        ),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 10,
-            color: AppColors.textTertiary,
-            fontWeight: FontWeight.w500,
           ),
         ),
       ],
@@ -1677,6 +1616,58 @@ class _FieldDirectivesStrip extends ConsumerWidget {
               ),
             ),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+/// SliverAppBar hero alanında ana sıcaklığın yanına yerleşen kompakt
+/// nem/rüzgar chip'i. Şeffaf siyah üstünde beyaz tipografi.
+class _HeroWeatherSideChip extends StatelessWidget {
+  const _HeroWeatherSideChip({
+    required this.icon,
+    required this.value,
+    required this.label,
+  });
+
+  final IconData icon;
+  final String value;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: Colors.white70, size: 16),
+          const SizedBox(height: 3),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+              color: Colors.white,
+              height: 1.0,
+            ),
+          ),
+          const SizedBox(height: 1),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 9,
+              color: Colors.white54,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.4,
+            ),
+          ),
         ],
       ),
     );

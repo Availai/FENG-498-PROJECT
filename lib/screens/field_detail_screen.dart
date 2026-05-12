@@ -1199,7 +1199,6 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
               _showPlantPicker,
               color: AppColors.emerald,
               primary: true,
-              onLongPress: _showPlacementMenu,
             ),
           ),
           Expanded(
@@ -2567,64 +2566,6 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
           ? '${picked.nameTr} eklendi.'
           : '${picked.nameTr} yön oku ile eklendi.',
       type: ToastType.success,
-    );
-  }
-
-  /// "Ekle" uzun basışı bölge çizme ve tekil bitki ekleme seçeneklerini açar.
-  void _showPlacementMenu() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: AppColors.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 40,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 14),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              ListTile(
-                leading: const Icon(Icons.crop_free_rounded,
-                    color: AppColors.emerald),
-                title: const Text('Bölge Çiz'),
-                subtitle: const Text(
-                    'Toplu ekim için bitki seç ve ekilecek alanı çiz'),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _showPlantPicker();
-                },
-              ),
-              const Divider(),
-              ListTile(
-                leading:
-                    const Icon(Icons.eco_rounded, color: AppColors.emeraldDark),
-                title: const Text('Tekil Bitki Ekle'),
-                subtitle: const Text(
-                    'Boş bir noktaya dokunarak tek bir bitki yerleştir'),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  setState(() => _isPlacingSinglePlantMode = true);
-                  AppToast.show(
-                    context,
-                    message: 'Bitkiyi yerleştirmek istediğin noktaya dokun.',
-                    type: ToastType.info,
-                  );
-                },
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 
