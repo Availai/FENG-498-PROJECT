@@ -397,8 +397,13 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           _buildEmergencyBanners(),
-                          _buildFieldOverview(),
-                          const SizedBox(height: 14),
+                          _buildCollapsibleSection(
+                            id: 'overview',
+                            title: 'Tarla Genel Durumu',
+                            icon: Icons.dashboard_rounded,
+                            body: _buildFieldOverview(),
+                          ),
+                          const SizedBox(height: 10),
                           _buildCollapsibleSection(
                             id: 'tasks',
                             title: 'Bugün Yapılacaklar',

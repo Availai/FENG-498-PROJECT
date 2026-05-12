@@ -409,7 +409,7 @@ def _disease_rules(name, temp, humidity, weekly_rain, soil_moisture, month):
             level=RiskLevel.critical, category=RuleCategory.disease,
             title="Yüksek Mantar (Fungus) Riski — Domates",
             message=f"Nem %{round(humidity)} + Sıcaklık {temp:.1f}°C — Botrytis ve Alternaria için ideal koşullar.",
-            recommendation="Bakırlı fungisit uygulayın. Sulamayı sabah yapın.",
+            recommendation="Sulamayı sabah yapın, gece ıslak bitki kalmayacak şekilde. Yaprak altlarını günlük kontrol edin. Belirti varsa uzman/ziraat mühendisi değerlendirmesi ve BKÜ veritabanı kontrolü ile ruhsatlı koruyucu seçilebilir.",
             eppo_code="BOTRCI / ALTESO",
             source_ref="EPPO PP1/152 — Botrytis ve Alternaria yönetimi",
         ))
@@ -430,7 +430,7 @@ def _disease_rules(name, temp, humidity, weekly_rain, soil_moisture, month):
             level=RiskLevel.critical, category=RuleCategory.disease,
             title="Mildiyö (Phytophthora) Riski",
             message=f"Nem %{round(humidity)} + {temp:.1f}°C — geç yanıklık için kritik.",
-            recommendation="Profilaktik fungisit (Metalaksil veya Mancozeb) uygulayın.",
+            recommendation="Hasta yaprak ve sürgünleri hemen uzaklaştırın. Damla sulamaya geçin. Uzman değerlendirmesi sonrası BKÜ veritabanından ruhsatlı koruyucu seçilebilir.",
             eppo_code="PHYTIN",
             source_ref="EPPO PP1/2 — Phytophthora infestans",
         ))
@@ -440,7 +440,7 @@ def _disease_rules(name, temp, humidity, weekly_rain, soil_moisture, month):
             level=RiskLevel.warning, category=RuleCategory.disease,
             title="Pas Hastalığı Riski — Buğday",
             message=f"Nem %{round(humidity)} + {temp:.1f}°C — sarı pas sporları yayılabilir.",
-            recommendation="Triazol bazlı fungisit hazır bulundurun.",
+            recommendation="Tarlayı tarayın, pas belirtisi var mı kontrol edin. Belirti yoğunsa uzman değerlendirmesi ve BKÜ veritabanı kontrolü ile ruhsatlı koruyucu hazır bulundurun.",
             eppo_code="PUCCST",
             source_ref="EPPO PP1/26 — Puccinia striiformis (sarı pas)",
         ))
@@ -463,7 +463,7 @@ def _disease_rules(name, temp, humidity, weekly_rain, soil_moisture, month):
             level=RiskLevel.warning, category=RuleCategory.disease,
             title="Yağış Sonrası Patojen Baskısı",
             message=f"Haftalık {round(weekly_rain)} mm yağış ve yüksek nem yüzeyde fungal sporların hızla yayılmasına yol açabilir.",
-            recommendation="Yağış bittikten sonra geniş spektrumlu koruyucu fungisit kullanmayı değerlendirin.",
+            recommendation="Yağış bittikten sonra uzman değerlendirmesi ve BKÜ veritabanı kontrolü ile ruhsatlı geniş spektrumlu koruyucu kullanmayı değerlendirin.",
             source_ref="T.C. Tarım Orman Bakanlığı Zirai Mücadele Teknik Talimatları (2019-2023)",
         ))
 
@@ -481,7 +481,7 @@ def _pest_rules(name, temp, humidity, wind, month):
             level=RiskLevel.warning, category=RuleCategory.pest,
             title="Kırmızı Örümcek Riski",
             message=f"{temp:.1f}°C + Düşük nem %{round(humidity)}.",
-            recommendation="Yaprak altlarını kontrol edin. Kükürt bazlı akarisit uygulayın.",
+            recommendation="Yaprak altlarını kontrol edin. Yoğunluk eşik üstündeyse uzman/ziraat mühendisi değerlendirmesi ve BKÜ veritabanı kontrolü ile ruhsatlı akar mücadele ürünü seçilebilir.",
             eppo_code="TETRUR",
             source_ref="EPPO PP1/200 — Tetranychus urticae mücadele",
         ))
@@ -502,7 +502,7 @@ def _pest_rules(name, temp, humidity, wind, month):
             level=RiskLevel.warning, category=RuleCategory.pest,
             title="Colorado Böceği Riski",
             message=f"Yaz sezonu ve {temp:.1f}°C — Colorado böceği aktif.",
-            recommendation="Yaprak altlarını günlük kontrol edin. Spinosad uygulayın.",
+            recommendation="Yaprak altlarını günlük kontrol edin. Sarı-siyah çizgili erginleri elle toplayın. Yoğunluk eşik üstündeyse uzman değerlendirmesi ve BKÜ veritabanı kontrolü ile ruhsatlı insektisit seçilebilir.",
             eppo_code="LPTNDE",
             source_ref="EPPO PP1/12 — Leptinotarsa decemlineata",
         ))
@@ -540,14 +540,14 @@ def _soil_rules(ph, soil_temp, plant, month):
             level=RiskLevel.critical, category=RuleCategory.soil,
             title="Toprak Aşırı Asidik",
             message=f"pH {ph:.1f} — besin alımı bloke, alüminyum toksisitesi riski.",
-            recommendation="Dekara 300-400 kg tarım kireci uygulayın.",
+            recommendation="Tarım İl Müdürlüğü onayı ile geniş çaplı kireçleme planlanmalı; uzman/ziraat mühendisi toprak analiz raporuna göre kireç miktarını belirler.",
         ))
     elif ph < 5.5:
         r.append(RuleResult(
             level=RiskLevel.warning, category=RuleCategory.soil,
             title="Toprak Asidik — Kireçleme Önerisi",
             message=f"pH {ph:.1f} — çoğu kültür bitkisi için alt sınıra yakın.",
-            recommendation="Dekara 150-200 kg tarım kireci uygulayın.",
+            recommendation="Uzman/ziraat mühendisi gözetiminde toprak analizine göre kireçleme planlayın. 6 ay sonra tekrar pH ölçümü yapın.",
         ))
 
     if ph > 8.0:
@@ -555,7 +555,7 @@ def _soil_rules(ph, soil_temp, plant, month):
             level=RiskLevel.critical, category=RuleCategory.soil,
             title="Toprak Aşırı Bazik",
             message=f"pH {ph:.1f} — demir, çinko ve mangan alımı bloke.",
-            recommendation="Dekara 30-50 kg elementel kükürt uygulayın.",
+            recommendation="Uzman/ziraat mühendisi gözetiminde elementel kükürt uygulaması planlanmalı; doz toprak analizi raporuna göre belirlenir.",
         ))
     elif ph > 7.5:
         r.append(RuleResult(
