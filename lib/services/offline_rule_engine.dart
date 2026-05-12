@@ -229,7 +229,7 @@ class OfflineRuleEngine {
         message:
             'Haftalık ${weeklyRain.round()} mm yağış — kök çürüklüğü ve toprak yıkanması riski.',
         recommendation:
-            'Drenaj kanallarını kontrol edin. Sulama tamamen durdurun. Mantar hastalıklarına karşı profilaktik fungisit düşünün.',
+            'Drenaj kanallarını kontrol edin. Sulamayı tamamen durdurun. Mantar hastalığı baskısı için uzman/ziraat mühendisi değerlendirmesi sonrası BKÜ veritabanından ruhsatlı koruyucu seçilebilir.',
       ));
     } else if (weeklyRain > 50) {
       r.add(RuleResult(
@@ -238,7 +238,7 @@ class OfflineRuleEngine {
         title: 'Yüksek Yağış',
         message: 'Haftalık ${weeklyRain.round()} mm yağış.',
         recommendation:
-            'Sulama haftaya kadar durdurulabilir. Fungisit uygulaması planlayın.',
+            'Sulamayı haftaya kadar erteleyin. Mantar belirtisi görürseniz uzman onayı ve BKÜ veritabanı kontrolü ile ruhsatlı koruyucu değerlendirilmeli.',
       ));
     }
 
@@ -378,7 +378,7 @@ class OfflineRuleEngine {
         message:
             'Nem %${humidity.round()} + Sıcaklık ${temp.toStringAsFixed(1)}°C — Botrytis (gri küf) ve Alternaria yaprak lekesi için ideal koşullar.',
         recommendation:
-            'Bakırlı fungisit (Bordeaux karışımı) veya mankoze bazlı fungisit uygulayın. Yaprak altlarını kontrol edin. Sulamayı sabah yapın, gece ıslak bitki kalmayacak şekilde.',
+            'Yaprak altlarını günlük kontrol edin. Sulamayı sabah yapın, gece ıslak bitki kalmayacak şekilde. Belirti varsa uzman/ziraat mühendisi değerlendirmesi ve BKÜ veritabanı kontrolü ile ruhsatlı koruyucu seçilebilir.',
       ));
     }
 
@@ -407,7 +407,7 @@ class OfflineRuleEngine {
         message:
             'Nem %${humidity.round()} + Düşük sıcaklık ${temp.toStringAsFixed(1)}°C — geç yanıklık (late blight) için kritik koşul.',
         recommendation:
-            'Profilaktik fungisit (Metalaksil veya Mancozeb) uygulayın. Hasta yaprak ve sürgünleri hemen uzaklaştırın.',
+            'Hasta yaprak ve sürgünleri hemen uzaklaştırın. Damla sulamaya geçin. Uzman değerlendirmesi sonrası BKÜ veritabanından ruhsatlı koruyucu seçilebilir.',
       ));
     }
 
@@ -428,7 +428,7 @@ class OfflineRuleEngine {
         message:
             '${temp.toStringAsFixed(1)}°C + Nem %${humidity.round()} — külleme gelişimi için ideal.',
         recommendation:
-            'Yapraklarda beyaz pudra benzeri leke arıyın. Erken aşamada kükürt bazlı fungisit veya bakırlı preparat.',
+            'Yapraklarda beyaz pudra benzeri leke arayın. Belirti tespit ederseniz uzman/ziraat mühendisi değerlendirmesi ve BKÜ veritabanı kontrolü ile ruhsatlı koruyucu seçilebilir.',
       ));
     }
 
@@ -441,7 +441,7 @@ class OfflineRuleEngine {
         message:
             'Nem %${humidity.round()} + ${temp.toStringAsFixed(1)}°C — sarı pas veya kara pas sporları yayılabilir.',
         recommendation:
-            'Tarlayı tarayın, pas belirtisi var mı kontrol edin. Triazol bazlı fungisit (propikonazol) hazır bulundurun.',
+            'Tarlayı tarayın, pas belirtisi var mı kontrol edin. Belirti yoğunsa uzman değerlendirmesi ve BKÜ veritabanı kontrolü ile ruhsatlı koruyucu hazır bulundurun.',
       ));
     }
 
@@ -454,7 +454,7 @@ class OfflineRuleEngine {
         message:
             'Nem %${humidity.round()} — çilek için en tehlikeli mantar koşulları oluştu.',
         recommendation:
-            'Drenajı iyileştirin. Olgunlaşmış meyveleri günlük toplayın. Botrytis için özel fungisit (iprodion) uygulayın.',
+            'Drenajı iyileştirin. Olgunlaşmış meyveleri günlük toplayın. Uzman değerlendirmesi sonrası BKÜ veritabanından Botrytis için ruhsatlı koruyucu seçilebilir.',
       ));
     }
 
@@ -467,7 +467,7 @@ class OfflineRuleEngine {
         message:
             'Yağış ${weeklyRain.round()} mm + Nem %${humidity.round()} — Colletotrichum hastalığı için koşullar uygun.',
         recommendation:
-            'Bakırlı fungisit veya klorotalonil uygulayın. Yağışlı havalarda tarlaya girişi azaltın (bulaşma önleme).',
+            'Yağışlı havalarda tarlaya girişi azaltın (bulaşma önleme). Belirti varsa uzman değerlendirmesi ve BKÜ veritabanı kontrolü ile ruhsatlı koruyucu seçilebilir.',
       ));
     }
 
@@ -544,7 +544,7 @@ class OfflineRuleEngine {
         message:
             'Yaz sezonu ve ${temp.toStringAsFixed(1)}°C — Colorado böceği ergin ve larvaları aktif.',
         recommendation:
-            'Yaprak altlarını günlük kontrol edin. Sarı-siyah çizgili erginleri elle toplayın. Spinosad veya imidakloprid.',
+            'Yaprak altlarını günlük kontrol edin. Sarı-siyah çizgili erginleri elle toplayın. Yoğunluk eşik üstündeyse uzman değerlendirmesi ve BKÜ veritabanı kontrolü ile ruhsatlı insektisit seçilebilir.',
       ));
     }
 
@@ -601,7 +601,7 @@ class OfflineRuleEngine {
         message:
             'pH ${ph.toStringAsFixed(1)} — besin alımı bloke, alüminyum toksisitesi riski.',
         recommendation:
-            'Dekara 300-400 kg tarım kireci (CaCO₃) uygulayın. Sonbahar-kış döneminde kireçleme yapılması en verimli.',
+            'Tarım İl Müdürlüğü onayı ile geniş çaplı kireçleme planlanmalı; uzman/ziraat mühendisi toprak analiz raporuna göre kireç miktarını belirler. Sonbahar-kış döneminde uygulanması verimli.',
       ));
     } else if (ph < 5.5) {
       r.add(RuleResult(
@@ -611,7 +611,7 @@ class OfflineRuleEngine {
         message:
             'pH ${ph.toStringAsFixed(1)} — çoğu kültür bitkisi için alt sınıra yakın.',
         recommendation:
-            'Dekara 150-200 kg tarım kireci uygulayın. 6 ay sonra tekrar pH ölçümü yapın.',
+            'Uzman/ziraat mühendisi gözetiminde toprak analizine göre kireçleme planlayın. 6 ay sonra tekrar pH ölçümü yapın.',
       ));
     }
 
@@ -624,7 +624,7 @@ class OfflineRuleEngine {
         message:
             'pH ${ph.toStringAsFixed(1)} — demir, çinko ve mangan alımı bloke.',
         recommendation:
-            'Dekara 30-50 kg elementel kükürt uygulayın. Amonyum sülfat bazlı asidik gübreler kullanın. Yapraktan şelat demir spreyi.',
+            'Uzman/ziraat mühendisi gözetiminde elementel kükürt uygulaması planlanmalı; doz toprak analizi raporuna göre belirlenir. Yapraktan şelat demir spreyi yardımcı olabilir.',
       ));
     } else if (ph > 7.5) {
       r.add(RuleResult(
@@ -956,16 +956,16 @@ class OfflineRuleEngine {
     buf.writeln('🌱 1. TOPRAK HAZIRLIĞI');
     if (ph < 5.5) {
       buf.writeln(
-          '• pH ${ph.toStringAsFixed(1)} — ZORUNLU: Ekimden 1 ay önce dekara 200 kg tarım kireci uygulayın.');
+          '• pH ${ph.toStringAsFixed(1)} — Düşük pH; ekimden önce kireçleme gerekir. Uzman/ziraat mühendisi toprak analizine göre kireç miktarını belirler.');
     } else if (ph > 7.5) {
       buf.writeln(
-          '• pH ${ph.toStringAsFixed(1)} — Dekara 20 kg elementel kükürt uygulayın.');
+          '• pH ${ph.toStringAsFixed(1)} — Yüksek pH; uzman gözetiminde elementel kükürt uygulaması planlanmalı.');
     } else {
       buf.writeln(
           '• pH ${ph.toStringAsFixed(1)} ✅ toprak ideal aralıkta, kireçleme gerekmez.');
     }
     buf.writeln(
-        '• Taban gübresi: Ekimden 5-7 gün önce dekara 20 kg 15-15-15 NPK uygulayın.');
+        '• Taban gübresi: NPK miktarı toprak analizine göre ziraat mühendisi onayıyla belirlenmeli; ekimden 5-7 gün önce uygulanır.');
     buf.writeln(
         '• Derin sürüm (25-30 cm) ve diskaro ile toprak hazırlığı yapın.\n');
 
@@ -1097,7 +1097,8 @@ class OfflineRuleEngine {
 
     buf.writeln('⚠️ RİSKLER');
     if (humidity > 80 && temp >= 18 && temp <= 28) {
-      buf.writeln('• Mantar hastalık riski yüksek — fungisit takibi yapın.');
+      buf.writeln(
+          '• Mantar hastalık riski yüksek — belirti gözlemleyin; uzman değerlendirmesi sonrası BKÜ veritabanından ruhsatlı koruyucu seçilebilir.');
     }
     if (temp > 35) {
       buf.writeln('• Isı stresi — sulama sıklığını artırın, mulçlama yapın.');

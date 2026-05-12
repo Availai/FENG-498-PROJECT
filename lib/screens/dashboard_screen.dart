@@ -9,7 +9,6 @@ import '../services/weather_soil_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/location_utils.dart';
 import '../widgets/animated_route.dart';
-import '../widgets/contextual_tip.dart';
 import '../widgets/help_panel.dart';
 import '../widgets/tap_scale.dart';
 import 'farm_journal_screen.dart';
@@ -120,6 +119,10 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
       _weatherDesc = '';
   bool _isLoading = false;
   String _weatherCondition = 'sunny';
+
+  /// Açık olan daraltılabilir bölümler (kullanıcı detay görmek için
+  /// başlığa basınca eklenir). Varsayılan: hepsi kapalı — temiz dashboard.
+  final Set<String> _openSections = <String>{};
 
   late AnimationController _animController;
   late Animation<double> _fadeAnim;
@@ -394,32 +397,29 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           _buildEmergencyBanners(),
-                          ActionTipCard(
-                            id: 'dashboard_daily_help_tip',
-                            icon: Icons.tips_and_updates_rounded,
-                            color: AppColors.emerald,
-                            title: 'İşler nerede görünür?',
-                            message:
-                                'Acil sulama, gübreleme ve hasat işleri "Bugün Yapılacaklar" bölümünde çıkar. Bir tarlanın ayrıntısı için kartındaki "Takip" düğmesine dokunun.',
-                          ),
-                          const SizedBox(height: 16),
                           _buildFieldOverview(),
-                          const SizedBox(height: 24),
-                          _buildSectionHeader('Bugün Yapılacaklar',
-                              Icons.checklist_rtl_rounded),
-                          const SizedBox(height: 12),
-                          _buildTasksSummarySection(),
-                          const SizedBox(height: 24),
-                          _buildSectionHeader(
-                              'Haftalık Plan', Icons.calendar_month_rounded),
-                          const SizedBox(height: 12),
-                          _buildWeeklyPlanSection(),
-                          const SizedBox(height: 24),
-                          _buildSectionHeader(
-                              'Tarlalarım', Icons.grass_rounded),
-                          const SizedBox(height: 12),
-                          _buildMyFieldsSection(),
-                          const SizedBox(height: 24),
+                          const SizedBox(height: 14),
+                          _buildCollapsibleSection(
+                            id: 'tasks',
+                            title: 'Bugün Yapılacaklar',
+                            icon: Icons.checklist_rtl_rounded,
+                            body: _buildTasksSummarySection(),
+                          ),
+                          const SizedBox(height: 10),
+                          _buildCollapsibleSection(
+                            id: 'weekly',
+                            title: 'Haftalık Plan',
+                            icon: Icons.calendar_month_rounded,
+                            body: _buildWeeklyPlanSection(),
+                          ),
+                          const SizedBox(height: 10),
+                          _buildCollapsibleSection(
+                            id: 'fields',
+                            title: 'Tarlalarım',
+                            icon: Icons.grass_rounded,
+                            body: _buildMyFieldsSection(),
+                          ),
+                          const SizedBox(height: 18),
                           _buildJournalButton(),
                         ],
                       ),
@@ -560,48 +560,101 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
     );
   }
 
-  Widget _buildSectionHeader(String title, IconData icon) {
-    return Row(
-      children: [
-        Container(
-          width: 3,
-          height: 24,
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [AppColors.emeraldLight, AppColors.emeraldDark],
+  /// Daraltılabilir bölüm — başlık her zaman görünür, gövde varsayılan kapalı.
+  /// Başlığa dokununca açılır/kapanır; ek bilgiler yalnızca istenince gelir.
+  ///
+  /// [id] _openSections set'inde açık olanları izlemek için stabil anahtar.
+  Widget _buildCollapsibleSection({
+    required String id,
+    required String title,
+    required IconData icon,
+    required Widget body,
+  }) {
+    final isOpen = _openSections.contains(id);
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 2),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          InkWell(
+            onTap: () {
+              setState(() {
+                if (isOpen) {
+                  _openSections.remove(id);
+                } else {
+                  _openSections.add(id);
+                }
+              });
+            },
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              child: Row(
+                children: [
+                  Container(
+                    width: 3,
+                    height: 22,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [AppColors.emeraldLight, AppColors.emeraldDark],
+                      ),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      gradient: AppGradients.emeraldCard,
+                      borderRadius: BorderRadius.circular(9),
+                      boxShadow: AppShadows.emeraldGlow,
+                    ),
+                    child: Icon(icon, size: 15, color: Colors.white),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                  ),
+                  AnimatedRotation(
+                    turns: isOpen ? 0.5 : 0,
+                    duration: const Duration(milliseconds: 180),
+                    child: const Icon(
+                      Icons.expand_more_rounded,
+                      color: Colors.white70,
+                      size: 22,
+                    ),
+                  ),
+                ],
+              ),
             ),
-            borderRadius: BorderRadius.circular(2),
           ),
-        ),
-        const SizedBox(width: 10),
-        Container(
-          padding: const EdgeInsets.all(7),
-          decoration: BoxDecoration(
-            gradient: AppGradients.emeraldCard,
-            borderRadius: BorderRadius.circular(10),
-            boxShadow: AppShadows.emeraldGlow,
+          AnimatedCrossFade(
+            firstChild: const SizedBox.shrink(),
+            secondChild: Padding(
+              padding: const EdgeInsets.fromLTRB(8, 4, 8, 12),
+              child: body,
+            ),
+            crossFadeState:
+                isOpen ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+            duration: const Duration(milliseconds: 200),
           ),
-          child: Icon(icon, size: 17, color: Colors.white),
-        ),
-        const SizedBox(width: 10),
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-            color: Colors.white,
-            letterSpacing: 0.3,
-            shadows: [
-              Shadow(
-                  color: Color(0x66000000),
-                  blurRadius: 4,
-                  offset: Offset(0, 1)),
-            ],
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 

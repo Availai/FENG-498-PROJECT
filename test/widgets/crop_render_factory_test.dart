@@ -28,7 +28,12 @@ void main() {
     expect(find.byIcon(Icons.navigation_rounded), findsNothing);
   });
 
-  testWidgets('yön seçilmemiş bitkide yüzey yön oku çizilmez', (tester) async {
+  testWidgets(
+      'yön seçilmemiş bitkide bile varsayılan yön oku gösterilir (güney)',
+      (tester) async {
+    // CLAUDE.md gereği: bitki yönü her zaman görünür olmalı; çiftçi açı
+    // seçmese bile harita bakışında yön belirgin olur. Varsayılan yön
+    // 180° (güney) — Türkiye kuzey yarımküresi için yetiştirme normu.
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
@@ -45,7 +50,7 @@ void main() {
       ),
     );
 
-    expect(find.byKey(surfaceArrowKey), findsNothing);
+    expect(find.byKey(surfaceArrowKey), findsOneWidget);
   });
 
   testWidgets('seçili bitkide yön için bitki görseli oynatılmaz',
