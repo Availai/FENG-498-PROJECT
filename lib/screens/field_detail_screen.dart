@@ -1461,6 +1461,17 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
       isScrollControlled: true,
       builder: (_) => _PlantPickerSheet(
         scored: scored,
+        envTemp: env.temp,
+        envPh: env.ph,
+        envWeeklyRain: env.annualRain / 52.0,
+        onAddStandalone: () {
+          setState(() => _isPlacingSinglePlantMode = true);
+          AppToast.show(
+            context,
+            message: 'Bitkiyi yerleştirmek istediğin noktaya dokun.',
+            type: ToastType.info,
+          );
+        },
         onPick: (plant) async {
           Navigator.pop(context);
           await _startZoneDrawingForPlant(plant);
@@ -3894,7 +3905,19 @@ class _PlantDeleteTarget {
 class _PlantPickerSheet extends StatefulWidget {
   final List<Map<String, dynamic>> scored;
   final void Function(AgriPlant plant) onPick;
-  const _PlantPickerSheet({required this.scored, required this.onPick});
+  final VoidCallback? onAddStandalone;
+  final double? envTemp;
+  final double? envPh;
+  final double? envWeeklyRain;
+
+  const _PlantPickerSheet({
+    required this.scored,
+    required this.onPick,
+    this.onAddStandalone,
+    this.envTemp,
+    this.envPh,
+    this.envWeeklyRain,
+  });
 
   @override
   State<_PlantPickerSheet> createState() => _PlantPickerSheetState();
@@ -3903,6 +3926,8 @@ class _PlantPickerSheet extends StatefulWidget {
 class _PlantPickerSheetState extends State<_PlantPickerSheet> {
   final TextEditingController _searchCtrl = TextEditingController();
   String _query = '';
+  // Hangi kart açık (genişletilmiş detaylı). Map<plantName, isExpanded>.
+  final Set<String> _expanded = <String>{};
 
   @override
   void dispose() {
@@ -3932,7 +3957,7 @@ class _PlantPickerSheetState extends State<_PlantPickerSheet> {
   Widget build(BuildContext context) {
     final filtered = _filtered;
     return Container(
-      height: MediaQuery.of(context).size.height * 0.82,
+      height: MediaQuery.of(context).size.height * 0.85,
       decoration: const BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -3941,38 +3966,59 @@ class _PlantPickerSheetState extends State<_PlantPickerSheet> {
       child: Column(
         children: [
           Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
-                  borderRadius: BorderRadius.circular(2))),
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade300,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
           const SizedBox(height: 12),
+          // ── Başlık + Hava/toprak özet chip'leri (puanlama bağlamı) ──
           Row(children: [
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                  color: const Color(0xFFE8F5E9),
-                  borderRadius: BorderRadius.circular(10)),
+                color: const Color(0xFFE8F5E9),
+                borderRadius: BorderRadius.circular(10),
+              ),
               child: const Icon(Icons.add_circle_rounded,
                   color: Color(0xFF2E7D32), size: 22),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Tarlaya Bitki Ekle',
-                        style: GoogleFonts.outfit(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w700,
-                            color: const Color(0xFF1B5E20))),
-                    Text('Hava + toprak verisine göre uygunluk skoru',
-                        style: GoogleFonts.inter(
-                            fontSize: 12, color: Colors.grey.shade600)),
-                  ]),
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Tarlaya Bitki Ekle',
+                      style: GoogleFonts.outfit(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF1B5E20))),
+                  Text('Hava + toprak verisine göre uygunluk skoru',
+                      style: GoogleFonts.inter(
+                          fontSize: 12, color: Colors.grey.shade600)),
+                ],
+              ),
             ),
           ]),
+          const SizedBox(height: 10),
+          // Hava/toprak özeti — puanlama hangi koşullara göre yapıldı.
+          _EnvContextStrip(
+            temp: widget.envTemp,
+            ph: widget.envPh,
+            weeklyRain: widget.envWeeklyRain,
+          ),
           const SizedBox(height: 12),
+          // ── Tekil Bitki Ekle — en üstte ayrı bölüm ──
+          if (widget.onAddStandalone != null) ...[
+            _StandaloneAddBanner(onTap: () {
+              Navigator.pop(context);
+              widget.onAddStandalone!();
+            }),
+            const SizedBox(height: 12),
+          ],
+          // ── Arama kutusu ──
           TextField(
             controller: _searchCtrl,
             onChanged: (v) => setState(() => _query = v),
@@ -4023,106 +4069,330 @@ class _PlantPickerSheetState extends State<_PlantPickerSheet> {
                           (filtered[i]['score'] as double).round();
                       final List<String> reasons =
                           (filtered[i]['reasons'] as List).cast<String>();
-                      final Color sColor = score >= 75
-                          ? const Color(0xFF2E7D32)
-                          : score >= 50
-                              ? Colors.orange.shade700
-                              : Colors.red.shade700;
-                      final String label = score >= 75
-                          ? 'UYGUN'
-                          : score >= 50
-                              ? 'KOŞULLU'
-                              : 'UYGUN DEĞİL';
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4),
-                        child: Material(
-                          color: Colors.grey.shade50,
-                          borderRadius: BorderRadius.circular(12),
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(12),
-                            onTap: () => widget.onPick(p),
-                            child: Padding(
-                              padding: const EdgeInsets.all(12),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  CircleAvatar(
-                                    backgroundColor: p.renderColor,
-                                    radius: 20,
-                                    child: const Icon(Icons.eco,
-                                        color: Colors.white, size: 18),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(p.nameTr,
-                                            style: const TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 15)),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                            'Hasat: ${p.daysToHarvest} gün • pH ${p.minPh}-${p.maxPh} • ${p.minTemp.toInt()}-${p.maxTemp.toInt()}°C',
-                                            style: TextStyle(
-                                                fontSize: 11,
-                                                color: Colors.grey.shade700)),
-                                        if (reasons.isNotEmpty) ...[
-                                          const SizedBox(height: 4),
-                                          ...reasons.map((r) => Padding(
-                                                padding: const EdgeInsets.only(
-                                                    top: 2),
-                                                child: Row(
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment.start,
-                                                  children: [
-                                                    const Icon(
-                                                        Icons
-                                                            .warning_amber_rounded,
-                                                        size: 12,
-                                                        color: Colors.orange),
-                                                    const SizedBox(width: 4),
-                                                    Expanded(
-                                                      child: Text(r,
-                                                          style: const TextStyle(
-                                                              fontSize: 11,
-                                                              color: Colors
-                                                                  .black87)),
-                                                    ),
-                                                  ],
-                                                ),
-                                              )),
-                                        ],
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.end,
-                                    children: [
-                                      Text('%$score',
-                                          style: TextStyle(
-                                              color: sColor,
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 18)),
-                                      Text(label,
-                                          style: TextStyle(
-                                              color: sColor,
-                                              fontWeight: FontWeight.w600,
-                                              fontSize: 10)),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
+                      final isOpen = _expanded.contains(p.nameTr);
+                      return _PlantScoreCard(
+                        plant: p,
+                        score: score,
+                        reasons: reasons,
+                        expanded: isOpen,
+                        onToggle: () => setState(() {
+                          if (isOpen) {
+                            _expanded.remove(p.nameTr);
+                          } else {
+                            _expanded.add(p.nameTr);
+                          }
+                        }),
+                        onAdd: () => widget.onPick(p),
                       );
                     },
                   ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Hava + toprak özet chip'leri — puanlamanın hangi koşullara göre yapıldığını
+/// üstte tek bakışta gösterir. Veri yoksa "ölçüm yok" der.
+class _EnvContextStrip extends StatelessWidget {
+  const _EnvContextStrip({
+    required this.temp,
+    required this.ph,
+    required this.weeklyRain,
+  });
+
+  final double? temp;
+  final double? ph;
+  final double? weeklyRain;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF5F7F5),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE0E0E0)),
+      ),
+      child: Row(
+        children: [
+          _MiniEnvChip(
+            icon: Icons.thermostat_rounded,
+            color: const Color(0xFFEF6C00),
+            label: temp == null ? '— °C' : '${temp!.toStringAsFixed(0)} °C',
+          ),
+          const SizedBox(width: 8),
+          _MiniEnvChip(
+            icon: Icons.science_rounded,
+            color: const Color(0xFF1976D2),
+            label: ph == null ? 'pH —' : 'pH ${ph!.toStringAsFixed(1)}',
+          ),
+          const SizedBox(width: 8),
+          _MiniEnvChip(
+            icon: Icons.water_drop_rounded,
+            color: const Color(0xFF0277BD),
+            label: weeklyRain == null
+                ? '— mm/hf'
+                : '${weeklyRain!.toStringAsFixed(0)} mm/hf',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MiniEnvChip extends StatelessWidget {
+  const _MiniEnvChip({
+    required this.icon,
+    required this.color,
+    required this.label,
+  });
+
+  final IconData icon;
+  final Color color;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, color: color, size: 14),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: Colors.grey.shade800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Üst kısımda "Tekil Bitki Ekle" şeridi — uzun basma ihtiyacını kaldırır.
+class _StandaloneAddBanner extends StatelessWidget {
+  const _StandaloneAddBanner({required this.onTap});
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: const Color(0xFFE8F5E9),
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(7),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1B5E20),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.eco_rounded,
+                    color: Colors.white, size: 18),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Tekil Bitki Ekle',
+                      style: GoogleFonts.outfit(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: const Color(0xFF1B5E20),
+                      ),
+                    ),
+                    Text(
+                      'Tek bitkiyi haritada istediğin noktaya yerleştir',
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        color: Colors.grey.shade700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded, color: Color(0xFF1B5E20)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Bitki skor kartı — başlangıçta kapalı, chevron'a basınca açılır.
+///
+/// Kapalı: avatar + isim + %skor + UYGUN/KOŞULLU etiketi
+/// Açık: yukarıdakine ek olarak hasat günü, pH aralığı, sıcaklık aralığı ve
+///       uygunluk uyarıları (reasons listesi)
+class _PlantScoreCard extends StatelessWidget {
+  const _PlantScoreCard({
+    required this.plant,
+    required this.score,
+    required this.reasons,
+    required this.expanded,
+    required this.onToggle,
+    required this.onAdd,
+  });
+
+  final AgriPlant plant;
+  final int score;
+  final List<String> reasons;
+  final bool expanded;
+  final VoidCallback onToggle;
+  final VoidCallback onAdd;
+
+  @override
+  Widget build(BuildContext context) {
+    final Color sColor = score >= 75
+        ? const Color(0xFF2E7D32)
+        : score >= 50
+            ? Colors.orange.shade700
+            : Colors.red.shade700;
+    final String label = score >= 75
+        ? 'UYGUN'
+        : score >= 50
+            ? 'KOŞULLU'
+            : 'UYGUN DEĞİL';
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Material(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: onToggle,
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    CircleAvatar(
+                      backgroundColor: plant.renderColor,
+                      radius: 20,
+                      child:
+                          const Icon(Icons.eco, color: Colors.white, size: 18),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        plant.nameTr,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          '%$score',
+                          style: TextStyle(
+                            color: sColor,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                          ),
+                        ),
+                        Text(
+                          label,
+                          style: TextStyle(
+                            color: sColor,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 10,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(width: 4),
+                    Icon(
+                      expanded
+                          ? Icons.expand_less_rounded
+                          : Icons.expand_more_rounded,
+                      color: Colors.grey.shade600,
+                    ),
+                  ],
+                ),
+                if (expanded) ...[
+                  const SizedBox(height: 10),
+                  const Divider(height: 1),
+                  const SizedBox(height: 10),
+                  Text(
+                    'Hasat: ${plant.daysToHarvest} gün  •  pH ${plant.minPh}-${plant.maxPh}  •  ${plant.minTemp.toInt()}-${plant.maxTemp.toInt()} °C',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey.shade700,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  if (reasons.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    for (final r in reasons)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Icon(Icons.warning_amber_rounded,
+                                size: 13, color: Colors.orange),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                r,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.black87,
+                                  height: 1.35,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFF2E7D32),
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size.fromHeight(44),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      onPressed: onAdd,
+                      icon:
+                          const Icon(Icons.add_location_alt_rounded, size: 18),
+                      label: const Text(
+                        'Bu bitkiyi tarlaya ekle',
+                        style: TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
