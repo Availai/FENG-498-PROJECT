@@ -521,8 +521,7 @@ class NotificationService {
 
       // 3. Bugünkü görev özeti (yağmur yoksa — zaten yukarıda sulama bildirildi)
       if (result.today.isNotEmpty && rainAlert == null) {
-        final labels =
-            result.today.take(2).map((t) => t.headline).join(' • ');
+        final labels = result.today.take(2).map((t) => t.headline).join(' • ');
         final extra =
             result.today.length > 2 ? ' +${result.today.length - 2}' : '';
         await show(
@@ -573,15 +572,30 @@ class NotificationService {
 
   /// İlaçlama sonrası tedavi planı hatırlatıcılarını planlar.
   ///
-  /// [treatmentDays] gün boyunca günde 2 bildirim (08:00 ve 18:00) gönderir.
-  /// Bildirime tıklandığında [fieldId] üzerinden tarla ekranına yönlendirir.
+  /// Tedavi planı her [intervalDays] günde bir, toplam [totalApplications]
+  /// adet uygulama içerir; her uygulama günü [applicationHour] saatinde
+  /// bildirim atılır. Ek olarak her uygulama gününün akşamı kısa bir gözlem
+  /// hatırlatıcısı ve son uygulamadan [intervalDays] sonra "tedavi
+  /// tamamlandı, bitkileri kontrol edin" bildirimi gelir.
+  ///
+  /// Aktif madde adı kullanıcıya görünür ama doz/PHI bilgileri için her
+  /// bildirim BKÜ kontrolüne yönlendirir (CLAUDE.md §17).
+  ///
+  /// Mevcut altyapı [Future.delayed] kullandığı için bildirimler yalnız
+  /// uygulama çalıştığı sürece atılır; uzun süreli persisting için
+  /// zonedSchedule + timezone paketine geçiş gerekir (ileride).
   static Future<void> scheduleTreatmentReminders({
     required String fieldId,
     required String fieldName,
     required String diseaseName,
-    required int treatmentDays,
-    required String doseGuide,
+    required int intervalDays,
+    required int totalApplications,
+    int applicationHour = 7,
+    int observationHour = 19,
+    String? activeIngredient,
+    int firstApplicationOffsetDays = 0,
   }) async {
+    if (totalApplications <= 0 || intervalDays <= 0) return;
     try {
       final payload = jsonEncode({
         'type': 'treatment',
@@ -589,55 +603,74 @@ class NotificationService {
         'fieldName': fieldName,
       });
 
+      // Yeni planı kurmadan önce eski planı temizle ki bildirimler üst üste
+      // birikmesin.
+      await cancelTreatmentReminders(fieldId);
+
       final baseId = 6000 + (fieldId.hashCode.abs() % 1000);
       final now = DateTime.now();
+      final activeLabel = (activeIngredient ?? '').trim();
+      final activeSuffix = activeLabel.isEmpty ? '' : ' · $activeLabel';
 
-      for (int day = 0; day < treatmentDays; day++) {
-        final targetDate = now.add(Duration(days: day));
-        final dayLabel = day == 0
-            ? 'Bugün'
-            : (day == 1 ? 'Yarın' : '${day + 1}. gün');
+      for (int app = 0; app < totalApplications; app++) {
+        final dayOffset = firstApplicationOffsetDays + app * intervalDays;
+        final target = now.add(Duration(days: dayOffset));
 
-        // Sabah 08:00
-        final morning = DateTime(
-          targetDate.year, targetDate.month, targetDate.day, 8, 0,
+        final sprayAt = DateTime(
+          target.year,
+          target.month,
+          target.day,
+          applicationHour,
+          0,
         );
-        if (morning.isAfter(now)) {
+        if (sprayAt.isAfter(now)) {
           _scheduleDelayed(
-            id: baseId + (day * 2),
-            delay: morning.difference(now),
-            title: '💊 Tedavi Hatırlatıcı — $fieldName',
-            body: '$dayLabel: $diseaseName tedavisi — $doseGuide',
+            id: baseId + (app * 3),
+            delay: sprayAt.difference(now),
+            title: '💊 ${app + 1}. Uygulama — $fieldName',
+            body: '$diseaseName tedavisi$activeSuffix. '
+                'Etiket dozu ve hasada bekleme süresi için bku.tarim.gov.tr.',
             payload: payload,
           );
         }
 
-        // Akşam 18:00
-        final evening = DateTime(
-          targetDate.year, targetDate.month, targetDate.day, 18, 0,
+        final observeAt = DateTime(
+          target.year,
+          target.month,
+          target.day,
+          observationHour,
+          0,
         );
-        if (evening.isAfter(now)) {
+        if (observeAt.isAfter(now)) {
           _scheduleDelayed(
-            id: baseId + (day * 2) + 1,
-            delay: evening.difference(now),
-            title: '💊 Akşam Tedavi — $fieldName',
-            body: '$dayLabel: $diseaseName — uygulama kontrol edin',
+            id: baseId + (app * 3) + 1,
+            delay: observeAt.difference(now),
+            title: '🔎 Uygulama Sonrası Kontrol — $fieldName',
+            body: '$diseaseName: yapraklarda yanıklık/leke var mı? '
+                'Bir sonraki uygulama $intervalDays gün sonra.',
             payload: payload,
           );
         }
       }
 
-      // Tedavi sonu bildirimi
-      final endDate = now.add(Duration(days: treatmentDays));
-      final endMorning = DateTime(
-        endDate.year, endDate.month, endDate.day, 9, 0,
+      // Tedavi sonu — son uygulamadan intervalDays sonra.
+      final endOffset =
+          firstApplicationOffsetDays + (totalApplications - 1) * intervalDays;
+      final endTarget = now.add(Duration(days: endOffset + intervalDays));
+      final endAt = DateTime(
+        endTarget.year,
+        endTarget.month,
+        endTarget.day,
+        applicationHour + 1,
+        0,
       );
-      if (endMorning.isAfter(now)) {
+      if (endAt.isAfter(now)) {
         _scheduleDelayed(
-          id: baseId + (treatmentDays * 2) + 2,
-          delay: endMorning.difference(now),
+          id: baseId + (totalApplications * 3) + 2,
+          delay: endAt.difference(now),
           title: '✅ Tedavi Tamamlandı — $fieldName',
-          body: '$diseaseName tedavisi sona erdi. Bitkileri kontrol edin.',
+          body: '$diseaseName tedavi planı sona erdi. Bitkileri kontrol edin; '
+              'belirti devam ediyorsa ziraat mühendisine danışın.',
           payload: payload,
         );
       }

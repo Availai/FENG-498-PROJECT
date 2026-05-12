@@ -1861,6 +1861,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
     final fieldId = widget.fieldData['id']?.toString();
     if (fieldId == null || fieldId.isEmpty) return;
     await TurkishCropsRepository.instance.ensureReady();
+    if (!mounted) return;
     final cropId = crop['id']?.toString();
     final cropName = crop['name']?.toString() ?? 'Bitki';
     final useTrustedDiseaseOptions = _hasTrustedDiseaseProfile(cropName);
@@ -2314,6 +2315,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
     final fieldId = widget.fieldData['id']?.toString();
     if (fieldId == null || fieldId.isEmpty) return;
     await TurkishCropsRepository.instance.ensureReady();
+    if (!mounted) return;
     final useTrustedDiseaseOptions =
         targets.every((t) => _hasTrustedDiseaseProfile(t.cropName));
 
@@ -2461,7 +2463,8 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
       }
     }
 
-    if (removedInstanceId == null) return;
+    // Yukarıdaki tüm dallarda removedInstanceId atanır veya erken dönüş
+    // yapılır; bu noktada non-null garantili.
     await ref.read(activityLoggerProvider).log(
       fieldId: fieldId,
       type: ActivityType.scouting,

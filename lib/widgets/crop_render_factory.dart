@@ -64,9 +64,10 @@ double _facingDegrees(String? directionKey) {
   };
 }
 
-bool _hasFacingDirection(String? directionKey) {
-  return directionKey != null && directionKey.trim().isNotEmpty;
-}
+/// Yön oku her bitkide görünür olmalı — kullanıcı bitkiyi eklerken açı seçmese
+/// bile varsayılan yön (`_facingDegrees` içinde 180° güney) kullanılır. Bu
+/// sayede çiftçi haritaya bakar bakmaz bitkinin baktığı yönü anlar.
+bool _hasFacingDirection(String? directionKey) => true;
 
 String _facingDirectionSemanticLabel(String? directionKey) {
   final degrees = _facingDegrees(directionKey).round() % 360;
@@ -84,10 +85,12 @@ String _facingDirectionSemanticLabel(String? directionKey) {
 }
 
 Widget _buildFacingArrow({
-  required String facingDirection,
+  required String? facingDirection,
   required double cameraRotationDegrees,
   required double zoomScale,
 }) {
+  // facingDirection null/empty olduğunda _facingDegrees 180° (güney) döner —
+  // Türkiye için kuzey yarımkürede güneye bakış varsayılan yetiştirme yönüdür.
   final screenDegrees =
       (_facingDegrees(facingDirection) + cameraRotationDegrees) % 360.0;
   final arrowSize = (52.0 * zoomScale).clamp(16.0, 86.0).toDouble();
@@ -425,7 +428,7 @@ Widget buildCropMarkerWidget({
                 Positioned(
                   bottom: (spriteH * 0.02).clamp(0.0, 6.0),
                   child: _buildFacingArrow(
-                    facingDirection: facingDirection!,
+                    facingDirection: facingDirection,
                     cameraRotationDegrees: currentRotation,
                     zoomScale: zoomScale,
                   ),

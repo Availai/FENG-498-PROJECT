@@ -10,6 +10,13 @@ import '../data/activity_types.dart';
 import '../data/app_database.dart';
 import '../data/disease_advice.dart';
 
+/// Bir hastalık girdisinin üç olası durumundan biri.
+///
+///   • [active]       — Bitki 'diseased' işaretli, tedavi başlatılmamış. Kırmızı.
+///   • [inTreatment]  — Bitki 'treating' işaretli, tedavi planı sürüyor. Turuncu.
+///   • [resolved]     — Son 14 gün içinde eşleşen aktif madde uygulanmış. Yeşil.
+enum DiseaseEntryStatus { active, inTreatment, resolved }
+
 class DiseaseLogEntry {
   const DiseaseLogEntry({
     required this.plantId,
@@ -19,7 +26,7 @@ class DiseaseLogEntry {
     required this.advice,
     required this.observedAt,
     required this.affectedCount,
-    required this.resolved,
+    required this.status,
     required this.resolvedBy,
     required this.resolvedActiveIngredient,
     required this.resolvedAt,
@@ -29,6 +36,12 @@ class DiseaseLogEntry {
     required this.resolvedDoseUnit,
     required this.resolvedMixtureLiters,
     required this.resolvedPreharvestDays,
+    required this.treatmentStartedAt,
+    required this.applicationsCompleted,
+    required this.totalApplications,
+    required this.intervalDays,
+    required this.nextApplicationAt,
+    required this.lastAppliedActiveIngredient,
   });
 
   final String plantId;
@@ -39,8 +52,10 @@ class DiseaseLogEntry {
   final DateTime? observedAt;
   final int affectedCount;
 
-  /// Doğru ilaç son 14 gün içinde uygulandıysa true.
-  final bool resolved;
+  final DiseaseEntryStatus status;
+  bool get resolved => status == DiseaseEntryStatus.resolved;
+  bool get inTreatment => status == DiseaseEntryStatus.inTreatment;
+  bool get active => status == DiseaseEntryStatus.active;
 
   /// Çözümü sağlayan ilacın ticari adı (varsa).
   final String? resolvedBy;
@@ -63,6 +78,24 @@ class DiseaseLogEntry {
   final double? resolvedMixtureLiters;
   final int? resolvedPreharvestDays;
 
+  /// Tedavi başlangıç tarihi — ilk ilaçlama aktivitesinin tarihi.
+  final DateTime? treatmentStartedAt;
+
+  /// Şimdiye kadar yapılmış uygulama sayısı.
+  final int applicationsCompleted;
+
+  /// TAGEM standardına göre planlanan toplam uygulama sayısı.
+  final int totalApplications;
+
+  /// İki uygulama arası gün.
+  final int intervalDays;
+
+  /// Bir sonraki uygulama beklenen tarih (null ise plan tamamlanmış).
+  final DateTime? nextApplicationAt;
+
+  /// inTreatment durumunda son uygulanan aktif madde özeti.
+  final String? lastAppliedActiveIngredient;
+
   List<String> get chemicalSuggestions => advice.chemicalTreatments;
   List<String> get organicSuggestions => advice.organicTreatments;
   List<String> get sources => advice.sources;
@@ -76,14 +109,21 @@ class DiseaseLogService {
   /// İlaçlamanın tedavi sayılması için maksimum süre (gözlem sonrası).
   static const Duration resolutionWindow = Duration(days: 14);
 
-  /// Hasta bitki kayıtları + aktivite log → hastalık rehber girdileri.
+  /// Hasta veya tedavideki bitki kayıtları + aktivite log → hastalık rehber
+  /// girdileri. Üç durum üretebilir: [DiseaseEntryStatus.active] (kırmızı),
+  /// [DiseaseEntryStatus.inTreatment] (turuncu), [DiseaseEntryStatus.resolved]
+  /// (yeşil).
   static List<DiseaseLogEntry> build({
     required List<FieldPlantInstance> plantInstances,
     required List<Map<String, dynamic>> activities,
   }) {
     final byDisease = <String, List<FieldPlantInstance>>{};
     for (final p in plantInstances) {
-      if (p.healthStatus != 'diseased') continue;
+      // 'diseased' = aktif kırmızı, 'treating' = sürmekte olan tedavi (turuncu).
+      // 'healthy', 'dead', 'removed' bu raporun konusu değil.
+      if (p.healthStatus != 'diseased' && p.healthStatus != 'treating') {
+        continue;
+      }
       final d = p.diseaseType?.trim();
       if (d == null || d.isEmpty) continue;
       byDisease.putIfAbsent(d, () => <FieldPlantInstance>[]).add(p);
@@ -129,6 +169,30 @@ class DiseaseLogService {
         resolvedLine ??= recommendedLine.isEmpty ? null : recommendedLine;
       }
 
+      // Tedavi planı bilgilerini ilaçlama aktivitelerinden topla — bitki
+      // 'treating' durumda veya en az bir spraying log varsa.
+      final anyTreating = plants.any((p) => p.healthStatus == 'treating');
+      final plan = _buildTreatmentProgress(
+        diseaseName: entry.key,
+        cropId: latest.cropId,
+        treatments: advice.chemicalTreatments,
+        activities: activities,
+        observedAt: observedAt,
+      );
+
+      // Durum makinesi:
+      //   resolved varsa → resolved (yeşil)
+      //   yoksa ve bitki 'treating' veya en az 1 uygulama yapılmışsa → inTreatment
+      //   diğer → active
+      final DiseaseEntryStatus status;
+      if (resolution != null) {
+        status = DiseaseEntryStatus.resolved;
+      } else if (anyTreating || plan.applicationsCompleted > 0) {
+        status = DiseaseEntryStatus.inTreatment;
+      } else {
+        status = DiseaseEntryStatus.active;
+      }
+
       entries.add(DiseaseLogEntry(
         plantId: latest.id,
         cropId: latest.cropId,
@@ -137,7 +201,7 @@ class DiseaseLogService {
         advice: advice,
         observedAt: observedAt,
         affectedCount: plants.length,
-        resolved: resolution != null,
+        status: status,
         resolvedBy: resolution?.product,
         resolvedActiveIngredient: resolution?.activeIngredient,
         resolvedAt: resolution?.date,
@@ -148,16 +212,168 @@ class DiseaseLogService {
         resolvedDoseUnit: resolution?.doseUnit,
         resolvedMixtureLiters: resolution?.mixtureLiters,
         resolvedPreharvestDays: resolution?.preharvestDays,
+        treatmentStartedAt: plan.startedAt,
+        applicationsCompleted: plan.applicationsCompleted,
+        totalApplications: plan.totalApplications,
+        intervalDays: plan.intervalDays,
+        nextApplicationAt: plan.nextApplicationAt,
+        lastAppliedActiveIngredient: plan.lastActiveIngredient,
       ));
     }
-    // Aktif olanlar üstte; çözümlenmiş olanlar altta.
+    // Sıralama: aktif (kırmızı) en üstte, tedavide (turuncu) ortada,
+    // çözümlenmiş (yeşil) en altta. Aynı durumda son gözlem yeni olan üstte.
+    int rank(DiseaseEntryStatus s) => switch (s) {
+          DiseaseEntryStatus.active => 0,
+          DiseaseEntryStatus.inTreatment => 1,
+          DiseaseEntryStatus.resolved => 2,
+        };
     entries.sort((a, b) {
-      if (a.resolved != b.resolved) return a.resolved ? 1 : -1;
+      final cmp = rank(a.status).compareTo(rank(b.status));
+      if (cmp != 0) return cmp;
       final ad = a.observedAt ?? DateTime(2000);
       final bd = b.observedAt ?? DateTime(2000);
       return bd.compareTo(ad);
     });
     return entries;
+  }
+
+  /// TAGEM Zirai Mücadele Teknik Talimatlarına göre hastalığa özel uygulama
+  /// aralığı (gün). disease_advice.dart içindeki chemicalTreatments
+  /// metinleriyle tutarlıdır. (field_tracking_screen ile aynı sözlük.)
+  static int defaultIntervalDays(String name) {
+    final n = name.toLowerCase();
+    if (n.contains('mildiyö') ||
+        n.contains('fitoftora') ||
+        n.contains('geç yanıklık')) {
+      return 7;
+    }
+    if (n.contains('külleme') || n.contains('kulleme')) return 7;
+    if (n.contains('pas')) return 7;
+    if (n.contains('yaprak lekesi') || n.contains('cercospora')) return 10;
+    if (n.contains('antraknoz')) return 7;
+    if (n.contains('bakteriyel')) return 10;
+    if (n.contains('kök çürüklüğü') || n.contains('kok curuklugu')) return 14;
+    if (n.contains('kurşuni küf') || n.contains('botrytis')) return 7;
+    if (n.contains('alternaria') || n.contains('erken yanıklık')) return 10;
+    if (n.contains('fusarium')) return 14;
+    if (n.contains('monilya') || n.contains('monilia')) return 10;
+    if (n.contains('ateş yanıklığı') ||
+        n.contains('ates yanikligi') ||
+        n.contains('erwinia')) {
+      return 7;
+    }
+    return 10;
+  }
+
+  /// Bir tedavi protokolünde planlanan toplam uygulama sayısı.
+  static int defaultTotalApplications(String name) {
+    final n = name.toLowerCase();
+    if (n.contains('mozaik') || n.contains('virüs')) return 0; // kimyasalsız
+    if (n.contains('mildiyö') ||
+        n.contains('fitoftora') ||
+        n.contains('geç yanıklık')) {
+      return 3;
+    }
+    if (n.contains('külleme') || n.contains('kulleme')) return 3;
+    if (n.contains('pas') || n.contains('antraknoz')) return 2;
+    if (n.contains('kurşuni küf') || n.contains('botrytis')) return 3;
+    if (n.contains('alternaria') || n.contains('erken yanıklık')) return 3;
+    if (n.contains('fusarium')) return 1; // toprak kökenli, kimyasal sınırlı
+    if (n.contains('monilya') || n.contains('monilia')) return 2;
+    if (n.contains('ateş yanıklığı') ||
+        n.contains('ates yanikligi') ||
+        n.contains('erwinia')) {
+      return 2;
+    }
+    if (n.contains('cercospora')) return 2;
+    return 2;
+  }
+
+  /// İlaçlama aktivitelerinden tedavi ilerleme özetini çıkarır.
+  static _TreatmentProgress _buildTreatmentProgress({
+    required String diseaseName,
+    required String? cropId,
+    required List<String> treatments,
+    required List<Map<String, dynamic>> activities,
+    required DateTime? observedAt,
+  }) {
+    final activeTokens = <String>{};
+    for (final t in treatments) {
+      activeTokens.addAll(_extractActiveIngredients(t));
+    }
+    final lcDisease = diseaseName.toLowerCase();
+    final intervalDays = defaultIntervalDays(diseaseName);
+    final totalApplications = defaultTotalApplications(diseaseName);
+
+    DateTime? startedAt;
+    DateTime? lastAppliedAt;
+    String? lastActive;
+    var applied = 0;
+
+    for (final act in activities) {
+      if (act['type'] != ActivityType.spraying) continue;
+      final date = act['date'];
+      if (date is! DateTime) continue;
+      if (observedAt != null && date.isBefore(observedAt)) continue;
+
+      final meta = act['metadata'];
+      final metaMap = meta is Map ? meta : const <dynamic, dynamic>{};
+      final activeRaw = metaMap['active_ingredient']?.toString() ?? '';
+      final pesticideRaw = metaMap['pesticide_name']?.toString() ?? '';
+      final targetRaw = metaMap['target_pest']?.toString() ?? '';
+      final note = act['note_text']?.toString() ?? '';
+      final actCropId = act['crop_id']?.toString();
+
+      final active = activeRaw.toLowerCase();
+      final pesticide = pesticideRaw.toLowerCase();
+      final target = targetRaw.toLowerCase();
+      final lcNote = note.toLowerCase();
+
+      // Aynı bitki/zone'a yapılmış olabilir veya tarla geneli.
+      final cropMatches =
+          actCropId == null || cropId == null || actCropId == cropId;
+      if (!cropMatches) continue;
+
+      final matchesActive = active.isNotEmpty &&
+          activeTokens.any((t) => t.length > 2 && active.contains(t));
+      final matchesPesticide = pesticide.isNotEmpty &&
+          activeTokens.any((t) => t.length > 2 && pesticide.contains(t));
+      final matchesTarget = target.isNotEmpty && target.contains(lcDisease);
+      final matchesNote = lcNote.isNotEmpty && lcNote.contains(lcDisease);
+      final matchesMetaDisease =
+          metaMap['disease_name']?.toString().toLowerCase() == lcDisease;
+
+      if (matchesActive ||
+          matchesPesticide ||
+          matchesTarget ||
+          matchesNote ||
+          matchesMetaDisease) {
+        applied++;
+        if (startedAt == null || date.isBefore(startedAt)) startedAt = date;
+        if (lastAppliedAt == null || date.isAfter(lastAppliedAt)) {
+          lastAppliedAt = date;
+          lastActive = activeRaw.isNotEmpty
+              ? activeRaw
+              : (pesticideRaw.isNotEmpty ? pesticideRaw : null);
+        }
+      }
+    }
+
+    DateTime? nextAt;
+    if (lastAppliedAt != null &&
+        applied < totalApplications &&
+        totalApplications > 0) {
+      nextAt = lastAppliedAt.add(Duration(days: intervalDays));
+    }
+
+    return _TreatmentProgress(
+      startedAt: startedAt,
+      applicationsCompleted: applied,
+      totalApplications: totalApplications,
+      intervalDays: intervalDays,
+      nextApplicationAt: nextAt,
+      lastActiveIngredient: lastActive,
+    );
   }
 
   static int _byObservedDesc(FieldPlantInstance a, FieldPlantInstance b) {
@@ -179,6 +395,7 @@ class DiseaseLogService {
       activeTokens.addAll(_extractActiveIngredients(t));
     }
     final lcDisease = diseaseName.toLowerCase();
+    final normDisease = _normalizeTr(lcDisease);
 
     for (final act in activities) {
       if (act['type'] != ActivityType.spraying) continue;
@@ -196,23 +413,32 @@ class DiseaseLogService {
       final activeRaw = metaMap['active_ingredient']?.toString() ?? '';
       final pesticideRaw = metaMap['pesticide_name']?.toString() ?? '';
       final targetRaw = metaMap['target_pest']?.toString() ?? '';
+      final diseaseNameMetaRaw = metaMap['disease_name']?.toString() ?? '';
       final note = (act['note_text']?.toString() ?? '');
 
       final active = activeRaw.toLowerCase();
       final pesticide = pesticideRaw.toLowerCase();
       final target = targetRaw.toLowerCase();
+      final diseaseMeta = diseaseNameMetaRaw.toLowerCase();
       final lcNote = note.toLowerCase();
 
       final matchesActive = active.isNotEmpty &&
           activeTokens.any((t) => t.length > 2 && active.contains(t));
       final matchesPesticide = pesticide.isNotEmpty &&
           activeTokens.any((t) => t.length > 2 && pesticide.contains(t));
-      final matchesTarget = target.isNotEmpty && target.contains(lcDisease);
-      final matchesNote = lcNote.isNotEmpty && lcNote.contains(lcDisease);
+      // İki yönlü + Türkçe normalize + alias eşleşmesi: playbook target metni
+      // "Mildiyö (Phytophthora infestans)" iken hastalık adı "fitoftora" da
+      // olsa eşleşsin.
+      final matchesTarget =
+          _diseaseLabelMatches(target, lcDisease, normDisease);
+      final matchesDiseaseMeta =
+          _diseaseLabelMatches(diseaseMeta, lcDisease, normDisease);
+      final matchesNote = _diseaseLabelMatches(lcNote, lcDisease, normDisease);
 
       if (matchesActive ||
           matchesPesticide ||
           matchesTarget ||
+          matchesDiseaseMeta ||
           matchesNote) {
         final product = pesticideRaw.isNotEmpty
             ? pesticideRaw
@@ -221,11 +447,9 @@ class DiseaseLogService {
           product: product,
           activeIngredient: activeRaw.isEmpty ? null : activeRaw,
           date: date,
-          dosePerDa:
-              (metaMap['pesticide_dose_per_da'] as num?)?.toDouble(),
+          dosePerDa: (metaMap['pesticide_dose_per_da'] as num?)?.toDouble(),
           doseUnit: metaMap['pesticide_dose_unit']?.toString(),
-          mixtureLiters:
-              (metaMap['mixture_liters'] as num?)?.toDouble(),
+          mixtureLiters: (metaMap['mixture_liters'] as num?)?.toDouble(),
           preharvestDays:
               (metaMap['preharvest_interval_days'] as num?)?.toInt(),
         );
@@ -233,6 +457,68 @@ class DiseaseLogService {
     }
     return null;
   }
+
+  /// Hastalık etiketi ile aktivite metadatasındaki bir metni karşılaştırır.
+  ///
+  /// İki yönlü alt-string + Türkçe karakter normalize + alias sözlüğü
+  /// (botrytis ↔ kurşuni küf, fitoftora ↔ mildiyö, vb.) ile çalışır. Playbook
+  /// ürün adlarındaki parantezli ekleri ve V2 trust DB'deki kısa isimleri
+  /// kapsar.
+  static bool _diseaseLabelMatches(
+    String text,
+    String lcDisease,
+    String normDisease,
+  ) {
+    if (text.isEmpty) return false;
+    final lc = text;
+    final norm = _normalizeTr(text);
+    if (lc.contains(lcDisease) || lcDisease.contains(lc)) return true;
+    if (norm.contains(normDisease) || normDisease.contains(norm)) return true;
+    // Alias eşleşmesi — sözlükte hastalık varyantlarını dolaş.
+    for (final entry in _resolutionAliases.entries) {
+      if (lcDisease.contains(entry.key)) {
+        if (lc.contains(entry.value) ||
+            norm.contains(_normalizeTr(entry.value))) {
+          return true;
+        }
+      }
+      if (lc.contains(entry.key)) {
+        if (lcDisease.contains(entry.value) ||
+            normDisease.contains(_normalizeTr(entry.value))) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  static const Map<String, String> _resolutionAliases = {
+    'botrytis': 'kurşuni küf',
+    'kurşuni küf': 'botrytis',
+    'fitoftora': 'mildiyö',
+    'phytophthora': 'mildiyö',
+    'geç yanıklık': 'mildiyö',
+    'alternaria': 'erken yaprak yanıklığı',
+    'erken yanıklık': 'alternaria',
+    'fusarium': 'solgunluk',
+    'monilia': 'monilya',
+    'erwinia': 'ateş yanıklığı',
+    'cercospora': 'yaprak lekesi',
+  };
+
+  static String _normalizeTr(String s) => s
+      .replaceAll('ı', 'i')
+      .replaceAll('İ', 'i')
+      .replaceAll('ğ', 'g')
+      .replaceAll('Ğ', 'g')
+      .replaceAll('ü', 'u')
+      .replaceAll('Ü', 'u')
+      .replaceAll('ş', 's')
+      .replaceAll('Ş', 's')
+      .replaceAll('ö', 'o')
+      .replaceAll('Ö', 'o')
+      .replaceAll('ç', 'c')
+      .replaceAll('Ç', 'c');
 
   /// "Metalaksil-M + Mancozeb — sistemik+koruyucu, 7 gün arayla 2 uygulama"
   /// → ['metalaksil-m', 'mancozeb']
@@ -243,9 +529,22 @@ class DiseaseLogService {
         .map((s) => s.trim())
         .where((s) => s.length > 2);
     const stopwords = <String>{
-      'not', 'veya', 've', 'sistemik', 'koruyucu', 'tedavi', 'gün',
-      'arayla', 'uygulama', 'wp', 'wg', 'sc', 'ec', 'formülasyonu',
-      'etiket', 'dozunda',
+      'not',
+      'veya',
+      've',
+      'sistemik',
+      'koruyucu',
+      'tedavi',
+      'gün',
+      'arayla',
+      'uygulama',
+      'wp',
+      'wg',
+      'sc',
+      'ec',
+      'formülasyonu',
+      'etiket',
+      'dozunda',
     };
     return tokens.where((t) => !stopwords.contains(t));
   }
@@ -269,4 +568,22 @@ class _Resolution {
   final String? doseUnit;
   final double? mixtureLiters;
   final int? preharvestDays;
+}
+
+class _TreatmentProgress {
+  const _TreatmentProgress({
+    required this.startedAt,
+    required this.applicationsCompleted,
+    required this.totalApplications,
+    required this.intervalDays,
+    required this.nextApplicationAt,
+    required this.lastActiveIngredient,
+  });
+
+  final DateTime? startedAt;
+  final int applicationsCompleted;
+  final int totalApplications;
+  final int intervalDays;
+  final DateTime? nextApplicationAt;
+  final String? lastActiveIngredient;
 }

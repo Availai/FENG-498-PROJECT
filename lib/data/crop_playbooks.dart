@@ -204,11 +204,36 @@ const _aycicegiPesticides = <PesticideProduct>[
     name: 'Iprodione WP',
     activeIngredient: 'Iprodione %50',
     category: PesticideCategory.fungicide,
-    targets: ['Botrytis (tabla çürüklüğü)'],
+    targets: ['Botrytis (tabla çürüklüğü)', 'Kurşuni küf'],
     defaultDosePerDa: 125, // 100–150
     unit: 'g',
     preharvestIntervalDays: 21,
     tip: 'Çiçeklenme döneminde 10 günde bir, tablayı da ıslat.',
+  ),
+  PesticideProduct(
+    name: 'Mancozeb WP',
+    activeIngredient: 'Mancozeb %80',
+    category: PesticideCategory.fungicide,
+    targets: [
+      'Yaprak lekesi',
+      'Erken yaprak yanıklığı',
+      'Alternaria',
+      'Cercospora'
+    ],
+    defaultDosePerDa: 250,
+    unit: 'g',
+    preharvestIntervalDays: 30,
+    tip: 'Koruyucu, 10 günde bir; geniş spektrum.',
+  ),
+  PesticideProduct(
+    name: 'Kükürt WP',
+    activeIngredient: 'Sülfür %80',
+    category: PesticideCategory.fungicide,
+    targets: ['Külleme'],
+    defaultDosePerDa: 400,
+    unit: 'g',
+    preharvestIntervalDays: 7,
+    tip: '28 °C üstünde uygulamayın; yaprak yanıklığı riski.',
   ),
 ];
 
@@ -450,6 +475,47 @@ const _domatesPesticides = <PesticideProduct>[
     preharvestIntervalDays: 21,
     tip: 'Dikim sonrası sulama suyuna karıştırıp kök bölgesine ver.',
   ),
+  PesticideProduct(
+    name: 'Switch 62.5 WG',
+    activeIngredient: 'Cyprodinil + Fludioxonil',
+    category: PesticideCategory.fungicide,
+    targets: ['Kurşuni küf', 'Botrytis'],
+    defaultDosePerDa: 80,
+    unit: 'g',
+    preharvestIntervalDays: 3,
+    tip: 'Sera nemini düşürdükten sonra 7 günde bir; üst üste aynı aktif '
+        'maddeyi kullanma.',
+  ),
+  PesticideProduct(
+    name: 'Teldor 50 WG',
+    activeIngredient: 'Fenhexamid %50',
+    category: PesticideCategory.fungicide,
+    targets: ['Kurşuni küf', 'Botrytis', 'Sclerotinia'],
+    defaultDosePerDa: 100,
+    unit: 'g',
+    preharvestIntervalDays: 1,
+    tip: 'Hasada yakın dönemde kalıntı sorunu olmadan kullanılabilir.',
+  ),
+  PesticideProduct(
+    name: 'Score 250 EC',
+    activeIngredient: 'Difenoconazole %25',
+    category: PesticideCategory.fungicide,
+    targets: ['Erken yaprak yanıklığı', 'Alternaria', 'Yaprak lekesi'],
+    defaultDosePerDa: 50,
+    unit: 'mL',
+    preharvestIntervalDays: 7,
+    tip: 'Alt yapraklardan başlayan lekelerde ilk müdahale ilacıdır.',
+  ),
+  PesticideProduct(
+    name: 'Topas 100 EC',
+    activeIngredient: 'Penconazole %10',
+    category: PesticideCategory.fungicide,
+    targets: ['Külleme'],
+    defaultDosePerDa: 25,
+    unit: 'mL',
+    preharvestIntervalDays: 3,
+    tip: 'Erken külleme belirtisinde sistemik etki.',
+  ),
 ];
 
 const _domatesWater = <WaterGuideBand>[
@@ -571,12 +637,8 @@ const _portakalWater = <WaterGuideBand>[
   WaterGuideBand(
       dayFrom: 76, dayTo: 165, weeklyMm: 45, stage: 'Meyve büyümesi'),
   WaterGuideBand(
-      dayFrom: 166,
-      dayTo: 240,
-      weeklyMm: 55,
-      stage: 'Yaz stresi (KRİTİK)'),
-  WaterGuideBand(
-      dayFrom: 241, dayTo: 305, weeklyMm: 30, stage: 'Olgunlaşma'),
+      dayFrom: 166, dayTo: 240, weeklyMm: 55, stage: 'Yaz stresi (KRİTİK)'),
+  WaterGuideBand(dayFrom: 241, dayTo: 305, weeklyMm: 30, stage: 'Olgunlaşma'),
   WaterGuideBand(
       dayFrom: 306, dayTo: 365, weeklyMm: 12, stage: 'Hasat + dinlenme'),
 ];
@@ -646,8 +708,7 @@ const _cayWater = <WaterGuideBand>[
   WaterGuideBand(dayFrom: 0, dayTo: 60, weeklyMm: 12, stage: 'Kış dinlenmesi'),
   WaterGuideBand(
       dayFrom: 61, dayTo: 120, weeklyMm: 22, stage: 'İlk sürgün (Mayıs)'),
-  WaterGuideBand(
-      dayFrom: 121, dayTo: 210, weeklyMm: 28, stage: 'Yaz sürgünü'),
+  WaterGuideBand(dayFrom: 121, dayTo: 210, weeklyMm: 28, stage: 'Yaz sürgünü'),
   WaterGuideBand(
       dayFrom: 211, dayTo: 280, weeklyMm: 25, stage: 'Son sürgün (Eylül)'),
   WaterGuideBand(
@@ -754,4 +815,119 @@ class CropPlaybooks {
     }
     return null;
   }
+
+  /// Hastalık → playbook ilaçları (alias-aware).
+  ///
+  /// Belirli bir bitki için, hastalık adına karşılık gelen `PesticideProduct`
+  /// listesini döndürür. Eşleşme katmanları:
+  ///  1. Tam eşleşme (büyük/küçük harf duyarsız)
+  ///  2. İki yönlü alt-string (target ⊂ disease veya disease ⊂ target)
+  ///  3. Türkçe karakter normalize alt-string
+  ///  4. Alias sözlüğü (botrytis→kurşuni küf, fitoftora→mildiyö, vb.)
+  ///
+  /// [cropName] null/playbook'suz ise tüm playbook'larda generic eşleşme
+  /// arar; özellikle 5 vitrin ürün dışındaki bitkiler için generic
+  /// (bakırlı vb.) ürün önerileri verir.
+  static List<PesticideProduct> pesticidesForDisease({
+    required String? cropName,
+    required String diseaseName,
+  }) {
+    final trimmed = diseaseName.trim();
+    if (trimmed.isEmpty) return const [];
+    final lc = trimmed.toLowerCase();
+    final norm = _normalizeTr(lc);
+    final aliasLc = (_diseaseAliases[lc] ?? '').toLowerCase();
+    final aliasNorm = aliasLc.isEmpty ? '' : _normalizeTr(aliasLc);
+
+    bool targetMatches(String target) {
+      final tLc = target.toLowerCase();
+      final tNorm = _normalizeTr(tLc);
+      // Tam veya iki yönlü alt-string
+      if (tLc == lc) return true;
+      if (tLc.contains(lc) || lc.contains(tLc)) return true;
+      if (tNorm.contains(norm) || norm.contains(tNorm)) return true;
+      if (aliasLc.isNotEmpty &&
+          (tLc.contains(aliasLc) ||
+              aliasLc.contains(tLc) ||
+              tNorm.contains(aliasNorm) ||
+              aliasNorm.contains(tNorm))) {
+        return true;
+      }
+      return false;
+    }
+
+    final pb = resolveByName(cropName);
+    if (pb != null) {
+      final matched = pb.pesticides
+          .where((p) =>
+              p.category == PesticideCategory.fungicide ||
+              p.category == PesticideCategory.insecticide ||
+              p.category == PesticideCategory.acaricide)
+          .where((p) => p.targets.any(targetMatches))
+          .toList(growable: false);
+      if (matched.isNotEmpty) return matched;
+    }
+
+    // Playbook yoksa veya eşleşme yoksa: tüm playbook'larda generic ara
+    // (bakırlı, geniş spektrum gibi her ürün için geçerli olabilen seçenekler).
+    final fallback = <PesticideProduct>[];
+    for (final pb in all) {
+      for (final p in pb.pesticides) {
+        if (p.category == PesticideCategory.herbicide) continue;
+        if (p.targets.any(targetMatches)) {
+          // Aynı aktif maddeli ürün zaten varsa tekrar ekleme.
+          final exists = fallback.any((x) =>
+              x.activeIngredient.toLowerCase() ==
+              p.activeIngredient.toLowerCase());
+          if (!exists) fallback.add(p);
+        }
+      }
+    }
+    return fallback;
+  }
+
+  /// Disease adı alias sözlüğü — V2 trust DB ve disease_advice.dart'taki
+  /// varyantları playbook target metinlerine bağlar.
+  static const Map<String, String> _diseaseAliases = {
+    'botrytis': 'kurşuni küf',
+    'kurşuni küf': 'botrytis',
+    'gri küf': 'botrytis',
+    'fitoftora': 'mildiyö',
+    'phytophthora': 'mildiyö',
+    'geç yanıklık': 'mildiyö',
+    'peronospora': 'mildiyö',
+    'mavi küf': 'mildiyö',
+    'alternaria': 'erken yaprak yanıklığı',
+    'erken yanıklık': 'erken yaprak yanıklığı',
+    'fusarium': 'fusarium solgunluğu',
+    'fusarium solgunluğu': 'fusarium',
+    'monilia': 'monilya',
+    'mumya hastalığı': 'monilya',
+    'meyve çürüklüğü': 'monilya',
+    'erwinia': 'ateş yanıklığı',
+    'ates yanikligi': 'ateş yanıklığı',
+    'cercospora': 'yaprak lekesi',
+    'sarı pas': 'pas',
+    'kahverengi pas': 'pas',
+    'kara pas': 'pas',
+    'mısır pası': 'pas',
+    'mozaik virüs': 'mozaik',
+    'dut mozaiği': 'mozaik',
+    'kök ve gövde çürüklüğü': 'kök çürüklüğü',
+    'kök ve kökboğazı çürüklüğü': 'kök çürüklüğü',
+  };
+
+  static String _normalizeTr(String s) => s
+      .replaceAll('ı', 'i')
+      .replaceAll('İ', 'i')
+      .replaceAll('ğ', 'g')
+      .replaceAll('Ğ', 'g')
+      .replaceAll('ü', 'u')
+      .replaceAll('Ü', 'u')
+      .replaceAll('ş', 's')
+      .replaceAll('Ş', 's')
+      .replaceAll('ö', 'o')
+      .replaceAll('Ö', 'o')
+      .replaceAll('ç', 'c')
+      .replaceAll('Ç', 'c');
 }

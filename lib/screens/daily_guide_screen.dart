@@ -474,8 +474,7 @@ class _CropDailyGuideCard extends StatelessWidget {
                   onPressed: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
-                        builder: (_) =>
-                            TurkiyeCropGuideScreen(guide: guide!),
+                        builder: (_) => TurkiyeCropGuideScreen(guide: guide!),
                       ),
                     );
                   },
@@ -1590,10 +1589,23 @@ class _DiseaseAdviceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final accent = entry.resolved ? AppColors.emerald : AppColors.error;
-    final icon =
-        entry.resolved ? Icons.verified_rounded : Icons.coronavirus_rounded;
-    final statusLabel = entry.resolved ? 'SORUN ÇÖZÜLDÜ' : 'AKTİF HASTALIK';
+    final (accent, icon, statusLabel) = switch (entry.status) {
+      DiseaseEntryStatus.resolved => (
+          AppColors.emerald,
+          Icons.verified_rounded,
+          'SORUN ÇÖZÜLDÜ',
+        ),
+      DiseaseEntryStatus.inTreatment => (
+          AppColors.warning,
+          Icons.medication_rounded,
+          'TEDAVİ SÜRÜYOR',
+        ),
+      DiseaseEntryStatus.active => (
+          AppColors.error,
+          Icons.coronavirus_rounded,
+          'AKTİF HASTALIK',
+        ),
+    };
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -1652,6 +1664,9 @@ class _DiseaseAdviceCard extends StatelessWidget {
           if (entry.resolved) ...[
             const SizedBox(height: 10),
             _ResolvedBanner(entry: entry),
+          ] else if (entry.inTreatment) ...[
+            const SizedBox(height: 10),
+            _InTreatmentBanner(entry: entry),
           ] else ...[
             const SizedBox(height: 10),
             Text(
@@ -1664,6 +1679,121 @@ class _DiseaseAdviceCard extends StatelessWidget {
             const SizedBox(height: 10),
             _SourceFooter(sources: entry.sources),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Tedavi sürüyor — turuncu progres kartı.
+///
+/// İlerleme barı + "X. gün / ~Y gün tedavi" + "Sonraki uygulama N gün sonra"
+/// gösterir. Uygulama bilgileri ilaçlama aktivitelerinden derlenir; gerçek
+/// karar kapısı (kaydet/iyileşti) field_tracking_screen'deki tam tedavi
+/// kartındadır — buradan yalnızca durum görünür.
+class _InTreatmentBanner extends StatelessWidget {
+  final DiseaseLogEntry entry;
+  const _InTreatmentBanner({required this.entry});
+
+  @override
+  Widget build(BuildContext context) {
+    final startedAt = entry.treatmentStartedAt;
+    final daysSinceStart =
+        startedAt == null ? null : DateTime.now().difference(startedAt).inDays;
+    final totalApps = entry.totalApplications;
+    final intervalDays = entry.intervalDays;
+    final totalDays = intervalDays * (totalApps > 0 ? totalApps - 1 : 1);
+    final progress = (totalDays > 0 && daysSinceStart != null)
+        ? (daysSinceStart / totalDays).clamp(0.0, 1.0)
+        : 0.0;
+
+    final next = entry.nextApplicationAt;
+    final today = DateTime.now();
+    final daysUntilNext = next == null
+        ? null
+        : DateTime(next.year, next.month, next.day)
+            .difference(DateTime(today.year, today.month, today.day))
+            .inDays;
+    final isOverdue = daysUntilNext != null && daysUntilNext < 0;
+    final barColor = isOverdue ? AppColors.error : AppColors.warning;
+
+    final nextLabel = next == null
+        ? '${entry.applicationsCompleted}/$totalApps uygulama tamamlandı'
+        : isOverdue
+            ? '${-daysUntilNext} gün gecikmiş — ${entry.applicationsCompleted + 1}. uygulama'
+            : daysUntilNext == 0
+                ? 'Bugün ${entry.applicationsCompleted + 1}. uygulama günü'
+                : '$daysUntilNext gün sonra ${entry.applicationsCompleted + 1}. uygulama';
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.warning.withValues(alpha: 0.1),
+        borderRadius: AppRadius.sm,
+        border: Border.all(color: AppColors.warning.withValues(alpha: 0.35)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  daysSinceStart == null
+                      ? 'Tedavi başlatıldı'
+                      : '$daysSinceStart. gün / ~$totalDays gün tedavi',
+                  style: AppText.bodyMd(context).copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.warning,
+                  ),
+                ),
+              ),
+              Text(
+                '${entry.applicationsCompleted}/$totalApps uygulama',
+                style: AppText.xs(context).copyWith(color: AppColors.warning),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: AppRadius.full,
+            child: LinearProgressIndicator(
+              value: progress,
+              minHeight: 7,
+              backgroundColor: AppColors.warning.withValues(alpha: 0.15),
+              valueColor: AlwaysStoppedAnimation<Color>(barColor),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Icon(Icons.schedule_rounded, color: barColor, size: 14),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  nextLabel,
+                  style: AppText.sm(context).copyWith(color: barColor),
+                ),
+              ),
+            ],
+          ),
+          if (entry.lastAppliedActiveIngredient != null &&
+              entry.lastAppliedActiveIngredient!.trim().isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(
+              'Son uygulanan: ${entry.lastAppliedActiveIngredient}',
+              style:
+                  AppText.xs(context).copyWith(color: AppColors.textSecondary),
+            ),
+          ],
+          const SizedBox(height: 6),
+          Text(
+            'Her $intervalDays günde bir uygulama (TAGEM/Zirai Mücadele Teknik '
+            'Talimatı). Etiket farklı süre belirtiyorsa etiket geçerlidir. '
+            'Doz ve hasada bekleme için bku.tarim.gov.tr kontrolü zorunlu.',
+            style: AppText.xs(context)
+                .copyWith(color: AppColors.textSecondary, height: 1.35),
+          ),
         ],
       ),
     );

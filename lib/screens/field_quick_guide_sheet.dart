@@ -8,6 +8,7 @@ import '../data/app_database.dart';
 import '../data/disease_advice.dart';
 import '../data/turkish_crops_repository.dart';
 import '../services/app_providers.dart';
+import '../services/disease_log_service.dart';
 import '../services/guide_engine.dart' show AlertSeverity;
 import '../services/notification_service.dart';
 import '../services/rules/recommendation.dart';
@@ -906,17 +907,26 @@ class _PlantHealthAlertState extends ConsumerState<_PlantHealthAlert> {
         );
       }
 
-      // Tedavi hatırlatıcı bildirimlerini planla
-      final treatmentDays = _parseTreatmentDays(advice);
-      final doseGuide = _shortDoseGuide(advice);
+      // Tedavi hatırlatıcı bildirimlerini planla — TAGEM aralık sözlüğünden
+      // intervalDays + totalApplications; her uygulama günü sabah erken
+      // bildirim, akşam gözlem hatırlatması (CLAUDE.md §17: doz/PHI BKÜ'de).
+      final intervalDays = DiseaseLogService.defaultIntervalDays(advice.name);
+      final totalApps = DiseaseLogService.defaultTotalApplications(advice.name);
+      final firstActive = advice.chemicalTreatments
+          .firstWhere(
+            (t) => !t.trim().toLowerCase().startsWith('not'),
+            orElse: () => '',
+          )
+          .split('—')
+          .first
+          .trim();
       await NotificationService.scheduleTreatmentReminders(
         fieldId: widget.fieldId,
         fieldName: widget.fieldName,
         diseaseName: advice.name,
-        treatmentDays: treatmentDays,
-        doseGuide: doseGuide.length > 60
-            ? '${doseGuide.substring(0, 57)}…'
-            : doseGuide,
+        intervalDays: intervalDays,
+        totalApplications: totalApps,
+        activeIngredient: firstActive.isEmpty ? null : firstActive,
       );
 
       if (mounted) setState(() => _phase = _TreatmentPhase.treating);

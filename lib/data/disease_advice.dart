@@ -68,7 +68,7 @@ class DiseaseAdvice {
   final List<String> sources;
 
   /// Bilinen hastalık kataloğu — Tarım Bakanlığı Zirai Mücadele Teknik
-  /// Talimatları'na göre Türkiye'de en sık karşılaşılan 9 hastalık.
+  /// Talimatları'na göre Türkiye'de en sık karşılaşılan hastalıklar.
   static const Map<String, DiseaseAdvice> catalog = {
     'Yaprak Lekesi': _yaprakLekesi,
     'Mildiyö': _mildiyo,
@@ -78,23 +78,141 @@ class DiseaseAdvice {
     'Bakteriyel Yanıklık': _bakteriyelYaniklik,
     'Kök Çürüklüğü': _kokCurukluk,
     'Antraknoz': _antraknoz,
+    'Kurşuni Küf': _kursuniKuf,
+    'Erken Yaprak Yanıklığı': _erkenYaniklik,
+    'Fusarium Solgunluğu': _fusariumSolgunlugu,
+    'Monilya': _monilya,
+    'Ateş Yanıklığı': _atesYaniklik,
+    'Cercospora Yaprak Lekesi': _cercospora,
     'Bilinmiyor': _bilinmeyen,
+  };
+
+  /// Hastalık adı takma adları — V2 trust veritabanından gelen alternatif
+  /// isimler ana kataloğun anahtarına eşlenir. Anahtar küçük harf normalize
+  /// edilmiş arama kelimesi, değer katalog anahtarıdır.
+  static const Map<String, String> _aliases = {
+    // Botrytis / Kurşuni küf
+    'botrytis': 'Kurşuni Küf',
+    'gri küf': 'Kurşuni Küf',
+    'kursuni kuf': 'Kurşuni Küf',
+    'kurşuni küf': 'Kurşuni Küf',
+    // Alternaria / Erken yanıklık
+    'alternaria': 'Erken Yaprak Yanıklığı',
+    'erken yanıklık': 'Erken Yaprak Yanıklığı',
+    'erken yaniklik': 'Erken Yaprak Yanıklığı',
+    'alternaria yaprak lekesi': 'Erken Yaprak Yanıklığı',
+    'alternaria yaprak yanıklığı': 'Erken Yaprak Yanıklığı',
+    // Phytophthora / geç yanıklık → mildiyö ailesi
+    'fitoftora': 'Mildiyö',
+    'phytophthora': 'Mildiyö',
+    'geç yanıklık': 'Mildiyö',
+    'gec yaniklik': 'Mildiyö',
+    'peronospora': 'Mildiyö',
+    'mavi küf': 'Mildiyö',
+    // Fusarium
+    'fusarium': 'Fusarium Solgunluğu',
+    'fusarium solgunluk': 'Fusarium Solgunluğu',
+    'fusarium solgunluğu': 'Fusarium Solgunluğu',
+    // Monilia
+    'monilia': 'Monilya',
+    'monilya': 'Monilya',
+    'mumya hastalığı': 'Monilya',
+    'meyve çürüklüğü': 'Monilya',
+    // Ateş yanıklığı / Erwinia
+    'ateş yanıklığı': 'Ateş Yanıklığı',
+    'ates yanikligi': 'Ateş Yanıklığı',
+    'erwinia': 'Ateş Yanıklığı',
+    // Cercospora
+    'cercospora': 'Cercospora Yaprak Lekesi',
+    'cercospora yaprak lekesi': 'Cercospora Yaprak Lekesi',
+    // Pas varyantları
+    'sarı pas': 'Pas',
+    'kahverengi pas': 'Pas',
+    'kara pas': 'Pas',
+    'mısır pası': 'Pas',
+    // Bakteriyel grubu
+    'bakteriyel kanser': 'Bakteriyel Yanıklık',
+    'bakteriyel leke': 'Bakteriyel Yanıklık',
+    'bakteriyel solgunluk': 'Bakteriyel Yanıklık',
+    // Kök çürüklüğü varyantları
+    'kök ve gövde çürüklüğü': 'Kök Çürüklüğü',
+    'kök ve kökboğazı çürüklüğü': 'Kök Çürüklüğü',
+    'kök çürüklüğü (phytophthora)': 'Kök Çürüklüğü',
+    'kok curuklugu': 'Kök Çürüklüğü',
+    // Virüs grubu
+    'mozaik': 'Mozaik Virüs',
+    'mozaik virüs': 'Mozaik Virüs',
+    'dut mozaiği': 'Mozaik Virüs',
+    'incir mozaiği': 'Mozaik Virüs',
+    // Külleme varyantları (Türkçe karakter normalize)
+    'kulleme': 'Külleme',
   };
 
   /// Hastalık adına göre tavsiye getirir; eşleşme yoksa "Bilinmiyor"
   /// için olan jenerik korumacı protokol döner.
+  ///
+  /// Eşleştirme sırası:
+  ///   1. Tam katalog anahtarı eşleşmesi
+  ///   2. Takma ad sözlüğü (botrytis, alternaria, fusarium vb.)
+  ///   3. Alt string aranması (her iki yönde — katalog anahtarı arama
+  ///      metninde, veya arama metni katalog anahtarında geçiyor mu)
+  ///   4. Türkçe karakter normalize ederek alt string araması
   static DiseaseAdvice forName(String? name) {
     if (name == null || name.trim().isEmpty) return _bilinmeyen;
-    final hit = catalog[name.trim()];
+    final trimmed = name.trim();
+    // 1) Tam eşleşme
+    final hit = catalog[trimmed];
     if (hit != null) return hit;
-    // Esnek eşleştirme — aynı patojeni farklı isimlerle çağıran kullanıcı
-    // için. Alt string araması yapıyoruz.
-    final lower = name.toLowerCase();
-    for (final entry in catalog.entries) {
-      if (lower.contains(entry.key.toLowerCase())) return entry.value;
+
+    final lower = trimmed.toLowerCase();
+    final normalized = _normalizeTr(lower);
+
+    // 2) Takma ad sözlüğü — tam veya alt string
+    if (_aliases.containsKey(lower)) {
+      final mapped = _aliases[lower]!;
+      final adv = catalog[mapped];
+      if (adv != null) return adv;
     }
+    for (final entry in _aliases.entries) {
+      if (lower.contains(entry.key) ||
+          normalized.contains(_normalizeTr(entry.key))) {
+        final adv = catalog[entry.value];
+        if (adv != null) return adv;
+      }
+    }
+
+    // 3) Esnek alt string — her iki yön (kullanıcı kısaltma yazmış olabilir)
+    for (final entry in catalog.entries) {
+      final keyLower = entry.key.toLowerCase();
+      if (lower.contains(keyLower) || keyLower.contains(lower)) {
+        return entry.value;
+      }
+    }
+
+    // 4) Normalize edilmiş alt string (ş→s, ğ→g, ı→i, ü→u, ö→o, ç→c)
+    for (final entry in catalog.entries) {
+      final keyNorm = _normalizeTr(entry.key.toLowerCase());
+      if (normalized.contains(keyNorm) || keyNorm.contains(normalized)) {
+        return entry.value;
+      }
+    }
+
     return _bilinmeyen;
   }
+
+  static String _normalizeTr(String s) => s
+      .replaceAll('ı', 'i')
+      .replaceAll('İ', 'i')
+      .replaceAll('ğ', 'g')
+      .replaceAll('Ğ', 'g')
+      .replaceAll('ü', 'u')
+      .replaceAll('Ü', 'u')
+      .replaceAll('ş', 's')
+      .replaceAll('Ş', 's')
+      .replaceAll('ö', 'o')
+      .replaceAll('Ö', 'o')
+      .replaceAll('ç', 'c')
+      .replaceAll('Ç', 'c');
 
   /// Ölü bitki için patojen-spesifik koparma protokolü. Hastalık türü
   /// belirtilmemişse temel "güvenli kaldırma" rehberi döner.
@@ -538,6 +656,359 @@ const _antraknoz = DiseaseAdvice(
   sources: [
     'TAGEM — Antraknoz Mücadele Teknik Talimatları (Çilek, Biber, Bağ)',
     'Ege Üniv. Ziraat Fak. — Bahçe Bitkileri Hastalıkları',
+  ],
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Yeni eklenen hastalık tanımları — V2 trust DB'deki yaygın isimleri kapsar.
+// Kaynaklar: TAGEM Zirai Mücadele Teknik Talimatları + üniversite ziraat
+// fakülteleri + bku.tarim.gov.tr.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const _kursuniKuf = DiseaseAdvice(
+  name: 'Kurşuni Küf',
+  pathogenType: 'Mantar',
+  contagious: true,
+  urgency: 'Çok Yüksek',
+  symptoms: [
+    'Çiçek, yaprak ve meyvelerde gri-kahverengi tüy benzeri küf tabakası',
+    'Meyve sapı bölgesinde halka şeklinde kuru çürüklük',
+    'Yaprak kenarlarında kavrulma; ölü dokular kolay parçalanır',
+    'Domates, çilek, biber, üzüm ve süs bitkilerinde yaygın',
+  ],
+  spreadMechanism:
+      'Botrytis cinerea sporları havada her yerde bulunur; 15–22 °C ve %90 '
+      'üstü nem ile saatler içinde patlama yapar. Yaralı doku, açık çiçek '
+      've biriken ölü yapraklar başlıca giriş noktalarıdır.',
+  isolationSteps: [
+    'Hasta dokuları kuru havada koparın — nemli havada sporlar bulutlanır',
+    'Sera ise nemi %75 altına çekin: havalandırma + ısıtma',
+    'Damla sulamaya geçin, yaprak ıslaklığını ortadan kaldırın',
+    'Hasta meyve ve çiçek artıklarını tarladan tamamen uzaklaştırın',
+    'Bitki sıklığını azaltın — hava sirkülasyonu kritiktir',
+  ],
+  organicTreatments: [
+    'Bakır oksiklorür — koruyucu, yaralı dokuya öncelikle uygulanır',
+    'Trichoderma harzianum bazlı biyolojik preparatlar',
+    'Karbonat çözeltisi (5 g/L su) — yaprak yüzey pH\'sını yükseltir',
+    'Aşırı azotlu gübrelemeden kaçının — yumuşak doku botrytis çağırır',
+  ],
+  chemicalTreatments: [
+    'Boscalid + Pyraclostrobin — sistemik+koruyucu, çiçeklenme öncesi',
+    'Fenheksamid — botrytis için özelleşmiş, kalıntı süresi kısa',
+    'Fludioksonil + Siprodinil — kombinasyon, dirence karşı',
+    'İprodion — koruyucu, klasik etken',
+    'NOT: Aynı aktif maddeyi üst üste kullanmayın; etiket dozu ve hasada '
+        'bekleme süresi (PHI) için bku.tarim.gov.tr kontrolü zorunludur',
+  ],
+  preventionTips: [
+    'Sera nemini %75 altında tutun',
+    'Sabah erken yaprak ıslaklığı kalmasın — havalandırma artırın',
+    'Toleranslı çeşit seçin (özellikle domates ve çilekte)',
+    'Hasattan sonra bitki artıklarını tarladan kaldırın — Botrytis kışı '
+        'artıklarda geçirir',
+  ],
+  deadPlantProtocol: [
+    'Bitkiyi kuru havada sökün — nemli havada sporlar dağılır',
+    'Hasta dokuları çift kat poşete alıp ağzını sıkıca kapatın',
+    'Yakarak imha edin; kompost yapmayın',
+    'Sökme bölgesindeki tüm ölü çiçek ve yaprakları toplayın',
+    'Aletleri %70 alkol veya bakırlı dezenfektanla silin',
+  ],
+  sources: [
+    'TAGEM — Domates ve Çilek Botrytis Mücadele Talimatları',
+    'Ankara Üniv. Ziraat Fak. — Botrytis cinerea Tanı Rehberi',
+    'bku.tarim.gov.tr — Botrytis için ruhsatlı aktif madde sorgulama',
+  ],
+);
+
+const _erkenYaniklik = DiseaseAdvice(
+  name: 'Erken Yaprak Yanıklığı',
+  pathogenType: 'Mantar',
+  contagious: true,
+  urgency: 'Yüksek',
+  symptoms: [
+    'Alt yapraklardan başlayan koyu kahverengi, kenarları sarı haleli lekeler',
+    'Lekelerde iç içe halkalar (hedef tahtası deseni) — Alternaria belirteci',
+    'İleri evrede yapraklar tamamen kuruyup dökülür',
+    'Meyvelerde sap kısmından çökük, koyu çürüklük (özellikle domates)',
+    'Domates, patates, havuç, lahana ve süs bitkilerinde yaygın',
+  ],
+  spreadMechanism:
+      'Alternaria solani sporları rüzgâr, yağmur ve aletlerle yayılır. '
+      '20–30 °C ve değişken nem koşulları (gündüz sıcak, gece çiy) hastalığı '
+      'tetikler. Yaşlı, stresli bitkilerde patlama yapar.',
+  isolationSteps: [
+    'Alt yaprakları hemen koparıp bertaraf edin — sporlar yukarı taşınmasın',
+    'Damla sulamaya geçin, yaprak alt yüzeyini ıslak bırakmayın',
+    'Aletleri bitkiler arasında %70 alkolle silin',
+    'Bitki diplerinde malç kullanın — toprak sıçraması önlenir',
+  ],
+  organicTreatments: [
+    'Bordo bulamacı (%1) — koruyucu, ilk belirti görüldüğünde',
+    'Bakır oksiklorür — yağışlardan önce koruyucu',
+    'Trichoderma bazlı biyolojik preparatlar — toprak desteği',
+    'Bitki dipleri havalı kalsın — sık dikim yapmayın',
+  ],
+  chemicalTreatments: [
+    'Mancozeb (%80 WP) — koruyucu, 10 gün arayla',
+    'Klorotalonil — geniş spektrum koruyucu',
+    'Azoksistrobin + Difenokonazol — sistemik, tedavi+koruma',
+    'Pyraclostrobin + Metiram — kombinasyon',
+    'Boscalid — alternatif aktif madde, direnç yönetimi için',
+    'NOT: Hasada en az 7 gün kala ilaçlamayı kesin; etiket dozu ve PHI için '
+        'bku.tarim.gov.tr',
+  ],
+  preventionTips: [
+    'Dayanıklı çeşit seçin (domates ve patatesde tolerans değişir)',
+    'Aşırı azot kullanmayın — sulu doku Alternaria\'ya hassas',
+    'Sıra arası havalandırma — sık dikimden kaçının',
+    'Hasat sonrası bitki artıklarını parsel dışına alın',
+    '2–3 yıl rotasyon — aynı familyaya geri dönmeyin',
+  ],
+  deadPlantProtocol: [
+    'Bitkiyi kökü ile birlikte sökün',
+    'Yaprakları tek tek toplayın — sporlar yaprakta uzun süre canlı kalır',
+    'Çift kat poşete koyup yakın; kompostlamayın',
+    'Sürerek artıkları derin gömün (en az 15 cm)',
+    'Aletleri bakırlı dezenfektanla silin',
+  ],
+  sources: [
+    'TAGEM — Alternaria Erken Yanıklık Teknik Talimatları',
+    'Çukurova Üniv. Ziraat Fak. — Solanaceae Hastalıkları',
+  ],
+);
+
+const _fusariumSolgunlugu = DiseaseAdvice(
+  name: 'Fusarium Solgunluğu',
+  pathogenType: 'Mantar',
+  contagious: true,
+  urgency: 'Çok Yüksek',
+  symptoms: [
+    'Alt yapraklardan başlayan tek taraflı sararma ve solma',
+    'Gündüz solar, gece düzelir — su yetersizliği değildir',
+    'Gövde kesildiğinde damarlarda kahverengi renk değişimi (vasküler iz)',
+    'İleri evrede bitki tamamen kurur; kökler sağlam görünebilir',
+    'Domates, biber, kavun, karpuz, hıyar ve muzda yaygın',
+  ],
+  spreadMechanism:
+      'Fusarium oxysporum toprak kökenli mantar; bitkinin kökünden girer ve '
+      'iletim demetlerini tıkar. Toprakta 5+ yıl canlı kalır. 25–30 °C ve '
+      'asidik toprakta (pH<6.5) patlama yapar.',
+  isolationSteps: [
+    'Hasta bitkiyi 30 cm çevresiyle birlikte sökün — toprak da kontamine',
+    'Sökme bölgesini işaretleyin, ertesi yıl ekim yapmayın',
+    'Sulama hattını ayırın — patojen damla deliklerinde yayılır',
+    'Aletleri %10 çamaşır suyunda 10 dakika bekletin',
+  ],
+  organicTreatments: [
+    'Toprağı yaz aylarında solarize edin (şeffaf naylon, 4–6 hafta)',
+    'Trichoderma harzianum bazlı toprak preparatları',
+    'Aşılı fide kullanın (Fusarium\'a dayanıklı anaç)',
+    'Organik madde (yanmış çiftlik gübresi) ile mikrobiyal denge sağlayın',
+    'pH\'ı 6.5–7.0 aralığında tutun (kireçleme)',
+  ],
+  chemicalTreatments: [
+    'Karbendazim — sınırlı etki, sadece koruyucu',
+    'Tiyofanat-metil — sistemik, fide döneminde uygulanır',
+    'Toprak dezenfeksiyonu: Metam-sodyum (yalnız ruhsatlı bayi gözetiminde)',
+    'NOT: Fusarium toprak kökenli olduğu için kimyasal mücadele sınırlıdır. '
+        'Asıl çözüm dayanıklı çeşit + rotasyon + solarizasyondur.',
+  ],
+  preventionTips: [
+    'Fusarium\'a dayanıklı çeşit kullanın (etiketin F1, F2, F3 işaretleri)',
+    '4–5 yıl rotasyon — aynı familyaya geri dönmeyin',
+    'Sertifikalı, hastalıktan ari fide alın',
+    'Tek bitki tek damla — sulama suyundan bulaşmayı engelleyin',
+    'Aşırı azottan kaçının — yumuşak doku Fusarium\'a hassas',
+  ],
+  deadPlantProtocol: [
+    'Bitkiyi tüm köküyle ve 30 cm çevre toprağıyla birlikte sökün',
+    'Topraklı çift kat poşete koyun — toprak patojen taşır',
+    'Yakarak imha edin; kompostlamayın',
+    'Çukuru 1 hafta açık bırakın, ardından sönmüş kireç (200 g/m²) uygulayın',
+    'Aletleri %10 çamaşır suyunda 10 dakika dezenfekte edin',
+    'Aynı yere en az 4 yıl Solanaceae veya Cucurbitaceae ekmeyin',
+  ],
+  sources: [
+    'TAGEM — Toprak Kökenli Hastalıklar Mücadele Talimatları',
+    'Antalya Batı Akdeniz Tarımsal Araştırma Enstitüsü — Solgunluk Hastalıkları',
+    'Ege Üniv. Ziraat Fak. — Fusarium oxysporum Tanı Rehberi',
+  ],
+);
+
+const _monilya = DiseaseAdvice(
+  name: 'Monilya',
+  pathogenType: 'Mantar',
+  contagious: true,
+  urgency: 'Yüksek',
+  symptoms: [
+    'Çiçek yanıklığı — açan çiçekler kahverengileşip dalda kuruyarak kalır',
+    'Sürgün ucu yanıklığı — taze sürgünler kuruyarak çengelleşir',
+    'Meyvelerde kahverengi yumuşak çürüklük, üzerinde gri-bej sporulasyon halkaları',
+    'Çürüyen meyveler dalda kuruyarak "mumya" şeklinde kalır',
+    'Kayısı, şeftali, kiraz, erik, badem ve elmada yaygın',
+  ],
+  spreadMechanism:
+      'Monilinia laxa ve M. fructigena çiçeklenme döneminde sporlarını '
+      'salar. 10–25 °C, çiçeklenme sırasında yağmur veya çiy hastalığı '
+      'patlatır. Mumya meyveler ve hasta sürgünler kışı geçirme noktasıdır.',
+  isolationSteps: [
+    'Dalda kalan mumyalaşmış meyveleri kışın budamayla temizleyin',
+    'Hasta sürgün uçlarını sağlam dokunun 10 cm altından kesin',
+    'Budama aletlerini her dal arasında %70 alkolle silin',
+    'Hasta dokuları yakın — bahçede bırakmayın',
+  ],
+  organicTreatments: [
+    'Bordo bulamacı (%1) — kabuk patlama (uyanma) öncesi koruyucu',
+    'Bakır oksiklorür — çiçeklenme öncesi (pembe tomurcuk evresi)',
+    'Budama artıklarını bahçeden uzaklaştırın',
+    'Sertifikalı fidan kullanın — bulaşık fidanlar yıllarca sorun yaratır',
+  ],
+  chemicalTreatments: [
+    'Tebukonazol — çiçeklenme döneminde sistemik etki',
+    'Difenokonazol — koruyucu+tedavi, kalıntı süresi orta',
+    'Boscalid + Pyraclostrobin — çiçek yanıklığı için kombinasyon',
+    'Sülfür (kükürt) — uyanma öncesi koruyucu',
+    'İprodion — meyve çürüklüğü için',
+    'NOT: Hasada bekleme süresi (PHI) ürüne göre değişir — etiket + '
+        'bku.tarim.gov.tr kontrolü zorunludur',
+  ],
+  preventionTips: [
+    'Bahçe dolaşımı iyi olsun — havalandırmayı destekleyin',
+    'Hasta dalları kıştan önce kesip yakın',
+    'Mumya meyveleri ağaçta bırakmayın — kış konağı oluşur',
+    'Çiçeklenme döneminde yağış varsa koruyucu ilaçlama planlayın',
+    'Hasat sonrası kalan meyveleri toplayın',
+  ],
+  deadPlantProtocol: [
+    'Ağaç tamamen ölmüşse kökü ile birlikte sökün',
+    'Mumya meyveleri ve kuru dalları topla — sporlar yıllarca canlı',
+    'Çift kat poşete koyup yakın',
+    'Sökme bölgesi 1 hafta açık bekletilebilir',
+    'Aletleri %70 alkolle silin',
+  ],
+  sources: [
+    'TAGEM — Sert Çekirdekli Meyveler Monilya Mücadele Talimatları',
+    'Eğirdir Meyvecilik Araştırma Enstitüsü — Monilya Rehberi',
+  ],
+);
+
+const _atesYaniklik = DiseaseAdvice(
+  name: 'Ateş Yanıklığı',
+  pathogenType: 'Bakteri',
+  contagious: true,
+  urgency: 'Çok Yüksek',
+  symptoms: [
+    'Çiçek ve sürgün uçları aniden kararıp kuruyarak ağacın "yanmış" görünmesi',
+    'Sürgün uçlarının çengel/bastonu şeklinde kıvrılması (karakteristik)',
+    'Dal kabuğunda çatlaklar ve sızıntı — nemli havada süt rengi akıntı',
+    'Lekeli yaprak ve meyveler ağaçta asılı kalır',
+    'Armut, elma, ayva, alıç ve dağ muşmulasında yaygın',
+  ],
+  spreadMechanism:
+      'Erwinia amylovora bakterisi çiçeklenme döneminde arılar, yağmur ve '
+      'rüzgârla yayılır. 18–30 °C ve yüksek nem (%70+) ile saatler içinde '
+      'patlama yapar. Budama yarası, dolu vurması ve böcek izleri başlıca '
+      'giriş noktalarıdır.',
+  isolationSteps: [
+    'TEHLİKE: Ateş yanıklığı hızlı yayılan bakteriyel hastalıktır',
+    'Hasta dalı sağlam dokunun 30–40 cm altından kesin',
+    'Her kesimden sonra aleti %10 çamaşır suyunda DALDIRIN (silmek yetmez)',
+    'Kesilen dalları ağaçtan uzaklaştırın, derhal yakın',
+    'Bahçeyi karantinaya alın; komşu bahçelere uyarı yapın (resmi bildirimde)',
+    'Tarım İl Müdürlüğü Bitki Koruma Şubesi\'ne bildirim ZORUNLUDUR',
+  ],
+  organicTreatments: [
+    'Bakır hidroksit (uyanma öncesi) — koruyucu, tedavi etmez',
+    'Sertifikalı, hastalıktan ari fidan kullanın',
+    'Bahçeyi hâkim rüzgâra göre konumlandırın',
+    'Aşırı azot vermeyin — sulu sürgün ateş yanıklığını çağırır',
+  ],
+  chemicalTreatments: [
+    'Bakırlı bileşikler (bakır oksiklorür, bakır hidroksit) — koruyucu, '
+        'çiçeklenme öncesi',
+    'Streptomisin sülfat — Tarım İl Müdürlüğü kontrolünde, yalnız ruhsatlı '
+        'uygulayıcı; antibiyotik direnci kritik',
+    'Fosetil-Al — bitki bağışıklığını destekler',
+    'NOT: Ateş yanıklığı kontrolü için aktif madde ve uygulama zamanı il '
+        'müdürlüğü tarafından belirlenir; etiket + bku.tarim.gov.tr',
+  ],
+  preventionTips: [
+    'Sertifikalı, dayanıklı çeşit/anaç kullanın',
+    'Budamayı kuru havada yapın, yağmurdan kaçının',
+    'Aşırı azotlu gübrelemeden kaçının — sulu sürgün hastalığı çağırır',
+    'Dolu vurması sonrası 24 saat içinde bakırlı koruyucu uygulayın',
+    'Çiçeklenme döneminde yağış varsa il müdürlüğü uyarısına uyun',
+  ],
+  deadPlantProtocol: [
+    'Hasta ağaç tamamen sökülmelidir — bakteri ağaçta yıllarca kalır',
+    'Köküyle birlikte çıkarın, toprağı derin sürün',
+    'Tüm dalları yakarak imha edin — bakteri ısıdan ölür',
+    'Söküm bölgesini en az 2 yıl yumuşak çekirdekli meyve için kullanmayın',
+    'Aletleri %10 çamaşır suyunda 10 dk dezenfekte edin',
+    'TC Tarım İl Müdürlüğü Bitki Koruma Şubesi\'ne bildirim — ihbarı zorunlu '
+        'hastalıktır',
+  ],
+  sources: [
+    'TC Tarım ve Orman Bakanlığı — Ateş Yanıklığı Mücadele Talimatı',
+    'TAGEM — Erwinia amylovora Bültenleri',
+    'Eğirdir Meyvecilik Araştırma Enstitüsü — Ateş Yanıklığı Rehberi',
+  ],
+);
+
+const _cercospora = DiseaseAdvice(
+  name: 'Cercospora Yaprak Lekesi',
+  pathogenType: 'Mantar',
+  contagious: true,
+  urgency: 'Orta',
+  symptoms: [
+    'Yapraklarda küçük (2–5 mm), yuvarlak, koyu kahverengi-mor kenarlı, '
+        'gri-açık merkezli lekeler',
+    'Şiddetli enfeksiyonda lekeler birleşerek geniş ölü alanlar oluşturur',
+    'Alt yapraklardan yukarı doğru ilerler',
+    'Şeker pancarı, fasulye, soya, biber, havuç ve süs bitkilerinde yaygın',
+  ],
+  spreadMechanism:
+      'Cercospora beticola ve diğer Cercospora türleri rüzgâr, yağmur ve '
+      'aletlerle yayılır. 25–30 °C ve %90+ nem ile hızla yayılır. Sporlar '
+      'yağışla yaprak alt yüzeyine ulaşır.',
+  isolationSteps: [
+    'Alt hasta yaprakları koparıp bertaraf edin',
+    'Damla sulamaya geçin, yaprak ıslaklığını azaltın',
+    'Sıra arası havalandırmayı artırın — sık dikimden kaçının',
+    'Aletleri %70 alkolle silin',
+  ],
+  organicTreatments: [
+    'Bordo bulamacı (%1) — koruyucu, ilk belirti görüldüğünde',
+    'Bakır oksiklorür — yağışlardan önce',
+    'Süt-su karışımı (1:9) — hafif enfeksiyonda haftalık',
+    'Hasat sonrası bitki artıklarını parsel dışına alın',
+  ],
+  chemicalTreatments: [
+    'Triazol grubu (Difenokonazol, Tebukonazol) — sistemik+koruyucu',
+    'Strobilurin grubu (Azoksistrobin, Pyraclostrobin) — geniş spektrum',
+    'Mancozeb — geleneksel koruyucu, kombinasyon için',
+    'Karbendazim — sistemik, dirence dikkat',
+    'NOT: Aynı grupta aktif maddeyi üst üste kullanmayın — direnç gelişir; '
+        'hasada bekleme süresi için bku.tarim.gov.tr kontrolü zorunludur',
+  ],
+  preventionTips: [
+    'Sertifikalı, dayanıklı çeşit kullanın',
+    'Sıra arasını dar tutmayın — havalandırma',
+    'Aşırı azottan kaçının',
+    '2–3 yıl rotasyon — aynı familyaya geri dönmeyin',
+    'Hasat sonrası bitki artıklarını derin gömün veya yakın',
+  ],
+  deadPlantProtocol: [
+    'Bitkiyi tüm yaprakları ile birlikte sökün',
+    'Yapraklarda sporlar uzun süre canlı — toplayıp poşetleyin',
+    'Yakarak imha edin; kompostlamayın',
+    'Aletleri bakırlı dezenfektanla silin',
+  ],
+  sources: [
+    'TAGEM — Cercospora Yaprak Lekesi Mücadele Talimatları',
+    'Ege Üniv. Ziraat Fak. — Şeker Pancarı Hastalıkları',
   ],
 );
 
