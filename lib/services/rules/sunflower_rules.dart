@@ -1,5 +1,8 @@
+import '../../core/rule_engine/declarative_pack_runner.dart';
 import '../../data/activity_types.dart';
 import '../../data/crop_ipm_rules.dart';
+import '../../data/rule_packs/crop_registry.dart';
+import '../../data/rule_packs/sunflower_rule_pack.dart';
 import '../../data/sunflower_source_refs.dart';
 import '../../models/plant_condition.dart';
 import '../guide_engine.dart' show AlertSeverity;
@@ -50,6 +53,19 @@ class SunflowerRules extends CropRuleSet {
       ctx: ctx,
       rules: SunflowerIpmRules.rules,
       windows: SunflowerIpmRules.scoutingWindows,
+    ));
+
+    // Declarative rule pack — ~286 kural, 18 boyut. Mevcut Dart-fonksiyon
+    // kuralları KIRMAZ; aynı RuleEvaluationContext üzerinden facts haritası
+    // türetip RuleEngine.evaluate ile çalıştırır, Recommendation'a çevirir.
+    //
+    // `runFor` ürünün CropDefinition'ından stable ID'yi otomatik bağlar,
+    // FactBuilder.extra'ya işler, kategori cap'i uygular — tüm crop pack'leri
+    // için tek doğru çağrı yolu.
+    out.addAll(DeclarativePackRunner.runFor(
+      ctx: ctx,
+      crop: CropRegistry.sunflower,
+      pack: SunflowerRulePack.all(),
     ));
     return out;
   }

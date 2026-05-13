@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import '../data/activity_types.dart';
 import '../data/app_database.dart';
+import '../data/rule_packs/region_inference.dart';
 import 'field_state_service.dart';
 import 'guide_engine.dart' show AlertSeverity;
 import 'rules/crop_rule_set.dart';
@@ -24,6 +25,14 @@ class LiveDecisionContext {
   final HourlyForecast? hourly;
   final RuleEnvironmentSnapshot? environment;
   final RecommendationLedger? ledger;
+  /// Tarlanın bilinen merkez koordinatı — rule pack'e `region` çıkarımı
+  /// için kullanılır. Null ise bölgeye bağlı kurallar tetiklenmez.
+  final double? fieldLat;
+  final double? fieldLng;
+  /// Kullanıcının tarla detayında manuel seçtiği bölge override (varsa).
+  /// Lat/lng çıkarımına göre öncelikli; null ise `RegionInference` devreye
+  /// girer.
+  final String? fieldRegion;
   final DateTime now;
 
   const LiveDecisionContext({
@@ -41,6 +50,9 @@ class LiveDecisionContext {
     this.hourly,
     this.environment,
     this.ledger,
+    this.fieldLat,
+    this.fieldLng,
+    this.fieldRegion,
   });
 }
 
@@ -60,6 +72,9 @@ class LiveDecisionContextBuilder {
     HourlyForecast? hourly,
     RuleEnvironmentSnapshot? environment,
     RecommendationLedger? ledger,
+    double? fieldLat,
+    double? fieldLng,
+    String? fieldRegion,
   }) {
     final realActivities = activities
         .where((activity) => _isRealActivity(activity, now))
@@ -99,6 +114,7 @@ class LiveDecisionContextBuilder {
         cropName: p.cropName,
         healthStatus: p.healthStatus,
         conditionFlags: _decodeStringList(p.conditionFlagsJson),
+        diseaseType: p.diseaseType,
       ));
     }
 
@@ -135,6 +151,9 @@ class LiveDecisionContextBuilder {
       hourly: hourly,
       environment: environment,
       ledger: ledger,
+      fieldLat: fieldLat,
+      fieldLng: fieldLng,
+      fieldRegion: fieldRegion,
       now: now,
     );
   }
@@ -296,6 +315,11 @@ class LiveTodoService {
 
   List<Recommendation> _ruleRecommendations(LiveDecisionContext ctx) {
     final out = <Recommendation>[];
+    // CLAUDE.md sec 15 — bölge önceliği:
+    //   1) cropMap['region'] (ürün-özel override; tarla detayında seçildi)
+    //   2) ctx.fieldRegion (tarla geneli manuel override)
+    //   3) RegionInference lat/lng çıkarımı (otomatik fallback)
+    final inferredRegion = _inferRegion(ctx.fieldLat, ctx.fieldLng);
     for (final crop in ctx.fieldCrops) {
       final cropId = crop['id']?.toString();
       final cropName = crop['name']?.toString() ?? '';
@@ -303,6 +327,21 @@ class LiveTodoService {
       final ruleSet = _ruleSetFor(ctx.ruleSets, cropName);
       if (ruleSet == null) continue;
       final planted = _parsePlanted(crop['planted_date']?.toString());
+      // Üretim sistemi → cultivation_type + water_regime (rule pack facts).
+      final productionSystem = crop['production_system']?.toString();
+      final cultivationType =
+          productionSystem == 'greenhouse' ? 'greenhouse' : 'open_field';
+      final waterRegime =
+          productionSystem == 'dryFarming' ? 'dryland' : 'irrigated';
+      // Toprak tipi (varsa setup kayıtlarından).
+      final soilType = _mapSoilType(crop['soil_type']?.toString());
+      // Bölge önceliği: ürün-özel → tarla geneli → koordinat çıkarımı.
+      final cropRegion = crop['region']?.toString();
+      final region = (cropRegion != null && cropRegion.isNotEmpty)
+          ? cropRegion
+          : (ctx.fieldRegion != null && ctx.fieldRegion!.isNotEmpty
+              ? ctx.fieldRegion
+              : inferredRegion);
       final evalCtx = RuleEvaluationContext(
         fieldId: ctx.fieldId,
         crop: FieldCropSnapshot(
@@ -316,6 +355,10 @@ class LiveTodoService {
         hourly: ctx.hourly,
         environment: ctx.environment,
         fieldState: ctx.fieldStates[cropId],
+        cultivationType: cultivationType,
+        waterRegime: waterRegime,
+        region: region,
+        soilType: soilType,
         now: ctx.now,
       );
       for (final rec in ruleSet.evaluate(evalCtx)) {
@@ -338,6 +381,26 @@ class LiveTodoService {
   CropRuleSet? _ruleSetFor(List<CropRuleSet> ruleSets, String cropName) {
     for (final rs in ruleSets) {
       if (rs.matches(cropName)) return rs;
+    }
+    return null;
+  }
+
+  String? _inferRegion(double? lat, double? lng) =>
+      RegionInference.fromLatLng(lat, lng);
+
+  /// Setup setlerinden gelen Türkçe toprak tipi → rule pack fact değeri.
+  /// Bilinmeyen değer null döner (kural tetiklenmez).
+  String? _mapSoilType(String? raw) {
+    if (raw == null || raw.isEmpty) return null;
+    final n = raw.toLowerCase();
+    if (n.contains('kil')) return 'clay';
+    if (n.contains('kum')) return 'sandy';
+    if (n.contains('tın') || n.contains('tin') || n.contains('loam')) {
+      return 'loam';
+    }
+    if (n.contains('silt') || n.contains('mil')) return 'silt';
+    if (n.contains('kireç') || n.contains('kirec') || n.contains('calc')) {
+      return 'calcareous';
     }
     return null;
   }

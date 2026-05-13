@@ -342,11 +342,26 @@ final fieldScheduledAutoSeedProvider = StreamProvider.family
 // Deterministik tavsiye motoru (ayçiçeği MVP-1; ileride çoklu bitki)
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Mevcut bitki kural setleri. Yeni bitki eklemek için bu listeye yeni bir
-/// `CropRuleSet` implementation eklemek yeterli; UI değişmez.
+/// Mevcut bitki kural setleri. CLAUDE.md sec 11 — 5 öncelikli ürün.
+///
+/// ## Yeni ürün ekleme akışı (3 dosya, ~3 satır değişiklik):
+///
+/// 1. `lib/data/rule_packs/crop_registry.dart` → `CropDefinition` ekle.
+/// 2. `lib/data/rule_packs/[crop]_rule_pack.dart` → declarative kurallar.
+/// 3. Bu listeye `DeclarativeCropRuleSet(...)` ekle.
+///
+/// Mevcut `SunflowerRules` ek olarak elle-yazılı 7 fonksiyon kuralı taşır
+/// (hash dedup, gübre dozu vb. karmaşık mantık). Saf pack-driven ürünler
+/// için `DeclarativeCropRuleSet` yeterlidir.
 final cropRuleSetsProvider = Provider<List<CropRuleSet>>((ref) {
   return const [
+    // Elle-yazılı + declarative pack hibrit ürün
     SunflowerRules(),
+    // Pure declarative pack ürünleri buraya eklenir:
+    // DeclarativeCropRuleSet(
+    //   definition: CropRegistry.corn,
+    //   packBuilder: CornRulePack.all,
+    // ),
     WheatRules(),
   ];
 });
@@ -425,6 +440,10 @@ final fieldLiveTodosProvider = FutureProvider.family
     weatherService: weatherService,
   );
 
+  // CLAUDE.md sec 15 — bölge override: tarla detayında kullanıcı `region`
+  // alanı doldurmuş olabilir. fieldMap['region'] varsa öncelik kazanır;
+  // yoksa lat/lng'den RegionInference devreye girer.
+  final fieldRegion = fieldMap?['region']?.toString();
   final context = ref.read(liveDecisionContextBuilderProvider).build(
         fieldId: fieldId,
         fieldCrops: crops,
@@ -437,6 +456,11 @@ final fieldLiveTodosProvider = FutureProvider.family
         hourly: hourly,
         environment: environment,
         ledger: ledger,
+        fieldLat: lat,
+        fieldLng: lng,
+        fieldRegion: (fieldRegion != null && fieldRegion.isNotEmpty)
+            ? fieldRegion
+            : null,
         now: now,
       );
   return ref.read(liveTodoServiceProvider).generate(context);

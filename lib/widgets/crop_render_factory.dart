@@ -309,16 +309,23 @@ Widget buildCropMarkerWidget({
         // Aralık geniş tutulur: uzaklaşınca gerçekten küçülür, yakınlaşınca
         // marker kutusunu taşırmadan büyür.
         double zoomScale = math.pow(2.0, currentZoom - 18.0).toDouble();
-        zoomScale = zoomScale.clamp(0.25, 3.1).toDouble();
+        // Geniş aralık: uzakta gerçekten küçülsün, yakında tarlayı boğmasın.
+        zoomScale = zoomScale.clamp(0.18, 2.4).toDouble();
 
         final phase = getGrowthPhase(maturityPercent);
         final phaseScale = _getScaleMultiplier(phase);
 
-        const double baseWidth = 54;
-        const double baseHeight = 62;
+        // Taban boyutu küçültüldü (54→38, 62→44): yakın görünümde bitkiler
+        // birbirine yapışmasın, tarla deseni okunabilir kalsın.
+        const double baseWidth = 38;
+        const double baseHeight = 44;
 
         final double spriteW = baseWidth * phaseScale * zoomScale;
         final double spriteH = baseHeight * phaseScale * zoomScale;
+
+        // LOD eşiği: bu değerin altında fotoğraf yerine stilize "yaprak dane"
+        // simgesi çizilir — uzaktan net, temiz ve tarlaya doğal görünür.
+        final bool useLowLod = zoomScale < 0.55;
 
         // ── PNG rendering — önce .png dene, bulamazsa .jpg'ye düş ────────────
         final assetPath = _getAssetPath(cropName);
@@ -338,7 +345,7 @@ Widget buildCropMarkerWidget({
               (spriteW * devicePixelRatio).round().clamp(36, 1024).toInt();
           final cacheH =
               (spriteH * devicePixelRatio).round().clamp(36, 1280).toInt();
-          return Image.asset(
+          final photo = Image.asset(
             pngPath,
             width: spriteW,
             height: spriteH,
@@ -361,9 +368,63 @@ Widget buildCropMarkerWidget({
               errorBuilder: (_, __, ___) => const SizedBox.shrink(),
             ),
           );
+          // Satellite imagery üstünde fotoğrafın okunabilirliği için ince
+          // beyaz halo + hafif drop shadow. Marker fotoyu kesmesin diye
+          // shadow blur sprite kutusunun dışına taşar (Stack clipBehavior
+          // none olarak ayarlandı).
+          return DecoratedBox(
+            decoration: BoxDecoration(
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.28),
+                  blurRadius: 6,
+                  offset: const Offset(0, 1),
+                ),
+              ],
+            ),
+            child: photo,
+          );
         }
 
-        final sprite = buildSpriteImage();
+        // ── LOD: uzak görünüm için stilize "yaprak-dane" simgesi ─────────
+        // Fotoğraflar 20px altında bulaşır; bunun yerine ürün renginde net,
+        // çiftçi dostu vektör simge çiziyoruz. Aynı sprite yerleşim kutusu
+        // kullanılır, böylece tıklama hedefleri ve hizalama değişmez.
+        Widget buildLowLodSprite() {
+          final dotSize = math.min(spriteW, spriteH * 0.85);
+          return Center(
+            child: CustomPaint(
+              size: Size(dotSize, dotSize),
+              painter: _StylizedCropDotPainter(
+                color: cropColor,
+                growthPhase: phase,
+              ),
+            ),
+          );
+        }
+
+        final sprite = useLowLod ? buildLowLodSprite() : buildSpriteImage();
+
+        // ── Toprak gölgesi — bitki "havada" değil "ekili" görünsün ───────
+        // Sprite altında yumuşak elips, zemine oturma hissi verir.
+        final shadowW = spriteW * 0.78;
+        final shadowH = (spriteH * 0.14).clamp(2.5, 14.0);
+        final groundShadow = IgnorePointer(
+          child: Container(
+            width: shadowW,
+            height: shadowH,
+            decoration: BoxDecoration(
+              borderRadius:
+                  BorderRadius.all(Radius.elliptical(shadowW, shadowH)),
+              gradient: RadialGradient(
+                colors: [
+                  Colors.black.withValues(alpha: 0.42),
+                  Colors.black.withValues(alpha: 0.0),
+                ],
+              ),
+            ),
+          ),
+        );
         final hasFacingDirection = _hasFacingDirection(facingDirection);
 
         // ── Sağlık durumu rozeti — kritik UX, çiftçi haritada hangi bitkinin
@@ -423,6 +484,11 @@ Widget buildCropMarkerWidget({
             clipBehavior: Clip.none,
             alignment: Alignment.bottomCenter,
             children: [
+              // Toprak gölgesi — sprite tabanına oturur, "ekili" hissi verir.
+              Positioned(
+                bottom: -(shadowH * 0.3),
+                child: groundShadow,
+              ),
               sprite,
               if (hasFacingDirection)
                 Positioned(
@@ -605,4 +671,90 @@ Widget buildCropMarkerWidget({
       },
     ),
   );
+}
+
+/// Uzak görünüm (LOD) için stilize "yaprak-dane" simgesi.
+/// Fotoğraf 20px altında bulaşır; bu painter ürün renginde temiz bir
+/// silüet çizer: toprak halkası + yaprak/meyve şekli + beyaz outline.
+/// Olgunluk evresine göre renk doygunluğu ve dane sayısı değişir, böylece
+/// uzaktan bakıldığında bile bitkinin durumu okunabilir.
+class _StylizedCropDotPainter extends CustomPainter {
+  const _StylizedCropDotPainter({
+    required this.color,
+    required this.growthPhase,
+  });
+
+  final Color color;
+  final GrowthPhase growthPhase;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cx = size.width / 2;
+    final cy = size.height / 2;
+    final r = math.min(size.width, size.height) / 2;
+
+    // Olgunluk renkleri: fide→açık yeşil, büyüme→canlı yeşil,
+    // olgun→koyun yeşil, hasat→ürün rengi (sarı/kırmızı vb).
+    final base = switch (growthPhase) {
+      GrowthPhase.seedling => const Color(0xFFA8D982),
+      GrowthPhase.growing => const Color(0xFF66BB6A),
+      GrowthPhase.mature => const Color(0xFF2E7D32),
+      GrowthPhase.harvest => color,
+    };
+    final highlight = Color.lerp(base, Colors.white, 0.35) ?? base;
+    final shade = Color.lerp(base, Colors.black, 0.32) ?? base;
+
+    // 1) Beyaz outline halo — satellite zeminde okunabilirlik
+    final haloPaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.85)
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(Offset(cx, cy), r * 0.95, haloPaint);
+
+    // 2) Dış koyu çerçeve — temiz silüet kenarı
+    final ringPaint = Paint()
+      ..color = shade.withValues(alpha: 0.55)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = math.max(0.8, r * 0.08);
+    canvas.drawCircle(Offset(cx, cy), r * 0.88, ringPaint);
+
+    // 3) Bitki gövdesi — radial gradient ile hacim hissi
+    final bodyRect = Rect.fromCircle(center: Offset(cx, cy), radius: r * 0.82);
+    final bodyPaint = Paint()
+      ..shader = RadialGradient(
+        center: const Alignment(-0.25, -0.35),
+        radius: 1.0,
+        colors: [highlight, base, shade],
+        stops: const [0.0, 0.55, 1.0],
+      ).createShader(bodyRect);
+    canvas.drawCircle(Offset(cx, cy), r * 0.82, bodyPaint);
+
+    // 4) Yaprak çentiği — bitki silüeti hissi (basit "V" üstte)
+    final leafPaint = Paint()
+      ..color = highlight.withValues(alpha: 0.85)
+      ..style = PaintingStyle.fill;
+    final leafPath = Path()
+      ..moveTo(cx, cy - r * 0.78)
+      ..quadraticBezierTo(
+          cx + r * 0.32, cy - r * 0.55, cx + r * 0.12, cy - r * 0.18)
+      ..quadraticBezierTo(cx, cy - r * 0.32, cx - r * 0.12, cy - r * 0.18)
+      ..quadraticBezierTo(
+          cx - r * 0.32, cy - r * 0.55, cx, cy - r * 0.78)
+      ..close();
+    canvas.drawPath(leafPath, leafPaint);
+
+    // 5) Hasat evresinde küçük meyve/dane noktası — uzaktan bile "olgun"
+    if (growthPhase == GrowthPhase.harvest) {
+      final fruitPaint = Paint()
+        ..color = Colors.white.withValues(alpha: 0.9)
+        ..style = PaintingStyle.fill;
+      canvas.drawCircle(
+          Offset(cx + r * 0.18, cy + r * 0.05), r * 0.16, fruitPaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _StylizedCropDotPainter oldDelegate) {
+    return oldDelegate.color != color ||
+        oldDelegate.growthPhase != growthPhase;
+  }
 }
