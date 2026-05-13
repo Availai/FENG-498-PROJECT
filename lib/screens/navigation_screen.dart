@@ -13,6 +13,7 @@ import 'plant_growth_guide_screen.dart';
 import 'crop_calendar_screen.dart';
 import 'map_hub_screen.dart';
 import 'about_screen.dart';
+import 'tavsiyeler_screen.dart';
 
 class MainNavigationScreen extends ConsumerStatefulWidget {
   const MainNavigationScreen({super.key});
@@ -100,6 +101,31 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
                   providerLabel: providerLabel,
                 ),
                 const SizedBox(height: 14),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.shade50,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(Icons.recommend_rounded,
+                      color: Colors.amber.shade800, size: 20),
+                ),
+                title: const Text('Tavsiyeler'),
+                subtitle: const Text(
+                    '5 öncelikli ürün için resmi kaynaklı kısa öneriler'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const TavsiyelerScreen(),
+                    ),
+                  );
+                },
+              ),
+              const Divider(),
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: Container(

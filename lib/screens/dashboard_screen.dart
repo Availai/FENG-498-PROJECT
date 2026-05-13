@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import '../data/turkiye_crop_guides.dart';
 import '../services/app_providers.dart';
+import '../services/crop_recommendations.dart';
 import '../services/notification_service.dart';
 import '../services/frost_alarm_service.dart';
 import '../services/weather_soil_service.dart';
@@ -13,6 +15,11 @@ import '../widgets/help_panel.dart';
 import '../widgets/tap_scale.dart';
 import 'farm_journal_screen.dart';
 import 'field_detail_screen.dart';
+import '../widgets/fade_slide_in.dart';
+import '../widgets/hourly_weather_sheet.dart';
+import '../widgets/random_effect_wrapper.dart';
+import 'tavsiyeler_screen.dart';
+import 'turkiye_crop_guide_screen.dart';
 
 final dashboardWeeklyPlanProvider =
     FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
@@ -228,6 +235,34 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
     }
   }
 
+  /// Saatlik 7 günlük hava sheet'ini açar. Lat/lng son refresh'te
+  /// Hive `settingsBox` içine yazılır; yoksa konum izinleri istenmeden
+  /// kullanıcıya bilgi gösterilir.
+  Future<void> _openHourlyForecast() async {
+    double? lat;
+    double? lon;
+    try {
+      final box = Hive.box('settingsBox');
+      final rawLat = box.get('last_dashboard_lat');
+      final rawLng = box.get('last_dashboard_lng');
+      if (rawLat is num && rawLng is num) {
+        lat = rawLat.toDouble();
+        lon = rawLng.toDouble();
+      }
+    } catch (_) {}
+
+    if (lat == null || lon == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+              'Konum henüz hazır değil. Yenile düğmesiyle konumu güncelle.'),
+        ),
+      );
+      return;
+    }
+    await showHourlyWeatherSheet(context, lat: lat, lon: lon);
+  }
+
   Future<void> _refreshData() async {
     setState(() => _isLoading = true);
     try {
@@ -397,6 +432,8 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           _buildEmergencyBanners(),
+                          _buildTavsiyelerStrip(),
+                          const SizedBox(height: 10),
                           _buildCollapsibleSection(
                             id: 'overview',
                             title: 'Tarla Genel Durumu',
@@ -536,6 +573,8 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
                               ),
                             ],
                           ),
+                          const SizedBox(height: 8),
+                          _HourlyForecastChip(onTap: _openHourlyForecast),
                         ],
                       ),
                     ),
@@ -569,6 +608,129 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
   /// Başlığa dokununca açılır/kapanır; ek bilgiler yalnızca istenince gelir.
   ///
   /// [id] _openSections set'inde açık olanları izlemek için stabil anahtar.
+  // ───────────────────────────────────────────────────────────────────────────
+  // TAVSİYELER ŞERİDİ — TAGEM/BATEM/ÇAYKUR kaynaklı 5 ürün için hızlı erişim.
+  // Her kart ürünün detay rehberini açar; "Tümünü gör" butonu tavsiyeler
+  // ekranını açar.
+  // ───────────────────────────────────────────────────────────────────────────
+  Widget _buildTavsiyelerStrip() {
+    final guides = CropRecommendationsService.priorityGuides();
+    if (guides.isEmpty) return const SizedBox.shrink();
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+      ),
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 3,
+                height: 22,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [AppColors.emeraldLight, AppColors.emeraldDark],
+                  ),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  gradient: AppGradients.emeraldCard,
+                  borderRadius: BorderRadius.circular(9),
+                  boxShadow: AppShadows.emeraldGlow,
+                ),
+                child: const Icon(Icons.recommend_rounded,
+                    size: 15, color: Colors.white),
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Text(
+                  'Resmi Kaynaklı Tavsiyeler',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const TavsiyelerScreen(),
+                    ),
+                  );
+                },
+                style: TextButton.styleFrom(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  minimumSize: const Size(0, 32),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: const Text(
+                  'Tümünü gör',
+                  style: TextStyle(
+                    color: AppColors.emeraldLight,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          const Padding(
+            padding: EdgeInsets.fromLTRB(14, 0, 12, 8),
+            child: Text(
+              'TAGEM, BATEM ve ÇAYKUR kaynaklı 5 öncelikli ürün için '
+              'ekim, sulama, koruma ve hasat tavsiyeleri.',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.white70,
+                height: 1.4,
+              ),
+            ),
+          ),
+          SizedBox(
+            height: 138,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              itemCount: guides.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 10),
+              itemBuilder: (_, i) {
+                final g = guides[i];
+                return FadeSlideIn(
+                  index: i,
+                  child: _TavsiyeStripCard(
+                    guide: g,
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => TurkiyeCropGuideScreen(guide: g),
+                        ),
+                      );
+                    },
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildCollapsibleSection({
     required String id,
     required String title,
@@ -1727,6 +1889,179 @@ class _HeroWeatherSideChip extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Saatlik tahmin chip'i — hero'da konum satırının altında şık tetikleyici.
+// Cam efektli, kaynak rozeti ve chevron'lu; RandomEffectWrapper ile tıklama
+// hissi verir ama onTap ASLA geciktirilmez.
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _HourlyForecastChip extends StatelessWidget {
+  const _HourlyForecastChip({required this.onTap});
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: RandomEffectWrapper(
+        borderRadius: const BorderRadius.all(Radius.circular(999)),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: const [
+              Icon(Icons.schedule_rounded, size: 14, color: Colors.white),
+              SizedBox(width: 6),
+              Text(
+                'Saatlik 7 gün',
+                style: TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                  letterSpacing: 0.2,
+                ),
+              ),
+              SizedBox(width: 6),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 4),
+                child: SizedBox(
+                  height: 12,
+                  child: VerticalDivider(
+                    color: Colors.white24,
+                    width: 1,
+                    thickness: 1,
+                  ),
+                ),
+              ),
+              Icon(Icons.verified_rounded, size: 12, color: Colors.white70),
+              SizedBox(width: 4),
+              Text(
+                'MGM',
+                style: TextStyle(
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white70,
+                  letterSpacing: 0.4,
+                ),
+              ),
+              SizedBox(width: 4),
+              Icon(Icons.chevron_right_rounded,
+                  size: 16, color: Colors.white70),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Tavsiyeler şeridi — tek kart (yatay scroll içinde kullanılır)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _TavsiyeStripCard extends StatelessWidget {
+  const _TavsiyeStripCard({required this.guide, required this.onTap});
+
+  final TurkiyeCropGuide guide;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 200,
+      child: RandomEffectWrapper(
+        borderRadius: const BorderRadius.all(Radius.circular(16)),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.10),
+            borderRadius: AppRadius.md,
+            border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 30,
+                    height: 30,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: AppColors.emerald.withValues(alpha: 0.85),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(Icons.eco_rounded,
+                        color: Colors.white, size: 16),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      guide.cropName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                guide.category,
+                style: const TextStyle(
+                  color: Colors.white60,
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.4,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Expanded(
+                child: Text(
+                  'Ekim: ${guide.sowingWindow}\nHasat: ${guide.harvestWindow}',
+                  maxLines: 4,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 11.5,
+                    height: 1.35,
+                  ),
+                ),
+              ),
+              Row(
+                children: const [
+                  Text(
+                    'Tavsiyeleri aç',
+                    style: TextStyle(
+                      color: AppColors.emeraldLight,
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  Spacer(),
+                  Icon(Icons.chevron_right,
+                      color: AppColors.emeraldLight, size: 18),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

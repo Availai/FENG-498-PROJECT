@@ -10,7 +10,9 @@ library;
 import 'package:flutter/material.dart';
 
 import '../data/turkiye_crop_guides.dart';
+import '../services/crop_recommendations.dart';
 import '../theme/app_theme.dart';
+import 'tavsiyeler_screen.dart';
 
 class TurkiyeCropGuideScreen extends StatelessWidget {
   const TurkiyeCropGuideScreen({super.key, required this.guide});
@@ -42,6 +44,8 @@ class TurkiyeCropGuideScreen extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
         children: [
           _HeroCard(guide: guide),
+          const SizedBox(height: 14),
+          _HighlightsCard(guide: guide),
           const SizedBox(height: 14),
           _TechnicalMetricsCard(guide: guide),
           const SizedBox(height: 14),
@@ -220,6 +224,125 @@ class _HeroFact extends StatelessWidget {
           Text(value, style: AppText.bodyDark(context)),
         ],
       ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Öne Çıkan Tavsiyeler — TAGEM/BATEM/ÇAYKUR kaynaklı 4 kritik aksiyon kartı
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _HighlightsCard extends StatelessWidget {
+  const _HighlightsCard({required this.guide});
+  final TurkiyeCropGuide guide;
+
+  @override
+  Widget build(BuildContext context) {
+    final tavsiyeler = CropRecommendationsService.highlightsFor(guide);
+    if (tavsiyeler.isEmpty) return const SizedBox.shrink();
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: AppRadius.md,
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.recommend_rounded,
+                  color: AppColors.emeraldDark, size: 18),
+              const SizedBox(width: 6),
+              Text('ÖNE ÇIKAN TAVSİYELER', style: AppText.label(context)),
+              const Spacer(),
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          TavsiyelerScreen(initialCropId: guide.id),
+                    ),
+                  );
+                },
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 8, vertical: 4),
+                  minimumSize: const Size(0, 28),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: Text(
+                  'Tümü',
+                  style: AppText.xs(context)
+                      .copyWith(color: AppColors.emeraldDark),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          for (var i = 0; i < tavsiyeler.length; i++) ...[
+            _HighlightRow(tavsiye: tavsiyeler[i]),
+            if (i < tavsiyeler.length - 1)
+              const Divider(height: 16, color: AppColors.divider),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _HighlightRow extends StatelessWidget {
+  const _HighlightRow({required this.tavsiye});
+  final CropRecommendation tavsiye;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = tavsiye.category;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 32,
+          height: 32,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: c.background,
+            borderRadius: AppRadius.sm,
+          ),
+          child: Icon(c.icon, size: 16, color: c.color),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Text(
+                    c.label.toUpperCase(),
+                    style: AppText.label(context).copyWith(color: c.color),
+                  ),
+                  if (tavsiye.requiresBkuCheck) ...[
+                    const SizedBox(width: 6),
+                    const Icon(Icons.science_rounded,
+                        size: 12, color: AppColors.error),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 2),
+              Text(tavsiye.title, style: AppText.bodyMd(context)),
+              const SizedBox(height: 4),
+              Text(
+                tavsiye.action,
+                style: AppText.sm(context),
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

@@ -91,6 +91,114 @@ class MgmObservation {
   }
 }
 
+/// MGM saatlik tahmin tek noktası (1-3 saatlik adımlar).
+class MgmHourlyPoint {
+  final DateTime time;
+  final double tempC;
+  final double apparentC;
+  final double humidityPct;
+  final double windSpeedMs; // m/s
+  final double windDirDeg;
+  final double precipMm;
+  final String description;
+  final int hadiseCode;
+
+  const MgmHourlyPoint({
+    required this.time,
+    required this.tempC,
+    required this.apparentC,
+    required this.humidityPct,
+    required this.windSpeedMs,
+    required this.windDirDeg,
+    required this.precipMm,
+    required this.description,
+    required this.hadiseCode,
+  });
+
+  /// MGM dökümante edilmiş şema:
+  /// {
+  ///   "tarih": "ISO8601", "sicaklik": °C, "hissedilenSicaklik": °C,
+  ///   "nem": %, "ruzgarHiz": km/h, "ruzgarYon": °, "yagis": mm,
+  ///   "hadise": "kod metni"
+  /// }
+  factory MgmHourlyPoint.fromJson(Map<String, dynamic> j) {
+    final windKmh = (j['ruzgarHiz'] as num?)?.toDouble() ?? 0;
+    final hadiseRaw = j['hadise']?.toString() ?? '';
+    return MgmHourlyPoint(
+      time: DateTime.tryParse(j['tarih']?.toString() ?? '') ?? DateTime.now(),
+      tempC: (j['sicaklik'] as num?)?.toDouble() ?? 0,
+      apparentC: (j['hissedilenSicaklik'] as num?)?.toDouble() ??
+          (j['sicaklik'] as num?)?.toDouble() ??
+          0,
+      humidityPct: (j['nem'] as num?)?.toDouble() ?? 0,
+      windSpeedMs: windKmh / 3.6,
+      windDirDeg: (j['ruzgarYon'] as num?)?.toDouble() ?? 0,
+      precipMm: (j['yagis'] as num?)?.toDouble() ?? 0,
+      description: _mgmHadiseToTr(hadiseRaw),
+      hadiseCode: int.tryParse(hadiseRaw) ?? -1,
+    );
+  }
+}
+
+/// MGM "hadise" kodlarını Türkçe sözel açıklamaya çevirir.
+/// MGM bu kodları yıllardır public kullanır; eksik kod gelirse ham metin döner.
+String _mgmHadiseToTr(String raw) {
+  if (raw.isEmpty) return 'Belirsiz';
+  final code = int.tryParse(raw);
+  if (code == null) return raw;
+  switch (code) {
+    case 1:
+      return 'Açık';
+    case 2:
+      return 'Az bulutlu';
+    case 3:
+      return 'Parçalı bulutlu';
+    case 4:
+      return 'Çok bulutlu';
+    case 5:
+      return 'Hafif yağmurlu';
+    case 6:
+      return 'Yağmurlu';
+    case 7:
+      return 'Kuvvetli yağmurlu';
+    case 8:
+      return 'Sağanak';
+    case 9:
+      return 'Kar yağışlı';
+    case 10:
+      return 'Karla karışık yağmur';
+    case 11:
+      return 'Gök gürültülü sağanak';
+    case 12:
+      return 'Sisli';
+    case 13:
+      return 'Pus';
+    case 14:
+      return 'Toz / kum';
+    case 15:
+      return 'Rüzgârlı';
+    case 16:
+      return 'Kuvvetli rüzgâr';
+    case 17:
+      return 'Fırtına';
+    case 18:
+      return 'Tropikal fırtına';
+    case 19:
+      return 'Sıcak';
+    case 20:
+      return 'Soğuk';
+    case 21:
+      return 'Yağışlı';
+    case 22:
+      return 'Çisenti';
+    case 23:
+      return 'Hafif kar';
+    case 24:
+      return 'Yoğun kar';
+  }
+  return raw;
+}
+
 /// MGM 5 günlük günlük tahmin (her gün için min/max + genel durum).
 class MgmDailyForecast {
   final DateTime date;
@@ -166,6 +274,26 @@ class MgmApi {
       return MgmObservation.fromJson(list.first, '${s.il} / ${s.ilce}');
     } catch (_) {
       return null;
+    }
+  }
+
+  /// Saatlik tahmin (MGM ileriye dönük ~3 gün sağlar; daha uzun ihtiyaçta
+  /// Open-Meteo fallback ile birleştirilebilir).
+  static Future<List<MgmHourlyPoint>> hourlyForecast(MgmStation s) async {
+    try {
+      final uri = Uri.parse('$_baseUrl/tahminler/saatlik?istno=${s.istNo}');
+      final res = await http.get(uri, headers: _headers).timeout(_timeout);
+      if (res.statusCode != 200) return [];
+      final data = jsonDecode(res.body);
+      final raw = data is Map && data.containsKey('tahmin')
+          ? data['tahmin'] as List
+          : (data is List ? data : []);
+      return raw
+          .cast<Map<String, dynamic>>()
+          .map(MgmHourlyPoint.fromJson)
+          .toList();
+    } catch (_) {
+      return [];
     }
   }
 

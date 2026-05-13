@@ -79,7 +79,8 @@
       "Bash(python -c \"import json; d=json.load\\(open\\('seed_plants.json',encoding='utf-8'\\)\\); print\\('total:', len\\(d['plants']\\)\\); [print\\(i, p['name_tr'], p.get\\('stable_id'\\)\\) for i,p in enumerate\\(d['plants']\\) if p['name_tr'] in ['Domates','Mısır','Ayçiçeği','Çay','Portakal']]\")",
       "PowerShell(python -c \"import json; d=json.load\\(open\\(r'c:\\\\dev\\\\feng_498\\\\backend\\\\data_pipeline\\\\seed_plants.json',encoding='utf-8'\\)\\); print\\('total:', len\\(d['plants']\\)\\); [print\\(i, p['name_tr'], p.get\\('stable_id'\\)\\) for i,p in enumerate\\(d['plants']\\) if p['name_tr'] in ['Domates','M�s�r','Ay�i�e�i','�ay','Portakal']]\")",
       "Bash(python _inspect.py)",
-      "Bash(python _extend_diseases.py)"
+      "Bash(python _extend_diseases.py)",
+      "Bash(grep -n 'Kaynak: $primaryLabel' lib/widgets/hourly_weather_sheet.dart)"
     ]
   }
 }
