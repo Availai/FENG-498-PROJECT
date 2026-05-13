@@ -146,6 +146,35 @@ class DiseaseAdvice {
     'incir mozaiği': 'Mozaik Virüs',
     // Külleme varyantları (Türkçe karakter normalize)
     'kulleme': 'Külleme',
+    // Sclerotinia / Beyaz çürüklük
+    'sclerotinia': 'Kök Çürüklüğü',
+    'beyaz çürüklük': 'Kök Çürüklüğü',
+    'beyaz curukluk': 'Kök Çürüklüğü',
+    // Ayçiçeği / mısır spesifik
+    'mısır rastığı': 'Bilinmiyor',
+    'misir rastigi': 'Bilinmiyor',
+    'başak rastığı': 'Bilinmiyor',
+    'basak rastigi': 'Bilinmiyor',
+    'kuzey yaprak yanıklığı': 'Erken Yaprak Yanıklığı',
+    'kuzey yaprak yanikligi': 'Erken Yaprak Yanıklığı',
+    'gri yaprak lekesi': 'Cercospora Yaprak Lekesi',
+    // Turunçgil spesifik — kabuk lekesi, yağ lekesi, uçkurutan, zamklanma
+    'uçkurutan': 'Bakteriyel Yanıklık',
+    'uckurutan': 'Bakteriyel Yanıklık',
+    'kabuk lekesi': 'Antraknoz',
+    'skab': 'Antraknoz',
+    'yağ lekesi': 'Cercospora Yaprak Lekesi',
+    'yag lekesi': 'Cercospora Yaprak Lekesi',
+    'zamklanma': 'Kök Çürüklüğü',
+    'kahverengi çürüklük': 'Kök Çürüklüğü',
+    'kahverengi curukluk': 'Kök Çürüklüğü',
+    // Çay spesifik
+    'sürgün kuruması': 'Bakteriyel Yanıklık',
+    'surgun kurumasi': 'Bakteriyel Yanıklık',
+    'dal geriye kuruması': 'Bakteriyel Yanıklık',
+    'dal geriye kurumasi': 'Bakteriyel Yanıklık',
+    'tomurcuk çürüklüğü': 'Kurşuni Küf',
+    'tomurcuk curuklugu': 'Kurşuni Küf',
   };
 
   /// Hastalık adına göre tavsiye getirir; eşleşme yoksa "Bilinmiyor"

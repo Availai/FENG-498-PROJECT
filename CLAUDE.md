@@ -596,29 +596,61 @@ Toprak analizi girilmediği için net gübre miktarı hesaplanamadı. Önce pH, 
 
 ## 17. Bitki Koruma Ürünü / BKÜ Güvenlik Kuralları
 
-Bu bölüm kesinlikle ihlal edilmemeli.
+Bu bölüm kullanıcıya kimyasal mücadele bilgisi gösterilirken nasıl davranılacağını tanımlar. Amaç çiftçiye fayda sağlarken çiftçi sağlığını, ürün güvenliğini ve yasal ruhsat durumunu korumaktır.
 
-Uygulama doğrudan şu tarz çıktı vermemeli:
+### 17.1 İzin verilen
 
-```text
-Şu ilacı şu dozda at.
+- **Aktif madde adı** (etken madde) hastalık/zararlı kayıtlarında listelenebilir (ör. "Mancozeb", "Metalaksil-M + Mancozeb", "Bakır oksiklorür").
+- Etken madde grupları ("triazol grubu", "strobilurin grubu") direnç yönetimi notlarında kullanılabilir.
+- TAGEM Zirai Mücadele Teknik Talimatları'nda **açıkça yazılı olan** uygulama dozu, ilaçlama zamanı (örn. "ekim, aralık, mart aylarında yeşil aksam ilaçlaması"), hasada bekleme süresi (PHI) bilgileri saklanabilir.
+- Kültürel + biyolojik + kimyasal seçenekler bir arada gösterilir; bu sırada gösterim zorunludur.
+
+### 17.2 Yasak olan
+
+- **Belirli ticari ürün adı** (BKÜ marka adı) önermek — sadece etken madde.
+- TAGEM/resmî kaynakta yer almayan bir aktif maddeyi "şu hastalığa şu ilaç" diye eklemek.
+- Etken maddeyi tek başına, "bunu kullan" emir kipiyle sunmak.
+- Doz veya PHI değerini kaynak yokken tahmin etmek.
+- Çocuk, hamile, hayvan veya su kaynağı güvenliği uyarısı olmadan kimyasal yöntemi öne çıkarmak.
+
+### 17.3 Zorunlu işaretler
+
+Her kimyasal mücadele kaydı şu alanları taşımalı:
+
+```json
+{
+  "control_methods_chemical": [
+    {
+      "active_ingredient": "Metalaksil-M + Mancozeb",
+      "ingredient_group": "Fenilamid + Ditiokarbamat",
+      "application_note": "Sistemik+koruyucu, 7 gün arayla 2 uygulama. Aynı grupta art arda kullanım dirençle sonuçlanır.",
+      "source_ids": ["source.tagem.tomato_open_field_ipm"]
+    }
+  ],
+  "requires_bku_check": true,
+  "requires_expert_confirmation": true,
+  "bku_check_note": "Aktif maddenin güncel ruhsat durumu, ticari ürün, doz ve hasada bekleme süresi için bku.tarim.gov.tr veritabanı sorgulanmalıdır."
+}
 ```
 
-Doğru çıktı:
+### 17.4 UI sunum sırası
 
-```text
-Bu belirti domates mildiyösü ile uyumlu olabilir. Kesin teşhis için ziraat mühendisi onayı gerekir. Kimyasal mücadele gerekiyorsa Tarım ve Orman Bakanlığı BKÜ veritabanında domates + mildiyö için güncel ruhsatlı ürün, etiket dozu ve son ilaçlama-hasat aralığı kontrol edilmelidir.
-```
+Kullanıcıya hastalık/zararlı tedavi seçenekleri aşağıdaki sırayla gösterilmelidir:
 
-Kurallar:
+1. Belirti açıklaması ve "kesin teşhis için uzman onayı gerekir" notu.
+2. Kültürel mücadele (`control_methods_cultural`).
+3. Biyolojik mücadele varsa (`control_methods_biological`).
+4. Kimyasal mücadele (`control_methods_chemical`) — etken madde listesi, açıklamalar.
+5. **BKÜ kontrolü uyarısı** (kesin bir blok olarak): "bku.tarim.gov.tr üzerinden güncel ruhsatlı ürünü, etiket dozunu ve hasada bekleme süresini kontrol edin."
+6. Güvenlik uyarısı: kalıntı, çocuk/hayvan/su, koruyucu ekipman.
 
-- Her kimyasal kontrol kaydında `requires_bku_check: true` olmalı.
-- Her teşhis kaydında `requires_expert_confirmation: true` olmalı.
-- Aktif madde, ürün adı, doz veya hasat aralığı yalnızca resmî kaynakta açıkça varsa saklanabilir.
-- Ruhsat tarihi değişebileceği için eski veriyi kesin tavsiye gibi gösterme.
-- BKÜ dışı veya kaynaksız ilaç tavsiyesi üretme.
-- Kültürel ve mekanik önlemler her zaman kimyasal öneriden önce gösterilmeli.
-- Hasada yakın dönemde kalıntı riski uyarısı gösterilmeli.
+### 17.5 Kırmızı çizgiler
+
+- Ruhsat tarihi değişebileceği için listelenen etken madde tek başına yeterli karar değildir; her kayıtta açık BKÜ disclaimer'ı olmalıdır.
+- AB'de yasaklanmış ama TR'de hâlâ ruhsatlı (veya tersi) aktif maddeler için ek not düşülebilir; ancak Tarlam ruhsat durumu konusunda tek otorite olmayı reddeder ve BKÜ'ye yönlendirir.
+- Hasada yakın dönemde kalıntı riski uyarısı her zaman gösterilmelidir.
+
+Bu mantığın referans uygulaması `lib/data/disease_advice.dart` içindedir. Yeni hastalık eklerken aynı yapı korunmalıdır.
 
 ---
 

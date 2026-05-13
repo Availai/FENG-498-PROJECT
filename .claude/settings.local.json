@@ -75,7 +75,11 @@
       "Bash(venv/Scripts/python.exe data_pipeline/validate_rule_pack.py)",
       "Bash(venv/Scripts/python.exe data_pipeline/enforce_guardrails.py)",
       "Bash(venv/Scripts/python.exe data_pipeline/build_turkish_crops_db.py)",
-      "Bash(venv/Scripts/python.exe -m pytest tests/test_rule_engine.py -q)"
+      "Bash(venv/Scripts/python.exe -m pytest tests/test_rule_engine.py -q)",
+      "Bash(python -c \"import json; d=json.load\\(open\\('seed_plants.json',encoding='utf-8'\\)\\); print\\('total:', len\\(d['plants']\\)\\); [print\\(i, p['name_tr'], p.get\\('stable_id'\\)\\) for i,p in enumerate\\(d['plants']\\) if p['name_tr'] in ['Domates','Mısır','Ayçiçeği','Çay','Portakal']]\")",
+      "PowerShell(python -c \"import json; d=json.load\\(open\\(r'c:\\\\dev\\\\feng_498\\\\backend\\\\data_pipeline\\\\seed_plants.json',encoding='utf-8'\\)\\); print\\('total:', len\\(d['plants']\\)\\); [print\\(i, p['name_tr'], p.get\\('stable_id'\\)\\) for i,p in enumerate\\(d['plants']\\) if p['name_tr'] in ['Domates','M�s�r','Ay�i�e�i','�ay','Portakal']]\")",
+      "Bash(python _inspect.py)",
+      "Bash(python _extend_diseases.py)"
     ]
   }
 }
