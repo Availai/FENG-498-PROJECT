@@ -41,75 +41,118 @@ class HelpContent {
     headerColor: Color(0xFF1B5E20),
     actionTips: [
       HelpItem(
-        icon: Icons.route_rounded,
-        iconColor: Color(0xFF43A047),
-        title: 'Acil iş nerede görünür?',
+        icon: Icons.local_hospital_rounded,
+        iconColor: Color(0xFFD32F2F),
+        title: 'Kırmızı uyarı şeridi ne anlama gelir?',
         description:
-            '"Bugün Yapılacaklar" bölümünde sulama, gübreleme, ilaçlama ve hasat işleri çıkar. '
-            'Aynı işlerin tarla detayındaki "Takip" düğmesinde daha ayrıntılı açıklaması bulunur.',
+            'En üstte beliren kırmızı "ACİL EYLEM" uyarı şeridi tarlanızda hastalıklı bitki olduğunu söyler. '
+            'Şeride dokunduğunuzda doğrudan ilgili tarlanın detay ekranına gidip tedavi başlatabilirsiniz.',
       ),
       HelpItem(
-        icon: Icons.add_task_rounded,
-        iconColor: Color(0xFFE67E22),
-        title: 'Yaptığınız işi nereden kaydedersiniz?',
+        icon: Icons.recommend_rounded,
+        iconColor: Color(0xFF43A047),
+        title: 'Resmi tavsiyelere nereden ulaşırım?',
         description:
-            'Tarla kartındaki kayıt kısa yolunu veya tarla detayındaki "Aktivite" düğmesini kullanın. '
-            'Aktivite girince Takip ekranındaki tavsiyeler ve büyüme göstergeleri kendini günceller.',
+            '"Resmi Kaynaklı Tavsiyeler" şeridindeki ürün kartlarına dokunun. '
+            'TAGEM, BATEM ve ÇAYKUR kaynaklı detaylı yetiştirme rehberleri açılır.',
+      ),
+      HelpItem(
+        icon: Icons.expand_more_rounded,
+        iconColor: Color(0xFFE67E22),
+        title: 'Bölümler nasıl açılır?',
+        description:
+            'Tarla Genel Durumu, Bugün Yapılacaklar, Haftalık Plan ve Tarlalarım bölümleri kapalı gelir. '
+            'Başlığa dokununca açılır; gereksiz bilgi ekranı yormaz.',
       ),
     ],
     items: [
       HelpItem(
         icon: Icons.wb_sunny_rounded,
         iconColor: Color(0xFFE67E22),
-        title: 'Hava Durumu Kartı',
+        title: 'Hava Durumu Başlığı',
         description:
-            'Bulunduğunuz konumun anlık sıcaklığı, nem oranı ve rüzgar hızını gösterir. '
-            'Veriler 10 dakikada bir otomatik güncellenir. İnternet yoksa son kaydedilen değerler görünür.',
+            'Üstteki büyük panel konumunuzun anlık sıcaklığını, nem oranını, rüzgar hızını ve hava açıklamasını gösterir. '
+            'Veriler periyodik olarak güncellenir. İnternet yoksa son kaydedilen değerler görünür.',
       ),
       HelpItem(
-        icon: Icons.sensors_rounded,
-        iconColor: Color(0xFF1976D2),
-        title: 'Sensör Verileri',
+        icon: Icons.schedule_rounded,
+        iconColor: Color(0xFF4FC3F7),
+        title: 'Saatlik Tahmin Çipi',
         description:
-            'Toprağınıza yerleştirilen sensörlerden gelen pH ve nem değerlerini gösterir. '
-            '"Sensör Detayı" düğmesine basarak geçmiş verileri inceleyebilirsiniz.',
+            'Hava panelinin altındaki saatlik çipe dokunarak 24 saatlik detaylı tahmini (sıcaklık, yağış, rüzgar) '
+            'kayar bir sayfa olarak inceleyebilirsiniz.',
       ),
       HelpItem(
-        icon: Icons.map_rounded,
+        icon: Icons.local_hospital_rounded,
+        iconColor: Color(0xFFD32F2F),
+        title: 'Acil Eylem Uyarı Şeritleri',
+        description:
+            'Tarlanızda hastalıklı bitki tespit edildiğinde kırmızı uyarı şeridi belirir. '
+            'Tarla adı, etkilenen bitki sayısı ve hastalık adı yazar. Şeride dokunarak tedaviye başlayın.',
+      ),
+      HelpItem(
+        icon: Icons.recommend_rounded,
         iconColor: Color(0xFF43A047),
-        title: 'Tarla Kartları',
-        description: 'Kayıtlı tarım alanlarınızın kısa özetini gösterir. '
-            'Karta tıklayarak o tarlaya ait detaylar, ekim bilgisi ve günlük rehbere ulaşabilirsiniz.',
+        title: 'Resmi Kaynaklı Tavsiyeler',
+        description:
+            'TAGEM, BATEM ve ÇAYKUR kaynaklı 5 öncelikli ürün (ayçiçeği, mısır, domates, çay, portakal) için '
+            'ekim, sulama, koruma ve hasat tavsiyeleri yatay şerit olarak listelenir. '
+            '"Tümünü gör" ile tüm tavsiye ekranına geçebilirsiniz.',
       ),
       HelpItem(
-        icon: Icons.monitor_heart_rounded,
+        icon: Icons.dashboard_rounded,
         iconColor: Color(0xFF2E7D32),
-        title: 'Takibe Git Bağlantısı',
+        title: 'Tarla Genel Durumu',
         description:
-            'Her tarla kartında uyarı sayısını gösteren "Takip" düğmesi bulunur. '
-            'Düğmeye basarak o tarlanın canlı sulama, hastalık ve gübreleme takip ekranına atlarsınız.',
+            'Tüm tarlalarınızın özet metrikleri: kayıtlı tarla sayısı, toplam dekar ve sağlıklı tarla sayısı. '
+            'Sulama gerektiren tarla varsa sağ üstte kırmızı "acil" rozeti çıkar.',
+      ),
+      HelpItem(
+        icon: Icons.checklist_rtl_rounded,
+        iconColor: Color(0xFFE67E22),
+        title: 'Bugün Yapılacaklar',
+        description:
+            'Her tarla için bugüne özel direktifler (sulama, gübreleme, ilaçlama, hasat) burada kısa kart olarak gösterilir. '
+            'Detayları görmek için tarla kartına dokunun.',
+      ),
+      HelpItem(
+        icon: Icons.calendar_month_rounded,
+        iconColor: Color(0xFF0288D1),
+        title: 'Haftalık Plan',
+        description:
+            'Toprak nemine ve devam eden tedavilere göre otomatik üretilen sulama ve ilaçlama planı. '
+            'Karta dokunduğunuzda ilgili tarlanın detay ekranı açılır.',
+      ),
+      HelpItem(
+        icon: Icons.grass_rounded,
+        iconColor: Color(0xFF43A047),
+        title: 'Tarlalarım Kartları',
+        description:
+            'Kayıtlı tarlalarınızın yatay şerit halinde özetidir: tarla adı, dekar, ekili ürün, '
+            'toprak nemi yüzdesi ve bir sonraki sulamaya kalan süre. Karta dokununca detay ekranı açılır.',
+      ),
+      HelpItem(
+        icon: Icons.event_note_rounded,
+        iconColor: Color(0xFF8D6E63),
+        title: 'Tarlam Günlüğü Düğmesi',
+        description:
+            'Sayfanın altındaki "TARLAM GÜNLÜĞÜ" düğmesiyle tüm tarlalardaki sulama, gübreleme, '
+            'ilaçlama, hasat ve gözlem kayıtlarınızın kronolojik akışına geçersiniz.',
       ),
       HelpItem(
         icon: Icons.refresh_rounded,
         iconColor: Color(0xFF6B7280),
         title: 'Yenile Düğmesi (↻)',
         description:
-            'Sağ üstteki yenile simgesine basarak hava durumu ve sensör verilerini manuel olarak güncelleyebilirsiniz.',
-      ),
-      HelpItem(
-        icon: Icons.book_rounded,
-        iconColor: Color(0xFF8D6E63),
-        title: 'Hızlı Aktivite Kaydı',
-        description:
-            'Tarla kartındaki kayıt kısa yolundan sulama, gübreleme, ilaçlama ve hasat gibi '
-            'faaliyetleri anında not alın. Kaydettiğiniz her aktivite büyüme motorunu canlı olarak etkiler.',
+            'Sağ üstteki yenile simgesine basarak hava durumu ve konum verilerini manuel olarak güncelleyebilirsiniz. '
+            'Aşağı çekme hareketiyle de yenilenir.',
       ),
     ],
   );
 
   static const HelpContent myCrops = HelpContent(
-    screenTitle: 'Tarım Alanlarım',
-    screenSubtitle: 'Tarlarınızı buradan kaydedin, takip edin ve yönetin.',
+    screenTitle: 'Tarlalarım',
+    screenSubtitle: 'Tarlalarınızı buradan kaydedin, takip edin ve yönetin.',
     headerIcon: Icons.grass_rounded,
     headerColor: Color(0xFF2E7D32),
     actionTips: [
@@ -118,55 +161,49 @@ class HelpContent {
         iconColor: Color(0xFF43A047),
         title: 'Yeni tarla eklemek için',
         description:
-            'Sağ alttaki "Yeni Tarla Çiz" düğmesine basın; haritada köşeleri işaretleyince alan hesabı yapılır.',
+            'Sağ alttaki "Yeni Tarla Çiz" düğmesine basın; haritada köşeleri işaretleyince alan otomatik hesaplanır.',
       ),
       HelpItem(
         icon: Icons.map_rounded,
         iconColor: Color(0xFF1976D2),
         title: 'Tarlayı nerede yönetirsiniz?',
         description:
-            'Bir tarla kartına dokununca harita, ürün yerleşimi, kayıt, rehber, günlük ve cüzdan işlemleri açılır.',
+            'Bir tarla kartına dokununca harita, ürün yerleşimi, aktivite kaydı, takip, günlük ve cüzdan işlemleri açılır.',
       ),
     ],
     items: [
       HelpItem(
         icon: Icons.satellite_alt_rounded,
         iconColor: Color(0xFF43A047),
-        title: 'Yeni Alan Çiz',
+        title: 'Yeni Tarla Çiz',
         description: 'Sağ alttaki "Yeni Tarla Çiz" düğmesine basın. '
-            'Harita üzerinde tarlanızın köşelerini işaretleyerek alanı kaydedin. '
-            'Konum izni gereklidir.',
+            'Uydu haritası üzerinde tarlanızın köşelerini sırayla işaretleyerek alanı kaydedin. '
+            'Konum izni reddedilirse harita Türkiye merkezinden açılır; tarlanızı haritada bulup çizebilirsiniz.',
       ),
       HelpItem(
         icon: Icons.grid_view_rounded,
         iconColor: Color(0xFF1976D2),
-        title: 'Alan Kartları',
-        description: 'Her kart bir tarım alanını temsil eder. '
-            'Karta tıklayarak o alanın detaylarını, ürün bilgisini ve sulama planını görebilirsiniz.',
+        title: 'Tarla Kartları',
+        description: 'Her kart bir tarlayı temsil eder; tarla adı, kayıt tarihi, dekar, '
+            'ekili ürün adı ve harita bağlantı durumu gösterilir. '
+            'Karta tıklayarak detayları, ürün yerleşimini ve günlük rehbere ulaşabilirsiniz.',
       ),
       HelpItem(
         icon: Icons.eco_rounded,
         iconColor: Color(0xFF8BAE8F),
         title: 'Ürün Atama',
         description:
-            'Tarla detay sayfasından o alana hangi bitkiyi ekeceğinizi seçebilirsiniz. '
-            '292 Türk tarım bitkisi arasından arama yapabilirsiniz.',
-      ),
-      HelpItem(
-        icon: Icons.view_in_ar_rounded,
-        iconColor: Color(0xFF6B7280),
-        title: '3D Alan Planlayıcı',
-        description:
-            'Tarla detayında "3D Planla" seçeneğiyle bitkilerinizi sanal olarak düzenleyebilirsiniz. '
-            'Her bölgeye farklı ürün atayarak verim hesabı yapılır.',
+            'Tarla detay sayfasındaki "Ekle" düğmesinden o tarlaya hangi bitkiyi ekeceğinizi seçebilirsiniz. '
+            '292 Türk tarım bitkisi arasından arama yapabilir; toprak ve iklim uygunluk skoruna göre seçim yapabilirsiniz.',
       ),
       HelpItem(
         icon: Icons.delete_outline_rounded,
         iconColor: Color(0xFFD32F2F),
-        title: 'Alan Silme',
+        title: 'Tarla Silme',
         description:
-            'Tarla kartını sola kaydırarak veya detay sayfasından alanı silebilirsiniz. '
-            'Bu işlem geri alınamaz; dikkatli olun.',
+            'Tarla kartının sağındaki çöp simgesine dokunun. Onay diyaloğu size silinecek '
+            'tüm bağlı verileri (ekili bitkiler, sulama planı, takvim olayları, uygunluk raporları, '
+            'maliyet defteri kayıtları, büyüme protokolü) listeler. Bu işlem geri alınamaz.',
       ),
     ],
   );
@@ -252,33 +289,36 @@ class HelpContent {
       HelpItem(
         icon: Icons.photo_library_rounded,
         iconColor: Color(0xFF1976D2),
-        title: 'Galeriden Seçme',
+        title: 'Galeri Kullan',
         description:
-            '"Galeriden Seç" düğmesiyle telefonunuzdaki mevcut bir fotoğrafı kullanabilirsiniz. '
-            'Daha önce çektiğiniz görselleri analiz etmek için uygundur.',
+            '"Galeri Kullan" düğmesiyle telefonunuzdaki mevcut bir fotoğrafı seçebilirsiniz. '
+            'Daha önce çektiğiniz görselleri analiz etmek için uygundur. Fotoğraflar yüklemeden önce WebP\'ye sıkıştırılır.',
       ),
       HelpItem(
         icon: Icons.psychology_rounded,
         iconColor: Color(0xFFE67E22),
         title: 'Yapay Zeka Analizi',
-        description: 'Fotoğraf yüklendikten sonra "ANALİZ ET" düğmesine basın. '
-            'Sistem görüntüyü birden fazla YZ modeline gönderir ve olası hastalıkları listeler.',
+        description:
+            'Fotoğraf eklendikten sonra görselin altındaki "YARDIM AL" düğmesine basın. '
+            'Sistem görüntüyü birden fazla YZ modeline gönderir ve olası hastalıkları olasılık ile listeler.',
       ),
       HelpItem(
         icon: Icons.receipt_long_rounded,
         iconColor: Color(0xFF8D6E63),
         title: 'Analiz Sonuçları',
         description:
-            'Sonuç sayfasında hastalık adı, güven oranı, tedavi önerileri ve '
-            'ilaç tavsiyeleri gösterilir. Sonuçlar geçmiş analizler sekmesine kaydedilir.',
+            'Sonuç ekranında olası hastalık adı, güven oranı ve önerilen kültürel/kimyasal mücadele '
+            'seçenekleri gösterilir. Kimyasal öneri varsa BKÜ doğrulama uyarısı eklenir. '
+            'Sonuçlar otomatik olarak "Kayıtlı Veriler" bölümüne kaydedilir.',
       ),
       HelpItem(
         icon: Icons.history_rounded,
         iconColor: Color(0xFF6B7280),
-        title: 'Geçmiş Analizler',
+        title: 'Eski Analizleri Görme',
         description:
-            'Sayfanın alt sekmesinde önceki tüm analizlerinizi görebilirsiniz. '
-            'Her analizin tarihine ve sonucuna tıklayarak detayları inceleyebilirsiniz.',
+            'Önceki tüm analizleriniz alt navigasyonda "Daha" sekmesine dokunup açılan menüden '
+            '"Kayıtlı Veriler" seçildiğinde, "AI Görüntü Analizleri" sekmesinde listelenir. '
+            'Bir kayda dokunarak teşhis ve tedavi detayını tekrar inceleyebilirsiniz.',
       ),
     ],
   );
@@ -325,11 +365,11 @@ class HelpContent {
       HelpItem(
         icon: Icons.add_location_alt_rounded,
         iconColor: Color(0xFF43A047),
-        title: 'Bölge veya Tekil Bitki',
+        title: 'Tekil Bitki Ekle',
         description:
-            '"Ekle" düğmesine basılı tutunca "Bölge Çiz" ve "Tekil Bitki Ekle" seçenekleri açılır. '
-            'Tekil bitkide haritada herhangi bir noktaya dokunarak 292 bitki arasından seçip o noktaya '
-            'bağımsız bir bitki markeri ekleyebilirsiniz.',
+            '"Ekle" düğmesiyle açılan bitki seçicide en üstte "Tekil Bitki Ekle" şeridi vardır. '
+            'Şeride dokunduktan sonra haritada boş bir noktaya dokunarak bağımsız bir bitki marker\'ı yerleştirebilirsiniz. '
+            'Bölge çizmek istiyorsanız listeden bitkiyi seçip "Ekle" deyin; haritada köşeleri işaretleyince bölge oluşur.',
       ),
       HelpItem(
         icon: Icons.healing_rounded,
@@ -359,14 +399,6 @@ class HelpContent {
             'Alt bardaki "Takip" düğmesi tarlanın canlı durumunu açar. '
             'Bu ekranda tarlaya özel sulama, gübreleme, hastalık takibi ve hava uyarıları bir arada akar; '
             'her yeni kayıttan sonra liste otomatik tazelenir.',
-      ),
-      HelpItem(
-        icon: Icons.stacked_line_chart_rounded,
-        iconColor: Color(0xFFE67E22),
-        title: 'Trendler',
-        description:
-            'Tarlanıza ve seçtiğiniz bitkilere göre uygunluk raporunu ve '
-            'toprak-iklim analizini görüntüler. Veriler sensör ve hava durumu API\'lerine dayanır.',
       ),
       HelpItem(
         icon: Icons.event_note_rounded,
@@ -455,11 +487,11 @@ class HelpContent {
       HelpItem(
         icon: Icons.save_rounded,
         iconColor: Color(0xFF2E7D32),
-        title: 'Tarlayı Kaydet',
+        title: 'Ekim Planını Kaydet',
         description:
-            'En az 3 köşe noktası işaretledikten sonra "Kaydet" düğmesiyle tarlayı sisteme ekleyin. '
-            'Kaydedilen tarla otomatik olarak takviminize işlenir ve tarla detay ekranından '
-            'yönetilmeye hazır hale gelir.',
+            'En az 3 köşe noktası işaretleyince alt kısımdaki "EKİM PLANINI KAYDET" düğmesi etkinleşir. '
+            'Düğmeye basınca ad ve onay diyaloğu açılır; kaydedilen tarla otomatik olarak '
+            'takviminize işlenir ve tarla detay ekranından yönetilmeye hazır hale gelir.',
       ),
       HelpItem(
         icon: Icons.receipt_long_rounded,
@@ -664,26 +696,34 @@ class HelpContent {
       HelpItem(
         icon: Icons.list_alt_rounded,
         iconColor: Color(0xFF43A047),
-        title: 'Tarla Kartları',
+        title: 'Tarla Kartı Başlığı',
         description:
-            'Her tarla için o günkü sulama, gübreleme ve ilaçlama durumu gösterilir. '
-            'Bir sonraki işleme kaç gün kaldığı ve tahmini miktar da listelenir.',
+            'Her kartın üstünde tarla adı, dekar miktarı ve kayıtlı bitki sayısı gösterilir. '
+            'Kartın herhangi bir yerine dokunduğunuzda tarla detay ekranı açılır.',
       ),
       HelpItem(
-        icon: Icons.monitor_heart_rounded,
+        icon: Icons.timeline_rounded,
         iconColor: Color(0xFF2E7D32),
-        title: 'Takip Ekranına Git',
+        title: 'Bitki İlerleme Çubukları',
         description:
-            'Her tarla kartındaki "Takip" düğmesine basarak o tarlaya özel canlı '
-            'sulama, gübreleme ve hastalık takip ekranına geçin. Detaylı görevler ve hava uyarıları orada görünür.',
+            'Tarladaki her bitki için ilerleme çubuğu, mevcut büyüme evresi, hasada kalan gün sayısı '
+            've sulama sıklığı listelenir. Hasat gecikmişse kırmızı renkle uyarılır.',
       ),
       HelpItem(
-        icon: Icons.book_rounded,
-        iconColor: Color(0xFF8D6E63),
-        title: 'Günlüğe Git',
+        icon: Icons.lightbulb_rounded,
+        iconColor: Color(0xFF1B5E20),
+        title: '"Bugünün Rehberi" Kartı',
         description:
-            '"Günlük" bağlantısına basarak ilgili tarlanın tüm aktivite geçmişine '
-            'kronolojik sırayla ulaşabilirsiniz.',
+            'Tarla kartının altındaki yeşil "Bugünün Rehberi" düğmesine basarak o tarlanın günlük '
+            'tavsiyelerine, uyarılarına ve detaylı görev listesine geçersiniz. Sağdaki rozet acil iş sayısını gösterir.',
+      ),
+      HelpItem(
+        icon: Icons.history_rounded,
+        iconColor: Color(0xFF3F51B5),
+        title: 'Son Aktiviteler',
+        description:
+            'Her kartın altında o tarladaki son 3 aktivite (sulama, gübreleme, ilaçlama, hasat) '
+            'kronolojik olarak listelenir. "Tümü →" bağlantısı tarlanın tüm günlüğüne götürür.',
       ),
       HelpItem(
         icon: Icons.refresh_rounded,
@@ -691,7 +731,7 @@ class HelpContent {
         title: 'Canlı Güncelleme',
         description:
             'Herhangi bir tarlaya aktivite kaydedildiğinde bu liste otomatik olarak tazelenir. '
-            'Manuel yenileme gerekmez.',
+            'Aşağı çekme hareketiyle de manuel yenileyebilirsiniz.',
       ),
     ],
   );
@@ -1027,6 +1067,150 @@ class HelpContent {
     ],
   );
 
+  // Bitki Gelişim Rehberi — TAGEM/BATEM/ÇAYKUR kaynaklı yetiştirme liste hub
+  static const HelpContent plantGrowthGuide = HelpContent(
+    screenTitle: 'Bitki Gelişim Rehberi',
+    screenSubtitle:
+        'Resmi kaynaklı yetiştirme yönergeleri — çevrimdışı kullanıma hazır.',
+    headerIcon: Icons.eco_rounded,
+    headerColor: Color(0xFF2E7D32),
+    actionTips: [
+      HelpItem(
+        icon: Icons.touch_app_rounded,
+        iconColor: Color(0xFF43A047),
+        title: 'Ürün rehberini nasıl açarım?',
+        description:
+            'Listedeki herhangi bir ürün kartına dokunun. Açılan detay ekranında '
+            'ekim, sulama, gübreleme, hastalık-zararlı izleme ve hasat yönergeleri görüntülenir.',
+      ),
+      HelpItem(
+        icon: Icons.menu_book_rounded,
+        iconColor: Color(0xFF1B5E20),
+        title: 'Bilgiler nereden geliyor?',
+        description:
+            'Tüm yönergeler TAGEM, BATEM, ÇAYKUR ve Tarım ve Orman Bakanlığı resmi '
+            'teknik talimatlarına dayanır. Her ürün kartında kaynak referans sayısı belirtilir.',
+      ),
+    ],
+    items: [
+      HelpItem(
+        icon: Icons.grid_view_rounded,
+        iconColor: Color(0xFF43A047),
+        title: 'Ürün Kartları',
+        description:
+            'Ekranda öncelikli ürünler (ayçiçeği, mısır, domates, çay, portakal) '
+            'için kart görünümü vardır. Her kartta ürünün adı, bilimsel adı, '
+            'ekim ve hasat pencereleri, ideal sıcaklık ile sezonluk su ihtiyacı listelenir.',
+      ),
+      HelpItem(
+        icon: Icons.calendar_today_rounded,
+        iconColor: Color(0xFF0288D1),
+        title: 'Hızlı Bilgi Rozetleri',
+        description:
+            'Her kartın altındaki küçük rozetler ekim dönemi, hasat dönemi, '
+            'ideal sıcaklık aralığı ve sezonluk su ihtiyacı gibi temel teknik bilgileri özetler.',
+      ),
+      HelpItem(
+        icon: Icons.read_more_rounded,
+        iconColor: Color(0xFF1976D2),
+        title: 'Detaylı Rehber Ekranı',
+        description:
+            'Bir karta dokununca açılan detay ekranında yetiştirme aşamaları, '
+            'bölgesel takvim, besleme planı, sulama özeti, gübreleme özeti, '
+            'zararlı-hastalık kartları ve kaynak listesi bulunur.',
+      ),
+      HelpItem(
+        icon: Icons.shield_outlined,
+        iconColor: Color(0xFFE67E22),
+        title: 'Güvenlik Notu',
+        description:
+            'Ekranın altındaki turuncu bilgi kutusu, rehberlerin genel bilgi amaçlı olduğunu '
+            've kimyasal mücadele kararlarının BKÜ veritabanı (bku.tarim.gov.tr) ile '
+            'il/ilçe müdürlüğü teknik onayı olmadan uygulanmaması gerektiğini hatırlatır.',
+      ),
+      HelpItem(
+        icon: Icons.cloud_off_rounded,
+        iconColor: Color(0xFF6B7280),
+        title: 'Çevrimdışı Çalışır',
+        description:
+            'Tüm rehber içeriği uygulamaya gömülüdür; internet olmasa bile '
+            'tüm bilgilere ulaşabilirsiniz. Saha kullanımında veri tüketimi yoktur.',
+      ),
+    ],
+  );
+
+  // Tavsiyeler — 5 öncelikli ürün için kısa aksiyon kartları
+  static const HelpContent tavsiyeler = HelpContent(
+    screenTitle: 'Tavsiyeler',
+    screenSubtitle:
+        'Öncelikli ürünler için kısa ve aksiyon odaklı resmi tavsiyeler.',
+    headerIcon: Icons.recommend_rounded,
+    headerColor: Color(0xFF1B5E20),
+    actionTips: [
+      HelpItem(
+        icon: Icons.filter_alt_rounded,
+        iconColor: Color(0xFF43A047),
+        title: 'Belirli ürünü görmek için',
+        description:
+            'Üstteki filtre çubuğundan ürün adına dokunarak yalnızca o ürüne özgü tavsiyeleri görüntüleyebilirsiniz. '
+            '"Tüm Ürünler" seçeneği filtreyi kaldırır.',
+      ),
+      HelpItem(
+        icon: Icons.science_rounded,
+        iconColor: Color(0xFFD32F2F),
+        title: 'BKÜ uyarısı ne anlama gelir?',
+        description:
+            'Kırmızı "BKÜ kontrolü gerekir" rozeti çıkan tavsiyelerde aktif madde ve '
+            'doz için Tarım ve Orman Bakanlığı BKÜ veritabanından güncel ruhsat kontrolü zorunludur.',
+      ),
+    ],
+    items: [
+      HelpItem(
+        icon: Icons.eco_rounded,
+        iconColor: Color(0xFF2E7D32),
+        title: 'Ürün Başlığı Kartı',
+        description:
+            'Her tavsiye grubunun başında ürünün adı, bilimsel adı ve ekim dönemi gösterilir. '
+            'Karta dokunursanız o ürünün detaylı yetiştirme rehberine geçersiniz.',
+      ),
+      HelpItem(
+        icon: Icons.lightbulb_rounded,
+        iconColor: Color(0xFFF9A825),
+        title: 'Tavsiye Kartları',
+        description:
+            'Her tavsiye kartı kategori etiketi (ekim, sulama, besleme, koruma, hasat vb.), '
+            '"NE YAPMALI" aksiyonu ve "NEDEN" açıklaması içerir. Kart deseni kaynaklı, kısa ve uygulanabilir bilgilere odaklanır.',
+      ),
+      HelpItem(
+        icon: Icons.warning_amber_rounded,
+        iconColor: Color(0xFFD32F2F),
+        title: 'BKÜ ve Uzman Onayı Rozetleri',
+        description:
+            'Kimyasal mücadele içeren tavsiyelerde "BKÜ kontrolü gerekir" (kırmızı) '
+            've "Uzman onayı önerilir" (turuncu) rozetleri çıkar. '
+            'Bunlar görüldüğünde uygulamadan önce ek doğrulama yapın.',
+      ),
+      HelpItem(
+        icon: Icons.menu_book_rounded,
+        iconColor: Color(0xFF1B5E20),
+        title: 'Kaynaklar Bloğu',
+        description:
+            'Her kartın altında o tavsiyeyi destekleyen resmi kaynaklar (TAGEM, BATEM, ÇAYKUR, '
+            'Tarım Bakanlığı yayınları) listelenir. Bilgiyi doğrulamak için bu kaynaklara '
+            'başvurabilirsiniz.',
+      ),
+      HelpItem(
+        icon: Icons.report_gmailerrorred_rounded,
+        iconColor: Color(0xFFE67E22),
+        title: 'Güvenlik Bilgisi',
+        description:
+            'Ekranın altındaki turuncu uyarı kutusu BKÜ veritabanı kontrolü, '
+            'toprak analizi olmadan kesin gübre miktarı önerilmediği ve '
+            'çocuk/hayvan/su kaynağı güvenliği konularını hatırlatır.',
+      ),
+    ],
+  );
+
   // Bölge Çizme (tarlaya bitki ekleme) — ikinci harita ekranı
   static const HelpContent plantZoneDrawing = HelpContent(
     screenTitle: 'Bitki Bölgesi Çiz',
@@ -1059,6 +1243,14 @@ class HelpContent {
             'En az 3 köşe gereklidir; noktalar otomatik olarak birleştirilir.',
       ),
       HelpItem(
+        icon: Icons.select_all_rounded,
+        iconColor: Color(0xFF1B5E20),
+        title: '"Tarlanın tamamı" Kısayolu',
+        description:
+            'Sağ üstteki "Tarlanın tamamı" düğmesine basarak köşe çizmeden tüm tarlayı '
+            'bu ürüne ayırabilirsiniz. Tek bir bitki türü ekiyorsanız hızlı yoldur.',
+      ),
+      HelpItem(
         icon: Icons.zoom_in_rounded,
         iconColor: Color(0xFF1976D2),
         title: 'Yakınlaştırma Kontrolleri',
@@ -1080,7 +1272,7 @@ class HelpContent {
         title: 'Tamamla',
         description:
             'En az 3 nokta işaretledikten sonra "Tamamla" düğmesiyle bölgeyi kaydedin. '
-            'Seçilen bitki o renge boyanarak tarlaya eklenir.',
+            'Seçilen bitki o renge boyanarak tarlaya eklenir; takvim, sulama planı ve günlük rehber bu kayda bağlanır.',
       ),
     ],
   );

@@ -14,6 +14,7 @@ import '../data/turkiye_crop_guides.dart';
 import '../services/crop_recommendations.dart';
 import '../theme/app_theme.dart';
 import '../widgets/fade_slide_in.dart';
+import '../widgets/help_panel.dart';
 import '../widgets/random_effect_wrapper.dart';
 import 'turkiye_crop_guide_screen.dart';
 
@@ -48,6 +49,13 @@ class _TavsiyelerScreenState extends State<TavsiyelerScreen> {
       backgroundColor: AppColors.bg,
       appBar: AppBar(
         title: const Text('Tavsiyeler'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.help_outline_rounded),
+            tooltip: 'Yardım',
+            onPressed: () => HelpPanel.show(context, HelpContent.tavsiyeler),
+          ),
+        ],
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),

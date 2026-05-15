@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 
 import '../data/turkiye_crop_guides.dart';
 import '../theme/app_theme.dart';
+import '../widgets/help_panel.dart';
 import 'turkiye_crop_guide_screen.dart';
 
 class PlantGrowthGuideScreen extends StatelessWidget {
@@ -22,6 +23,14 @@ class PlantGrowthGuideScreen extends StatelessWidget {
       backgroundColor: AppColors.bg,
       appBar: AppBar(
         title: const Text('Bitki Gelişim Rehberi'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.help_outline_rounded),
+            tooltip: 'Yardım',
+            onPressed: () =>
+                HelpPanel.show(context, HelpContent.plantGrowthGuide),
+          ),
+        ],
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
@@ -101,8 +110,10 @@ class _GuideCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: AppColors.surface,
+      color: Colors.white,
       borderRadius: AppRadius.md,
+      elevation: 1,
+      shadowColor: Colors.black.withValues(alpha: 0.08),
       child: InkWell(
         borderRadius: AppRadius.md,
         onTap: () {
@@ -116,7 +127,7 @@ class _GuideCard extends StatelessWidget {
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             borderRadius: AppRadius.md,
-            border: Border.all(color: AppColors.border),
+            border: Border.all(color: const Color(0xFFE6E6E6)),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -153,11 +164,11 @@ class _GuideCard extends StatelessWidget {
                       children: [
                         _MiniChip(
                           icon: Icons.calendar_today_rounded,
-                          label: 'Ekim: ${guide.sowingWindow}',
+                          label: 'Ekim: ${_shortWindow(guide.sowingWindow)}',
                         ),
                         _MiniChip(
                           icon: Icons.agriculture_rounded,
-                          label: 'Hasat: ${guide.harvestWindow}',
+                          label: 'Hasat: ${_shortWindow(guide.harvestWindow)}',
                         ),
                         _MiniChip(
                           icon: Icons.thermostat_rounded,
@@ -215,6 +226,17 @@ class _GuideCard extends StatelessWidget {
         return '🌱';
     }
   }
+
+  /// Uzun ekim/hasat metnini kart üstündeki chip'e sığacak şekilde kısaltır.
+  /// Veri tabanındaki orijinal metin "Mart sonu-Mayıs; ana hedef toprak ..."
+  /// gibi cümleler içerir; chip için yalnızca ilk noktalama öncesi yeterli.
+  String _shortWindow(String raw) {
+    for (final sep in const [';', ',', '·', '(', '—']) {
+      final i = raw.indexOf(sep);
+      if (i > 0) return raw.substring(0, i).trim();
+    }
+    return raw.length > 28 ? '${raw.substring(0, 28).trimRight()}…' : raw;
+  }
 }
 
 class _MiniChip extends StatelessWidget {
@@ -224,23 +246,31 @@ class _MiniChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceAlt,
-        borderRadius: AppRadius.full,
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 12, color: AppColors.textSecondary),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: AppText.xs(context).copyWith(fontSize: 11),
-          ),
-        ],
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 200),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF5F5F5),
+          borderRadius: AppRadius.full,
+          border: Border.all(color: const Color(0xFFE6E6E6)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 12, color: AppColors.textSecondary),
+            const SizedBox(width: 4),
+            Flexible(
+              child: Text(
+                label,
+                style: AppText.xs(context).copyWith(fontSize: 11),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                softWrap: false,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

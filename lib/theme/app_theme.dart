@@ -55,7 +55,7 @@ abstract class AppColors {
   // Çizgiler
   static const border = Color(0xFFE5E1D3); // krem kenarlık
   static const borderDark = Color(0xFFCBC3AE);
-  static const divider = Color(0xFFEEE9DA);
+  static const divider = Color(0xFFE6E6E6); // nötr açık gri ayırıcı
 
   // (legacy) Glass — artık tamamen opak, blur yok
   static const glassLight = Color(0xFFFBF7EC);

@@ -432,7 +432,12 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           _buildEmergencyBanners(),
-                          _buildTavsiyelerStrip(),
+                          _buildCollapsibleSection(
+                            id: 'tavsiyeler',
+                            title: 'Resmi Kaynaklı Tavsiyeler',
+                            icon: Icons.recommend_rounded,
+                            body: _buildTavsiyelerStrip(),
+                          ),
                           const SizedBox(height: 10),
                           _buildCollapsibleSection(
                             id: 'overview',
@@ -615,119 +620,85 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
   // ───────────────────────────────────────────────────────────────────────────
   Widget _buildTavsiyelerStrip() {
     final guides = CropRecommendationsService.priorityGuides();
-    if (guides.isEmpty) return const SizedBox.shrink();
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.04),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-      ),
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 3,
-                height: 22,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [AppColors.emeraldLight, AppColors.emeraldDark],
-                  ),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  gradient: AppGradients.emeraldCard,
-                  borderRadius: BorderRadius.circular(9),
-                  boxShadow: AppShadows.emeraldGlow,
-                ),
-                child: const Icon(Icons.recommend_rounded,
-                    size: 15, color: Colors.white),
-              ),
-              const SizedBox(width: 10),
-              const Expanded(
-                child: Text(
-                  'Resmi Kaynaklı Tavsiyeler',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                    letterSpacing: 0.3,
-                  ),
-                ),
-              ),
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const TavsiyelerScreen(),
-                    ),
-                  );
-                },
-                style: TextButton.styleFrom(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  minimumSize: const Size(0, 32),
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-                child: const Text(
-                  'Tümünü gör',
-                  style: TextStyle(
-                    color: AppColors.emeraldLight,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          const Padding(
-            padding: EdgeInsets.fromLTRB(14, 0, 12, 8),
-            child: Text(
-              'TAGEM, BATEM ve ÇAYKUR kaynaklı 5 öncelikli ürün için '
-              'ekim, sulama, koruma ve hasat tavsiyeleri.',
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.white70,
-                height: 1.4,
-              ),
+    if (guides.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.fromLTRB(8, 4, 8, 8),
+        child: Text(
+          'Henüz tavsiye yok.',
+          style: TextStyle(color: Colors.white70, fontSize: 12),
+        ),
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Padding(
+          padding: EdgeInsets.fromLTRB(8, 0, 8, 8),
+          child: Text(
+            'TAGEM, BATEM ve ÇAYKUR kaynaklı 5 öncelikli ürün için '
+            'ekim, sulama, koruma ve hasat tavsiyeleri.',
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.white70,
+              height: 1.4,
             ),
           ),
-          SizedBox(
-            height: 138,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              itemCount: guides.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 10),
-              itemBuilder: (_, i) {
-                final g = guides[i];
-                return FadeSlideIn(
-                  index: i,
-                  child: _TavsiyeStripCard(
-                    guide: g,
-                    onTap: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => TurkiyeCropGuideScreen(guide: g),
-                        ),
-                      );
-                    },
+        ),
+        SizedBox(
+          height: 138,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            itemCount: guides.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 10),
+            itemBuilder: (_, i) {
+              final g = guides[i];
+              return FadeSlideIn(
+                index: i,
+                child: _TavsiyeStripCard(
+                  guide: g,
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => TurkiyeCropGuideScreen(guide: g),
+                      ),
+                    );
+                  },
+                ),
+              );
+            },
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+          child: Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const TavsiyelerScreen(),
                   ),
                 );
               },
+              style: TextButton.styleFrom(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                minimumSize: const Size(0, 32),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: const Text(
+                'Tümünü gör',
+                style: TextStyle(
+                  color: AppColors.emeraldLight,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
