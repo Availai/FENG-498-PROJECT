@@ -64,10 +64,9 @@ double _facingDegrees(String? directionKey) {
   };
 }
 
-/// Yön oku her bitkide görünür olmalı — kullanıcı bitkiyi eklerken açı seçmese
-/// bile varsayılan yön (`_facingDegrees` içinde 180° güney) kullanılır. Bu
-/// sayede çiftçi haritaya bakar bakmaz bitkinin baktığı yönü anlar.
-bool _hasFacingDirection(String? directionKey) => true;
+/// Bitki yönü seçimi şimdilik uygulamadan kaldırıldı.
+/// Eski kayıtlar `facingDirection` taşısa bile haritada yön oku gösterilmez.
+bool _hasFacingDirection(String? directionKey) => false;
 
 String _facingDirectionSemanticLabel(String? directionKey) {
   final degrees = _facingDegrees(directionKey).round() % 360;
@@ -737,8 +736,7 @@ class _StylizedCropDotPainter extends CustomPainter {
       ..quadraticBezierTo(
           cx + r * 0.32, cy - r * 0.55, cx + r * 0.12, cy - r * 0.18)
       ..quadraticBezierTo(cx, cy - r * 0.32, cx - r * 0.12, cy - r * 0.18)
-      ..quadraticBezierTo(
-          cx - r * 0.32, cy - r * 0.55, cx, cy - r * 0.78)
+      ..quadraticBezierTo(cx - r * 0.32, cy - r * 0.55, cx, cy - r * 0.78)
       ..close();
     canvas.drawPath(leafPath, leafPaint);
 
@@ -754,7 +752,6 @@ class _StylizedCropDotPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _StylizedCropDotPainter oldDelegate) {
-    return oldDelegate.color != color ||
-        oldDelegate.growthPhase != growthPhase;
+    return oldDelegate.color != color || oldDelegate.growthPhase != growthPhase;
   }
 }

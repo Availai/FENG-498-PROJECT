@@ -101,174 +101,174 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
                   providerLabel: providerLabel,
                 ),
                 const SizedBox(height: 14),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.amber.shade50,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(Icons.recommend_rounded,
-                      color: Colors.amber.shade800, size: 20),
-                ),
-                title: const Text('Tavsiyeler'),
-                subtitle: const Text(
-                    '5 öncelikli ürün için kısa öneriler'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const TavsiyelerScreen(),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.shade50,
+                      borderRadius: BorderRadius.circular(10),
                     ),
-                  );
-                },
-              ),
-              const Divider(),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.green.shade50,
-                    borderRadius: BorderRadius.circular(10),
+                    child: Icon(Icons.recommend_rounded,
+                        color: Colors.amber.shade800, size: 20),
                   ),
-                  child: Icon(Icons.eco_rounded,
-                      color: Colors.green.shade700, size: 20),
+                  title: const Text('Tavsiyeler'),
+                  subtitle: const Text('5 öncelikli ürün için kısa öneriler'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const TavsiyelerScreen(),
+                      ),
+                    );
+                  },
                 ),
-                title: const Text('Bitki Gelişim Rehberi'),
-                subtitle: const Text(
-                    'Yetiştirme yönergeleri ve bakım rehberi'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const PlantGrowthGuideScreen(),
+                const Divider(),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade50,
+                      borderRadius: BorderRadius.circular(10),
                     ),
-                  );
-                },
-              ),
-              const Divider(),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.teal.shade50,
-                    borderRadius: BorderRadius.circular(10),
+                    child: Icon(Icons.eco_rounded,
+                        color: Colors.green.shade700, size: 20),
                   ),
-                  child: Icon(Icons.document_scanner_rounded,
-                      color: Colors.teal.shade700, size: 20),
+                  title: const Text('Bitki Gelişim Rehberi'),
+                  subtitle:
+                      const Text('Yetiştirme yönergeleri ve bakım rehberi'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const PlantGrowthGuideScreen(),
+                      ),
+                    );
+                  },
                 ),
-                title: const Text('Görüntü Analizi'),
-                subtitle:
-                    const Text('Bitki fotoğrafından hastalık ve tür teşhisi'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const CameraScreen()),
-                  );
-                },
-              ),
-              const Divider(),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.green.shade50,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(Icons.map_rounded,
-                      color: Colors.green.shade700, size: 20),
-                ),
-                title: const Text('Harita Merkezi'),
-                subtitle: const Text('Tarla poligonlarını haritada görüntüle'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const MapHubScreen(),
+                const Divider(),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.teal.shade50,
+                      borderRadius: BorderRadius.circular(10),
                     ),
-                  );
-                },
-              ),
-              const Divider(),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.purple.shade50,
-                    borderRadius: BorderRadius.circular(10),
+                    child: Icon(Icons.document_scanner_rounded,
+                        color: Colors.teal.shade700, size: 20),
                   ),
-                  child: Icon(Icons.library_books_rounded,
-                      color: Colors.purple.shade700, size: 20),
+                  title: const Text('Görüntü Analizi'),
+                  subtitle:
+                      const Text('Bitki fotoğrafından hastalık ve tür teşhisi'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const CameraScreen()),
+                    );
+                  },
                 ),
-                title: const Text('Kayıtlı Veriler'),
-                subtitle: const Text('Analiz geçmişi ve kayıtlar'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const PlantDatabaseScreen(),
+                const Divider(),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade50,
+                      borderRadius: BorderRadius.circular(10),
                     ),
-                  );
-                },
-              ),
-              const Divider(),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
-                    borderRadius: BorderRadius.circular(10),
+                    child: Icon(Icons.map_rounded,
+                        color: Colors.green.shade700, size: 20),
                   ),
-                  child: Icon(Icons.verified_rounded,
-                      color: Colors.blue.shade700, size: 20),
+                  title: const Text('Harita Merkezi'),
+                  subtitle:
+                      const Text('Tarla poligonlarını haritada görüntüle'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const MapHubScreen(),
+                      ),
+                    );
+                  },
                 ),
-                title: const Text('Hakkımızda'),
-                subtitle: const Text(
-                    'Veri kaynakları ve referanslar (kaynakça)'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const AboutScreen(),
+                const Divider(),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.purple.shade50,
+                      borderRadius: BorderRadius.circular(10),
                     ),
-                  );
-                },
-              ),
-              const Divider(),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.red.shade50,
-                    borderRadius: BorderRadius.circular(10),
+                    child: Icon(Icons.library_books_rounded,
+                        color: Colors.purple.shade700, size: 20),
                   ),
-                  child: Icon(Icons.logout_rounded,
-                      color: Colors.red.shade700, size: 20),
+                  title: const Text('Kayıtlı Veriler'),
+                  subtitle: const Text('Analiz geçmişi ve kayıtlar'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const PlantDatabaseScreen(),
+                      ),
+                    );
+                  },
                 ),
-                title: Text(
-                  user?.isAnonymous == true
-                      ? 'Çıkış / Hesap Oluştur'
-                      : 'Çıkış Yap',
-                  style: const TextStyle(fontWeight: FontWeight.w600),
+                const Divider(),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade50,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(Icons.verified_rounded,
+                        color: Colors.blue.shade700, size: 20),
+                  ),
+                  title: const Text('Hakkımızda'),
+                  subtitle:
+                      const Text('Veri kaynakları ve referanslar (kaynakça)'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const AboutScreen(),
+                      ),
+                    );
+                  },
                 ),
-                onTap: () async {
-                  Navigator.pop(context);
-                  await ref.read(authRepositoryProvider).signOut();
-                },
-              ),
+                const Divider(),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade50,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(Icons.logout_rounded,
+                        color: Colors.red.shade700, size: 20),
+                  ),
+                  title: Text(
+                    user?.isAnonymous == true
+                        ? 'Çıkış / Hesap Oluştur'
+                        : 'Çıkış Yap',
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  onTap: () async {
+                    Navigator.pop(context);
+                    await ref.read(authRepositoryProvider).signOut();
+                  },
+                ),
               ],
             ),
           ),
@@ -280,10 +280,12 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
   String _initialsFor(String name, String? email) {
     final src = name.trim().isNotEmpty ? name.trim() : (email ?? '').trim();
     if (src.isEmpty) return '?';
-    final parts = src.split(RegExp(r'[\s@._-]+')).where((p) => p.isNotEmpty).toList();
+    final parts =
+        src.split(RegExp(r'[\s@._-]+')).where((p) => p.isNotEmpty).toList();
     if (parts.isEmpty) return src.substring(0, 1).toUpperCase();
     if (parts.length == 1) return parts.first.substring(0, 1).toUpperCase();
-    return (parts.first.substring(0, 1) + parts[1].substring(0, 1)).toUpperCase();
+    return (parts.first.substring(0, 1) + parts[1].substring(0, 1))
+        .toUpperCase();
   }
 
   @override
@@ -527,9 +529,7 @@ class _ProfileCard extends StatelessWidget {
                       color: isAnonymous
                           ? AppColors.warning
                           : AppColors.emeraldDark,
-                      bg: isAnonymous
-                          ? AppColors.warningBg
-                          : AppColors.mint,
+                      bg: isAnonymous ? AppColors.warningBg : AppColors.mint,
                     ),
                     if (!isAnonymous && providerPretty.isNotEmpty)
                       _ProfileChip(
