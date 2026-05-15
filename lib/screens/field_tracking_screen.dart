@@ -85,16 +85,16 @@ class _FieldTrackingScreenState extends ConsumerState<FieldTrackingScreen>
             const Text('Takip'),
             Text(
               widget.fieldName,
-              style: AppText.xs(context),
+              style: AppText.xs(context).copyWith(color: Colors.white70),
             ),
           ],
         ),
         bottom: TabBar(
           controller: _tab,
           isScrollable: true,
-          labelColor: AppColors.emeraldDark,
-          unselectedLabelColor: AppColors.textTertiary,
-          indicatorColor: AppColors.emerald,
+          labelColor: Colors.white,
+          unselectedLabelColor: Colors.white70,
+          indicatorColor: Colors.white,
           tabs: const [
             Tab(icon: Icon(Icons.monitor_heart_rounded), text: 'Genel'),
             Tab(icon: Icon(Icons.water_drop_rounded), text: 'Sulama'),
@@ -1209,9 +1209,9 @@ class _PrimaryTreatmentRecommendationCardState
           const SizedBox(height: 8),
           Text(
             'Bu bitki için yapılandırılmış ilaç kataloğu yok. Yukarıdaki aktif '
-            'madde TAGEM Zirai Mücadele Teknik Talimatına göredir. Ruhsatlı '
-            'ürün, etiket dozu ve hasada bekleme için bku.tarim.gov.tr + '
-            'Tarım İl Müdürlüğü onayı zorunludur.',
+            'madde genel öneridir. Ruhsatlı ürün, etiket dozu ve hasada '
+            'bekleme süresi için ürün etiketini ve il/ilçe müdürlüğü teknik '
+            'desteğini esas alın.',
             style: AppText.xs(context).copyWith(
               color: AppColors.textSecondary,
               height: 1.4,
@@ -1372,7 +1372,7 @@ class _TreatmentProgressBar extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         Text(
-          'Her $intervalDays günde bir uygulama (TAGEM/Zirai Mücadele Teknik Talimatı). '
+          'Her $intervalDays günde bir uygulama önerilir. '
           'Etikette farklı süre varsa etiket geçerlidir.',
           style: AppText.xs(context),
         ),
@@ -1818,7 +1818,7 @@ class _WateringCropCard extends StatelessWidget {
             if (lPerPlant != null) ...[
               const SizedBox(height: 4),
               Text(
-                'Bitki başına yönerge: yaklaşık ${lPerPlant.toStringAsFixed(1)} L/gün (TAGEM rehberinden, çeşit/dönem ile değişir).',
+                'Bitki başına yönerge: yaklaşık ${lPerPlant.toStringAsFixed(1)} L/gün (genel öneri; çeşit/dönem ile değişir).',
                 style: AppText.xs(context),
               ),
             ],

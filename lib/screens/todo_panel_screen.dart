@@ -30,9 +30,7 @@ class TodoPanelScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: AppColors.bg,
       appBar: AppBar(
-        title: Text('Yapılacaklar', style: AppText.h2(context)),
-        backgroundColor: AppColors.surface,
-        elevation: 0,
+        title: const Text('Yapılacaklar'),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded),

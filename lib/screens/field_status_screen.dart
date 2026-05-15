@@ -32,10 +32,7 @@ class FieldStatusScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: AppColors.bg,
       appBar: AppBar(
-        title: Text('Tarla Durumu', style: AppText.h2(context)),
-        backgroundColor: AppColors.surface,
-        elevation: 0,
-        centerTitle: false,
+        title: const Text('Tarla Durumu'),
         actions: [
           IconButton(
             icon: const Icon(Icons.help_outline_rounded),

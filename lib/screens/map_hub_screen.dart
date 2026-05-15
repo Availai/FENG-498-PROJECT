@@ -19,8 +19,6 @@ class MapHubScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Harita Merkezi'),
-        backgroundColor: Colors.green.shade700,
-        foregroundColor: Colors.white,
         actions: [
           IconButton(
             icon: const Icon(Icons.help_outline_rounded),

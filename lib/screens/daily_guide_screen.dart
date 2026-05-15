@@ -109,10 +109,7 @@ class DailyGuideScreen extends ConsumerWidget {
       appBar: AppBar(
         title: Text(
           fieldName != null ? '$fieldName · Rehber' : 'Bugünün Rehberi',
-          style: AppText.h2(context),
         ),
-        backgroundColor: AppColors.surface,
-        elevation: 0,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
@@ -1788,9 +1785,9 @@ class _InTreatmentBanner extends StatelessWidget {
           ],
           const SizedBox(height: 6),
           Text(
-            'Her $intervalDays günde bir uygulama (TAGEM/Zirai Mücadele Teknik '
-            'Talimatı). Etiket farklı süre belirtiyorsa etiket geçerlidir. '
-            'Doz ve hasada bekleme için bku.tarim.gov.tr kontrolü zorunlu.',
+            'Her $intervalDays günde bir uygulama önerilir. Etiket farklı '
+            'süre belirtiyorsa etiket geçerlidir. Doz ve hasada bekleme '
+            'süresi için ürün etiketini ve uzman önerisini esas alın.',
             style: AppText.xs(context)
                 .copyWith(color: AppColors.textSecondary, height: 1.35),
           ),

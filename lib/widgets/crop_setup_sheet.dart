@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../data/crop_protocols.dart';
 import '../data/crop_setup_scenario.dart';
+import '../theme/app_theme.dart';
 
 /// Bitki seçimi ile bölge çizimi arasında açılan kurulum sayfası.
 /// [protocol] bilgisi üzerinden toprak, sulama, üretim sistemi ve aralık alır;
@@ -33,9 +34,13 @@ class _CropSetupSheetState extends State<CropSetupSheet> {
   late final TextEditingController _plantCtrl;
   late final TextEditingController _plantCountCtrl;
 
-  static const _bg = Color(0xFF0D1811);
-  static const _accent = Color(0xFF00E676);
-  static const _card = Color(0xFF152018);
+  static const _bg = Colors.white;
+  static const _accent = AppColors.emerald;
+  static const _card = AppColors.surface;
+  static const _textPrimary = AppColors.textPrimary;
+  static const _textSecondary = AppColors.textSecondary;
+  static const _textTertiary = AppColors.textTertiary;
+  static const _borderColor = AppColors.border;
 
   @override
   void initState() {
@@ -202,7 +207,7 @@ class _CropSetupSheetState extends State<CropSetupSheet> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: Colors.white24,
+                  color: _borderColor,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -220,12 +225,12 @@ class _CropSetupSheetState extends State<CropSetupSheet> {
                       style: GoogleFonts.outfit(
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
-                        color: Colors.white,
+                        color: _textPrimary,
                       ),
                     ),
                     const Text(
                       'Kurulum bilgisi bakım planını hesaplar; sulama kaydı oluşturmaz',
-                      style: TextStyle(color: Colors.white54, fontSize: 12),
+                      style: TextStyle(color: _textSecondary, fontSize: 12),
                     ),
                   ],
                 ),
@@ -249,7 +254,7 @@ class _CropSetupSheetState extends State<CropSetupSheet> {
                       color: selected ? _accent.withValues(alpha: 0.18) : _card,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: selected ? _accent : Colors.white12,
+                        color: selected ? _accent : _borderColor,
                         width: selected ? 1.5 : 1,
                       ),
                     ),
@@ -260,7 +265,7 @@ class _CropSetupSheetState extends State<CropSetupSheet> {
                         const SizedBox(height: 4),
                         Text(s.label,
                             style: TextStyle(
-                              color: selected ? _accent : Colors.white70,
+                              color: selected ? _accent : _textSecondary,
                               fontSize: 12,
                               fontWeight: selected
                                   ? FontWeight.w700
@@ -277,7 +282,7 @@ class _CropSetupSheetState extends State<CropSetupSheet> {
               child: Text(
                 _soil.description,
                 style: const TextStyle(
-                    color: Colors.white54, fontSize: 11, height: 1.4),
+                    color: _textSecondary, fontSize: 11, height: 1.4),
               ),
             ),
             const SizedBox(height: 20),
@@ -286,7 +291,7 @@ class _CropSetupSheetState extends State<CropSetupSheet> {
             const Text(
               'Bu seçim nasıl sulanacağını ve takvim aralığını belirler; Tarlam Günlüğü\'ne sulama yapılmış gibi kayıt düşmez.',
               style:
-                  TextStyle(color: Colors.white54, fontSize: 11, height: 1.35),
+                  TextStyle(color: _textSecondary, fontSize: 11, height: 1.35),
             ),
             const SizedBox(height: 8),
             ...IrrigationMethod.values.map((m) {
@@ -302,13 +307,13 @@ class _CropSetupSheetState extends State<CropSetupSheet> {
                     color: selected ? _accent.withValues(alpha: 0.15) : _card,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: selected ? _accent : Colors.white12,
+                      color: selected ? _accent : _borderColor,
                       width: selected ? 1.5 : 1,
                     ),
                   ),
                   child: Row(children: [
                     Icon(m.icon,
-                        color: selected ? _accent : Colors.white38, size: 22),
+                        color: selected ? _accent : _textTertiary, size: 22),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
@@ -316,7 +321,7 @@ class _CropSetupSheetState extends State<CropSetupSheet> {
                         children: [
                           Text(m.label,
                               style: TextStyle(
-                                color: selected ? _accent : Colors.white,
+                                color: selected ? _accent : _textPrimary,
                                 fontSize: 14,
                                 fontWeight: selected
                                     ? FontWeight.w700
@@ -324,7 +329,7 @@ class _CropSetupSheetState extends State<CropSetupSheet> {
                               )),
                           Text(m.description,
                               style: const TextStyle(
-                                  color: Colors.white54, fontSize: 11)),
+                                  color: _textSecondary, fontSize: 11)),
                         ],
                       ),
                     ),
@@ -341,7 +346,7 @@ class _CropSetupSheetState extends State<CropSetupSheet> {
             const Text(
               'Seçenekler T.C. Tarım ve Orman Bakanlığı destek/uygulama başlıkları esas alınarak sadeleştirildi.',
               style:
-                  TextStyle(color: Colors.white54, fontSize: 11, height: 1.35),
+                  TextStyle(color: _textSecondary, fontSize: 11, height: 1.35),
             ),
             const SizedBox(height: 8),
             ...ProductionSystem.values.map((system) {
@@ -357,13 +362,13 @@ class _CropSetupSheetState extends State<CropSetupSheet> {
                     color: selected ? _accent.withValues(alpha: 0.15) : _card,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: selected ? _accent : Colors.white12,
+                      color: selected ? _accent : _borderColor,
                       width: selected ? 1.5 : 1,
                     ),
                   ),
                   child: Row(children: [
                     Icon(system.icon,
-                        color: selected ? _accent : Colors.white38, size: 22),
+                        color: selected ? _accent : _textTertiary, size: 22),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
@@ -371,7 +376,7 @@ class _CropSetupSheetState extends State<CropSetupSheet> {
                         children: [
                           Text(system.label,
                               style: TextStyle(
-                                color: selected ? _accent : Colors.white,
+                                color: selected ? _accent : _textPrimary,
                                 fontSize: 14,
                                 fontWeight: selected
                                     ? FontWeight.w700
@@ -379,7 +384,7 @@ class _CropSetupSheetState extends State<CropSetupSheet> {
                               )),
                           Text(system.description,
                               style: const TextStyle(
-                                  color: Colors.white54, fontSize: 11)),
+                                  color: _textSecondary, fontSize: 11)),
                         ],
                       ),
                     ),
@@ -398,17 +403,17 @@ class _CropSetupSheetState extends State<CropSetupSheet> {
               decoration: BoxDecoration(
                 color: _card,
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.white12),
+                border: Border.all(color: _borderColor),
               ),
               child: Row(children: [
                 const Icon(Icons.straighten_rounded,
-                    color: Colors.white54, size: 18),
+                    color: _textSecondary, size: 18),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     '${widget.fieldAreaDekar.toStringAsFixed(1)} da · tarladan otomatik alındı',
                     style: const TextStyle(
-                        color: Colors.white70, fontSize: 13, height: 1.3),
+                        color: _textPrimary, fontSize: 13, height: 1.3),
                   ),
                 ),
               ]),
@@ -442,7 +447,7 @@ class _CropSetupSheetState extends State<CropSetupSheet> {
             const Text(
               'Bu aralıklar ekim bölgesindeki bitki dizilimine, bitki sayısı hesabına ve sonraki bakım planına uygulanır.',
               style:
-                  TextStyle(color: Colors.white54, fontSize: 11, height: 1.35),
+                  TextStyle(color: _textSecondary, fontSize: 11, height: 1.35),
             ),
             const SizedBox(height: 16),
             _sectionLabel('🌱 Kaç Adet Ekeceksin?'),
@@ -480,7 +485,7 @@ class _CropSetupSheetState extends State<CropSetupSheet> {
                 child: Text(
                   targetText,
                   style: TextStyle(
-                    color: overLimit ? Colors.red.shade200 : Colors.white70,
+                    color: overLimit ? AppColors.error : _textSecondary,
                     fontSize: 11,
                     height: 1.35,
                   ),
@@ -515,7 +520,7 @@ class _CropSetupSheetState extends State<CropSetupSheet> {
                   const SizedBox(height: 4),
                   Text(widget.protocol.sowingSeasonTR,
                       style: const TextStyle(
-                          color: Colors.white70, fontSize: 11, height: 1.3)),
+                          color: _textPrimary, fontSize: 11, height: 1.3)),
                   const SizedBox(height: 6),
                   Row(children: [
                     const Icon(Icons.location_on_rounded,
@@ -532,7 +537,7 @@ class _CropSetupSheetState extends State<CropSetupSheet> {
                   const SizedBox(height: 4),
                   Text(widget.protocol.idealRegionsTR,
                       style: const TextStyle(
-                          color: Colors.white70, fontSize: 11, height: 1.3)),
+                          color: _textPrimary, fontSize: 11, height: 1.3)),
                 ],
               ),
             ),
@@ -550,7 +555,7 @@ class _CropSetupSheetState extends State<CropSetupSheet> {
                 ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: _accent,
-                  foregroundColor: Colors.black,
+                  foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
                   ),
@@ -566,7 +571,7 @@ class _CropSetupSheetState extends State<CropSetupSheet> {
   Widget _sectionLabel(String text) => Text(
         text,
         style: GoogleFonts.outfit(
-          color: Colors.white,
+          color: _textPrimary,
           fontSize: 14,
           fontWeight: FontWeight.w700,
         ),
@@ -577,7 +582,7 @@ class _CropSetupSheetState extends State<CropSetupSheet> {
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFF101A14),
+        color: _card,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: _accent.withValues(alpha: 0.35)),
       ),
@@ -594,7 +599,7 @@ class _CropSetupSheetState extends State<CropSetupSheet> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Kaynaklı Senaryo',
+                      'Senaryo Özeti',
                       style: GoogleFonts.outfit(
                         color: _accent,
                         fontSize: 13,
@@ -605,7 +610,7 @@ class _CropSetupSheetState extends State<CropSetupSheet> {
                     Text(
                       scenario.summary,
                       style: const TextStyle(
-                        color: Colors.white70,
+                        color: _textPrimary,
                         fontSize: 12,
                         height: 1.35,
                       ),
@@ -644,7 +649,7 @@ class _CropSetupSheetState extends State<CropSetupSheet> {
             ...scenario.missingInformation.take(2).map(
                   (missing) => _scenarioNotice(
                     icon: Icons.info_outline_rounded,
-                    color: Colors.white54,
+                    color: _textSecondary,
                     text: missing,
                   ),
                 ),
@@ -680,7 +685,7 @@ class _CropSetupSheetState extends State<CropSetupSheet> {
           child: RichText(
             text: TextSpan(
               style: const TextStyle(
-                color: Colors.white70,
+                color: _textPrimary,
                 fontSize: 12,
                 height: 1.35,
               ),
@@ -688,7 +693,7 @@ class _CropSetupSheetState extends State<CropSetupSheet> {
                 TextSpan(
                   text: '$title: ',
                   style: const TextStyle(
-                    color: Colors.white,
+                    color: _textPrimary,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
@@ -717,7 +722,7 @@ class _CropSetupSheetState extends State<CropSetupSheet> {
             child: Text(
               text,
               style: TextStyle(
-                color: color == Colors.white54 ? Colors.white54 : color,
+                color: color == _textSecondary ? _textSecondary : color,
                 fontSize: 11,
                 height: 1.35,
                 fontWeight: FontWeight.w600,
@@ -758,7 +763,7 @@ class _CropSetupSheetState extends State<CropSetupSheet> {
   String _shortSource(String source) {
     final s = source.toLowerCase();
     if (s.contains('bku') || s.contains('bitki koruma')) return 'BKÜ';
-    if (s.contains('tagem')) return 'TAGEM';
+    if (s.contains('tagem')) return 'Resmi';
     if (s.contains('tarım ve orman') || s.contains('tarim ve orman')) {
       return 'Tarım ve Orman';
     }
@@ -778,23 +783,23 @@ class _CropSetupSheetState extends State<CropSetupSheet> {
         controller: controller,
         keyboardType: const TextInputType.numberWithOptions(decimal: true),
         onChanged: onChanged,
-        style: const TextStyle(color: Colors.white, fontSize: 15),
+        style: const TextStyle(color: _textPrimary, fontSize: 15),
         decoration: InputDecoration(
           labelText: label,
-          labelStyle: const TextStyle(color: Colors.white54, fontSize: 13),
+          labelStyle: const TextStyle(color: _textSecondary, fontSize: 13),
           hintText: hint,
-          hintStyle: const TextStyle(color: Colors.white24),
+          hintStyle: const TextStyle(color: _textTertiary),
           suffixText: suffix,
-          suffixStyle: const TextStyle(color: Colors.white54),
+          suffixStyle: const TextStyle(color: _textSecondary),
           filled: true,
-          fillColor: const Color(0xFF152018),
+          fillColor: _card,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: Colors.white12),
+            borderSide: const BorderSide(color: _borderColor),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: Colors.white12),
+            borderSide: const BorderSide(color: _borderColor),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),

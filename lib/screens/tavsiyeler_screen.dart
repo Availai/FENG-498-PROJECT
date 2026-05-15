@@ -96,7 +96,7 @@ class _IntroHero extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Resmi kaynaklı tavsiyeler',
+                  'Tavsiyeler',
                   style: AppText.h3Dark(context),
                 ),
               ),
@@ -105,9 +105,8 @@ class _IntroHero extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             'Türkiye için öncelikli $count üründe ekim, sulama, besleme, '
-            'koruma, hasat, münavebe ve BKÜ güvenliği için kısa ve aksiyon '
-            'odaklı tavsiyeler. Tüm içerikler TAGEM, BATEM, ÇAYKUR ve '
-            'Tarım ve Orman Bakanlığı yayınlarına dayanır.',
+            'koruma, hasat ve münavebe için kısa ve aksiyon odaklı '
+            'tavsiyeler.',
             style: AppText.bodyDark(context),
           ),
           const SizedBox(height: 10),
@@ -116,8 +115,7 @@ class _IntroHero extends StatelessWidget {
             runSpacing: 6,
             children: const [
               _HeroBadge(label: 'Çevrimdışı'),
-              _HeroBadge(label: 'Kaynaklı'),
-              _HeroBadge(label: 'BKÜ uyarılı'),
+              _HeroBadge(label: 'İlaç uyarılı'),
             ],
           ),
         ],
@@ -546,9 +544,8 @@ class _SafetyFooter extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              'Bu tavsiyeler resmi kaynaklara dayanır ve genel bilgi içindir. '
-              'Kesin teşhis, doz ve uygulama kararları için Tarım ve Orman '
-              'Bakanlığı BKÜ veritabanı (bku.tarim.gov.tr) ve il/ilçe '
+              'Bu tavsiyeler genel bilgi içindir. Kesin teşhis, doz ve '
+              'uygulama kararları için yerel ziraat mühendisi veya il/ilçe '
               'müdürlüğü teknik desteği esastır. Toprak analizi olmadan kesin '
               'gübre miktarı önerilmez; çocuk, hayvan ve su kaynaklarını '
               'koruyacak güvenlik önlemleri her zaman uygulanmalıdır.',

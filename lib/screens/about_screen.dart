@@ -16,9 +16,6 @@ class AboutScreen extends StatelessWidget {
       backgroundColor: AppColors.bg,
       appBar: AppBar(
         title: const Text('Hakkımızda'),
-        backgroundColor: AppColors.bg,
-        foregroundColor: AppColors.textPrimary,
-        elevation: 0,
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),

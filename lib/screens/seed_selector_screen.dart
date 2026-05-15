@@ -68,11 +68,7 @@ class _SeedSelectorScreenState extends State<SeedSelectorScreen>
     return Scaffold(
       backgroundColor: AppColors.bg,
       appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text('Anadolu Tohum DB', style: AppText.h2(context)),
+        title: const Text('Anadolu Tohum DB'),
         actions: [
           IconButton(
             icon: const Icon(Icons.help_outline_rounded),
@@ -84,10 +80,10 @@ class _SeedSelectorScreenState extends State<SeedSelectorScreen>
           preferredSize: const Size.fromHeight(48),
           child: TabBar(
             controller: _tabs,
-            indicatorColor: AppColors.emerald,
+            indicatorColor: Colors.white,
             indicatorWeight: 2,
-            labelColor: AppColors.emeraldDark,
-            unselectedLabelColor: AppColors.textSecondary,
+            labelColor: Colors.white,
+            unselectedLabelColor: Colors.white70,
             labelStyle:
                 GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600),
             tabs: const [Tab(text: 'Çeşit Tarama'), Tab(text: 'Simülasyon')],

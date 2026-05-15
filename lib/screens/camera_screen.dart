@@ -43,10 +43,7 @@ class _CameraScreenState extends State<CameraScreen> {
     return Scaffold(
       backgroundColor: AppColors.bg,
       appBar: AppBar(
-        title: Text('Akıllı Asistan Kamerası', style: AppText.h2(context)),
-        backgroundColor: AppColors.surface,
-        elevation: 0,
-        centerTitle: false,
+        title: const Text('Akıllı Asistan Kamerası'),
         actions: [
           IconButton(
             icon: const Icon(Icons.help_outline_rounded),

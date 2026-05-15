@@ -114,7 +114,7 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
                 ),
                 title: const Text('Tavsiyeler'),
                 subtitle: const Text(
-                    '5 öncelikli ürün için resmi kaynaklı kısa öneriler'),
+                    '5 öncelikli ürün için kısa öneriler'),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () {
                   Navigator.pop(context);
@@ -139,7 +139,7 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
                 ),
                 title: const Text('Bitki Gelişim Rehberi'),
                 subtitle: const Text(
-                    'TAGEM/BATEM/ÇAYKUR kaynaklı yetiştirme yönergeleri'),
+                    'Yetiştirme yönergeleri ve bakım rehberi'),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () {
                   Navigator.pop(context);

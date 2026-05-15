@@ -756,11 +756,10 @@ class _SafetyFooter extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              'Bu rehber resmi kaynaklardan derlenmiştir ve genel bilgi içindir. '
-              'Kimyasal mücadele kararları için Tarım ve Orman Bakanlığı BKÜ '
-              'veri tabanı ve il/ilçe müdürlüğü teknik önerisi esastır. '
-              'Doz, hasat aralığı ve etiket koşullarını her zaman güncel '
-              'BKÜ kaydı üzerinden doğrulayın.',
+              'Bu rehber genel bilgi içindir. Kimyasal mücadele kararları '
+              'için yerel ziraat mühendisi veya il/ilçe müdürlüğü teknik '
+              'önerisi esastır. Doz, hasat aralığı ve etiket koşullarını '
+              'her zaman ürün etiketinden ve uzman önerisinden doğrulayın.',
               style: AppText.xs(context)
                   .copyWith(color: AppColors.textPrimary, height: 1.45),
             ),

@@ -685,7 +685,7 @@ class _PlantHealthAlertState extends ConsumerState<_PlantHealthAlert> {
     Map<String, dynamic>? disease,
   ) {
     final title =
-        disease?['name_tr']?.toString() ?? 'Kaynaklı hastalık gözlemi';
+        disease?['name_tr']?.toString() ?? 'Hastalık gözlemi';
     final summary = disease?['summary']?.toString();
     final controls =
         ((disease?['control_methods_cultural'] as List?) ?? const [])
@@ -726,7 +726,7 @@ class _PlantHealthAlertState extends ConsumerState<_PlantHealthAlert> {
           const SizedBox(height: 8),
           Text(
             summary ??
-                'Bu hastalık için doğrulanmış kısa açıklama henüz eklenmedi. Belirtiyi kayda alın; yayılım varsa ziraat mühendisi veya il/ilçe tarım müdürlüğüyle doğrulayın.',
+                'Bu hastalık için kısa açıklama henüz eklenmedi. Belirtiyi kayda alın; yayılım varsa ziraat mühendisi veya il/ilçe tarım müdürlüğüyle doğrulayın.',
             style: AppText.sm(context).copyWith(
               color: AppColors.textSecondary,
               height: 1.35,
@@ -756,7 +756,7 @@ class _PlantHealthAlertState extends ConsumerState<_PlantHealthAlert> {
                       const Icon(Icons.biotech_rounded,
                           size: 12, color: AppColors.warning),
                       const SizedBox(width: 5),
-                      Text('TAGEM koşul eşiği',
+                      Text('Risk eşiği',
                           style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.w700,

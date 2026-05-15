@@ -61,7 +61,7 @@ class _IntroCard extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Resmi kaynaklı yetiştirme rehberi',
+                  'Yetiştirme rehberi',
                   style: AppText.h3Dark(context),
                 ),
               ),
@@ -70,8 +70,6 @@ class _IntroCard extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             'Bir bitki ekleyince ya da bir ürünü merak ettiğinde, '
-            'TAGEM, BATEM ve ÇAYKUR gibi Tarım ve Orman Bakanlığı '
-            'kuruluşlarının resmi teknik talimatlarına dayalı '
             'ekim, sulama, gübreleme, zararlı/hastalık izleme ve hasat '
             'yönergeleri bu ekrandan açılır.',
             style: AppText.bodyDark(context),

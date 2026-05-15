@@ -1490,10 +1490,12 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
       return;
     }
 
-    // 3 vitrin bitki için çiftçi setup sayfası göster.
+    // Tüm bitkiler için çiftçi setup sayfası göster.
+    // Protokollü bitkiler ekim mevsimi + bölge ipucu da görür.
     final protocol = CropProtocols.resolveByName(plant.nameTr);
+    final guide = TurkiyeCropGuides.lookup(plant.nameTr);
     CropConfig? selectedConfig;
-    if (protocol != null && mounted) {
+    if (mounted) {
       final fieldId = widget.fieldData['id']?.toString() ?? '';
       final existingConfig = CropProtocolService.loadConfig(
         fieldId: fieldId,
@@ -1508,8 +1510,11 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
         isScrollControlled: true,
         builder: (_) => _CropSetupSheet(
           protocol: protocol,
+          cropName: plant.nameTr,
           fieldAreaDekar: fieldArea,
           initialConfig: existingConfig,
+          defaultRowSpacingCm: guide?.rowSpacingCm ?? 70,
+          defaultPlantSpacingCm: guide?.plantSpacingCm ?? 30,
         ),
       );
       if (!mounted) return;
@@ -1617,8 +1622,6 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
         if (config != null) 'irrigation_method': config.irrigationMethod.name,
         if (config != null) 'soil_type': config.soilType.name,
         if (config != null) 'production_system': config.productionSystem.name,
-        if (config?.targetPlantCount != null)
-          'target_plant_count': config!.targetPlantCount,
         if (facingDirection != null) 'facing_direction': facingDirection,
         'water_interval_days': waterIntervalDays,
         'row_spacing_cm': rowSpacingCm,
@@ -3896,11 +3899,14 @@ class _PlantPickerSheetState extends State<_PlantPickerSheet> {
 
   @override
   Widget build(BuildContext context) {
+    const bg = Colors.white;
+    const accent = AppColors.emerald;
+    const cardBg = AppColors.surface;
     final filtered = _filtered;
     return Container(
       height: MediaQuery.of(context).size.height * 0.85,
       decoration: const BoxDecoration(
-        color: Colors.white,
+        color: bg,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
@@ -3910,7 +3916,7 @@ class _PlantPickerSheetState extends State<_PlantPickerSheet> {
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-              color: Colors.grey.shade300,
+              color: AppColors.border,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -3920,11 +3926,13 @@ class _PlantPickerSheetState extends State<_PlantPickerSheet> {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: const Color(0xFFE8F5E9),
-                borderRadius: BorderRadius.circular(10),
+                gradient: const LinearGradient(
+                  colors: [AppColors.emeraldDark, AppColors.emerald],
+                ),
+                borderRadius: BorderRadius.circular(12),
               ),
               child: const Icon(Icons.add_circle_rounded,
-                  color: Color(0xFF2E7D32), size: 22),
+                  color: Colors.white, size: 22),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -3934,11 +3942,11 @@ class _PlantPickerSheetState extends State<_PlantPickerSheet> {
                   Text('Tarlaya Bitki Ekle',
                       style: GoogleFonts.outfit(
                           fontSize: 17,
-                          fontWeight: FontWeight.w700,
-                          color: const Color(0xFF1B5E20))),
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary)),
                   Text('Hava + toprak verisine göre uygunluk skoru',
                       style: GoogleFonts.inter(
-                          fontSize: 12, color: Colors.grey.shade600)),
+                          fontSize: 12, color: AppColors.textSecondary)),
                 ],
               ),
             ),
@@ -3964,31 +3972,42 @@ class _PlantPickerSheetState extends State<_PlantPickerSheet> {
             controller: _searchCtrl,
             onChanged: (v) => setState(() => _query = v),
             textInputAction: TextInputAction.search,
+            style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
             decoration: InputDecoration(
               hintText: 'Bitki ara (ör. buğday, domates)',
+              hintStyle: const TextStyle(color: AppColors.textTertiary),
               prefixIcon:
-                  const Icon(Icons.search_rounded, color: Color(0xFF2E7D32)),
+                  const Icon(Icons.search_rounded, color: accent),
               suffixIcon: _query.isEmpty
                   ? null
                   : IconButton(
-                      icon: const Icon(Icons.close_rounded),
+                      icon: const Icon(Icons.close_rounded,
+                          color: AppColors.textSecondary),
                       onPressed: () {
                         _searchCtrl.clear();
                         setState(() => _query = '');
                       },
                     ),
               filled: true,
-              fillColor: const Color(0xFFF5F7F5),
+              fillColor: cardBg,
               contentPadding:
                   const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide.none,
               ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: AppColors.border),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: accent, width: 1.5),
+              ),
             ),
           ),
           const SizedBox(height: 8),
-          const Divider(height: 1),
+          const Divider(height: 1, color: AppColors.divider),
           Expanded(
             child: filtered.isEmpty
                 ? Center(
@@ -3998,7 +4017,7 @@ class _PlantPickerSheetState extends State<_PlantPickerSheet> {
                         'Sonuç bulunamadı.\nFarklı bir isim deneyin.',
                         textAlign: TextAlign.center,
                         style: GoogleFonts.inter(
-                            fontSize: 13, color: Colors.grey.shade600),
+                            fontSize: 13, color: AppColors.textTertiary),
                       ),
                     ),
                   )
@@ -4052,9 +4071,9 @@ class _EnvContextStrip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
-        color: const Color(0xFFF5F7F5),
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE0E0E0)),
+        border: Border.all(color: AppColors.border),
       ),
       child: Row(
         children: [
@@ -4066,13 +4085,13 @@ class _EnvContextStrip extends StatelessWidget {
           const SizedBox(width: 8),
           _MiniEnvChip(
             icon: Icons.science_rounded,
-            color: const Color(0xFF1976D2),
+            color: const Color(0xFF42A5F5),
             label: ph == null ? 'pH —' : 'pH ${ph!.toStringAsFixed(1)}',
           ),
           const SizedBox(width: 8),
           _MiniEnvChip(
             icon: Icons.water_drop_rounded,
-            color: const Color(0xFF0277BD),
+            color: const Color(0xFF4DD0E1),
             label: weeklyRain == null
                 ? '— mm/hf'
                 : '${weeklyRain!.toStringAsFixed(0)} mm/hf',
@@ -4104,10 +4123,10 @@ class _MiniEnvChip extends StatelessWidget {
           const SizedBox(width: 4),
           Text(
             label,
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w700,
-              color: Colors.grey.shade800,
+              color: AppColors.textPrimary,
             ),
           ),
         ],
@@ -4124,7 +4143,7 @@ class _StandaloneAddBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: const Color(0xFFE8F5E9),
+      color: AppColors.mint,
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
@@ -4136,7 +4155,9 @@ class _StandaloneAddBanner extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(7),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1B5E20),
+                  gradient: const LinearGradient(
+                    colors: [AppColors.emeraldDark, AppColors.emerald],
+                  ),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Icon(Icons.eco_rounded,
@@ -4152,20 +4173,20 @@ class _StandaloneAddBanner extends StatelessWidget {
                       style: GoogleFonts.outfit(
                         fontSize: 14,
                         fontWeight: FontWeight.w800,
-                        color: const Color(0xFF1B5E20),
+                        color: AppColors.emeraldDark,
                       ),
                     ),
                     Text(
                       'Tek bitkiyi haritada istediğin noktaya yerleştir',
                       style: GoogleFonts.inter(
                         fontSize: 11,
-                        color: Colors.grey.shade700,
+                        color: AppColors.textSecondary,
                       ),
                     ),
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right_rounded, color: Color(0xFF1B5E20)),
+              const Icon(Icons.chevron_right_rounded, color: AppColors.emerald),
             ],
           ),
         ),
@@ -4199,10 +4220,10 @@ class _PlantScoreCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final Color sColor = score >= 75
-        ? const Color(0xFF2E7D32)
+        ? AppColors.emerald
         : score >= 50
-            ? Colors.orange.shade700
-            : Colors.red.shade700;
+            ? const Color(0xFFFFB74D)
+            : AppColors.error;
     final String label = score >= 75
         ? 'UYGUN'
         : score >= 50
@@ -4212,7 +4233,7 @@ class _PlantScoreCard extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Material(
-        color: Colors.grey.shade50,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
         child: InkWell(
           borderRadius: BorderRadius.circular(12),
@@ -4237,6 +4258,7 @@ class _PlantScoreCard extends StatelessWidget {
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 15,
+                          color: AppColors.textPrimary,
                         ),
                       ),
                     ),
@@ -4267,19 +4289,19 @@ class _PlantScoreCard extends StatelessWidget {
                       expanded
                           ? Icons.expand_less_rounded
                           : Icons.expand_more_rounded,
-                      color: Colors.grey.shade600,
+                      color: AppColors.textTertiary,
                     ),
                   ],
                 ),
                 if (expanded) ...[
                   const SizedBox(height: 10),
-                  const Divider(height: 1),
+                  const Divider(height: 1, color: AppColors.divider),
                   const SizedBox(height: 10),
                   Text(
                     'Hasat: ${plant.daysToHarvest} gün  •  pH ${plant.minPh}-${plant.maxPh}  •  ${plant.minTemp.toInt()}-${plant.maxTemp.toInt()} °C',
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 12,
-                      color: Colors.grey.shade700,
+                      color: AppColors.textSecondary,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -4292,14 +4314,14 @@ class _PlantScoreCard extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const Icon(Icons.warning_amber_rounded,
-                                size: 13, color: Colors.orange),
+                                size: 13, color: Color(0xFFFFB74D)),
                             const SizedBox(width: 6),
                             Expanded(
                               child: Text(
                                 r,
                                 style: const TextStyle(
                                   fontSize: 12,
-                                  color: Colors.black87,
+                                  color: AppColors.textSecondary,
                                   height: 1.35,
                                 ),
                               ),
@@ -4313,7 +4335,7 @@ class _PlantScoreCard extends StatelessWidget {
                     width: double.infinity,
                     child: FilledButton.icon(
                       style: FilledButton.styleFrom(
-                        backgroundColor: const Color(0xFF2E7D32),
+                        backgroundColor: AppColors.emerald,
                         foregroundColor: Colors.white,
                         minimumSize: const Size.fromHeight(44),
                         shape: RoundedRectangleBorder(
@@ -5133,13 +5155,13 @@ class _DirectiveCardState extends ConsumerState<_DirectiveCard> {
 
   String _shortSource(String source) {
     final s = source.toLowerCase();
-    if (s.contains('bku') || s.contains('bitki koruma')) return 'BKÜ';
-    if (s.contains('fao')) return 'FAO-56';
-    if (s.contains('tagem')) return 'TAGEM';
+    if (s.contains('bku') || s.contains('bitki koruma')) return 'İlaç';
+    if (s.contains('fao')) return 'Sulama';
+    if (s.contains('tagem')) return 'Resmi';
     if (s.contains('tarım ve orman') || s.contains('tarim ve orman')) {
-      return 'Tarım ve Orman';
+      return 'Resmi';
     }
-    if (s.contains('trakya')) return 'Trakya TAE';
+    if (s.contains('trakya')) return 'Resmi';
     if (s.contains('yalova')) return 'Yalova Bahçe';
     if (s.contains('bakan')) return 'Bakanlık';
     return source.length <= 22 ? source : '${source.substring(0, 22)}...';
@@ -5375,6 +5397,8 @@ class _CropRoadmapCardState extends ConsumerState<_CropRoadmapCard> {
       isScrollControlled: true,
       builder: (_) => _CropSetupSheet(
         protocol: widget.progress.protocol,
+        cropName: widget.crop['name']?.toString() ??
+            widget.progress.protocol.displayName,
         fieldAreaDekar: widget.fieldAreaDekar,
         initialConfig: current,
       ),
@@ -6005,21 +6029,28 @@ class _RoadmapStepTile extends StatelessWidget {
 // ÇİFTÇİ KURULUM SAYFASI — bitki seçimi ile bölge çizimi arasında açılır.
 // Toprak türü, sulama yöntemi, alan ve sıra/bitki aralığını alır;
 // CropConfig nesnesi döndürür.
+// Tüm bitkiler için açılır — protokollü bitkiler ekim mevsimi ve bölge
+// ipucu gösterir; protokolsüz bitkiler genel kurulum alır.
 // ═══════════════════════════════════════════════════════════════════════
 class _CropSetupSheet extends StatefulWidget {
   const _CropSetupSheet({
-    required this.protocol,
+    this.protocol,
+    required this.cropName,
     required this.fieldAreaDekar,
     this.initialConfig,
+    this.defaultRowSpacingCm = 70,
+    this.defaultPlantSpacingCm = 30,
   });
 
-  final CropProtocol protocol;
+  /// Protokollü bitkiler (Ayçiçeği, Domates, Mısır) için dolu; diğerleri null.
+  final CropProtocol? protocol;
+  final String cropName;
   final CropConfig? initialConfig;
+  final double defaultRowSpacingCm;
+  final double defaultPlantSpacingCm;
 
   /// Tarla poligonundan ölçülen alan. Çiftçi manuel olarak tekrar girmiyor;
   /// `_CropSetupSheet` bu değeri rehber not'larında ve ekim hesabında kullanır.
-  /// Manuel input UX'i karışıktı: kullanıcı 50 da yazsa bile poligon 5 da
-  /// olduğunda gerçek alan poligondan geliyordu.
   final double fieldAreaDekar;
 
   @override
@@ -6032,11 +6063,20 @@ class _CropSetupSheetState extends State<_CropSetupSheet> {
   late ProductionSystem _productionSystem;
   late final TextEditingController _rowCtrl;
   late final TextEditingController _plantCtrl;
-  late final TextEditingController _plantCountCtrl;
 
-  static const _bg = Color(0xFF0D1811);
-  static const _accent = Color(0xFF00E676);
-  static const _card = Color(0xFF152018);
+  static const _bg = Colors.white;
+  static const _accent = AppColors.emerald;
+  static const _card = AppColors.surface;
+  // Açık temaya geçiş sabitleri — Colors.white* kullanımlarının karşılığı.
+  static const _textPrimary = AppColors.textPrimary;
+  static const _textSecondary = AppColors.textSecondary;
+  static const _textTertiary = AppColors.textTertiary;
+  static const _borderColor = AppColors.border;
+
+  double get _defRow =>
+      widget.protocol?.defaultRowSpacingCm ?? widget.defaultRowSpacingCm;
+  double get _defPlant =>
+      widget.protocol?.defaultPlantSpacingCm ?? widget.defaultPlantSpacingCm;
 
   @override
   void initState() {
@@ -6046,60 +6086,25 @@ class _CropSetupSheetState extends State<_CropSetupSheet> {
     _irrigation = cfg?.irrigationMethod ?? IrrigationMethod.furrow;
     _productionSystem = cfg?.productionSystem ?? ProductionSystem.openField;
     _rowCtrl = TextEditingController(
-        text: (cfg?.rowSpacingCm ?? widget.protocol.defaultRowSpacingCm)
-            .toStringAsFixed(0));
+        text: (cfg?.rowSpacingCm ?? _defRow).toStringAsFixed(0));
     _plantCtrl = TextEditingController(
-        text: (cfg?.plantSpacingCm ?? widget.protocol.defaultPlantSpacingCm)
-            .toStringAsFixed(0));
-    _plantCountCtrl = TextEditingController(
-      text: cfg?.targetPlantCount == null ? '' : '${cfg!.targetPlantCount}',
-    );
+        text: (cfg?.plantSpacingCm ?? _defPlant).toStringAsFixed(0));
   }
 
   @override
   void dispose() {
     _rowCtrl.dispose();
     _plantCtrl.dispose();
-    _plantCountCtrl.dispose();
     super.dispose();
   }
 
   void _confirm() {
-    final row = double.tryParse(_rowCtrl.text.trim()) ??
-        widget.protocol.defaultRowSpacingCm;
-    final plant = double.tryParse(_plantCtrl.text.trim()) ??
-        widget.protocol.defaultPlantSpacingCm;
+    final row = double.tryParse(_rowCtrl.text.trim()) ?? _defRow;
+    final plant = double.tryParse(_plantCtrl.text.trim()) ?? _defPlant;
     // Alan tarladan otomatik geliyor — manuel input kaldırıldı.
-    // Bir alt sınır koruyoruz ki bozuk poligon (0 da) hesabı patlatmasın.
     final area = widget.fieldAreaDekar.clamp(0.1, 10000).toDouble();
-    final plantCountRaw = _plantCountCtrl.text.trim();
-    final plantCount =
-        plantCountRaw.isEmpty ? null : int.tryParse(plantCountRaw);
-    if (plantCountRaw.isNotEmpty && (plantCount == null || plantCount <= 0)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Bitki adedi pozitif bir sayı olmalı.')),
-      );
-      return;
-    }
     final cleanRow = row.clamp(20, 200).toDouble();
     final cleanPlant = plant.clamp(5, 200).toDouble();
-    if (plantCount != null) {
-      final requiredDekar = _requiredDekarFor(
-        plantCount: plantCount,
-        rowSpacingCm: cleanRow,
-        plantSpacingCm: cleanPlant,
-      );
-      if (requiredDekar > area + 0.01) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              '$plantCount bitki için yaklaşık ${requiredDekar.toStringAsFixed(2)} da gerekir. Tarlada ${area.toStringAsFixed(2)} da var.',
-            ),
-          ),
-        );
-        return;
-      }
-    }
     Navigator.pop(
       context,
       CropConfig(
@@ -6109,44 +6114,7 @@ class _CropSetupSheetState extends State<_CropSetupSheet> {
         areaDekar: area,
         rowSpacingCm: cleanRow,
         plantSpacingCm: cleanPlant,
-        targetPlantCount: plantCount,
       ),
-    );
-  }
-
-  double _requiredDekarFor({
-    required int plantCount,
-    required double rowSpacingCm,
-    required double plantSpacingCm,
-  }) {
-    final footprintSqm = (rowSpacingCm / 100) * (plantSpacingCm / 100);
-    return (plantCount * footprintSqm) / 1000;
-  }
-
-  int _estimatedCountForCurrentSpacing() {
-    final row = double.tryParse(_rowCtrl.text.trim()) ??
-        widget.protocol.defaultRowSpacingCm;
-    final plant = double.tryParse(_plantCtrl.text.trim()) ??
-        widget.protocol.defaultPlantSpacingCm;
-    final footprintSqm =
-        (row.clamp(20, 200) / 100) * (plant.clamp(5, 200) / 100);
-    if (footprintSqm <= 0) return 0;
-    return ((widget.fieldAreaDekar * 1000) / footprintSqm).round();
-  }
-
-  double? _targetDekarPreview() {
-    final plantCountRaw = _plantCountCtrl.text.trim();
-    if (plantCountRaw.isEmpty) return null;
-    final plantCount = int.tryParse(plantCountRaw);
-    if (plantCount == null || plantCount <= 0) return null;
-    final row = double.tryParse(_rowCtrl.text.trim()) ??
-        widget.protocol.defaultRowSpacingCm;
-    final plant = double.tryParse(_plantCtrl.text.trim()) ??
-        widget.protocol.defaultPlantSpacingCm;
-    return _requiredDekarFor(
-      plantCount: plantCount,
-      rowSpacingCm: row.clamp(20, 200).toDouble(),
-      plantSpacingCm: plant.clamp(5, 200).toDouble(),
     );
   }
 
@@ -6173,7 +6141,7 @@ class _CropSetupSheetState extends State<_CropSetupSheet> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: Colors.white24,
+                  color: _borderColor,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -6182,24 +6150,24 @@ class _CropSetupSheetState extends State<_CropSetupSheet> {
 
             // ── Başlık ──
             Row(children: [
-              Text(widget.protocol.emoji, style: const TextStyle(fontSize: 30)),
+              Text(widget.protocol?.emoji ?? '🌾', style: const TextStyle(fontSize: 30)),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '${widget.protocol.displayName} Tarlası Kurulumu',
+                      '${widget.cropName} Tarlası Kurulumu',
                       style: GoogleFonts.outfit(
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
-                        color: Colors.white,
+                        color: _textPrimary,
                       ),
                     ),
                     Text(
-                      'Kurulum bilgisi bakım planını hesaplar; sulama kaydı oluşturmaz',
+                      'Seçimleriniz sulama planı, takvim ve bakım rehberine yansır',
                       style: const TextStyle(
-                        color: Colors.white54,
+                        color: _textSecondary,
                         fontSize: 12,
                       ),
                     ),
@@ -6224,10 +6192,10 @@ class _CropSetupSheetState extends State<_CropSetupSheet> {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 14, vertical: 10),
                     decoration: BoxDecoration(
-                      color: selected ? _accent.withValues(alpha: 0.18) : _card,
+                      color: selected ? _accent.withValues(alpha: 0.12) : _card,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: selected ? _accent : Colors.white12,
+                        color: selected ? _accent : _borderColor,
                         width: selected ? 1.5 : 1,
                       ),
                     ),
@@ -6238,7 +6206,7 @@ class _CropSetupSheetState extends State<_CropSetupSheet> {
                         const SizedBox(height: 4),
                         Text(s.label,
                             style: TextStyle(
-                              color: selected ? _accent : Colors.white70,
+                              color: selected ? _accent : _textSecondary,
                               fontSize: 12,
                               fontWeight: selected
                                   ? FontWeight.w700
@@ -6256,7 +6224,7 @@ class _CropSetupSheetState extends State<_CropSetupSheet> {
               child: Text(
                 _soil.description,
                 style: const TextStyle(
-                    color: Colors.white54, fontSize: 11, height: 1.4),
+                    color: _textTertiary, fontSize: 11, height: 1.4),
               ),
             ),
             const SizedBox(height: 20),
@@ -6267,7 +6235,7 @@ class _CropSetupSheetState extends State<_CropSetupSheet> {
             const Text(
               'Bu seçim nasıl sulanacağını ve takvim aralığını belirler; Tarlam Günlüğü’ne sulama yapılmış gibi kayıt düşmez.',
               style:
-                  TextStyle(color: Colors.white54, fontSize: 11, height: 1.35),
+                  TextStyle(color: _textTertiary, fontSize: 11, height: 1.35),
             ),
             const SizedBox(height: 8),
             ...IrrigationMethod.values.map((m) {
@@ -6280,16 +6248,16 @@ class _CropSetupSheetState extends State<_CropSetupSheet> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                   decoration: BoxDecoration(
-                    color: selected ? _accent.withValues(alpha: 0.15) : _card,
+                    color: selected ? _accent.withValues(alpha: 0.10) : _card,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: selected ? _accent : Colors.white12,
+                      color: selected ? _accent : _borderColor,
                       width: selected ? 1.5 : 1,
                     ),
                   ),
                   child: Row(children: [
                     Icon(m.icon,
-                        color: selected ? _accent : Colors.white38, size: 22),
+                        color: selected ? _accent : _textTertiary, size: 22),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
@@ -6297,7 +6265,7 @@ class _CropSetupSheetState extends State<_CropSetupSheet> {
                         children: [
                           Text(m.label,
                               style: TextStyle(
-                                color: selected ? _accent : Colors.white,
+                                color: selected ? _accent : _textPrimary,
                                 fontSize: 14,
                                 fontWeight: selected
                                     ? FontWeight.w700
@@ -6305,7 +6273,7 @@ class _CropSetupSheetState extends State<_CropSetupSheet> {
                               )),
                           Text(m.description,
                               style: const TextStyle(
-                                  color: Colors.white54, fontSize: 11)),
+                                  color: _textSecondary, fontSize: 11)),
                         ],
                       ),
                     ),
@@ -6324,7 +6292,7 @@ class _CropSetupSheetState extends State<_CropSetupSheet> {
             const Text(
               'Seçenekler T.C. Tarım ve Orman Bakanlığı destek/uygulama başlıkları esas alınarak sadeleştirildi.',
               style:
-                  TextStyle(color: Colors.white54, fontSize: 11, height: 1.35),
+                  TextStyle(color: _textTertiary, fontSize: 11, height: 1.35),
             ),
             const SizedBox(height: 8),
             ...ProductionSystem.values.map((system) {
@@ -6337,16 +6305,16 @@ class _CropSetupSheetState extends State<_CropSetupSheet> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                   decoration: BoxDecoration(
-                    color: selected ? _accent.withValues(alpha: 0.15) : _card,
+                    color: selected ? _accent.withValues(alpha: 0.10) : _card,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: selected ? _accent : Colors.white12,
+                      color: selected ? _accent : _borderColor,
                       width: selected ? 1.5 : 1,
                     ),
                   ),
                   child: Row(children: [
                     Icon(system.icon,
-                        color: selected ? _accent : Colors.white38, size: 22),
+                        color: selected ? _accent : _textTertiary, size: 22),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
@@ -6354,7 +6322,7 @@ class _CropSetupSheetState extends State<_CropSetupSheet> {
                         children: [
                           Text(system.label,
                               style: TextStyle(
-                                color: selected ? _accent : Colors.white,
+                                color: selected ? _accent : _textPrimary,
                                 fontSize: 14,
                                 fontWeight: selected
                                     ? FontWeight.w700
@@ -6362,7 +6330,7 @@ class _CropSetupSheetState extends State<_CropSetupSheet> {
                               )),
                           Text(system.description,
                               style: const TextStyle(
-                                  color: Colors.white54, fontSize: 11)),
+                                  color: _textSecondary, fontSize: 11)),
                         ],
                       ),
                     ),
@@ -6386,17 +6354,17 @@ class _CropSetupSheetState extends State<_CropSetupSheet> {
               decoration: BoxDecoration(
                 color: _card,
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.white12),
+                border: Border.all(color: _borderColor),
               ),
               child: Row(children: [
                 const Icon(Icons.straighten_rounded,
-                    color: Colors.white54, size: 18),
+                    color: _textSecondary, size: 18),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     '${widget.fieldAreaDekar.toStringAsFixed(1)} da · tarladan otomatik alındı',
                     style: const TextStyle(
-                        color: Colors.white70, fontSize: 13, height: 1.3),
+                        color: _textPrimary, fontSize: 13, height: 1.3),
                   ),
                 ),
               ]),
@@ -6411,7 +6379,7 @@ class _CropSetupSheetState extends State<_CropSetupSheet> {
                 child: _inputField(
                   controller: _rowCtrl,
                   label: 'Sıra arası',
-                  hint: widget.protocol.defaultRowSpacingCm.toStringAsFixed(0),
+                  hint: _defRow.toStringAsFixed(0),
                   suffix: 'cm',
                   onChanged: (_) => setState(() {}),
                 ),
@@ -6421,8 +6389,7 @@ class _CropSetupSheetState extends State<_CropSetupSheet> {
                 child: _inputField(
                   controller: _plantCtrl,
                   label: 'Bitki arası',
-                  hint:
-                      widget.protocol.defaultPlantSpacingCm.toStringAsFixed(0),
+                  hint: _defPlant.toStringAsFixed(0),
                   suffix: 'cm',
                   onChanged: (_) => setState(() {}),
                 ),
@@ -6432,102 +6399,60 @@ class _CropSetupSheetState extends State<_CropSetupSheet> {
             const Text(
               'Bu aralıklar ekim bölgesindeki bitki dizilimine, bitki sayısı hesabına ve sonraki bakım planına uygulanır.',
               style:
-                  TextStyle(color: Colors.white54, fontSize: 11, height: 1.35),
+                  TextStyle(color: _textTertiary, fontSize: 11, height: 1.35),
             ),
             const SizedBox(height: 16),
 
-            // ── Opsiyonel hedef bitki adedi ──
-            _sectionLabel('🌱 Kaç Adet Ekeceksin?'),
-            const SizedBox(height: 8),
-            _inputField(
-              controller: _plantCountCtrl,
-              label: 'Bitki adedi',
-              hint: 'Boş bırakılabilir',
-              suffix: 'adet',
-              onChanged: (_) => setState(() {}),
-            ),
-            const SizedBox(height: 8),
-            Builder(builder: (_) {
-              final targetDekar = _targetDekarPreview();
-              final estimatedCount = _estimatedCountForCurrentSpacing();
-              final targetText = targetDekar == null
-                  ? 'Adet girmezsen tüm ekim alanı için yaklaşık $estimatedCount bitki hesaplanır.'
-                  : 'Bu adet için yaklaşık ${targetDekar.toStringAsFixed(2)} da ekim alanı gerekir.';
-              final overLimit =
-                  targetDekar != null && targetDekar > widget.fieldAreaDekar;
-              return Container(
-                width: double.infinity,
+            // ── Ekme mevsimi ve bölge ipucu (sadece protokollü bitkiler) ──
+            if (widget.protocol != null) ...[
+              const SizedBox(height: 16),
+              Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: overLimit
-                      ? Colors.red.withValues(alpha: 0.10)
-                      : _accent.withValues(alpha: 0.08),
+                  color: _accent.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: overLimit
-                        ? Colors.red.withValues(alpha: 0.35)
-                        : _accent.withValues(alpha: 0.20),
-                  ),
+                  border: Border.all(color: _accent.withValues(alpha: 0.2)),
                 ),
-                child: Text(
-                  targetText,
-                  style: TextStyle(
-                    color: overLimit ? Colors.red.shade200 : Colors.white70,
-                    fontSize: 11,
-                    height: 1.35,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(children: [
+                      const Icon(Icons.calendar_today_rounded,
+                          color: _accent, size: 14),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Ekim Zamanı (Türkiye)',
+                        style: GoogleFonts.outfit(
+                            color: _accent,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700),
+                      ),
+                    ]),
+                    const SizedBox(height: 4),
+                    Text(widget.protocol!.sowingSeasonTR,
+                        style: const TextStyle(
+                            color: _textPrimary, fontSize: 11, height: 1.3)),
+                    const SizedBox(height: 6),
+                    Row(children: [
+                      const Icon(Icons.location_on_rounded,
+                          color: _accent, size: 14),
+                      const SizedBox(width: 6),
+                      Text(
+                        'İdeal Bölgeler',
+                        style: GoogleFonts.outfit(
+                            color: _accent,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700),
+                      ),
+                    ]),
+                    const SizedBox(height: 4),
+                    Text(widget.protocol!.idealRegionsTR,
+                        style: const TextStyle(
+                            color: _textPrimary, fontSize: 11, height: 1.3)),
+                  ],
                 ),
-              );
-            }),
-
-            // ── Ekme mevsimi ve bölge ipucu ──
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: _accent.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: _accent.withValues(alpha: 0.2)),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(children: [
-                    const Icon(Icons.calendar_today_rounded,
-                        color: _accent, size: 14),
-                    const SizedBox(width: 6),
-                    Text(
-                      'Ekim Zamanı (Türkiye)',
-                      style: GoogleFonts.outfit(
-                          color: _accent,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700),
-                    ),
-                  ]),
-                  const SizedBox(height: 4),
-                  Text(widget.protocol.sowingSeasonTR,
-                      style: const TextStyle(
-                          color: Colors.white70, fontSize: 11, height: 1.3)),
-                  const SizedBox(height: 6),
-                  Row(children: [
-                    const Icon(Icons.location_on_rounded,
-                        color: _accent, size: 14),
-                    const SizedBox(width: 6),
-                    Text(
-                      'İdeal Bölgeler',
-                      style: GoogleFonts.outfit(
-                          color: _accent,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700),
-                    ),
-                  ]),
-                  const SizedBox(height: 4),
-                  Text(widget.protocol.idealRegionsTR,
-                      style: const TextStyle(
-                          color: Colors.white70, fontSize: 11, height: 1.3)),
-                ],
-              ),
-            ),
+            ],
             const SizedBox(height: 24),
 
             // ── Onayla butonu ──
@@ -6544,7 +6469,7 @@ class _CropSetupSheetState extends State<_CropSetupSheet> {
                 ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: _accent,
-                  foregroundColor: Colors.black,
+                  foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
                   ),
@@ -6560,7 +6485,7 @@ class _CropSetupSheetState extends State<_CropSetupSheet> {
   Widget _sectionLabel(String text) => Text(
         text,
         style: GoogleFonts.outfit(
-          color: Colors.white,
+          color: _textPrimary,
           fontSize: 14,
           fontWeight: FontWeight.w700,
         ),
@@ -6577,23 +6502,23 @@ class _CropSetupSheetState extends State<_CropSetupSheet> {
         controller: controller,
         keyboardType: const TextInputType.numberWithOptions(decimal: true),
         onChanged: onChanged,
-        style: const TextStyle(color: Colors.white, fontSize: 15),
+        style: const TextStyle(color: _textPrimary, fontSize: 15),
         decoration: InputDecoration(
           labelText: label,
-          labelStyle: const TextStyle(color: Colors.white54, fontSize: 13),
+          labelStyle: const TextStyle(color: _textSecondary, fontSize: 13),
           hintText: hint,
-          hintStyle: const TextStyle(color: Colors.white24),
+          hintStyle: const TextStyle(color: _textTertiary),
           suffixText: suffix,
-          suffixStyle: const TextStyle(color: Colors.white54),
+          suffixStyle: const TextStyle(color: _textSecondary),
           filled: true,
-          fillColor: const Color(0xFF152018),
+          fillColor: _card,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: Colors.white12),
+            borderSide: const BorderSide(color: _borderColor),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: Colors.white12),
+            borderSide: const BorderSide(color: _borderColor),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),

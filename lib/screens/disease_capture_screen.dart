@@ -188,11 +188,7 @@ class _DiseaseCaptureScreenState extends ConsumerState<DiseaseCaptureScreen> {
     return Scaffold(
       backgroundColor: AppColors.bg,
       appBar: AppBar(
-        title:
-            Text('${widget.cropName} — Hastalık', style: AppText.h2(context)),
-        backgroundColor: AppColors.surface,
-        elevation: 0,
-        centerTitle: false,
+        title: Text('${widget.cropName} — Hastalık'),
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),

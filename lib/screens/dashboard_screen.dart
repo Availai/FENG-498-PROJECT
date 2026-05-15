@@ -654,7 +654,7 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
               const SizedBox(width: 10),
               const Expanded(
                 child: Text(
-                  'Resmi Kaynaklı Tavsiyeler',
+                  'Tavsiyeler',
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
@@ -692,8 +692,8 @@ class _AgriDashboardState extends ConsumerState<AgriDashboard>
           const Padding(
             padding: EdgeInsets.fromLTRB(14, 0, 12, 8),
             child: Text(
-              'TAGEM, BATEM ve ÇAYKUR kaynaklı 5 öncelikli ürün için '
-              'ekim, sulama, koruma ve hasat tavsiyeleri.',
+              '5 öncelikli ürün için ekim, sulama, koruma ve hasat '
+              'tavsiyeleri.',
               style: TextStyle(
                 fontSize: 12,
                 color: Colors.white70,

@@ -107,9 +107,6 @@ class _SatelliteWeatherScreenState
         SizedBox(height: 20),
         Text('Uydu verileri alınıyor...',
             style: TextStyle(color: Colors.white70, fontSize: 15)),
-        SizedBox(height: 6),
-        Text('NASA POWER • Open-Meteo ERA5',
-            style: TextStyle(color: Color(0xFF4FC3F7), fontSize: 12)),
       ]),
     );
   }
@@ -142,16 +139,6 @@ class _SatelliteWeatherScreenState
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        // ── KAYNAK ROZET ──
-        Row(children: [
-          _sourceBadge('NASA POWER', Colors.orange),
-          const SizedBox(width: 8),
-          _sourceBadge('Open-Meteo ERA5', Colors.blue),
-          const SizedBox(width: 8),
-          _sourceBadge('Agromonitoring', Colors.green),
-        ]),
-        const SizedBox(height: 16),
-
         if (_isStaleData)
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -240,11 +227,6 @@ class _SatelliteWeatherScreenState
         // ── UV İNDEKSİ AÇIKLAMASI ──
         _uvGuideCard(forecast),
 
-        const SizedBox(height: 16),
-
-        // ── KAYNAK AÇIKLAMASI ──
-        _sourceInfoCard(),
-
         const SizedBox(height: 24),
       ]),
     );
@@ -264,24 +246,6 @@ class _SatelliteWeatherScreenState
           style: const TextStyle(
               color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
     ]);
-  }
-
-  Widget _sourceBadge(String label, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withValues(alpha: 0.5)),
-      ),
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(Icons.satellite_alt, size: 12, color: color),
-        const SizedBox(width: 4),
-        Text(label,
-            style: TextStyle(
-                color: color, fontSize: 11, fontWeight: FontWeight.bold)),
-      ]),
-    );
   }
 
   Widget _currentWeatherCard(Map<String, dynamic> d) {
@@ -412,18 +376,6 @@ class _SatelliteWeatherScreenState
               'Düzeltilmiş Yağış', Colors.lightBlue, Icons.grain),
         ],
         const SizedBox(height: 10),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          decoration: BoxDecoration(
-            color: Colors.orange.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: const Text(
-            '🛸 Veriler NASA POWER uydu ve yeniden analiz sisteminden alınmaktadır. '
-            'CERES uydu radyometre ölçümleri + MERRA-2 atmosfer modeli.',
-            style: TextStyle(color: Colors.orange, fontSize: 11, height: 1.4),
-          ),
-        ),
       ]),
     );
   }
@@ -602,51 +554,6 @@ class _SatelliteWeatherScreenState
         ),
       ]),
     );
-  }
-
-  Widget _sourceInfoCard() {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0F1729),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFF2A3550)),
-      ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Text('Veri Kaynakları',
-            style: TextStyle(
-                color: Colors.white54,
-                fontSize: 12,
-                fontWeight: FontWeight.bold)),
-        const SizedBox(height: 8),
-        _sourceRow('🛰️ NASA POWER',
-            'CERES uydu ölçümleri + MERRA-2 atmosfer yeniden analizi. Güneş radyasyonu, sıcaklık, nem, rüzgar.'),
-        const SizedBox(height: 6),
-        _sourceRow('🌍 Open-Meteo ERA5',
-            'ECMWF/Copernicus ERA5 uydu reanaliz verisi. Anlık hava, tahmin, UV indeksi.'),
-        const SizedBox(height: 6),
-        _sourceRow('🌱 Agromonitoring',
-            'Uydu destekli toprak nemi ve sıcaklığı (0–10 cm derinlik).'),
-      ]),
-    );
-  }
-
-  Widget _sourceRow(String title, String desc) {
-    return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      SizedBox(
-        width: 120,
-        child: Text(title,
-            style: const TextStyle(
-                color: Color(0xFF4FC3F7),
-                fontSize: 11,
-                fontWeight: FontWeight.w600)),
-      ),
-      Expanded(
-        child: Text(desc,
-            style: const TextStyle(
-                color: Colors.white38, fontSize: 11, height: 1.4)),
-      ),
-    ]);
   }
 
   Widget _miniStat(IconData icon, String value, String label, Color c) {
