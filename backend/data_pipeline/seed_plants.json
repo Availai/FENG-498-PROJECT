@@ -3743,8 +3743,8 @@
       "common_diseases": [
         "kök ve gövde çürüklüğü"
       ],
-      "growing_tips": "Doğu Karadeniz ana üretim kuşağıdır. Yıllık yağış 2000 mm altına düşmemeli, bağıl nem en az %70 olmalı; kaliteli hasatta tepe tomurcuğu ve ilk iki körpe yaprak alınır.",
-      "days_to_harvest": 1095,
+      "growing_tips": "Doğu Karadeniz ana üretim kuşağıdır. Yıllık yağış 2000 mm altına düşmemeli, bağıl nem en az %70 olmalı; kaliteli hasatta tepe tomurcuğu ve ilk iki körpe yaprak alınır. Fidan dikiminden ortalama 3-4 yıl sonra ilk yaş yaprak hasadı alınır; tam verim 8-10 yaş arasıdır; bahçenin ekonomik ömrü 50 yılı aşar. Tesis sonrası her yıl Mayıs-Ekim arası 3 sürgün (1. sürgün Mayıs-Haziran, 2. sürgün Temmuz-Ağustos, 3. sürgün Eylül-Ekim) hasadı yapılır.",
+      "days_to_harvest": 1280,
       "stable_id": "crop.tea",
       "source_ids": [
         "source.caykur.tea_cultivation_lecture_notes_2025"
@@ -8187,8 +8187,8 @@
         "meyve çürüklüğü",
         "zamklanma"
       ],
-      "growing_tips": "Bahçe kurmadan önce 0-30, 30-60 ve 60-90 cm toprak analizi yaptır. Derin, havalanan, drenajlı toprak ve pH 6.0-6.5 hedefle; -3°C civarı don, 38-39°C aşırı sıcak gelişimi durdurur.",
-      "days_to_harvest": 1460,
+      "growing_tips": "Bahçe kurmadan önce 0-30, 30-60 ve 60-90 cm toprak analizi yaptır. Derin, havalanan, drenajlı toprak ve pH 6.0-6.5 hedefle; -3°C civarı don, 38-39°C aşırı sıcak gelişimi durdurur. Aşılı fidan kullanılması durumunda 2-3 yıl sonra ilk meyveler alınır, tam verime 4-5 yaşında ulaşılır; ağaç 40-50 yıl ekonomik ömür sürer. Hasat Kasım-Nisan arasıdır.",
+      "days_to_harvest": 1095,
       "stable_id": "crop.orange",
       "source_ids": [
         "source.tagem.citrus_ipm"

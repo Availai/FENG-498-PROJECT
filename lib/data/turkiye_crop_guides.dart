@@ -919,7 +919,7 @@ class TurkiyeCropGuides {
       idealPhMax: 6.5,
       idealTempMin: 13,
       idealTempMax: 32,
-      harvestDays: 1460,
+      harvestDays: 1095,
       seasonalWaterMm: 750,
       irrigationSummary:
           'Yaz kuraklığında düzenli ve derin sulama gerekir. Su kök boğazına değil taç izdüşümüne verilmeli; taban suyu yüksek veya ağır toprakta drenaj kurulmadan bahçe tesis edilmemelidir.',
@@ -1101,7 +1101,7 @@ class TurkiyeCropGuides {
       idealPhMax: 6,
       idealTempMin: 14,
       idealTempMax: 30,
-      harvestDays: 1095,
+      harvestDays: 1280,
       seasonalWaterMm: 1800,
       irrigationSummary:
           'Çay yüksek ve düzenli yağış ister. Yıllık yağış düşükse veya yaz kuraklığı uzarsa sürgün kalitesi düşer; buna karşı sulama, malç ve gölge-rüzgar yönetimi birlikte düşünülmelidir.',
