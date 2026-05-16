@@ -1,527 +1,995 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Akıllı Tarım Asistanı - Dijital Tarlanız</title>
-    <meta name="description" content="Türkiye'nin kırsal bölgelerindeki çiftçilere yönelik, çevrimdışı öncelikli, kapsamlı bir tarım yönetim ve rehberlik uygulaması.">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --primary: #2E7D32; /* Emerald Green */
-            --primary-light: #4CAF50;
-            --primary-dark: #1B5E20;
-            --accent: #FBC02D; /* Sunflower Yellow */
-            --bg-color: #F8FAF8;
-            --text-main: #1C2826;
-            --text-muted: #546E7A;
-            --card-bg: #FFFFFF;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tarlam | Akıllı Tarım Asistanı</title>
+  <meta name="description" content="Türkiye çiftçileri için çevrimdışı öncelikli tarla yönetimi, hava-toprak analizi, akıllı sulama, hastalık takibi ve ürün rehberi.">
+  <meta name="theme-color" content="#1B5E20">
+  <meta property="og:title" content="Tarlam | Akıllı Tarım Asistanı">
+  <meta property="og:description" content="Tarlayı çiz, ürünü takip et, sulama ve bakım kararlarını Türkçe rehberle yönet.">
+  <meta property="og:image" content="assets/dashboard_bg.png">
+  <style>
+    @font-face {
+      font-family: "Noto Sans";
+      src: url("assets/fonts/NotoSans-Regular.ttf") format("truetype");
+      font-weight: 400;
+      font-style: normal;
+      font-display: swap;
+    }
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Inter', sans-serif;
-        }
+    @font-face {
+      font-family: "Noto Sans";
+      src: url("assets/fonts/NotoSans-Bold.ttf") format("truetype");
+      font-weight: 700;
+      font-style: normal;
+      font-display: swap;
+    }
 
-        body {
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            line-height: 1.6;
-            overflow-x: hidden;
-        }
+    :root {
+      --orman: #1B5E20;
+      --yonca: #2E7D32;
+      --filiz: #43A047;
+      --nane: #E8F5E9;
+      --bugday: #E8D48A;
+      --toprak: #8D6E63;
+      --kil: #FBF7EC;
+      --gok: #1976D2;
+      --uyari: #D35400;
+      --koyu: #17211D;
+      --metin: #1F2937;
+      --ikincil: #4B5563;
+      --cizgi: #E5E1D3;
+      --beyaz: #FFFFFF;
+      --golge: 0 18px 45px rgba(23, 33, 29, 0.12);
+      --dar: min(1160px, calc(100% - 40px));
+    }
 
-        /* Nav */
-        nav {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 20px 8%;
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            position: fixed;
-            width: 100%;
-            top: 0;
-            z-index: 100;
-            box-shadow: 0 2px 15px rgba(0,0,0,0.05);
-        }
+    * {
+      box-sizing: border-box;
+    }
 
-        .logo {
-            font-size: 24px;
-            font-weight: 800;
-            color: var(--primary-dark);
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        .logo svg {
-            width: 32px;
-            height: 32px;
-            fill: var(--primary);
-        }
+    html {
+      scroll-behavior: smooth;
+    }
 
-        /* Hero Section */
-        .hero {
-            padding: 160px 8% 100px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            min-height: 100vh;
-            background: linear-gradient(135deg, #F8FAF8 0%, #E8F5E9 100%);
-            position: relative;
-        }
+    body {
+      margin: 0;
+      font-family: "Noto Sans", Arial, sans-serif;
+      color: var(--metin);
+      background: var(--beyaz);
+      line-height: 1.55;
+      overflow-x: hidden;
+    }
 
-        .hero-content {
-            max-width: 600px;
-            z-index: 2;
-        }
+    img {
+      display: block;
+      max-width: 100%;
+    }
 
-        .badge {
-            display: inline-block;
-            padding: 8px 16px;
-            background-color: rgba(46, 125, 50, 0.1);
-            color: var(--primary-dark);
-            border-radius: 30px;
-            font-weight: 600;
-            font-size: 14px;
-            margin-bottom: 20px;
-        }
+    a {
+      color: inherit;
+    }
 
-        .hero h1 {
-            font-size: 54px;
-            font-weight: 800;
-            line-height: 1.1;
-            margin-bottom: 20px;
-            color: var(--text-main);
-        }
+    .ust-cubuk {
+      position: fixed;
+      inset: 0 0 auto;
+      z-index: 20;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.16);
+      background: rgba(23, 33, 29, 0.68);
+      backdrop-filter: blur(16px);
+    }
 
-        .hero h1 span {
-            color: var(--primary);
-        }
+    .ust-ic {
+      width: var(--dar);
+      margin: 0 auto;
+      min-height: 72px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
 
-        .hero p {
-            font-size: 18px;
-            color: var(--text-muted);
-            margin-bottom: 40px;
-        }
+    .marka {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      color: var(--beyaz);
+      text-decoration: none;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
 
-        .download-buttons {
-            display: flex;
-            gap: 15px;
-            flex-wrap: wrap;
-        }
+    .marka-isaret {
+      width: 42px;
+      height: 42px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      background: var(--bugday);
+      color: var(--orman);
+      box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.12);
+    }
 
-        .store-btn {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 12px 24px;
-            background-color: var(--text-main);
-            color: white;
-            text-decoration: none;
-            border-radius: 12px;
-            font-weight: 600;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-            gap: 10px;
-            min-width: 180px;
-        }
+    .marka-isaret svg,
+    .ikon svg {
+      width: 24px;
+      height: 24px;
+      fill: currentColor;
+    }
 
-        .store-btn:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 10px 20px rgba(0,0,0,0.15);
-        }
+    .ust-baglanti {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
 
-        .store-btn.android {
-            background-color: var(--primary);
-        }
+    .ust-baglanti a {
+      min-height: 48px;
+      padding: 13px 15px;
+      border-radius: 8px;
+      color: rgba(255, 255, 255, 0.9);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 700;
+    }
 
-        .store-btn svg {
-            width: 24px;
-            height: 24px;
-            fill: currentColor;
-        }
+    .ust-baglanti a:hover {
+      background: rgba(255, 255, 255, 0.12);
+      color: var(--beyaz);
+    }
 
-        /* Hero Image/Mockup */
-        .hero-visual {
-            flex: 1;
-            display: flex;
-            justify-content: center;
-            position: relative;
-            z-index: 2;
-        }
+    .ust-baglanti .indir-kisa {
+      background: var(--bugday);
+      color: #263319;
+    }
 
-        .phone-mockup {
-            width: 300px;
-            height: 600px;
-            background: #fff;
-            border-radius: 40px;
-            box-shadow: 0 25px 50px rgba(0,0,0,0.15);
-            border: 8px solid #222;
-            position: relative;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-        }
+    .kahraman {
+      min-height: 94svh;
+      position: relative;
+      display: grid;
+      align-items: end;
+      padding: 130px 0 44px;
+      background:
+        linear-gradient(90deg, rgba(12, 29, 15, 0.86) 0%, rgba(12, 29, 15, 0.70) 44%, rgba(12, 29, 15, 0.20) 100%),
+        linear-gradient(0deg, rgba(12, 29, 15, 0.82) 0%, rgba(12, 29, 15, 0.08) 52%),
+        url("assets/dashboard_bg.png") center / cover no-repeat;
+      color: var(--beyaz);
+    }
 
-        .phone-notch {
-            position: absolute;
-            top: 0;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 120px;
-            height: 25px;
-            background: #222;
-            border-bottom-left-radius: 15px;
-            border-bottom-right-radius: 15px;
-            z-index: 10;
-        }
+    .kahraman-ic {
+      width: var(--dar);
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: minmax(0, 660px) minmax(280px, 390px);
+      gap: 52px;
+      align-items: end;
+    }
 
-        .mockup-ui {
-            padding: 40px 20px 20px;
-            background: linear-gradient(to bottom, var(--primary-dark), var(--primary));
-            height: 250px;
-            color: white;
-            position: relative;
-        }
+    .etiket {
+      display: inline-flex;
+      align-items: center;
+      min-height: 36px;
+      padding: 7px 12px;
+      border-radius: 8px;
+      background: rgba(232, 212, 138, 0.18);
+      border: 1px solid rgba(232, 212, 138, 0.44);
+      color: #FFF7C8;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
 
-        .mockup-ui-title {
-            font-size: 20px;
-            font-weight: 800;
-            margin-bottom: 5px;
-        }
-        
-        .mockup-ui-subtitle {
-            font-size: 12px;
-            opacity: 0.8;
-            margin-bottom: 20px;
-        }
+    h1,
+    h2,
+    h3,
+    p {
+      margin-top: 0;
+    }
 
-        .mockup-card {
-            background: white;
-            border-radius: 15px;
-            padding: 15px;
-            color: var(--text-main);
-            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
-            margin-bottom: 15px;
-        }
+    h1 {
+      margin: 22px 0 18px;
+      max-width: 760px;
+      font-size: clamp(40px, 8vw, 84px);
+      line-height: 0.98;
+      letter-spacing: 0;
+      font-weight: 700;
+    }
 
-        .mockup-body {
-            background: #F4F6F4;
-            flex: 1;
-            padding: 20px;
-        }
+    .kahraman-yazi {
+      max-width: 680px;
+      margin-bottom: 30px;
+      color: rgba(255, 255, 255, 0.88);
+      font-size: clamp(17px, 2.2vw, 22px);
+    }
 
-        .skeleton-line {
-            height: 10px;
-            background: #E0E0E0;
-            border-radius: 5px;
-            margin-bottom: 10px;
-        }
+    .butonlar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+    }
 
-        .skeleton-line.short { width: 60%; }
-        .skeleton-line.long { width: 90%; }
-        .skeleton-line.medium { width: 75%; }
+    .ana-buton,
+    .ikincil-buton {
+      min-height: 54px;
+      border-radius: 8px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 15px 20px;
+      text-decoration: none;
+      font-weight: 700;
+      border: 1px solid transparent;
+      transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
+    }
 
-        /* Features Section */
-        .features {
-            padding: 100px 8%;
-            background: white;
-        }
+    .ana-buton {
+      background: var(--bugday);
+      color: #253319;
+      box-shadow: 0 16px 32px rgba(0, 0, 0, 0.24);
+    }
 
-        .section-header {
-            text-align: center;
-            margin-bottom: 60px;
-        }
+    .ana-buton:hover,
+    .ikincil-buton:hover {
+      transform: translateY(-2px);
+    }
 
-        .section-header h2 {
-            font-size: 36px;
-            color: var(--primary-dark);
-            margin-bottom: 15px;
-        }
+    .ikincil-buton {
+      background: rgba(255, 255, 255, 0.11);
+      border-color: rgba(255, 255, 255, 0.34);
+      color: var(--beyaz);
+    }
 
-        .section-header p {
-            color: var(--text-muted);
-            max-width: 600px;
-            margin: 0 auto;
-        }
+    .buton-notu {
+      width: 100%;
+      color: rgba(255, 255, 255, 0.72);
+      font-size: 13px;
+    }
 
-        .features-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 30px;
-        }
+    .telefon {
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.20);
+      background: rgba(255, 255, 255, 0.11);
+      box-shadow: 0 20px 70px rgba(0, 0, 0, 0.28);
+      backdrop-filter: blur(14px);
+      overflow: hidden;
+    }
 
-        .feature-card {
-            background: var(--bg-color);
-            padding: 40px 30px;
-            border-radius: 20px;
-            transition: transform 0.3s ease;
-            border: 1px solid rgba(0,0,0,0.03);
-        }
+    .telefon-ust {
+      background: var(--orman);
+      padding: 18px;
+      color: var(--beyaz);
+    }
 
-        .feature-card:hover {
-            transform: translateY(-5px);
-            background: white;
-            box-shadow: 0 15px 30px rgba(0,0,0,0.05);
-        }
+    .telefon-ust small {
+      color: rgba(255, 255, 255, 0.72);
+      font-weight: 700;
+    }
 
-        .feature-icon {
-            width: 60px;
-            height: 60px;
-            background: var(--primary-light);
-            color: white;
-            border-radius: 15px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 20px;
-        }
-        
-        .feature-icon svg {
-            width: 30px;
-            height: 30px;
-            fill: white;
-        }
+    .telefon-ust strong {
+      display: block;
+      margin-top: 4px;
+      font-size: 24px;
+    }
 
-        .feature-card h3 {
-            font-size: 20px;
-            margin-bottom: 12px;
-            color: var(--text-main);
-        }
+    .hava-satiri {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 16px;
+    }
 
-        .feature-card p {
-            color: var(--text-muted);
-            font-size: 15px;
-        }
+    .mini-veri {
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.13);
+      padding: 10px;
+    }
 
-        /* Offline Highlight Section */
-        .offline-section {
-            padding: 80px 8%;
-            background: var(--primary-dark);
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 40px;
-        }
+    .mini-veri span {
+      display: block;
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 12px;
+      font-weight: 700;
+    }
 
-        .offline-text {
-            flex: 1;
-            max-width: 500px;
-        }
+    .mini-veri b {
+      display: block;
+      margin-top: 2px;
+      font-size: 17px;
+    }
 
-        .offline-text h2 {
-            font-size: 36px;
-            margin-bottom: 20px;
-        }
+    .telefon-alt {
+      padding: 16px;
+      background: #F8F4E8;
+      color: var(--metin);
+    }
 
-        .offline-text p {
-            font-size: 16px;
-            opacity: 0.9;
-            margin-bottom: 20px;
-        }
+    .uygulama-kart {
+      display: grid;
+      grid-template-columns: 44px 1fr;
+      gap: 12px;
+      align-items: start;
+      border: 1px solid var(--cizgi);
+      border-radius: 8px;
+      background: var(--beyaz);
+      padding: 12px;
+      margin-bottom: 10px;
+    }
 
-        .offline-icon {
-            flex: 1;
-            display: flex;
-            justify-content: center;
-        }
-        
-        .offline-icon svg {
-            width: 200px;
-            height: 200px;
-            fill: var(--accent);
-            opacity: 0.9;
-        }
+    .uygulama-kart:last-child {
+      margin-bottom: 0;
+    }
 
-        /* Footer */
-        footer {
-            background: #111;
-            color: #888;
-            padding: 40px 8%;
-            text-align: center;
-        }
+    .ikon {
+      width: 44px;
+      height: 44px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      background: var(--nane);
+      color: var(--yonca);
+    }
 
-        /* Decorative shapes */
-        .shape-1 {
-            position: absolute;
-            top: -100px;
-            right: -100px;
-            width: 400px;
-            height: 400px;
-            background: var(--primary-light);
-            opacity: 0.05;
-            border-radius: 50%;
-            z-index: 1;
-        }
+    .uygulama-kart strong {
+      display: block;
+      font-size: 14px;
+    }
 
-        .shape-2 {
-            position: absolute;
-            bottom: 10%;
-            left: -50px;
-            width: 200px;
-            height: 200px;
-            background: var(--accent);
-            opacity: 0.05;
-            border-radius: 50%;
-            z-index: 1;
-        }
+    .uygulama-kart span {
+      color: var(--ikincil);
+      font-size: 13px;
+    }
 
-        @media (max-width: 900px) {
-            .hero {
-                flex-direction: column;
-                text-align: center;
-                padding-top: 120px;
-            }
-            .hero-content {
-                margin-bottom: 50px;
-            }
-            .download-buttons {
-                justify-content: center;
-            }
-            .offline-section {
-                flex-direction: column;
-                text-align: center;
-            }
-        }
-    </style>
+    .ozet-serit {
+      width: var(--dar);
+      margin: -20px auto 0;
+      position: relative;
+      z-index: 5;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      border-radius: 8px;
+      background: var(--beyaz);
+      border: 1px solid var(--cizgi);
+      box-shadow: var(--golge);
+      overflow: hidden;
+    }
+
+    .ozet {
+      padding: 22px;
+      border-right: 1px solid var(--cizgi);
+    }
+
+    .ozet:last-child {
+      border-right: 0;
+    }
+
+    .ozet b {
+      display: block;
+      color: var(--orman);
+      font-size: 28px;
+      line-height: 1;
+    }
+
+    .ozet span {
+      display: block;
+      margin-top: 8px;
+      color: var(--ikincil);
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    section {
+      padding: 88px 0;
+    }
+
+    .bolum {
+      width: var(--dar);
+      margin: 0 auto;
+    }
+
+    .bolum-baslik {
+      display: grid;
+      grid-template-columns: minmax(0, 0.9fr) minmax(260px, 0.7fr);
+      gap: 32px;
+      align-items: end;
+      margin-bottom: 34px;
+    }
+
+    .bolum-baslik h2 {
+      color: var(--koyu);
+      font-size: clamp(30px, 4vw, 50px);
+      line-height: 1.05;
+      letter-spacing: 0;
+      margin-bottom: 0;
+    }
+
+    .bolum-baslik p {
+      color: var(--ikincil);
+      margin-bottom: 0;
+      font-size: 17px;
+    }
+
+    .ozellikler {
+      background: var(--beyaz);
+    }
+
+    .ozellik-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+
+    .ozellik-kart {
+      min-height: 220px;
+      padding: 24px;
+      border-radius: 8px;
+      border: 1px solid var(--cizgi);
+      background: var(--kil);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .ozellik-kart:nth-child(2n) {
+      background: #F4FAF4;
+    }
+
+    .ozellik-kart:nth-child(3n) {
+      background: #F7F1EA;
+    }
+
+    .ozellik-kart h3 {
+      color: var(--koyu);
+      font-size: 21px;
+      line-height: 1.2;
+      margin: 18px 0 10px;
+    }
+
+    .ozellik-kart p {
+      color: var(--ikincil);
+      margin: 0;
+      font-size: 15px;
+    }
+
+    .kucuk-etiket {
+      width: max-content;
+      max-width: 100%;
+      min-height: 34px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: 8px;
+      background: var(--beyaz);
+      color: var(--yonca);
+      border: 1px solid rgba(67, 160, 71, 0.22);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .tarla-akisi {
+      background: #F8F4E8;
+    }
+
+    .akis-yerlesim {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      align-items: stretch;
+    }
+
+    .tarla-gorsel {
+      min-height: 560px;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid var(--cizgi);
+      background:
+        linear-gradient(180deg, rgba(27, 94, 32, 0.12), rgba(141, 110, 99, 0.12)),
+        url("assets/dashboard_bg.png") center / cover no-repeat;
+      position: relative;
+    }
+
+    .tarla-panel {
+      position: absolute;
+      left: 22px;
+      right: 22px;
+      bottom: 22px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .tarla-panel .uygulama-kart {
+      margin: 0;
+      background: rgba(255, 255, 255, 0.94);
+      backdrop-filter: blur(10px);
+    }
+
+    .akilli-liste {
+      display: grid;
+      gap: 14px;
+    }
+
+    .adim {
+      display: grid;
+      grid-template-columns: 56px 1fr;
+      gap: 16px;
+      padding: 20px;
+      border-radius: 8px;
+      background: var(--beyaz);
+      border: 1px solid var(--cizgi);
+    }
+
+    .adim-no {
+      width: 56px;
+      height: 56px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      background: var(--orman);
+      color: var(--bugday);
+      font-weight: 700;
+      font-size: 20px;
+    }
+
+    .adim h3 {
+      margin-bottom: 6px;
+      font-size: 20px;
+    }
+
+    .adim p {
+      margin-bottom: 0;
+      color: var(--ikincil);
+    }
+
+    .urunler {
+      background: var(--beyaz);
+    }
+
+    .urun-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 14px;
+    }
+
+    .urun-kart {
+      min-height: 250px;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid var(--cizgi);
+      background: var(--kil);
+      display: grid;
+      grid-template-rows: 150px 1fr;
+    }
+
+    .urun-kart img {
+      width: 100%;
+      height: 150px;
+      object-fit: cover;
+      background: #ECF5EA;
+    }
+
+    .urun-kart div {
+      padding: 14px;
+    }
+
+    .urun-kart strong {
+      display: block;
+      color: var(--koyu);
+      margin-bottom: 5px;
+      font-size: 17px;
+    }
+
+    .urun-kart span {
+      color: var(--ikincil);
+      font-size: 13px;
+    }
+
+    .indirme {
+      background:
+        linear-gradient(90deg, rgba(27, 94, 32, 0.95), rgba(46, 125, 50, 0.90)),
+        url("assets/dashboard_bg.png") center / cover no-repeat;
+      color: var(--beyaz);
+    }
+
+    .indirme-kutu {
+      display: grid;
+      grid-template-columns: 1fr 360px;
+      gap: 34px;
+      align-items: center;
+    }
+
+    .indirme h2 {
+      color: var(--beyaz);
+      font-size: clamp(32px, 5vw, 56px);
+      line-height: 1.05;
+      margin-bottom: 14px;
+    }
+
+    .indirme p {
+      max-width: 700px;
+      color: rgba(255, 255, 255, 0.86);
+      font-size: 18px;
+    }
+
+    .apk-karti {
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.96);
+      color: var(--metin);
+      padding: 22px;
+      border: 1px solid rgba(255, 255, 255, 0.38);
+      box-shadow: var(--golge);
+    }
+
+    .apk-karti strong {
+      display: block;
+      color: var(--orman);
+      font-size: 22px;
+      margin-bottom: 8px;
+    }
+
+    .apk-karti p {
+      color: var(--ikincil);
+      font-size: 14px;
+      margin-bottom: 16px;
+    }
+
+    .apk-karti .ana-buton {
+      width: 100%;
+      background: var(--orman);
+      color: var(--beyaz);
+      box-shadow: none;
+    }
+
+    .apk-bilgi {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .apk-bilgi span {
+      min-height: 32px;
+      display: inline-flex;
+      align-items: center;
+      padding: 6px 9px;
+      border-radius: 8px;
+      background: var(--nane);
+      color: var(--orman);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    footer {
+      padding: 34px 0;
+      background: var(--koyu);
+      color: rgba(255, 255, 255, 0.72);
+    }
+
+    .alt-ic {
+      width: var(--dar);
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 18px;
+      flex-wrap: wrap;
+    }
+
+    .alt-ic strong {
+      color: var(--beyaz);
+    }
+
+    @media (max-width: 980px) {
+      .ust-baglanti a:not(.indir-kisa) {
+        display: none;
+      }
+
+      .kahraman-ic,
+      .bolum-baslik,
+      .akis-yerlesim,
+      .indirme-kutu {
+        grid-template-columns: 1fr;
+      }
+
+      .telefon {
+        max-width: 440px;
+      }
+
+      .ozet-serit,
+      .ozellik-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .urun-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+
+    @media (max-width: 640px) {
+      :root {
+        --dar: min(100% - 28px, 1160px);
+      }
+
+      .ust-ic {
+        min-height: 64px;
+      }
+
+      .marka span {
+        display: none;
+      }
+
+      .kahraman {
+        min-height: auto;
+        padding: 106px 0 34px;
+      }
+
+      .butonlar,
+      .ana-buton,
+      .ikincil-buton {
+        width: 100%;
+      }
+
+      .ozet-serit,
+      .ozellik-grid,
+      .urun-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .ozet {
+        border-right: 0;
+        border-bottom: 1px solid var(--cizgi);
+      }
+
+      .ozet:last-child {
+        border-bottom: 0;
+      }
+
+      section {
+        padding: 64px 0;
+      }
+
+      .tarla-gorsel {
+        min-height: 430px;
+      }
+
+      .adim {
+        grid-template-columns: 48px 1fr;
+        padding: 16px;
+      }
+
+      .adim-no {
+        width: 48px;
+        height: 48px;
+      }
+    }
+  </style>
 </head>
 <body>
+  <header class="ust-cubuk">
+    <div class="ust-ic">
+      <a class="marka" href="#anasayfa" aria-label="Tarlam anasayfa">
+        <span class="marka-isaret" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M12 2C8.9 4.7 7.35 7.35 7.35 9.95c0 2.75 2.05 4.95 4.65 4.95s4.65-2.2 4.65-4.95C16.65 7.35 15.1 4.7 12 2Zm0 20c-4.55 0-8.25-2.45-8.25-5.45 0-2.15 1.95-4.1 4.75-5.05.48.95 1.2 1.75 2.08 2.32-1.08.34-1.83 1.1-1.83 1.98 0 1.25 1.45 2.25 3.25 2.25s3.25-1 3.25-2.25c0-.88-.75-1.64-1.83-1.98.88-.57 1.6-1.37 2.08-2.32 2.8.95 4.75 2.9 4.75 5.05C20.25 19.55 16.55 22 12 22Z"/></svg>
+        </span>
+        <span>Tarlam</span>
+      </a>
+      <nav class="ust-baglanti" aria-label="Sayfa bağlantıları">
+        <a href="#ozellikler">Özellikler</a>
+        <a href="#tarla-akisi">Tarla Akışı</a>
+        <a href="#urunler">Ürünler</a>
+        <a class="indir-kisa" href="akilli-tarim-asistani.apk" download>APK İndir</a>
+      </nav>
+    </div>
+  </header>
 
-    <nav>
-        <div class="logo">
-            <svg viewBox="0 0 24 24">
-                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-2-5.5l7-7-1.41-1.41L10 11.67l-2.59-2.58L6 10.5l4 4z"/>
-            </svg>
-            Akıllı Tarım
-        </div>
+  <main id="anasayfa">
+    <section class="kahraman" aria-labelledby="ana-baslik">
+      <div class="kahraman-ic">
         <div>
-            <!-- Simple nav links could go here -->
-        </div>
-    </nav>
-
-    <section class="hero">
-        <div class="shape-1"></div>
-        <div class="shape-2"></div>
-        
-        <div class="hero-content">
-            <div class="badge">Sürüm 2.0 Yayında 🚀</div>
-            <h1>Tarlanızın Yönetimi Artık <span>Cebinizde</span></h1>
-            <p>İnternet çekmese bile çalışan, Türkiye'nin coğrafyasına ve TAGEM standartlarına özel olarak tasarlanmış en gelişmiş dijital tarım asistanınız. Hastalık teşhisi, akıllı sulama ve 3D tarla yönetimi hepsi bir arada.</p>
-            
-            <div class="download-buttons">
-                <a href="#download-android" class="store-btn android">
-                    <svg viewBox="0 0 24 24">
-                        <path d="M17.523 15.3414c-.011.0281-.0225.0561-.0365.0822l-1.536 3.167c-.156.324-.543.46-.867.304-.324-.156-.46-.543-.304-.867l1.458-3.007c-2.47-1.127-5.918-1.127-8.388 0l1.458 3.007c.156.324.02.711-.304.867-.324.156-.711.02-.867-.304l-1.536-3.167c-.014-.0261-.0255-.0541-.0365-.0822-3.411 1.637-5.836 4.793-6.529 8.658h24.001c-.693-3.865-3.118-7.021-6.529-8.658zm-11.233 6.368c-.604 0-1.096-.492-1.096-1.096s.492-1.096 1.096-1.096 1.096.492 1.096 1.096-.492 1.096-1.096 1.096zm11.42 0c-.604 0-1.096-.492-1.096-1.096s.492-1.096 1.096-1.096 1.096.492 1.096 1.096-.492 1.096-1.096 1.096zm-5.71-18.709c-4.142 0-7.5 3.358-7.5 7.5v2.5h15v-2.5c0-4.142-3.358-7.5-7.5-7.5zm0 12c-2.485 0-4.5-2.015-4.5-4.5s2.015-4.5 4.5-4.5 4.5 2.015 4.5 4.5-2.015 4.5-4.5 4.5z"/>
-                    </svg>
-                    Android için İndir
-                </a>
-                <a href="#download-ios" class="store-btn ios">
-                    <svg viewBox="0 0 24 24">
-                        <path d="M16.365 2.024c-1.396.068-3.085.932-4.041 1.947-.84.874-1.536 2.109-1.328 3.374 1.547.126 3.093-.787 4.015-1.892.835-.989 1.458-2.316 1.354-3.429zm-1.05 4.88c-1.62.062-3.013.985-3.81 1.002-.87.013-2.18-.888-3.535-.888-2.618.016-5.068 2.227-5.068 5.753 0 3.386 2.308 6.945 4.093 9.475 1.135 1.628 2.457 3.385 4.143 3.356 1.637-.034 2.115-1.026 4.011-1.026 1.867 0 2.378 1.026 4.067 1.002 1.706-.034 2.871-1.625 4.004-3.265 1.157-1.666 1.662-3.238 1.691-3.33-.035-.015-3.136-1.189-3.136-4.733 0-3.078 2.502-4.536 2.617-4.606-1.428-2.08-3.618-2.366-4.403-2.428z"/>
-                    </svg>
-                    iOS için İndir
-                </a>
-            </div>
+          <span class="etiket">Çevrimdışı öncelikli tarım yönetimi</span>
+          <h1 id="ana-baslik">Akıllı Tarım Asistanı</h1>
+          <p class="kahraman-yazi">Tarlayı çiz, ürünü yerleştir, hava ve toprak kararlarını takip et. Tarlam; internet zayıfken bile kayıt tutan, Türkçe konuşan ve çiftçinin günlük işini sadeleştiren mobil yardımcıdır.</p>
+          <div class="butonlar">
+            <a class="ana-buton" href="akilli-tarim-asistani.apk" download>
+              <span class="ikon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M17.6 9.48 19.44 6.3a.75.75 0 1 0-1.3-.75l-1.9 3.29A10.7 10.7 0 0 0 12 8a10.7 10.7 0 0 0-4.24.84l-1.9-3.29a.75.75 0 1 0-1.3.75L6.4 9.48A8.82 8.82 0 0 0 3 16.5V18h18v-1.5a8.82 8.82 0 0 0-3.4-7.02ZM8.25 14.5a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5Zm7.5 0a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5ZM5 20h14v2H5v-2Z"/></svg>
+              </span>
+              Android APK indir
+            </a>
+            <a class="ikincil-buton" href="#ozellikler">Uygulamayı incele</a>
+            <span class="buton-notu">Sürüm 1.0.0+1 · APK boyutu yaklaşık 84 MB · Android cihazlar için</span>
+          </div>
         </div>
 
-        <div class="hero-visual">
-            <div class="phone-mockup">
-                <div class="phone-notch"></div>
-                <div class="mockup-ui">
-                    <div class="mockup-ui-subtitle">Günaydın, Çiftçi 🌾</div>
-                    <div class="mockup-ui-title">Çamlıca Tarlası</div>
-                    <div style="font-size: 14px; opacity: 0.9; margin-bottom: 20px;">120 Dönüm • Buğday & Mısır</div>
-                    
-                    <div class="mockup-card">
-                        <div style="font-weight: 800; font-size: 14px;">💦 Akıllı Sulama</div>
-                        <div style="font-size: 12px; color: #666; margin-top: 5px;">Bugün 45dk damlama sulama öneriliyor.</div>
-                    </div>
-                </div>
-                <div class="mockup-body">
-                    <div style="font-weight: 700; font-size: 14px; margin-bottom: 15px; color: #444;">Son Aktiviteler</div>
-                    <div class="mockup-card" style="box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
-                        <div class="skeleton-line long"></div>
-                        <div class="skeleton-line medium"></div>
-                    </div>
-                    <div class="mockup-card" style="box-shadow: 0 2px 5px rgba(0,0,0,0.05); background: #383838; color: white;">
-                        <div class="skeleton-line short" style="background: rgba(255,255,255,0.2);"></div>
-                        <div class="skeleton-line medium" style="background: rgba(255,255,255,0.2);"></div>
-                    </div>
-                    <div class="mockup-card" style="box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
-                        <div class="skeleton-line long"></div>
-                        <div class="skeleton-line short"></div>
-                    </div>
-                </div>
+        <aside class="telefon" aria-label="Uygulama önizlemesi">
+          <div class="telefon-ust">
+            <small>Bugünün tarla özeti</small>
+            <strong>Çamlıca Tarlası</strong>
+            <div class="hava-satiri">
+              <div class="mini-veri"><span>Sıcaklık</span><b>27°C</b></div>
+              <div class="mini-veri"><span>Nem</span><b>%42</b></div>
+              <div class="mini-veri"><span>Rüzgâr</span><b>3.1</b></div>
             </div>
-        </div>
+          </div>
+          <div class="telefon-alt">
+            <div class="uygulama-kart">
+              <span class="ikon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2s7 7.05 7 12.25A7 7 0 0 1 5 14.25C5 9.05 12 2 12 2Zm0 18a4.9 4.9 0 0 0 4.9-4.9c0-2.05-2.45-5.55-4.9-8.25-2.45 2.7-4.9 6.2-4.9 8.25A4.9 4.9 0 0 0 12 20Z"/></svg></span>
+              <div><strong>Sulama önerisi hazır</strong><span>Yağışa göre sabah 06.00 için 45 dakika.</span></div>
+            </div>
+            <div class="uygulama-kart">
+              <span class="ikon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 4h16v5H4V4Zm0 7h7v9H4v-9Zm9 0h7v9h-7v-9Z"/></svg></span>
+              <div><strong>Takvimde 3 görev</strong><span>İlaçlama kontrolü, günlük kayıt, sulama.</span></div>
+            </div>
+            <div class="uygulama-kart">
+              <span class="ikon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M19.5 3.5 14 5.7 8 3.6 3.5 5.1V21l4.5-1.5 6 2.1 5.5-2.2V3.5ZM8 17.4l-2.5.8V6.55L8 5.72V17.4Zm6 2.08-4-1.4V5.72l4 1.4v12.36Zm3.5-1.43-1.5.6V7.1l1.5-.6v11.55Z"/></svg></span>
+              <div><strong>Tarla sınırı kayıtlı</strong><span>Poligon, ürün bölgeleri ve bitki sağlığı eşitlenir.</span></div>
+            </div>
+          </div>
+        </aside>
+      </div>
     </section>
 
-    <section class="features">
-        <div class="section-header">
-            <h2>Profesyonel Tarım, Basit Kullanım</h2>
-            <p>Tarlanızdaki tüm süreçleri tek bir ekrandan, karmaşık menüler arasında kaybolmadan yönetin. Uzman ziraat mühendisliği bilgisi şimdi parmaklarınızın ucunda.</p>
-        </div>
+    <div class="ozet-serit" aria-label="Uygulama özet değerleri">
+      <div class="ozet"><b>22+</b><span>Çevrimdışı bitki kaydı</span></div>
+      <div class="ozet"><b>14 gün</b><span>Sulama planı</span></div>
+      <div class="ozet"><b>7 gün</b><span>Hava tahmini</span></div>
+      <div class="ozet"><b>Zaman</b><span>Güvenli eşitleme</span></div>
+    </div>
 
-        <div class="features-grid">
-            <div class="feature-card">
-                <div class="feature-icon">
-                    <svg viewBox="0 0 24 24"><path d="M20.5 3l-.16.03L15 5.1 9 3 3.36 4.9c-.21.07-.36.25-.36.48V20.5c0 .28.22.5.5.5l.16-.03L9 18.9l6 2.1 5.64-1.9c.21-.07.36-.25.36-.48V3.5c0-.28-.22-.5-.5-.5zM15 19l-6-2.11V5l6 2.11V19z"/></svg>
-                </div>
-                <h3>3D İnteraktif Tarla</h3>
-                <p>GPS ile tarlanızı çizin, 3 boyutlu görünümde ekinlerinizi yerleştirin ve gelişimlerini görsel olarak takip edin.</p>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon">
-                    <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
-                </div>
-                <h3>Akıllı Hastalık Uyarıları</h3>
-                <p>Tarladaki ölü veya hasta bitkileri anında kaydedin. Sistem size ne zaman ilaçlama yapmanız, ne zaman söküm yapmanız gerektiğini söylesin.</p>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon">
-                    <svg viewBox="0 0 24 24"><path d="M12 2.02c-5.51 0-9.98 4.47-9.98 9.98s4.47 9.98 9.98 9.98 9.98-4.47 9.98-9.98S17.51 2.02 12 2.02zM11.48 20v-6.26H8L13 4v6.26h3.35L11.48 20z"/></svg>
-                </div>
-                <h3>Gübre ve Su Asistanı</h3>
-                <p>FAO (Birleşmiş Milletler) ve TAGEM verilerine dayalı matematiksel modellerle tam zamanında, eksiksiz sulama ve gübreleme tavsiyeleri.</p>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon">
-                    <svg viewBox="0 0 24 24"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/></svg>
-                </div>
-                <h3>Kapsamlı Ürün Ansiklopedisi</h3>
-                <p>Türkiye'de yetişen ana ürünlerin detaylı veritabanı. Bölgesel ekim takvimleri, toprak pH uygunluğu ve daha fazlası.</p>
-            </div>
+    <section id="ozellikler" class="ozellikler">
+      <div class="bolum">
+        <div class="bolum-baslik">
+          <h2>Çiftçinin her gün baktığı ekranlar tek uygulamada.</h2>
+          <p>Sayfa gerçek uygulama modüllerini temel alır: özet ekranı, tarlalar, takvim, hastalık analizi, toprak analizi, maliyet defteri ve kaynakça akışı.</p>
         </div>
+        <div class="ozellik-grid">
+          <article class="ozellik-kart">
+            <span class="kucuk-etiket">Tarla kaydı</span>
+            <div>
+              <h3>Haritada sınır çizimi</h3>
+              <p>GPS veya elle nokta ekleyerek tarla poligonu oluşturulur, alan hesabı kaydedilir ve detay ekranına aktarılır.</p>
+            </div>
+          </article>
+          <article class="ozellik-kart">
+            <span class="kucuk-etiket">Hava + toprak</span>
+            <div>
+              <h3>Yerel koşula göre karar</h3>
+              <p>Sıcaklık, nem, rüzgâr, yağış, pH ve toprak nemi tarlanın karar kartlarında sade Türkçe ile gösterilir.</p>
+            </div>
+          </article>
+          <article class="ozellik-kart">
+            <span class="kucuk-etiket">FAO-56</span>
+            <div>
+              <h3>Akıllı sulama planı</h3>
+              <p>Penman-Monteith ETo yaklaşımıyla 14 günlük sulama takvimi ve gerekçe metni üretilir.</p>
+            </div>
+          </article>
+          <article class="ozellik-kart">
+            <span class="kucuk-etiket">Fotoğraf analizi</span>
+            <div>
+              <h3>Hastalık ve bakım takibi</h3>
+              <p>Bitki fotoğrafı, sağlık durumu, tedavi süreci ve saha notları tek tarla kaydında tutulur.</p>
+            </div>
+          </article>
+          <article class="ozellik-kart">
+            <span class="kucuk-etiket">Maliyet defteri</span>
+            <div>
+              <h3>Sezon kârı görünür</h3>
+              <p>Tohum, gübre, ilaç, işçilik ve yakıt giderleri girilir; dönem sonu kâr tahmini izlenir.</p>
+            </div>
+          </article>
+          <article class="ozellik-kart">
+            <span class="kucuk-etiket">Çevrimdışı çalışma</span>
+            <div>
+              <h3>Bağlantı gelince eşitlenir</h3>
+              <p>Yerel kayıtlar cihazda tutulur; bağlantı döndüğünde arka planda güvenle eşitlenir.</p>
+            </div>
+          </article>
+        </div>
+      </div>
     </section>
 
-    <section class="offline-section">
-        <div class="offline-text">
-            <h2>İnternet Yok mu? Hiç Sorun Değil.</h2>
-            <p>Anadolu'nun ücra köşelerinde, tarlanın ortasında bağlantınız kopabilir. Biz bunu biliyoruz.</p>
-            <p>Akıllı Tarım Asistanı, çevrimdışı öncelikli çalışacak şekilde tasarlanmıştır. Tüm kayıtlarınızı girebilir, tarlanızı inceleyebilir ve hastalık rehberlerine internet olmadan ulaşabilirsiniz. Bağlantı geldiğinde sistem arka planda güvenle eşitlenir.</p>
+    <section id="tarla-akisi" class="tarla-akisi">
+      <div class="bolum">
+        <div class="akis-yerlesim">
+          <div class="tarla-gorsel" aria-label="Tarla yönetimi görseli">
+            <div class="tarla-panel">
+              <div class="uygulama-kart">
+                <span class="ikon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 11.75 11.25 14 15.4 8.8 17 10.05 11.45 17 7.55 13.1 9 11.75ZM12 2l8 4v6c0 5-3.35 9.65-8 10-4.65-.35-8-5-8-10V6l8-4Z"/></svg></span>
+                <div><strong>Önce kayıt, sonra öneri</strong><span>Tarla sınırı ve ürün bilgisi olmadan tahmin uydurulmaz.</span></div>
+              </div>
+              <div class="uygulama-kart">
+                <span class="ikon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M11 2h2v20h-2V2ZM4 5h2v14H4V5Zm14 0h2v14h-2V5ZM7 8h2v8H7V8Zm8 0h2v8h-2V8Z"/></svg></span>
+                <div><strong>Kaynakça açık</strong><span>Hava, harita, toprak ve tarım kuralları uygulama içinde belirtilir.</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="akilli-liste">
+            <div class="bolum-baslik" style="display:block;margin-bottom:4px;">
+              <h2>Tarla işi adım adım ilerler.</h2>
+              <p>Arayüz, sahadaki kullanım sırasına göre düşünülür: önce tarlayı tanı, sonra ürünü seç, ardından bakım kararını uygula.</p>
+            </div>
+            <article class="adim">
+              <span class="adim-no">1</span>
+              <div><h3>Tarlayı çiz</h3><p>Harita üzerinde sınır belirlenir, dekar bilgisi hesaplanır, konum yerel veritabanına kaydedilir.</p></div>
+            </article>
+            <article class="adim">
+              <span class="adim-no">2</span>
+              <div><h3>Ürünü eşleştir</h3><p>Bitki uygunluk raporu; sıcaklık, pH, yağış ve takvim bilgisine göre Türkçe sonuç üretir.</p></div>
+            </article>
+            <article class="adim">
+              <span class="adim-no">3</span>
+              <div><h3>Bugünün işini gör</h3><p>Özet ekranı sulama, ilaçlama, hasat ve kayıt görevlerini tek bakışta gösterir.</p></div>
+            </article>
+            <article class="adim">
+              <span class="adim-no">4</span>
+              <div><h3>Bağlantı gelince eşitle</h3><p>Çevrimdışı girilen kayıtlar kuyrukta bekler; internet geldiğinde çakışma zaman damgasına göre çözülür.</p></div>
+            </article>
+          </div>
         </div>
-        <div class="offline-icon">
-            <svg viewBox="0 0 24 24">
-                <path d="M23.64 7c-.45-.34-4.93-4-11.64-4C5.28 3 .81 6.66.36 7l11.63 14.49.01.01.01-.01L23.64 7zm-11.64 12.19L3.54 8.78c1.37-1.04 4.88-3.28 8.46-3.28s7.09 2.24 8.46 3.28l-8.46 10.41z"/>
-                <path d="M2.26 2.26l19.48 19.48-1.41 1.41-5.27-5.27L12 21.5l-.01.01-.01-.01L.36 7c.21-.16.9-.68 1.96-1.37L.85 3.67l1.41-1.41z"/>
-            </svg>
-        </div>
+      </div>
     </section>
 
-    <footer>
-        <div class="logo" style="justify-content: center; margin-bottom: 20px; color: #555;">
-            <svg viewBox="0 0 24 24" style="fill: #555;">
-                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-2-5.5l7-7-1.41-1.41L10 11.67l-2.59-2.58L6 10.5l4 4z"/>
-            </svg>
-            Akıllı Tarım Asistanı v2.0
+    <section id="urunler" class="urunler">
+      <div class="bolum">
+        <div class="bolum-baslik">
+          <h2>Türkiye ürünlerine uygun görsel dil.</h2>
+          <p>Uygulamada kullanılan ürün varlıkları siteye de taşındı. Bu yaklaşım sayfanın genel stok görsel gibi değil, gerçek uygulamanın uzantısı gibi görünmesini sağlar.</p>
         </div>
-        <p>&copy; 2026 Tüm Hakları Saklıdır. Türkiye'nin çiftçileri için gururla geliştirildi.</p>
-    </footer>
+        <div class="urun-grid">
+          <article class="urun-kart">
+            <img src="assets/crops/misir.png" alt="Mısır ürünü">
+            <div><strong>Mısır</strong><span>Sulama aralığı ve gelişim dönemi takibi.</span></div>
+          </article>
+          <article class="urun-kart">
+            <img src="assets/crops/domates.png" alt="Domates ürünü">
+            <div><strong>Domates</strong><span>Hastalık gözlemi ve günlük bakım notları.</span></div>
+          </article>
+          <article class="urun-kart">
+            <img src="assets/crops/aycicegi.png" alt="Ayçiçeği ürünü">
+            <div><strong>Ayçiçeği</strong><span>Bölgesel takvim ve maliyet hesabı.</span></div>
+          </article>
+          <article class="urun-kart">
+            <img src="assets/crops/cay.png" alt="Çay ürünü">
+            <div><strong>Çay</strong><span>Karadeniz koşullarına uygun rehber.</span></div>
+          </article>
+          <article class="urun-kart">
+            <img src="assets/crops/portakal.png" alt="Portakal ürünü">
+            <div><strong>Portakal</strong><span>Bahçe yönetimi ve hasat planı.</span></div>
+          </article>
+        </div>
+      </div>
+    </section>
 
+    <section id="indir" class="indirme">
+      <div class="bolum indirme-kutu">
+        <div>
+          <span class="etiket">Android APK hazır</span>
+          <h2>Uygulamayı telefona kurup sahada deneyin.</h2>
+          <p>APK indirme bağlantısı doğrudan kök dizindeki dosyaya bağlandı. Statik site olarak yayınlandığında aynı dosya birlikte yüklendiği sürece buton çalışır.</p>
+        </div>
+        <aside class="apk-karti">
+          <strong>Akıllı Tarım Asistanı</strong>
+          <p>Android kurulum paketi. Kurulumdan sonra çevrimdışı kayıt, tarla çizimi, takvim ve rehber ekranları cihazda kullanılabilir.</p>
+          <a class="ana-buton" href="akilli-tarim-asistani.apk" download>APK dosyasını indir</a>
+          <div class="apk-bilgi">
+            <span>Sürüm 1.0.0+1</span>
+            <span>Yaklaşık 84 MB</span>
+            <span>Android</span>
+          </div>
+        </aside>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="alt-ic">
+      <strong>Tarlam · Akıllı Tarım Asistanı</strong>
+      <span>Türkiye'nin çiftçileri için çevrimdışı öncelikli tarla yönetimi.</span>
+    </div>
+  </footer>
 </body>
 </html>
