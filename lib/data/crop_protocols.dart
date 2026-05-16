@@ -113,6 +113,13 @@ class CropConfig {
   final int? targetPlantCount; // kullanıcının opsiyonel hedef bitki adedi
   final PlantFacingDirection? facingDirection; // bitkinin baktığı yön
 
+  /// Yalnız çok yıllık ürünlerde (portakal, çay vb.) anlamlıdır.
+  ///  - true  → kullanıcı yeni fidan dikti (perennialSeedling modu).
+  ///  - false → olgun ağaç/bahçe (perennialMature modu).
+  ///  - null  → tek yıllık ürün ya da bilinmiyor (CropStateService
+  ///            dikim tarihinden tahmin eder).
+  final bool? isSeedling;
+
   const CropConfig({
     required this.soilType,
     required this.irrigationMethod,
@@ -122,6 +129,7 @@ class CropConfig {
     required this.plantSpacingCm,
     this.targetPlantCount,
     this.facingDirection,
+    this.isSeedling,
   });
 
   double get plantFootprintSqm => (rowSpacingCm / 100) * (plantSpacingCm / 100);
@@ -155,6 +163,7 @@ class CropConfig {
         'plantSpacingCm': plantSpacingCm,
         if (targetPlantCount != null) 'targetPlantCount': targetPlantCount,
         if (facingDirection != null) 'facingDirection': facingDirection!.name,
+        if (isSeedling != null) 'isSeedling': isSeedling,
       };
 
   factory CropConfig.fromJson(Map<String, dynamic> j) => CropConfig(
@@ -180,6 +189,7 @@ class CropConfig {
                 (e) => e.name == j['facingDirection'],
                 orElse: () => PlantFacingDirection.south,
               ),
+        isSeedling: j['isSeedling'] as bool?,
       );
 }
 

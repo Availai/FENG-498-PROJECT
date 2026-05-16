@@ -24,6 +24,8 @@ class PlantDatabaseScreen extends StatelessWidget {
           ],
           bottom: const TabBar(
             indicatorColor: Colors.white,
+            labelColor: Colors.white,
+            unselectedLabelColor: Colors.white70,
             labelStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             tabs: [
               Tab(icon: Icon(Icons.landscape), text: 'AI Görüntü Analizleri'),

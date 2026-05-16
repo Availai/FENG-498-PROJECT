@@ -32,6 +32,18 @@ class RuleEvaluationContext {
   /// Ürünün bu tarladaki alanı, tahmini bitki sayısı ve su dengesi.
   final RuleFieldStateSnapshot? fieldState;
 
+  // ── Declarative pack için ek meta (CLAUDE.md sec 15) ────────────────
+  // FactBuilder bu alanları otomatik facts haritasına işler. Tüm alanlar
+  // null güvenli; UI/repository tarafından doldurulur. Eski çağrı
+  // siteleri etkilenmez — geriye dönük uyumlu.
+  final String? cultivationType; // 'open_field'|'greenhouse'
+  final String? waterRegime; // 'dryland'|'irrigated'
+  final String? region; // 'trakya'|'ic_anadolu'|...
+  final String? soilType; // 'clay'|'loam'|'sandy'|...
+  final String? nLevel; // 'low'|'medium'|'high'
+  final String? pLevel;
+  final String? kLevel;
+
   final DateTime now;
 
   const RuleEvaluationContext({
@@ -43,6 +55,13 @@ class RuleEvaluationContext {
     this.hourly,
     this.environment,
     this.fieldState,
+    this.cultivationType,
+    this.waterRegime,
+    this.region,
+    this.soilType,
+    this.nLevel,
+    this.pLevel,
+    this.kLevel,
     required this.now,
   });
 
@@ -208,12 +227,18 @@ class PlantInstanceSnapshot {
   /// PlantCondition.* sabit listesi (v8 conditionFlagsJson içeriği).
   final List<String> conditionFlags;
 
+  /// `FieldPlantInstances.diseaseType` — Türkçe spesifik hastalık adı.
+  /// Örn: "Yaprak Lekesi", "Mildiyö", "Külleme". FactBuilder bunu
+  /// `DiseaseTypeMapping.toSymptomKey` ile English fact anahtarına çevirir.
+  final String? diseaseType;
+
   const PlantInstanceSnapshot({
     required this.id,
     this.cropId,
     this.cropName,
     required this.healthStatus,
     this.conditionFlags = const [],
+    this.diseaseType,
   });
 
   bool hasCondition(String flag) => conditionFlags.contains(flag);

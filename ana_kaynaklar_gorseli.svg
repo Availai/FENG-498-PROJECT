@@ -1,0 +1,156 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1200" viewBox="0 0 1800 1200" role="img" aria-labelledby="title desc">
+  <title id="title">Yararlanılan Ana Kaynaklar</title>
+  <desc id="desc">Akıllı Tarım Asistanı uygulamasında kullanılan ana veri, yöntem ve altyapı kaynaklarını gösteren poster görseli.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f8fff9"/>
+      <stop offset="0.52" stop-color="#eef8f0"/>
+      <stop offset="1" stop-color="#f7fbff"/>
+    </linearGradient>
+    <linearGradient id="green" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#14532d"/>
+      <stop offset="1" stop-color="#2f8f46"/>
+    </linearGradient>
+    <linearGradient id="blue" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#11345f"/>
+      <stop offset="1" stop-color="#1f6f93"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#d97706"/>
+      <stop offset="1" stop-color="#f4b63f"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#183b2b" flood-opacity="0.16"/>
+    </filter>
+    <filter id="softShadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#183b2b" flood-opacity="0.13"/>
+    </filter>
+    <style>
+      .font { font-family: "Segoe UI", Arial, sans-serif; }
+      .title { font-size: 58px; font-weight: 800; fill: #08213f; letter-spacing: 0; }
+      .subtitle { font-size: 28px; font-weight: 500; fill: #31546a; }
+      .section-title { font-size: 28px; font-weight: 800; fill: #08213f; }
+      .source-name { font-size: 29px; font-weight: 800; fill: #0c2746; }
+      .source-text { font-size: 22px; font-weight: 500; fill: #36556a; }
+      .small { font-size: 19px; font-weight: 600; fill: #496878; }
+      .chip { font-size: 20px; font-weight: 800; fill: #ffffff; }
+      .center-title { font-size: 36px; font-weight: 900; fill: #ffffff; }
+      .center-text { font-size: 22px; font-weight: 600; fill: #e8fff0; }
+      .line { fill: none; stroke: #2f7d40; stroke-width: 4; stroke-linecap: round; stroke-dasharray: 12 14; opacity: 0.72; }
+      .card { fill: #ffffff; stroke: #b9d4c0; stroke-width: 2; rx: 28; filter: url(#softShadow); }
+      .mini-card { fill: #fbfffc; stroke: #d6e6da; stroke-width: 2; rx: 18; }
+    </style>
+  </defs>
+
+  <rect width="1800" height="1200" fill="url(#bg)"/>
+  <circle cx="1540" cy="180" r="230" fill="#dcefe1" opacity="0.45"/>
+  <circle cx="230" cy="980" r="260" fill="#e5f4ed" opacity="0.70"/>
+  <path d="M0 1085 C220 1025 360 1135 560 1085 C755 1037 920 1044 1105 1085 C1320 1133 1510 1036 1800 1094 L1800 1200 L0 1200 Z" fill="#dcefd3"/>
+  <path d="M0 1125 C260 1082 445 1160 668 1118 C886 1078 1040 1092 1232 1122 C1458 1158 1595 1092 1800 1136 L1800 1200 L0 1200 Z" fill="#9bc66d" opacity="0.75"/>
+  <path d="M28 1153 C210 1117 334 1170 510 1145 C704 1117 862 1118 1048 1147 C1268 1180 1435 1126 1770 1154" fill="none" stroke="#2f8f46" stroke-width="8" opacity="0.35"/>
+
+  <g class="font">
+    <text x="90" y="105" class="title">Yararlanılan Ana Kaynaklar</text>
+    <text x="92" y="150" class="subtitle">Veri, yöntem ve karar destek katmanları tek bir çevrimdışı öncelikli tarım sisteminde birleşir.</text>
+  </g>
+
+  <g transform="translate(755 425)" filter="url(#shadow)">
+    <circle cx="145" cy="145" r="145" fill="url(#green)"/>
+    <circle cx="145" cy="145" r="117" fill="none" stroke="#ffffff" stroke-width="3" opacity="0.42"/>
+    <path d="M91 167 C124 160 149 137 154 96 C188 122 202 168 167 207 C142 235 105 225 91 167 Z" fill="#ffffff" opacity="0.14"/>
+    <path d="M151 97 C136 140 124 171 103 201" fill="none" stroke="#ffffff" stroke-width="6" stroke-linecap="round" opacity="0.22"/>
+    <text x="145" y="128" text-anchor="middle" class="font center-title">Akıllı Tarım</text>
+    <text x="145" y="174" text-anchor="middle" class="font center-title">Asistanı</text>
+    <text x="145" y="218" text-anchor="middle" class="font center-text">Karar destek merkezi</text>
+  </g>
+
+  <path class="line" d="M740 350 C620 260 500 245 360 260"/>
+  <path class="line" d="M910 340 C1020 230 1215 215 1440 245"/>
+  <path class="line" d="M710 575 C570 655 420 665 275 635"/>
+  <path class="line" d="M1045 585 C1190 675 1355 680 1535 645"/>
+  <path class="line" d="M900 710 C920 825 980 915 1112 988"/>
+  <path class="line" d="M790 710 C742 835 655 925 510 988"/>
+
+  <g class="font" transform="translate(85 220)">
+    <rect class="card" width="505" height="215"/>
+    <rect x="24" y="24" width="132" height="46" rx="23" fill="url(#blue)"/>
+    <text x="90" y="55" text-anchor="middle" class="chip">HAVA</text>
+    <text x="185" y="67" class="section-title">Meteoroloji Verileri</text>
+    <rect x="28" y="95" width="132" height="80" class="mini-card"/>
+    <text x="94" y="130" text-anchor="middle" class="source-name" font-size="24">Open</text>
+    <text x="94" y="161" text-anchor="middle" class="source-name" font-size="24">Weather</text>
+    <rect x="180" y="95" width="132" height="80" class="mini-card"/>
+    <text x="246" y="130" text-anchor="middle" class="source-name" font-size="24">Open</text>
+    <text x="246" y="161" text-anchor="middle" class="source-name" font-size="24">Meteo</text>
+    <rect x="332" y="95" width="132" height="80" class="mini-card"/>
+    <text x="398" y="146" text-anchor="middle" class="source-name">MGM</text>
+    <text x="28" y="199" class="source-text">Anlık hava, 7 günlük tahmin ve Türkiye odaklı risk sinyalleri.</text>
+  </g>
+
+  <g class="font" transform="translate(1210 205)">
+    <rect class="card" width="505" height="240"/>
+    <rect x="24" y="24" width="132" height="46" rx="23" fill="url(#green)"/>
+    <text x="90" y="55" text-anchor="middle" class="chip">TOPRAK</text>
+    <text x="185" y="67" class="section-title">Toprak ve Uydu</text>
+    <rect x="28" y="100" width="205" height="82" class="mini-card"/>
+    <text x="130" y="135" text-anchor="middle" class="source-name" font-size="24">SoilGrids</text>
+    <text x="130" y="165" text-anchor="middle" class="source-name" font-size="24">ISRIC</text>
+    <rect x="258" y="100" width="205" height="82" class="mini-card"/>
+    <text x="360" y="151" text-anchor="middle" class="source-name" font-size="24">Agromonitoring</text>
+    <text x="28" y="207" class="source-text">pH, toprak yapısı, nem, uydu ve tarımsal alan verileri.</text>
+  </g>
+
+  <g class="font" transform="translate(80 560)">
+    <rect class="card" width="520" height="230"/>
+    <rect x="24" y="24" width="132" height="46" rx="23" fill="url(#gold)"/>
+    <text x="90" y="55" text-anchor="middle" class="chip">BİTKİ</text>
+    <text x="185" y="67" class="section-title">Bitki Bilgisi</text>
+    <rect x="28" y="105" width="205" height="76" class="mini-card"/>
+    <text x="130" y="151" text-anchor="middle" class="source-name">Perenual</text>
+    <rect x="258" y="105" width="220" height="76" class="mini-card"/>
+    <text x="368" y="136" text-anchor="middle" class="source-name" font-size="23">Çevrimdışı</text>
+    <text x="368" y="165" text-anchor="middle" class="source-name" font-size="23">Ansiklopedi</text>
+    <text x="28" y="207" class="source-text">Ürün profili, yetiştirme bilgisi ve Türkçe rehber içerikleri.</text>
+  </g>
+
+  <g class="font" transform="translate(1195 560)">
+    <rect class="card" width="520" height="245"/>
+    <rect x="24" y="24" width="132" height="46" rx="23" fill="url(#blue)"/>
+    <text x="90" y="55" text-anchor="middle" class="chip">YÖNTEM</text>
+    <text x="185" y="67" class="section-title">Bilimsel Kurallar</text>
+    <rect x="28" y="106" width="205" height="78" class="mini-card"/>
+    <text x="130" y="137" text-anchor="middle" class="source-name" font-size="23">FAO ETo</text>
+    <text x="130" y="166" text-anchor="middle" class="source-name" font-size="23">Yöntemi</text>
+    <rect x="258" y="106" width="220" height="78" class="mini-card"/>
+    <text x="368" y="137" text-anchor="middle" class="source-name" font-size="23">WMO / FAO</text>
+    <text x="368" y="166" text-anchor="middle" class="source-name" font-size="23">Risk Eşikleri</text>
+    <text x="28" y="211" class="source-text">ETo, don, fırtına, sıcaklık ve yağış karar mekanizmaları.</text>
+  </g>
+
+  <g class="font" transform="translate(255 895)">
+    <rect class="card" width="555" height="190"/>
+    <rect x="24" y="24" width="132" height="46" rx="23" fill="url(#green)"/>
+    <text x="90" y="55" text-anchor="middle" class="chip">HARİTA</text>
+    <text x="185" y="67" class="section-title">Konum ve Harita Altyapısı</text>
+    <rect x="30" y="105" width="230" height="58" class="mini-card"/>
+    <text x="145" y="142" text-anchor="middle" class="source-name" font-size="25">OpenStreetMap</text>
+    <rect x="285" y="105" width="205" height="58" class="mini-card"/>
+    <text x="388" y="142" text-anchor="middle" class="source-name" font-size="25">ArcGIS Tiles</text>
+  </g>
+
+  <g class="font" transform="translate(990 895)">
+    <rect class="card" width="555" height="190"/>
+    <rect x="24" y="24" width="132" height="46" rx="23" fill="url(#gold)"/>
+    <text x="90" y="55" text-anchor="middle" class="chip">YEREL</text>
+    <text x="185" y="67" class="section-title">Türkiye Tarım İçeriği</text>
+    <rect x="30" y="105" width="220" height="58" class="mini-card"/>
+    <text x="140" y="142" text-anchor="middle" class="source-name" font-size="25">TAGEM Verileri</text>
+    <rect x="275" y="105" width="230" height="58" class="mini-card"/>
+    <text x="390" y="142" text-anchor="middle" class="source-name" font-size="25">Yerel Kurallar</text>
+  </g>
+
+  <g class="font" transform="translate(92 1085)">
+    <rect x="0" y="0" width="1616" height="62" rx="31" fill="#0f4f2a"/>
+    <text x="808" y="40" text-anchor="middle" font-size="28" font-weight="800" fill="#ffffff">Kaynaklar; hava, toprak, bitki, harita ve bilimsel yöntem verilerini çiftçi için anlaşılır öneriye dönüştürür.</text>
+  </g>
+</svg>

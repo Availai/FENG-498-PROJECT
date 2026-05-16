@@ -239,7 +239,8 @@ ThemeData buildAppTheme() {
 
   return base.copyWith(
     appBarTheme: AppBarTheme(
-      backgroundColor: AppColors.bg,
+      backgroundColor: AppColors.forest, // ana ekrandaki gibi koyu yonca yeşili
+      foregroundColor: Colors.white,
       elevation: 0,
       scrolledUnderElevation: 0,
       shadowColor: Colors.transparent,
@@ -248,9 +249,10 @@ ThemeData buildAppTheme() {
       titleTextStyle: GoogleFonts.outfit(
         fontSize: 20,
         fontWeight: FontWeight.w700,
-        color: AppColors.textPrimary,
+        color: Colors.white,
       ),
-      iconTheme: const IconThemeData(color: AppColors.textPrimary, size: 24),
+      iconTheme: const IconThemeData(color: Colors.white, size: 24),
+      actionsIconTheme: const IconThemeData(color: Colors.white, size: 24),
     ),
     cardTheme: CardThemeData(
       elevation: 0,

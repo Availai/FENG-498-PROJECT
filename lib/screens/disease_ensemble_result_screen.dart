@@ -36,7 +36,6 @@ class DiseaseEnsembleResultScreen extends StatelessWidget {
       backgroundColor: AppColors.bg,
       appBar: AppBar(
         title: const Text('Hastalık Teşhisi'),
-        backgroundColor: AppColors.surface,
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),

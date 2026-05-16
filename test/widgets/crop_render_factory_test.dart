@@ -5,7 +5,11 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   const surfaceArrowKey = ValueKey<String>('crop-facing-surface-arrow');
 
-  testWidgets('yön seçilmiş bitkide baktığı yön yüzey oku gösterilir',
+  // Bitki yönü seçim feature'ı şu an uygulamadan kaldırılmış durumda
+  // (crop_render_factory.dart `_hasFacingDirection => false`). Bu yüzden
+  // facing arrow asla gösterilmemeli. Feature geri eklenirse `findsNothing`
+  // → `findsOneWidget` olarak güncellenir.
+  testWidgets('yön feature kapalı: facing arrow hiçbir durumda gösterilmez',
       (tester) async {
     await tester.pumpWidget(
       MaterialApp(
@@ -24,16 +28,12 @@ void main() {
       ),
     );
 
-    expect(find.byKey(surfaceArrowKey), findsOneWidget);
+    expect(find.byKey(surfaceArrowKey), findsNothing);
     expect(find.byIcon(Icons.navigation_rounded), findsNothing);
   });
 
-  testWidgets(
-      'yön seçilmemiş bitkide bile varsayılan yön oku gösterilir (güney)',
+  testWidgets('yön feature kapalı: facing arrow varsayılan durumda da yok',
       (tester) async {
-    // CLAUDE.md gereği: bitki yönü her zaman görünür olmalı; çiftçi açı
-    // seçmese bile harita bakışında yön belirgin olur. Varsayılan yön
-    // 180° (güney) — Türkiye kuzey yarımküresi için yetiştirme normu.
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
@@ -50,7 +50,7 @@ void main() {
       ),
     );
 
-    expect(find.byKey(surfaceArrowKey), findsOneWidget);
+    expect(find.byKey(surfaceArrowKey), findsNothing);
   });
 
   testWidgets('seçili bitkide yön için bitki görseli oynatılmaz',

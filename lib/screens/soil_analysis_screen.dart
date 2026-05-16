@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../services/api/soilgrids_api.dart';
 import '../services/soil_fertilization_service.dart';
+import '../theme/app_theme.dart';
 import '../widgets/help_panel.dart';
 
 /// Modül 6 — Detaylı Toprak Analizi & Gübreleme ekranı.
@@ -83,15 +84,9 @@ class _SoilAnalysisScreenState extends State<SoilAnalysisScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF1F8E9),
+      backgroundColor: AppColors.bg,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1B5E20),
-        title: Text(
-          'Toprak Analizi — ${widget.fieldName}',
-          style: GoogleFonts.outfit(
-              color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700),
-        ),
-        iconTheme: const IconThemeData(color: Colors.white),
+        title: Text('Toprak Analizi — ${widget.fieldName}'),
         actions: [
           IconButton(
             tooltip: 'Yenile',
@@ -99,7 +94,7 @@ class _SoilAnalysisScreenState extends State<SoilAnalysisScreen> {
             onPressed: _isLoading ? null : _loadProfile,
           ),
           IconButton(
-            icon: const Icon(Icons.help_outline_rounded, color: Colors.white),
+            icon: const Icon(Icons.help_outline_rounded),
             tooltip: 'Yardım',
             onPressed: () => HelpPanel.show(context, HelpContent.soilAnalysis),
           ),
@@ -228,7 +223,7 @@ class _SoilAnalysisScreenState extends State<SoilAnalysisScreen> {
                       Expanded(
                         child: Text(
                           'Bu değerler uydu modeli ve doku tahmininden çıkarılmıştır. '
-                          'Kesin doz için il/ilçe TAGEM laboratuvar analizi yaptırın.',
+                          'Kesin doz için akredite bir toprak laboratuvarında analiz yaptırın.',
                           style: TextStyle(fontSize: 11),
                         ),
                       ),

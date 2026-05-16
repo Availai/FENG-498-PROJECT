@@ -12,7 +12,7 @@ import '../services/app_providers.dart';
 import '../services/crop_placement.dart';
 import '../services/crop_protocol_service.dart';
 import '../services/crop_schedule_seeder.dart';
-import '../services/growth_engine.dart';
+import '../services/crop_state_service.dart';
 import '../services/notification_service.dart';
 import '../services/task_directive_service.dart';
 import '../data/activity_types.dart';
@@ -607,28 +607,54 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
 
           // 6. Crop Zone Tooltip overlay
           if (_selectedCropForTooltip != null)
-            Positioned(
-              left: 0,
-              right: 0,
-              top: MediaQuery.of(context).size.height * 0.25,
-              child: Center(
-                child: CropZoneTooltip(
-                  cropName:
-                      _selectedCropForTooltip!['name']?.toString() ?? 'Bitki',
-                  cropColor: _cropColor(_selectedCropForTooltip!),
-                  plantedDate:
-                      _selectedCropForTooltip!['planted_date']?.toString(),
-                  harvestDays:
-                      (_selectedCropForTooltip!['harvest_days'] as num?)
-                              ?.toInt() ??
-                          90,
-                  maturityPercent:
-                      _computeMaturityPercent(_selectedCropForTooltip!),
-                  onDelete: () => _deleteCropZone(_selectedCropForTooltip!),
-                  onClose: _closeTooltip,
+            Builder(builder: (context) {
+              final tooltipName =
+                  _selectedCropForTooltip!['name']?.toString() ?? 'Bitki';
+              final tcrop = TurkishCropsRepository.instance.findByName(
+                tooltipName,
+              );
+              final tPlanted = _parsePlantedDate(
+                  _selectedCropForTooltip!['planted_date']?.toString());
+              final tIsSeedling =
+                  _selectedCropForTooltip!['is_seedling'] is bool
+                      ? _selectedCropForTooltip!['is_seedling'] as bool
+                      : null;
+              final tMode = CropStateService.modeFor(
+                cropName: tooltipName,
+                isSeedling: tIsSeedling,
+                plantedDate: tPlanted,
+              );
+              final tDisclaimer = CropStateService.disclaimerFor(
+                cropName: tooltipName,
+                mode: tMode,
+                plantedDate: tPlanted,
+              );
+              return Positioned(
+                left: 0,
+                right: 0,
+                top: MediaQuery.of(context).size.height * 0.25,
+                child: Center(
+                  child: CropZoneTooltip(
+                    cropName: tooltipName,
+                    cropColor: _cropColor(_selectedCropForTooltip!),
+                    plantedDate:
+                        _selectedCropForTooltip!['planted_date']?.toString(),
+                    harvestDays:
+                        (_selectedCropForTooltip!['harvest_days'] as num?)
+                                ?.toInt() ??
+                            90,
+                    maturityPercent:
+                        _computeMaturityPercent(_selectedCropForTooltip!),
+                    stableId: tcrop?.stableId,
+                    category: tcrop?.category,
+                    harvestMonths: tcrop?.harvestMonths,
+                    lifecycleDisclaimer: tDisclaimer,
+                    onDelete: () => _deleteCropZone(_selectedCropForTooltip!),
+                    onClose: _closeTooltip,
+                  ),
                 ),
-              ),
-            ),
+              );
+            }),
 
           // Analiz yükleniyorken küçük, blok etmeyen pill göstergesi.
           if (_isLoading)
@@ -932,33 +958,38 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
     Map<String, dynamic> crop, {
     CropGrowthState? growthState,
   }) {
-    if (growthState != null) {
-      final canonical = SupportedCrops.canonicalName(crop['name']?.toString());
-      if (canonical != null) {
-        final key = SupportedCrops.normalize(canonical);
-        if (GrowthEngine.isSupported(key)) {
-          return (GrowthEngine.overallProgressFor(
-                    key,
-                    growthState.accumulatedGdd,
-                  ) *
-                  100)
-              .clamp(0, 100)
-              .toDouble();
-        }
-      }
-    }
-    final plantedDateStr = crop['planted_date']?.toString();
-    if (plantedDateStr == null) return 0;
-    DateTime? plantedDate;
-    final parts = plantedDateStr.split('.');
+    // 5 ana ürünün (CLAUDE.md §11) tek/çok yıllık ayrımı + fidan/olgun
+    // ayrımını [CropStateService] tek noktada yönetir. Eski elle-yazılı
+    // hesap (planted_date ± harvest_days) burada fallback olarak değil,
+    // CropStateService içinden çağrılır.
+    final cropName = crop['name']?.toString() ?? '';
+    final plantedDate = _parsePlantedDate(crop['planted_date']?.toString());
+    final harvestDays = (crop['harvest_days'] as num?)?.toInt();
+    final isSeedling =
+        crop['is_seedling'] is bool ? crop['is_seedling'] as bool : null;
+    final mode = CropStateService.modeFor(
+      cropName: cropName,
+      isSeedling: isSeedling,
+      plantedDate: plantedDate,
+    );
+    return CropStateService.percentFor(
+      cropName: cropName,
+      mode: mode,
+      plantedDate: plantedDate,
+      harvestDays: harvestDays,
+      accumulatedGdd: growthState?.accumulatedGdd,
+    );
+  }
+
+  /// "dd.MM.yyyy" veya ISO 8601 formatını DateTime'a çevirir.
+  DateTime? _parsePlantedDate(String? raw) {
+    if (raw == null || raw.isEmpty) return null;
+    final parts = raw.split('.');
     if (parts.length == 3) {
-      plantedDate = DateTime.tryParse('${parts[2]}-${parts[1]}-${parts[0]}');
+      final parsed = DateTime.tryParse('${parts[2]}-${parts[1]}-${parts[0]}');
+      if (parsed != null) return parsed;
     }
-    plantedDate ??= DateTime.tryParse(plantedDateStr);
-    if (plantedDate == null) return 0;
-    final harvestDays = (crop['harvest_days'] as num?)?.toInt() ?? 90;
-    final elapsed = DateTime.now().difference(plantedDate).inDays;
-    return ((elapsed / harvestDays) * 100).clamp(0, 100);
+    return DateTime.tryParse(raw);
   }
 
   // ignore: unused_element
@@ -1490,10 +1521,12 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
       return;
     }
 
-    // 3 vitrin bitki için çiftçi setup sayfası göster.
+    // Tüm bitkiler için çiftçi setup sayfası göster.
+    // Protokollü bitkiler ekim mevsimi + bölge ipucu da görür.
     final protocol = CropProtocols.resolveByName(plant.nameTr);
+    final guide = TurkiyeCropGuides.lookup(plant.nameTr);
     CropConfig? selectedConfig;
-    if (protocol != null && mounted) {
+    if (mounted) {
       final fieldId = widget.fieldData['id']?.toString() ?? '';
       final existingConfig = CropProtocolService.loadConfig(
         fieldId: fieldId,
@@ -1508,8 +1541,11 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
         isScrollControlled: true,
         builder: (_) => _CropSetupSheet(
           protocol: protocol,
+          cropName: plant.nameTr,
           fieldAreaDekar: fieldArea,
           initialConfig: existingConfig,
+          defaultRowSpacingCm: guide?.rowSpacingCm ?? 70,
+          defaultPlantSpacingCm: guide?.plantSpacingCm ?? 30,
         ),
       );
       if (!mounted) return;
@@ -1574,18 +1610,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
     final plantedDate =
         '${DateTime.now().day.toString().padLeft(2, '0')}.${DateTime.now().month.toString().padLeft(2, '0')}.${DateTime.now().year}';
 
-    // Yön seçimi — protocollü/protocolsüz tüm bitkiler için her zaman sor.
-    // Setup sheet sadece 3 protocollü bitkide açılıyor; yön seçimini ondan
-    // ayırarak tüm bitkilerde tutarlı bir akış sağlıyoruz.
-    String? facingDirection = config?.facingDirection?.name;
-    if (mounted) {
-      facingDirection = await _askFacingDirection(
-        context,
-        plantName: plant.nameTr,
-        initialRaw: facingDirection,
-      );
-    }
-    if (!mounted) return;
+    const String? facingDirection = null;
 
     // Her ekleme yeni bir kayıt oluşturur — kullanıcı aynı bitki türünden
     // birden fazla bölge ekleyebilir. (Eski "aynı isim varsa replant" davranışı
@@ -1601,6 +1626,9 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
       plantSpacingCm: plantSpacingCm,
       zonePolygonJson: zonePolygonJson,
       facingDirection: facingDirection,
+      // Çok yıllık üründe kullanıcının "yeni fidan / olgun ağaç" işareti;
+      // tek yıllıkta config tarafı null bırakır.
+      isSeedling: config?.isSeedling,
     );
     const bool isReplant = false;
 
@@ -1617,8 +1645,6 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
         if (config != null) 'irrigation_method': config.irrigationMethod.name,
         if (config != null) 'soil_type': config.soilType.name,
         if (config != null) 'production_system': config.productionSystem.name,
-        if (config?.targetPlantCount != null)
-          'target_plant_count': config!.targetPlantCount,
         if (facingDirection != null) 'facing_direction': facingDirection,
         'water_interval_days': waterIntervalDays,
         'row_spacing_cm': rowSpacingCm,
@@ -2041,9 +2067,6 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
           existing: existing,
         );
         break;
-      case _PlantAction.editFacingDirection:
-        await _editPlantFacingDirection(crop: crop, target: target);
-        break;
       case _PlantAction.deletePlant:
         await _confirmDeletePlantTarget(target);
         break;
@@ -2054,54 +2077,6 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
         _togglePlantMultiSelection(target);
         break;
     }
-  }
-
-  /// Bir bitkinin baktığı yönü düzenler — toplu ekimde crop satırını, tekil
-  /// bitkide instance satırını günceller.
-  Future<void> _editPlantFacingDirection({
-    required Map<String, dynamic> crop,
-    required _PlantDeleteTarget target,
-  }) async {
-    final cropId = crop['id']?.toString();
-    final cropName = target.cropName;
-    final isStandalone = target.isStandalone && target.existing != null;
-    if ((cropId == null || cropId.isEmpty) && !isStandalone) return;
-    final currentRaw = isStandalone
-        ? target.existing?.facingDirection
-        : crop['facing_direction']?.toString();
-
-    final result = await _showFacingDirectionSheet(
-      context,
-      plantName: cropName,
-      initialRaw: currentRaw,
-    );
-    if (!mounted) return;
-    if (result == null) return;
-
-    final picked = result is String ? result : null;
-
-    if (isStandalone) {
-      await ref
-          .read(localDataRepositoryProvider)
-          .updatePlantInstanceFacingDirection(
-            instanceId: target.existing!.id,
-            facingDirection: picked,
-          );
-    } else {
-      await ref.read(localDataRepositoryProvider).updateCropFacingDirection(
-            cropId: cropId!,
-            facingDirection: picked,
-          );
-      await _loadFieldCrops();
-    }
-    if (!mounted) return;
-    AppToast.show(
-      context,
-      message: picked == null
-          ? 'Yön bilgisi temizlendi.'
-          : '$cropName → ${_facingDirectionLabel(picked)}',
-      type: ToastType.success,
-    );
   }
 
   void _handlePlantMarkerLongPress({
@@ -2128,8 +2103,6 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
     required _PlantDeleteTarget target,
   }) {
     final cropId = crop['id']?.toString();
-    final canEditFacingDirection =
-        (cropId != null && cropId.isNotEmpty) || target.existing != null;
     return showModalBottomSheet<_PlantAction>(
       context: context,
       backgroundColor: AppColors.surface,
@@ -2166,22 +2139,6 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
                 title: const Text('Sağlık durumunu düzenle'),
                 onTap: () => Navigator.pop(ctx, _PlantAction.editHealth),
               ),
-              if (canEditFacingDirection)
-                Builder(builder: (_) {
-                  final raw = target.isStandalone
-                      ? target.existing?.facingDirection
-                      : crop['facing_direction']?.toString();
-                  return ListTile(
-                    leading: const Icon(Icons.explore_rounded,
-                        color: AppColors.emerald),
-                    title: const Text('Baktığı yönü değiştir'),
-                    subtitle: Text(raw == null || raw.isEmpty
-                        ? 'Yön belirlenmedi'
-                        : _facingDirectionLabel(raw)),
-                    onTap: () =>
-                        Navigator.pop(ctx, _PlantAction.editFacingDirection),
-                  );
-                }),
               ListTile(
                 leading:
                     const Icon(Icons.delete_outline_rounded, color: Colors.red),
@@ -2544,10 +2501,6 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
     );
     if (picked == null || !mounted) return;
 
-    final facingDirection =
-        await _askFacingDirection(context, plantName: picked.nameTr);
-    if (!mounted) return;
-
     await ref.read(localDataRepositoryProvider).insertPlantInstance(
           fieldId: fieldId,
           cropId: null,
@@ -2555,16 +2508,14 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
           cropName: picked.nameTr,
           lat: point.latitude,
           lng: point.longitude,
-          facingDirection: facingDirection,
+          facingDirection: null,
         );
 
     if (!mounted) return;
     setState(() => _isPlacingSinglePlantMode = false);
     AppToast.show(
       context,
-      message: facingDirection == null
-          ? '${picked.nameTr} eklendi.'
-          : '${picked.nameTr} yön oku ile eklendi.',
+      message: '${picked.nameTr} eklendi.',
       type: ToastType.success,
     );
   }
@@ -2614,13 +2565,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
     final plantedDateStr =
         '${DateTime.now().day.toString().padLeft(2, '0')}.${DateTime.now().month.toString().padLeft(2, '0')}.${DateTime.now().year}';
 
-    // Yön seçimi — kullanıcıya bitkinin baktığı yönü sor.
-    String? facingDirection;
-    if (mounted) {
-      facingDirection =
-          await _askFacingDirection(context, plantName: plant.nameTr);
-    }
-    if (!mounted) return;
+    const String? facingDirection = null;
 
     // Her ekleme yeni bir kayıt oluşturur — aynı bitki türünden farklı bölgeler
     // birbirini ezmesin diye replant kısa-yolu kaldırıldı.
@@ -3817,7 +3762,6 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
 
 enum _PlantAction {
   editHealth,
-  editFacingDirection,
   deletePlant,
   deleteArea,
   multiSelect,
@@ -3896,11 +3840,14 @@ class _PlantPickerSheetState extends State<_PlantPickerSheet> {
 
   @override
   Widget build(BuildContext context) {
+    const bg = Colors.white;
+    const accent = AppColors.emerald;
+    const cardBg = AppColors.surface;
     final filtered = _filtered;
     return Container(
       height: MediaQuery.of(context).size.height * 0.85,
       decoration: const BoxDecoration(
-        color: Colors.white,
+        color: bg,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
@@ -3910,7 +3857,7 @@ class _PlantPickerSheetState extends State<_PlantPickerSheet> {
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-              color: Colors.grey.shade300,
+              color: AppColors.border,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -3920,11 +3867,13 @@ class _PlantPickerSheetState extends State<_PlantPickerSheet> {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: const Color(0xFFE8F5E9),
-                borderRadius: BorderRadius.circular(10),
+                gradient: const LinearGradient(
+                  colors: [AppColors.emeraldDark, AppColors.emerald],
+                ),
+                borderRadius: BorderRadius.circular(12),
               ),
               child: const Icon(Icons.add_circle_rounded,
-                  color: Color(0xFF2E7D32), size: 22),
+                  color: Colors.white, size: 22),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -3934,11 +3883,11 @@ class _PlantPickerSheetState extends State<_PlantPickerSheet> {
                   Text('Tarlaya Bitki Ekle',
                       style: GoogleFonts.outfit(
                           fontSize: 17,
-                          fontWeight: FontWeight.w700,
-                          color: const Color(0xFF1B5E20))),
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary)),
                   Text('Hava + toprak verisine göre uygunluk skoru',
                       style: GoogleFonts.inter(
-                          fontSize: 12, color: Colors.grey.shade600)),
+                          fontSize: 12, color: AppColors.textSecondary)),
                 ],
               ),
             ),
@@ -3964,31 +3913,41 @@ class _PlantPickerSheetState extends State<_PlantPickerSheet> {
             controller: _searchCtrl,
             onChanged: (v) => setState(() => _query = v),
             textInputAction: TextInputAction.search,
+            style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
             decoration: InputDecoration(
               hintText: 'Bitki ara (ör. buğday, domates)',
-              prefixIcon:
-                  const Icon(Icons.search_rounded, color: Color(0xFF2E7D32)),
+              hintStyle: const TextStyle(color: AppColors.textTertiary),
+              prefixIcon: const Icon(Icons.search_rounded, color: accent),
               suffixIcon: _query.isEmpty
                   ? null
                   : IconButton(
-                      icon: const Icon(Icons.close_rounded),
+                      icon: const Icon(Icons.close_rounded,
+                          color: AppColors.textSecondary),
                       onPressed: () {
                         _searchCtrl.clear();
                         setState(() => _query = '');
                       },
                     ),
               filled: true,
-              fillColor: const Color(0xFFF5F7F5),
+              fillColor: cardBg,
               contentPadding:
                   const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide.none,
               ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: AppColors.border),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: accent, width: 1.5),
+              ),
             ),
           ),
           const SizedBox(height: 8),
-          const Divider(height: 1),
+          const Divider(height: 1, color: AppColors.divider),
           Expanded(
             child: filtered.isEmpty
                 ? Center(
@@ -3998,7 +3957,7 @@ class _PlantPickerSheetState extends State<_PlantPickerSheet> {
                         'Sonuç bulunamadı.\nFarklı bir isim deneyin.',
                         textAlign: TextAlign.center,
                         style: GoogleFonts.inter(
-                            fontSize: 13, color: Colors.grey.shade600),
+                            fontSize: 13, color: AppColors.textTertiary),
                       ),
                     ),
                   )
@@ -4052,9 +4011,9 @@ class _EnvContextStrip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
-        color: const Color(0xFFF5F7F5),
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE0E0E0)),
+        border: Border.all(color: AppColors.border),
       ),
       child: Row(
         children: [
@@ -4066,13 +4025,13 @@ class _EnvContextStrip extends StatelessWidget {
           const SizedBox(width: 8),
           _MiniEnvChip(
             icon: Icons.science_rounded,
-            color: const Color(0xFF1976D2),
+            color: const Color(0xFF42A5F5),
             label: ph == null ? 'pH —' : 'pH ${ph!.toStringAsFixed(1)}',
           ),
           const SizedBox(width: 8),
           _MiniEnvChip(
             icon: Icons.water_drop_rounded,
-            color: const Color(0xFF0277BD),
+            color: const Color(0xFF4DD0E1),
             label: weeklyRain == null
                 ? '— mm/hf'
                 : '${weeklyRain!.toStringAsFixed(0)} mm/hf',
@@ -4104,10 +4063,10 @@ class _MiniEnvChip extends StatelessWidget {
           const SizedBox(width: 4),
           Text(
             label,
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w700,
-              color: Colors.grey.shade800,
+              color: AppColors.textPrimary,
             ),
           ),
         ],
@@ -4124,7 +4083,7 @@ class _StandaloneAddBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: const Color(0xFFE8F5E9),
+      color: AppColors.mint,
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
@@ -4136,7 +4095,9 @@ class _StandaloneAddBanner extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(7),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1B5E20),
+                  gradient: const LinearGradient(
+                    colors: [AppColors.emeraldDark, AppColors.emerald],
+                  ),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Icon(Icons.eco_rounded,
@@ -4152,20 +4113,20 @@ class _StandaloneAddBanner extends StatelessWidget {
                       style: GoogleFonts.outfit(
                         fontSize: 14,
                         fontWeight: FontWeight.w800,
-                        color: const Color(0xFF1B5E20),
+                        color: AppColors.emeraldDark,
                       ),
                     ),
                     Text(
                       'Tek bitkiyi haritada istediğin noktaya yerleştir',
                       style: GoogleFonts.inter(
                         fontSize: 11,
-                        color: Colors.grey.shade700,
+                        color: AppColors.textSecondary,
                       ),
                     ),
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right_rounded, color: Color(0xFF1B5E20)),
+              const Icon(Icons.chevron_right_rounded, color: AppColors.emerald),
             ],
           ),
         ),
@@ -4199,10 +4160,10 @@ class _PlantScoreCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final Color sColor = score >= 75
-        ? const Color(0xFF2E7D32)
+        ? AppColors.emerald
         : score >= 50
-            ? Colors.orange.shade700
-            : Colors.red.shade700;
+            ? const Color(0xFFFFB74D)
+            : AppColors.error;
     final String label = score >= 75
         ? 'UYGUN'
         : score >= 50
@@ -4212,7 +4173,7 @@ class _PlantScoreCard extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Material(
-        color: Colors.grey.shade50,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
         child: InkWell(
           borderRadius: BorderRadius.circular(12),
@@ -4237,6 +4198,7 @@ class _PlantScoreCard extends StatelessWidget {
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 15,
+                          color: AppColors.textPrimary,
                         ),
                       ),
                     ),
@@ -4267,19 +4229,19 @@ class _PlantScoreCard extends StatelessWidget {
                       expanded
                           ? Icons.expand_less_rounded
                           : Icons.expand_more_rounded,
-                      color: Colors.grey.shade600,
+                      color: AppColors.textTertiary,
                     ),
                   ],
                 ),
                 if (expanded) ...[
                   const SizedBox(height: 10),
-                  const Divider(height: 1),
+                  const Divider(height: 1, color: AppColors.divider),
                   const SizedBox(height: 10),
                   Text(
                     'Hasat: ${plant.daysToHarvest} gün  •  pH ${plant.minPh}-${plant.maxPh}  •  ${plant.minTemp.toInt()}-${plant.maxTemp.toInt()} °C',
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 12,
-                      color: Colors.grey.shade700,
+                      color: AppColors.textSecondary,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -4292,14 +4254,14 @@ class _PlantScoreCard extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const Icon(Icons.warning_amber_rounded,
-                                size: 13, color: Colors.orange),
+                                size: 13, color: Color(0xFFFFB74D)),
                             const SizedBox(width: 6),
                             Expanded(
                               child: Text(
                                 r,
                                 style: const TextStyle(
                                   fontSize: 12,
-                                  color: Colors.black87,
+                                  color: AppColors.textSecondary,
                                   height: 1.35,
                                 ),
                               ),
@@ -4313,7 +4275,7 @@ class _PlantScoreCard extends StatelessWidget {
                     width: double.infinity,
                     child: FilledButton.icon(
                       style: FilledButton.styleFrom(
-                        backgroundColor: const Color(0xFF2E7D32),
+                        backgroundColor: AppColors.emerald,
                         foregroundColor: Colors.white,
                         minimumSize: const Size.fromHeight(44),
                         shape: RoundedRectangleBorder(
@@ -5133,13 +5095,13 @@ class _DirectiveCardState extends ConsumerState<_DirectiveCard> {
 
   String _shortSource(String source) {
     final s = source.toLowerCase();
-    if (s.contains('bku') || s.contains('bitki koruma')) return 'BKÜ';
-    if (s.contains('fao')) return 'FAO-56';
-    if (s.contains('tagem')) return 'TAGEM';
+    if (s.contains('bku') || s.contains('bitki koruma')) return 'İlaç';
+    if (s.contains('fao')) return 'Sulama';
+    if (s.contains('tagem')) return 'Resmi';
     if (s.contains('tarım ve orman') || s.contains('tarim ve orman')) {
-      return 'Tarım ve Orman';
+      return 'Resmi';
     }
-    if (s.contains('trakya')) return 'Trakya TAE';
+    if (s.contains('trakya')) return 'Resmi';
     if (s.contains('yalova')) return 'Yalova Bahçe';
     if (s.contains('bakan')) return 'Bakanlık';
     return source.length <= 22 ? source : '${source.substring(0, 22)}...';
@@ -5375,6 +5337,8 @@ class _CropRoadmapCardState extends ConsumerState<_CropRoadmapCard> {
       isScrollControlled: true,
       builder: (_) => _CropSetupSheet(
         protocol: widget.progress.protocol,
+        cropName: widget.crop['name']?.toString() ??
+            widget.progress.protocol.displayName,
         fieldAreaDekar: widget.fieldAreaDekar,
         initialConfig: current,
       ),
@@ -6005,21 +5969,28 @@ class _RoadmapStepTile extends StatelessWidget {
 // ÇİFTÇİ KURULUM SAYFASI — bitki seçimi ile bölge çizimi arasında açılır.
 // Toprak türü, sulama yöntemi, alan ve sıra/bitki aralığını alır;
 // CropConfig nesnesi döndürür.
+// Tüm bitkiler için açılır — protokollü bitkiler ekim mevsimi ve bölge
+// ipucu gösterir; protokolsüz bitkiler genel kurulum alır.
 // ═══════════════════════════════════════════════════════════════════════
 class _CropSetupSheet extends StatefulWidget {
   const _CropSetupSheet({
-    required this.protocol,
+    this.protocol,
+    required this.cropName,
     required this.fieldAreaDekar,
     this.initialConfig,
+    this.defaultRowSpacingCm = 70,
+    this.defaultPlantSpacingCm = 30,
   });
 
-  final CropProtocol protocol;
+  /// Protokollü bitkiler (Ayçiçeği, Domates, Mısır) için dolu; diğerleri null.
+  final CropProtocol? protocol;
+  final String cropName;
   final CropConfig? initialConfig;
+  final double defaultRowSpacingCm;
+  final double defaultPlantSpacingCm;
 
   /// Tarla poligonundan ölçülen alan. Çiftçi manuel olarak tekrar girmiyor;
   /// `_CropSetupSheet` bu değeri rehber not'larında ve ekim hesabında kullanır.
-  /// Manuel input UX'i karışıktı: kullanıcı 50 da yazsa bile poligon 5 da
-  /// olduğunda gerçek alan poligondan geliyordu.
   final double fieldAreaDekar;
 
   @override
@@ -6032,11 +6003,20 @@ class _CropSetupSheetState extends State<_CropSetupSheet> {
   late ProductionSystem _productionSystem;
   late final TextEditingController _rowCtrl;
   late final TextEditingController _plantCtrl;
-  late final TextEditingController _plantCountCtrl;
 
-  static const _bg = Color(0xFF0D1811);
-  static const _accent = Color(0xFF00E676);
-  static const _card = Color(0xFF152018);
+  static const _bg = Colors.white;
+  static const _accent = AppColors.emerald;
+  static const _card = AppColors.surface;
+  // Açık temaya geçiş sabitleri — Colors.white* kullanımlarının karşılığı.
+  static const _textPrimary = AppColors.textPrimary;
+  static const _textSecondary = AppColors.textSecondary;
+  static const _textTertiary = AppColors.textTertiary;
+  static const _borderColor = AppColors.border;
+
+  double get _defRow =>
+      widget.protocol?.defaultRowSpacingCm ?? widget.defaultRowSpacingCm;
+  double get _defPlant =>
+      widget.protocol?.defaultPlantSpacingCm ?? widget.defaultPlantSpacingCm;
 
   @override
   void initState() {
@@ -6046,60 +6026,25 @@ class _CropSetupSheetState extends State<_CropSetupSheet> {
     _irrigation = cfg?.irrigationMethod ?? IrrigationMethod.furrow;
     _productionSystem = cfg?.productionSystem ?? ProductionSystem.openField;
     _rowCtrl = TextEditingController(
-        text: (cfg?.rowSpacingCm ?? widget.protocol.defaultRowSpacingCm)
-            .toStringAsFixed(0));
+        text: (cfg?.rowSpacingCm ?? _defRow).toStringAsFixed(0));
     _plantCtrl = TextEditingController(
-        text: (cfg?.plantSpacingCm ?? widget.protocol.defaultPlantSpacingCm)
-            .toStringAsFixed(0));
-    _plantCountCtrl = TextEditingController(
-      text: cfg?.targetPlantCount == null ? '' : '${cfg!.targetPlantCount}',
-    );
+        text: (cfg?.plantSpacingCm ?? _defPlant).toStringAsFixed(0));
   }
 
   @override
   void dispose() {
     _rowCtrl.dispose();
     _plantCtrl.dispose();
-    _plantCountCtrl.dispose();
     super.dispose();
   }
 
   void _confirm() {
-    final row = double.tryParse(_rowCtrl.text.trim()) ??
-        widget.protocol.defaultRowSpacingCm;
-    final plant = double.tryParse(_plantCtrl.text.trim()) ??
-        widget.protocol.defaultPlantSpacingCm;
+    final row = double.tryParse(_rowCtrl.text.trim()) ?? _defRow;
+    final plant = double.tryParse(_plantCtrl.text.trim()) ?? _defPlant;
     // Alan tarladan otomatik geliyor — manuel input kaldırıldı.
-    // Bir alt sınır koruyoruz ki bozuk poligon (0 da) hesabı patlatmasın.
     final area = widget.fieldAreaDekar.clamp(0.1, 10000).toDouble();
-    final plantCountRaw = _plantCountCtrl.text.trim();
-    final plantCount =
-        plantCountRaw.isEmpty ? null : int.tryParse(plantCountRaw);
-    if (plantCountRaw.isNotEmpty && (plantCount == null || plantCount <= 0)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Bitki adedi pozitif bir sayı olmalı.')),
-      );
-      return;
-    }
     final cleanRow = row.clamp(20, 200).toDouble();
     final cleanPlant = plant.clamp(5, 200).toDouble();
-    if (plantCount != null) {
-      final requiredDekar = _requiredDekarFor(
-        plantCount: plantCount,
-        rowSpacingCm: cleanRow,
-        plantSpacingCm: cleanPlant,
-      );
-      if (requiredDekar > area + 0.01) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              '$plantCount bitki için yaklaşık ${requiredDekar.toStringAsFixed(2)} da gerekir. Tarlada ${area.toStringAsFixed(2)} da var.',
-            ),
-          ),
-        );
-        return;
-      }
-    }
     Navigator.pop(
       context,
       CropConfig(
@@ -6109,44 +6054,7 @@ class _CropSetupSheetState extends State<_CropSetupSheet> {
         areaDekar: area,
         rowSpacingCm: cleanRow,
         plantSpacingCm: cleanPlant,
-        targetPlantCount: plantCount,
       ),
-    );
-  }
-
-  double _requiredDekarFor({
-    required int plantCount,
-    required double rowSpacingCm,
-    required double plantSpacingCm,
-  }) {
-    final footprintSqm = (rowSpacingCm / 100) * (plantSpacingCm / 100);
-    return (plantCount * footprintSqm) / 1000;
-  }
-
-  int _estimatedCountForCurrentSpacing() {
-    final row = double.tryParse(_rowCtrl.text.trim()) ??
-        widget.protocol.defaultRowSpacingCm;
-    final plant = double.tryParse(_plantCtrl.text.trim()) ??
-        widget.protocol.defaultPlantSpacingCm;
-    final footprintSqm =
-        (row.clamp(20, 200) / 100) * (plant.clamp(5, 200) / 100);
-    if (footprintSqm <= 0) return 0;
-    return ((widget.fieldAreaDekar * 1000) / footprintSqm).round();
-  }
-
-  double? _targetDekarPreview() {
-    final plantCountRaw = _plantCountCtrl.text.trim();
-    if (plantCountRaw.isEmpty) return null;
-    final plantCount = int.tryParse(plantCountRaw);
-    if (plantCount == null || plantCount <= 0) return null;
-    final row = double.tryParse(_rowCtrl.text.trim()) ??
-        widget.protocol.defaultRowSpacingCm;
-    final plant = double.tryParse(_plantCtrl.text.trim()) ??
-        widget.protocol.defaultPlantSpacingCm;
-    return _requiredDekarFor(
-      plantCount: plantCount,
-      rowSpacingCm: row.clamp(20, 200).toDouble(),
-      plantSpacingCm: plant.clamp(5, 200).toDouble(),
     );
   }
 
@@ -6173,7 +6081,7 @@ class _CropSetupSheetState extends State<_CropSetupSheet> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: Colors.white24,
+                  color: _borderColor,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -6182,24 +6090,25 @@ class _CropSetupSheetState extends State<_CropSetupSheet> {
 
             // ── Başlık ──
             Row(children: [
-              Text(widget.protocol.emoji, style: const TextStyle(fontSize: 30)),
+              Text(widget.protocol?.emoji ?? '🌾',
+                  style: const TextStyle(fontSize: 30)),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '${widget.protocol.displayName} Tarlası Kurulumu',
+                      '${widget.cropName} Tarlası Kurulumu',
                       style: GoogleFonts.outfit(
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
-                        color: Colors.white,
+                        color: _textPrimary,
                       ),
                     ),
                     Text(
-                      'Kurulum bilgisi bakım planını hesaplar; sulama kaydı oluşturmaz',
+                      'Seçimleriniz sulama planı, takvim ve bakım rehberine yansır',
                       style: const TextStyle(
-                        color: Colors.white54,
+                        color: _textSecondary,
                         fontSize: 12,
                       ),
                     ),
@@ -6224,10 +6133,10 @@ class _CropSetupSheetState extends State<_CropSetupSheet> {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 14, vertical: 10),
                     decoration: BoxDecoration(
-                      color: selected ? _accent.withValues(alpha: 0.18) : _card,
+                      color: selected ? _accent.withValues(alpha: 0.12) : _card,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: selected ? _accent : Colors.white12,
+                        color: selected ? _accent : _borderColor,
                         width: selected ? 1.5 : 1,
                       ),
                     ),
@@ -6238,7 +6147,7 @@ class _CropSetupSheetState extends State<_CropSetupSheet> {
                         const SizedBox(height: 4),
                         Text(s.label,
                             style: TextStyle(
-                              color: selected ? _accent : Colors.white70,
+                              color: selected ? _accent : _textSecondary,
                               fontSize: 12,
                               fontWeight: selected
                                   ? FontWeight.w700
@@ -6256,7 +6165,7 @@ class _CropSetupSheetState extends State<_CropSetupSheet> {
               child: Text(
                 _soil.description,
                 style: const TextStyle(
-                    color: Colors.white54, fontSize: 11, height: 1.4),
+                    color: _textTertiary, fontSize: 11, height: 1.4),
               ),
             ),
             const SizedBox(height: 20),
@@ -6267,7 +6176,7 @@ class _CropSetupSheetState extends State<_CropSetupSheet> {
             const Text(
               'Bu seçim nasıl sulanacağını ve takvim aralığını belirler; Tarlam Günlüğü’ne sulama yapılmış gibi kayıt düşmez.',
               style:
-                  TextStyle(color: Colors.white54, fontSize: 11, height: 1.35),
+                  TextStyle(color: _textTertiary, fontSize: 11, height: 1.35),
             ),
             const SizedBox(height: 8),
             ...IrrigationMethod.values.map((m) {
@@ -6280,16 +6189,16 @@ class _CropSetupSheetState extends State<_CropSetupSheet> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                   decoration: BoxDecoration(
-                    color: selected ? _accent.withValues(alpha: 0.15) : _card,
+                    color: selected ? _accent.withValues(alpha: 0.10) : _card,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: selected ? _accent : Colors.white12,
+                      color: selected ? _accent : _borderColor,
                       width: selected ? 1.5 : 1,
                     ),
                   ),
                   child: Row(children: [
                     Icon(m.icon,
-                        color: selected ? _accent : Colors.white38, size: 22),
+                        color: selected ? _accent : _textTertiary, size: 22),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
@@ -6297,7 +6206,7 @@ class _CropSetupSheetState extends State<_CropSetupSheet> {
                         children: [
                           Text(m.label,
                               style: TextStyle(
-                                color: selected ? _accent : Colors.white,
+                                color: selected ? _accent : _textPrimary,
                                 fontSize: 14,
                                 fontWeight: selected
                                     ? FontWeight.w700
@@ -6305,7 +6214,7 @@ class _CropSetupSheetState extends State<_CropSetupSheet> {
                               )),
                           Text(m.description,
                               style: const TextStyle(
-                                  color: Colors.white54, fontSize: 11)),
+                                  color: _textSecondary, fontSize: 11)),
                         ],
                       ),
                     ),
@@ -6324,7 +6233,7 @@ class _CropSetupSheetState extends State<_CropSetupSheet> {
             const Text(
               'Seçenekler T.C. Tarım ve Orman Bakanlığı destek/uygulama başlıkları esas alınarak sadeleştirildi.',
               style:
-                  TextStyle(color: Colors.white54, fontSize: 11, height: 1.35),
+                  TextStyle(color: _textTertiary, fontSize: 11, height: 1.35),
             ),
             const SizedBox(height: 8),
             ...ProductionSystem.values.map((system) {
@@ -6337,16 +6246,16 @@ class _CropSetupSheetState extends State<_CropSetupSheet> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                   decoration: BoxDecoration(
-                    color: selected ? _accent.withValues(alpha: 0.15) : _card,
+                    color: selected ? _accent.withValues(alpha: 0.10) : _card,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: selected ? _accent : Colors.white12,
+                      color: selected ? _accent : _borderColor,
                       width: selected ? 1.5 : 1,
                     ),
                   ),
                   child: Row(children: [
                     Icon(system.icon,
-                        color: selected ? _accent : Colors.white38, size: 22),
+                        color: selected ? _accent : _textTertiary, size: 22),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
@@ -6354,7 +6263,7 @@ class _CropSetupSheetState extends State<_CropSetupSheet> {
                         children: [
                           Text(system.label,
                               style: TextStyle(
-                                color: selected ? _accent : Colors.white,
+                                color: selected ? _accent : _textPrimary,
                                 fontSize: 14,
                                 fontWeight: selected
                                     ? FontWeight.w700
@@ -6362,7 +6271,7 @@ class _CropSetupSheetState extends State<_CropSetupSheet> {
                               )),
                           Text(system.description,
                               style: const TextStyle(
-                                  color: Colors.white54, fontSize: 11)),
+                                  color: _textSecondary, fontSize: 11)),
                         ],
                       ),
                     ),
@@ -6386,17 +6295,17 @@ class _CropSetupSheetState extends State<_CropSetupSheet> {
               decoration: BoxDecoration(
                 color: _card,
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.white12),
+                border: Border.all(color: _borderColor),
               ),
               child: Row(children: [
                 const Icon(Icons.straighten_rounded,
-                    color: Colors.white54, size: 18),
+                    color: _textSecondary, size: 18),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     '${widget.fieldAreaDekar.toStringAsFixed(1)} da · tarladan otomatik alındı',
                     style: const TextStyle(
-                        color: Colors.white70, fontSize: 13, height: 1.3),
+                        color: _textPrimary, fontSize: 13, height: 1.3),
                   ),
                 ),
               ]),
@@ -6411,7 +6320,7 @@ class _CropSetupSheetState extends State<_CropSetupSheet> {
                 child: _inputField(
                   controller: _rowCtrl,
                   label: 'Sıra arası',
-                  hint: widget.protocol.defaultRowSpacingCm.toStringAsFixed(0),
+                  hint: _defRow.toStringAsFixed(0),
                   suffix: 'cm',
                   onChanged: (_) => setState(() {}),
                 ),
@@ -6421,8 +6330,7 @@ class _CropSetupSheetState extends State<_CropSetupSheet> {
                 child: _inputField(
                   controller: _plantCtrl,
                   label: 'Bitki arası',
-                  hint:
-                      widget.protocol.defaultPlantSpacingCm.toStringAsFixed(0),
+                  hint: _defPlant.toStringAsFixed(0),
                   suffix: 'cm',
                   onChanged: (_) => setState(() {}),
                 ),
@@ -6432,102 +6340,60 @@ class _CropSetupSheetState extends State<_CropSetupSheet> {
             const Text(
               'Bu aralıklar ekim bölgesindeki bitki dizilimine, bitki sayısı hesabına ve sonraki bakım planına uygulanır.',
               style:
-                  TextStyle(color: Colors.white54, fontSize: 11, height: 1.35),
+                  TextStyle(color: _textTertiary, fontSize: 11, height: 1.35),
             ),
             const SizedBox(height: 16),
 
-            // ── Opsiyonel hedef bitki adedi ──
-            _sectionLabel('🌱 Kaç Adet Ekeceksin?'),
-            const SizedBox(height: 8),
-            _inputField(
-              controller: _plantCountCtrl,
-              label: 'Bitki adedi',
-              hint: 'Boş bırakılabilir',
-              suffix: 'adet',
-              onChanged: (_) => setState(() {}),
-            ),
-            const SizedBox(height: 8),
-            Builder(builder: (_) {
-              final targetDekar = _targetDekarPreview();
-              final estimatedCount = _estimatedCountForCurrentSpacing();
-              final targetText = targetDekar == null
-                  ? 'Adet girmezsen tüm ekim alanı için yaklaşık $estimatedCount bitki hesaplanır.'
-                  : 'Bu adet için yaklaşık ${targetDekar.toStringAsFixed(2)} da ekim alanı gerekir.';
-              final overLimit =
-                  targetDekar != null && targetDekar > widget.fieldAreaDekar;
-              return Container(
-                width: double.infinity,
+            // ── Ekme mevsimi ve bölge ipucu (sadece protokollü bitkiler) ──
+            if (widget.protocol != null) ...[
+              const SizedBox(height: 16),
+              Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: overLimit
-                      ? Colors.red.withValues(alpha: 0.10)
-                      : _accent.withValues(alpha: 0.08),
+                  color: _accent.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: overLimit
-                        ? Colors.red.withValues(alpha: 0.35)
-                        : _accent.withValues(alpha: 0.20),
-                  ),
+                  border: Border.all(color: _accent.withValues(alpha: 0.2)),
                 ),
-                child: Text(
-                  targetText,
-                  style: TextStyle(
-                    color: overLimit ? Colors.red.shade200 : Colors.white70,
-                    fontSize: 11,
-                    height: 1.35,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(children: [
+                      const Icon(Icons.calendar_today_rounded,
+                          color: _accent, size: 14),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Ekim Zamanı (Türkiye)',
+                        style: GoogleFonts.outfit(
+                            color: _accent,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700),
+                      ),
+                    ]),
+                    const SizedBox(height: 4),
+                    Text(widget.protocol!.sowingSeasonTR,
+                        style: const TextStyle(
+                            color: _textPrimary, fontSize: 11, height: 1.3)),
+                    const SizedBox(height: 6),
+                    Row(children: [
+                      const Icon(Icons.location_on_rounded,
+                          color: _accent, size: 14),
+                      const SizedBox(width: 6),
+                      Text(
+                        'İdeal Bölgeler',
+                        style: GoogleFonts.outfit(
+                            color: _accent,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700),
+                      ),
+                    ]),
+                    const SizedBox(height: 4),
+                    Text(widget.protocol!.idealRegionsTR,
+                        style: const TextStyle(
+                            color: _textPrimary, fontSize: 11, height: 1.3)),
+                  ],
                 ),
-              );
-            }),
-
-            // ── Ekme mevsimi ve bölge ipucu ──
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: _accent.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: _accent.withValues(alpha: 0.2)),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(children: [
-                    const Icon(Icons.calendar_today_rounded,
-                        color: _accent, size: 14),
-                    const SizedBox(width: 6),
-                    Text(
-                      'Ekim Zamanı (Türkiye)',
-                      style: GoogleFonts.outfit(
-                          color: _accent,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700),
-                    ),
-                  ]),
-                  const SizedBox(height: 4),
-                  Text(widget.protocol.sowingSeasonTR,
-                      style: const TextStyle(
-                          color: Colors.white70, fontSize: 11, height: 1.3)),
-                  const SizedBox(height: 6),
-                  Row(children: [
-                    const Icon(Icons.location_on_rounded,
-                        color: _accent, size: 14),
-                    const SizedBox(width: 6),
-                    Text(
-                      'İdeal Bölgeler',
-                      style: GoogleFonts.outfit(
-                          color: _accent,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700),
-                    ),
-                  ]),
-                  const SizedBox(height: 4),
-                  Text(widget.protocol.idealRegionsTR,
-                      style: const TextStyle(
-                          color: Colors.white70, fontSize: 11, height: 1.3)),
-                ],
-              ),
-            ),
+            ],
             const SizedBox(height: 24),
 
             // ── Onayla butonu ──
@@ -6544,7 +6410,7 @@ class _CropSetupSheetState extends State<_CropSetupSheet> {
                 ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: _accent,
-                  foregroundColor: Colors.black,
+                  foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
                   ),
@@ -6560,7 +6426,7 @@ class _CropSetupSheetState extends State<_CropSetupSheet> {
   Widget _sectionLabel(String text) => Text(
         text,
         style: GoogleFonts.outfit(
-          color: Colors.white,
+          color: _textPrimary,
           fontSize: 14,
           fontWeight: FontWeight.w700,
         ),
@@ -6577,23 +6443,23 @@ class _CropSetupSheetState extends State<_CropSetupSheet> {
         controller: controller,
         keyboardType: const TextInputType.numberWithOptions(decimal: true),
         onChanged: onChanged,
-        style: const TextStyle(color: Colors.white, fontSize: 15),
+        style: const TextStyle(color: _textPrimary, fontSize: 15),
         decoration: InputDecoration(
           labelText: label,
-          labelStyle: const TextStyle(color: Colors.white54, fontSize: 13),
+          labelStyle: const TextStyle(color: _textSecondary, fontSize: 13),
           hintText: hint,
-          hintStyle: const TextStyle(color: Colors.white24),
+          hintStyle: const TextStyle(color: _textTertiary),
           suffixText: suffix,
-          suffixStyle: const TextStyle(color: Colors.white54),
+          suffixStyle: const TextStyle(color: _textSecondary),
           filled: true,
-          fillColor: const Color(0xFF152018),
+          fillColor: _card,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: Colors.white12),
+            borderSide: const BorderSide(color: _borderColor),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: Colors.white12),
+            borderSide: const BorderSide(color: _borderColor),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
@@ -6603,514 +6469,4 @@ class _CropSetupSheetState extends State<_CropSetupSheet> {
               const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         ),
       );
-}
-
-// ═══════════════════════════════════════════════════════════════════════
-// PUSULA YÖN SEÇİCİ — 3x3 ızgara, ortada boşluk
-// ═══════════════════════════════════════════════════════════════════════
-double _directionDegrees(PlantFacingDirection direction) {
-  return switch (direction) {
-    PlantFacingDirection.north => 0.0,
-    PlantFacingDirection.northeast => 45.0,
-    PlantFacingDirection.east => 90.0,
-    PlantFacingDirection.southeast => 135.0,
-    PlantFacingDirection.south => 180.0,
-    PlantFacingDirection.southwest => 225.0,
-    PlantFacingDirection.west => 270.0,
-    PlantFacingDirection.northwest => 315.0,
-  };
-}
-
-double _degreesFromFacingRaw(String? raw) {
-  final value = raw?.trim();
-  if (value == null || value.isEmpty) return 180.0;
-  if (value.startsWith('deg:')) {
-    final parsed = double.tryParse(value.substring(4));
-    if (parsed != null) return parsed % 360.0;
-  }
-  for (final direction in PlantFacingDirection.values) {
-    if (direction.name == value) return _directionDegrees(direction);
-  }
-  return 180.0;
-}
-
-String _facingRawFromDegrees(double degrees) {
-  final clean = degrees.round() % 360;
-  return 'deg:$clean';
-}
-
-String _facingDirectionLabel(String raw) {
-  final degrees = _degreesFromFacingRaw(raw).round() % 360;
-  for (final direction in PlantFacingDirection.values) {
-    if (direction.name == raw) {
-      return '${direction.label} ${direction.arrow} ($degrees°)';
-    }
-  }
-  return '$degrees° açı';
-}
-
-class _DirectionPicker extends StatelessWidget {
-  const _DirectionPicker({
-    required this.selectedDegrees,
-    required this.hasSelection,
-    required this.onChanged,
-    required this.accent,
-    required this.card,
-  });
-
-  final double selectedDegrees;
-  final bool hasSelection;
-  final ValueChanged<double?> onChanged;
-  final Color accent;
-  final Color card;
-
-  // 3x3 ızgara sırası: [KK, K, KD, B, null(merkez), D, GB, G, GD]
-  static const _grid = [
-    PlantFacingDirection.northwest,
-    PlantFacingDirection.north,
-    PlantFacingDirection.northeast,
-    PlantFacingDirection.west,
-    null, // merkez — boş
-    PlantFacingDirection.east,
-    PlantFacingDirection.southwest,
-    PlantFacingDirection.south,
-    PlantFacingDirection.southeast,
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return GridView.count(
-      crossAxisCount: 3,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 6,
-      crossAxisSpacing: 6,
-      childAspectRatio: 1.6,
-      children: _grid.map((dir) {
-        if (dir == null) {
-          // Merkez hücre — pusula simgesi
-          return GestureDetector(
-            onTap: () => onChanged(null),
-            child: Center(
-              child:
-                  Icon(Icons.explore_rounded, color: Colors.white24, size: 28),
-            ),
-          );
-        }
-        final degrees = _directionDegrees(dir);
-        final isSelected =
-            hasSelection && (selectedDegrees.round() % 360) == degrees.round();
-        return GestureDetector(
-          onTap: () => onChanged(isSelected ? null : degrees),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            decoration: BoxDecoration(
-              color: isSelected ? accent.withValues(alpha: 0.18) : card,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                color: isSelected ? accent : Colors.white12,
-                width: isSelected ? 1.5 : 1,
-              ),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  dir.arrow,
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: isSelected ? accent : Colors.white54,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  dir.shortLabel,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight:
-                        isSelected ? FontWeight.w700 : FontWeight.normal,
-                    color: isSelected ? accent : Colors.white54,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      }).toList(),
-    );
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════════
-// BAKAN YÖN SEÇİM SAYFASI — her bitki ekleme akışında ayrı olarak açılır
-// ═══════════════════════════════════════════════════════════════════════
-class _AngleSlider extends StatelessWidget {
-  const _AngleSlider({
-    required this.angleDegrees,
-    required this.hasSelection,
-    required this.accent,
-    required this.onChanged,
-  });
-
-  final double angleDegrees;
-  final bool hasSelection;
-  final Color accent;
-  final ValueChanged<double> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final rounded = angleDegrees.round() % 360;
-    return Container(
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
-      decoration: BoxDecoration(
-        color: const Color(0xFF101A14),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.threesixty_rounded,
-                  color: Colors.white70, size: 18),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  hasSelection ? 'Serbest açı: $rounded°' : 'Serbest açı',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.outfit(
-                    color: Colors.white,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-              Text(
-                'K 0°',
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.55),
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-          SliderTheme(
-            data: SliderTheme.of(context).copyWith(
-              activeTrackColor: accent,
-              inactiveTrackColor: Colors.white12,
-              thumbColor: accent,
-              overlayColor: accent.withValues(alpha: 0.16),
-              valueIndicatorColor: accent,
-              valueIndicatorTextStyle: const TextStyle(
-                color: Colors.black,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            child: Slider(
-              min: 0,
-              max: 359,
-              divisions: 359,
-              value: angleDegrees.clamp(0.0, 359.0).toDouble(),
-              label: '$rounded°',
-              onChanged: onChanged,
-            ),
-          ),
-          const Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('Kuzey',
-                  style: TextStyle(color: Colors.white54, fontSize: 11)),
-              Text('Doğu',
-                  style: TextStyle(color: Colors.white54, fontSize: 11)),
-              Text('Güney',
-                  style: TextStyle(color: Colors.white54, fontSize: 11)),
-              Text('Batı',
-                  style: TextStyle(color: Colors.white54, fontSize: 11)),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _FacingDirectionPreview extends StatelessWidget {
-  const _FacingDirectionPreview({
-    required this.plantName,
-    required this.rawDirection,
-    required this.angleDegrees,
-    required this.hasSelection,
-    required this.accent,
-    required this.card,
-  });
-
-  final String plantName;
-  final String? rawDirection;
-  final double angleDegrees;
-  final bool hasSelection;
-  final Color accent;
-  final Color card;
-
-  @override
-  Widget build(BuildContext context) {
-    final resolvedRaw = rawDirection ?? _facingRawFromDegrees(angleDegrees);
-    final label =
-        hasSelection ? _facingDirectionLabel(resolvedRaw) : 'Yön seçilmedi';
-    return Container(
-      height: 118,
-      decoration: BoxDecoration(
-        color: card,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white12),
-      ),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 110,
-            height: 118,
-            child: Center(
-              child: SizedBox(
-                width: 88,
-                height: 104,
-                child: buildCropMarkerWidget(
-                  cropName: plantName,
-                  cropColor: accent,
-                  maturityPercent: 82,
-                  facingDirection: hasSelection ? resolvedRaw : null,
-                ),
-              ),
-            ),
-          ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(right: 14),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.outfit(
-                      color: Colors.white,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  const Text(
-                    'Seçilen yön haritada bitkinin dibindeki ince okla görünür.',
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: Colors.white60,
-                      fontSize: 12,
-                      height: 1.25,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _FacingDirectionSheet extends StatefulWidget {
-  const _FacingDirectionSheet({
-    required this.plantName,
-    this.initialRaw,
-  });
-
-  final String plantName;
-  final String? initialRaw;
-
-  @override
-  State<_FacingDirectionSheet> createState() => _FacingDirectionSheetState();
-}
-
-class _FacingDirectionSheetState extends State<_FacingDirectionSheet> {
-  late double _angleDegrees;
-  late bool _hasSelection;
-
-  static const _bg = Color(0xFF0D1811);
-  static const _accent = Color(0xFF00E676);
-  static const _card = Color(0xFF152018);
-
-  @override
-  void initState() {
-    super.initState();
-    _angleDegrees = _degreesFromFacingRaw(widget.initialRaw);
-    _hasSelection = widget.initialRaw != null && widget.initialRaw!.isNotEmpty;
-  }
-
-  String? get _selectedRaw =>
-      _hasSelection ? _facingRawFromDegrees(_angleDegrees) : null;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: _bg,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.white24,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Row(children: [
-              const Icon(Icons.explore_rounded, color: _accent, size: 26),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '${widget.plantName} hangi yöne baksın?',
-                      style: GoogleFonts.outfit(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    const Text(
-                      'Güneş maruziyeti ve mikro-iklim için kullanılır.',
-                      style: TextStyle(color: Colors.white54, fontSize: 12),
-                    ),
-                  ],
-                ),
-              ),
-            ]),
-            const SizedBox(height: 18),
-            _DirectionPicker(
-              selectedDegrees: _angleDegrees,
-              hasSelection: _hasSelection,
-              onChanged: (degrees) => setState(() {
-                if (degrees == null) {
-                  _hasSelection = false;
-                  return;
-                }
-                _angleDegrees = degrees;
-                _hasSelection = true;
-              }),
-              accent: _accent,
-              card: _card,
-            ),
-            const SizedBox(height: 14),
-            _AngleSlider(
-              angleDegrees: _angleDegrees,
-              hasSelection: _hasSelection,
-              accent: _accent,
-              onChanged: (degrees) => setState(() {
-                _angleDegrees = degrees;
-                _hasSelection = true;
-              }),
-            ),
-            const SizedBox(height: 14),
-            _FacingDirectionPreview(
-              plantName: widget.plantName,
-              rawDirection: _selectedRaw,
-              angleDegrees: _angleDegrees,
-              hasSelection: _hasSelection,
-              accent: _accent,
-              card: _card,
-            ),
-            const SizedBox(height: 20),
-            Row(children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () => Navigator.pop(context, _SkipDirection()),
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Colors.white24),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Text('Atla',
-                      style: TextStyle(color: Colors.white70)),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                flex: 2,
-                child: ElevatedButton.icon(
-                  onPressed: () => Navigator.pop(context, _selectedRaw),
-                  icon: const Icon(Icons.check_rounded, size: 18),
-                  label: Text(
-                    _hasSelection ? 'Onayla' : 'Devam Et',
-                    style: GoogleFonts.outfit(
-                        fontSize: 14, fontWeight: FontWeight.w700),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _accent,
-                    foregroundColor: Colors.black,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-              ),
-            ]),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// "Atla" sentinel — kullanıcı yön belirtmek istemediğinde döner.
-class _SkipDirection {}
-
-/// Yön seçim diyaloğunu gösterir. Dönüş değeri:
-///   - String: kullanıcı derece tabanlı bir yön seçti
-///   - null: kullanıcı sheet'i swipe-to-dismiss ile kapattı (iptal)
-///   - _SkipDirection: "Atla" — yön kaydedilmeyecek (null olarak gönder)
-Future<String?> _askFacingDirection(
-  BuildContext context, {
-  required String plantName,
-  String? initialRaw,
-}) async {
-  final result = await _showFacingDirectionSheet(
-    context,
-    plantName: plantName,
-    initialRaw: initialRaw,
-  );
-  if (result is String) return result;
-  return null;
-}
-
-Future<Object?> _showFacingDirectionSheet(
-  BuildContext context, {
-  required String plantName,
-  String? initialRaw,
-}) {
-  return showModalBottomSheet<Object?>(
-    context: context,
-    backgroundColor: Colors.transparent,
-    isScrollControlled: true,
-    builder: (_) =>
-        _FacingDirectionSheet(plantName: plantName, initialRaw: initialRaw),
-  );
 }

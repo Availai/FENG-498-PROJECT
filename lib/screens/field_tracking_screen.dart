@@ -26,6 +26,7 @@ import '../data/disease_advice.dart';
 import '../data/turkiye_crop_guides.dart';
 import '../services/app_providers.dart';
 import '../services/crop_daily_plan.dart';
+import '../services/crop_state_service.dart';
 import '../services/disease_log_service.dart';
 import '../services/notification_service.dart';
 import '../services/rules/recommendation.dart';
@@ -85,16 +86,16 @@ class _FieldTrackingScreenState extends ConsumerState<FieldTrackingScreen>
             const Text('Takip'),
             Text(
               widget.fieldName,
-              style: AppText.xs(context),
+              style: AppText.xs(context).copyWith(color: Colors.white70),
             ),
           ],
         ),
         bottom: TabBar(
           controller: _tab,
           isScrollable: true,
-          labelColor: AppColors.emeraldDark,
-          unselectedLabelColor: AppColors.textTertiary,
-          indicatorColor: AppColors.emerald,
+          labelColor: Colors.white,
+          unselectedLabelColor: Colors.white70,
+          indicatorColor: Colors.white,
           tabs: const [
             Tab(icon: Icon(Icons.monitor_heart_rounded), text: 'Genel'),
             Tab(icon: Icon(Icons.water_drop_rounded), text: 'Sulama'),
@@ -1209,9 +1210,9 @@ class _PrimaryTreatmentRecommendationCardState
           const SizedBox(height: 8),
           Text(
             'Bu bitki için yapılandırılmış ilaç kataloğu yok. Yukarıdaki aktif '
-            'madde TAGEM Zirai Mücadele Teknik Talimatına göredir. Ruhsatlı '
-            'ürün, etiket dozu ve hasada bekleme için bku.tarim.gov.tr + '
-            'Tarım İl Müdürlüğü onayı zorunludur.',
+            'madde genel öneridir. Ruhsatlı ürün, etiket dozu ve hasada '
+            'bekleme süresi için ürün etiketini ve il/ilçe müdürlüğü teknik '
+            'desteğini esas alın.',
             style: AppText.xs(context).copyWith(
               color: AppColors.textSecondary,
               height: 1.4,
@@ -1372,7 +1373,7 @@ class _TreatmentProgressBar extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         Text(
-          'Her $intervalDays günde bir uygulama (TAGEM/Zirai Mücadele Teknik Talimatı). '
+          'Her $intervalDays günde bir uygulama önerilir. '
           'Etikette farklı süre varsa etiket geçerlidir.',
           style: AppText.xs(context),
         ),
@@ -1818,7 +1819,7 @@ class _WateringCropCard extends StatelessWidget {
             if (lPerPlant != null) ...[
               const SizedBox(height: 4),
               Text(
-                'Bitki başına yönerge: yaklaşık ${lPerPlant.toStringAsFixed(1)} L/gün (TAGEM rehberinden, çeşit/dönem ile değişir).',
+                'Bitki başına yönerge: yaklaşık ${lPerPlant.toStringAsFixed(1)} L/gün (genel öneri; çeşit/dönem ile değişir).',
                 style: AppText.xs(context),
               ),
             ],
@@ -2040,6 +2041,16 @@ class _CultivationGuideCardState extends State<_CultivationGuideCard> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  // Yaşam döngüsü disclaimer: tek yıllık / yeni fidan /
+                  // olgun ağaç. CropStateService tek nokta tanımlar.
+                  _LifecycleDisclaimerChip(
+                    cropName: cropName,
+                    plantedDate: plantedDate,
+                    isSeedling: widget.crop['is_seedling'] is bool
+                        ? widget.crop['is_seedling'] as bool
+                        : null,
+                  ),
+                  const SizedBox(height: 8),
                   _GuideHeaderChips(guide: widget.guide),
                   const SizedBox(height: 12),
                   for (var i = 0; i < widget.guide.stages.length; i++)
@@ -2084,6 +2095,72 @@ class _GuideHeaderChips extends StatelessWidget {
             text: '${guide.seasonalWaterMm.toStringAsFixed(0)} mm/sezon'),
         _MiniChip(icon: Icons.wb_sunny_outlined, text: guide.sunlight),
       ],
+    );
+  }
+}
+
+/// Yaşam döngüsü uyarı satırı. CropStateService.disclaimerFor() çıktısını
+/// rozet biçiminde gösterir.
+///   - Tek yıllık → "Tek yıllık bitki — bu sezon..."
+///   - Yeni fidan → "Yeni fidan — ilk ekonomik hasata ~X yıl"
+///   - Olgun ağaç → "Olgun ağaç — yıllık döngü..."
+class _LifecycleDisclaimerChip extends StatelessWidget {
+  const _LifecycleDisclaimerChip({
+    required this.cropName,
+    required this.plantedDate,
+    required this.isSeedling,
+  });
+
+  final String cropName;
+  final DateTime? plantedDate;
+  final bool? isSeedling;
+
+  @override
+  Widget build(BuildContext context) {
+    final mode = CropStateService.modeFor(
+      cropName: cropName,
+      isSeedling: isSeedling,
+      plantedDate: plantedDate,
+    );
+    final text = CropStateService.disclaimerFor(
+      cropName: cropName,
+      mode: mode,
+      plantedDate: plantedDate,
+    );
+    final (icon, color) = switch (mode) {
+      CropLifecycleMode.annual => (Icons.eco_outlined, AppColors.emerald),
+      CropLifecycleMode.perennialSeedling => (
+          Icons.spa_outlined,
+          AppColors.warning
+        ),
+      CropLifecycleMode.perennialMature => (
+          Icons.park_outlined,
+          AppColors.frost
+        ),
+    };
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        borderRadius: AppRadius.sm,
+        border: Border.all(color: color.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              text,
+              style: AppText.xs(context).copyWith(
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -668,8 +668,7 @@ class HelpContent {
         title: 'HASTALIK REHBERİ Bölümü',
         description:
             'Tarladaki bir bitkide hastalık işaretlediğinizde bu bölüm açılır. '
-            'Hastalık adı, aciliyet düzeyi ve TAGEM, Tarım Bakanlığı ile '
-            'bku.tarim.gov.tr kaynaklı önerilen kimyasal mücadele listesi gösterilir. '
+            'Hastalık adı, aciliyet düzeyi ve önerilen kimyasal mücadele listesi gösterilir. '
             'Aynı hastalıktan birden çok bitki etkilendiyse "X bitki" rozeti görünür.',
       ),
       HelpItem(

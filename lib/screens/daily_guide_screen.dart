@@ -6,6 +6,7 @@ import '../data/app_database.dart';
 import '../data/turkiye_crop_guides.dart';
 import '../services/app_providers.dart';
 import '../services/crop_daily_plan.dart';
+import '../services/crop_general_rules.dart';
 import '../services/crop_protocol_service.dart';
 import '../services/disease_log_service.dart';
 import '../services/guide_engine.dart';
@@ -109,10 +110,7 @@ class DailyGuideScreen extends ConsumerWidget {
       appBar: AppBar(
         title: Text(
           fieldName != null ? '$fieldName · Rehber' : 'Bugünün Rehberi',
-          style: AppText.h2(context),
         ),
-        backgroundColor: AppColors.surface,
-        elevation: 0,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
@@ -752,6 +750,59 @@ class _CropEncyclopediaPanelState extends State<_CropEncyclopediaPanel> {
       ));
     }
 
+    // ── Bu ürün için genel kurallar ──────────────────────────────────
+    // CLAUDE.md sec 12-14: suitability + pre_planting + soil_analysis
+    // kategorilerindeki kayıtlar burada gösterilir. Ana ekrandan filtrelenir
+    // (bilgi bombardımanını önlemek için), kullanıcı ihtiyaç duyduğunda
+    // ansiklopedide referans olarak okur.
+    final generalRules = CropGeneralRules.forCropName(widget.cropName);
+    if (generalRules.isNotEmpty) {
+      rows.add(const Divider(height: 18));
+      rows.add(Text(
+        'Bu ürün için genel kurallar',
+        style: AppText.bodyMd(context).copyWith(
+          fontWeight: FontWeight.w800,
+          color: AppColors.emeraldDark,
+        ),
+      ));
+      rows.add(const SizedBox(height: 4));
+      rows.add(Text(
+        'Kaynak kanıtlı uygunluk, ekim öncesi ve toprak analizi notları. Bunlar ana ekranda uyarı olarak gösterilmez; gerektiğinde buradan okunur.',
+        style: AppText.xs(context).copyWith(
+          color: AppColors.textSecondary,
+          height: 1.35,
+        ),
+      ));
+      // Kategoriye göre gruplandır.
+      final grouped = <String, List<String>>{};
+      for (final r in generalRules) {
+        final recs = r.result.recommendations;
+        if (recs.isEmpty) continue;
+        grouped.putIfAbsent(r.category, () => []).addAll(recs);
+      }
+      for (final entry in grouped.entries) {
+        rows.add(const SizedBox(height: 8));
+        rows.add(Text(
+          CropGeneralRules.categoryLabel(entry.key),
+          style: AppText.label(context),
+        ));
+        for (final rec in entry.value) {
+          rows.add(Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('• ', style: TextStyle(color: AppColors.emerald)),
+                Expanded(
+                  child: Text(rec, style: AppText.xs(context)),
+                ),
+              ],
+            ),
+          ));
+        }
+      }
+    }
+
     if (rows.isEmpty) {
       return Text(
         'Bu bitki için ayrıntılı çevrimdışı veri henüz hazır değil.',
@@ -1188,7 +1239,7 @@ class _FreshnessBar extends StatelessWidget {
   }
 }
 
-class _LiveTodoSections extends StatelessWidget {
+class _LiveTodoSections extends StatefulWidget {
   final List<Recommendation> recommendations;
   final ValueChanged<Recommendation> onShown;
   final VoidCallback onLogged;
@@ -1200,26 +1251,50 @@ class _LiveTodoSections extends StatelessWidget {
   });
 
   @override
+  State<_LiveTodoSections> createState() => _LiveTodoSectionsState();
+}
+
+class _LiveTodoSectionsState extends State<_LiveTodoSections> {
+  /// Kullanıcının "tümünü göster" diyerek açtığı kategoriler.
+  /// Varsayılan: hiçbiri açık değil — bilgi bombardımanı önlemek için
+  /// her bölüm sınırlı sayıda öneri gösterir.
+  final Set<String> _expanded = <String>{};
+
+  // CLAUDE.md sec 4.4-5.4 — sahada yaşlı kullanıcı, anlık karar.
+  // Her bölümde varsayılan limitler. ACİL'de sert sınır yok (çiftçi
+  // sağlığı + verim için her acil görünür); BUGÜN'de 5, BU HAFTA'da 3,
+  // İZLE'de 3.
+  static const int _maxToday = 5;
+  static const int _maxWeek = 3;
+  static const int _maxWatch = 3;
+
+  @override
   Widget build(BuildContext context) {
-    if (recommendations.isEmpty) return const SizedBox.shrink();
-    final urgent = recommendations
+    if (widget.recommendations.isEmpty) return const SizedBox.shrink();
+    // CLAUDE.md sec 5.1 + bilgi bombardımanı önlemi: suitability /
+    // pre_planting / soil_analysis kategorileri "bilgi notu" sayılır
+    // ve ana ekranda gösterilmez. Bu kayıtlar Bilgi Notları paneli ile
+    // ürün ansiklopedisinde sunulur.
+    final channels = RecommendationChannels.split(widget.recommendations);
+    final urgent = channels.actionable
         .where((r) => r.severity == AlertSeverity.critical)
         .toList();
-    final today = recommendations
+    final today = channels.actionable
         .where((r) =>
             r.severity == AlertSeverity.warning &&
             r.gate == RecommendationGate.actionable)
         .toList();
-    final week = recommendations
+    final week = channels.actionable
         .where((r) =>
             r.severity == AlertSeverity.info &&
             r.gate == RecommendationGate.actionable)
         .toList();
-    final watch = recommendations
+    final watch = channels.actionable
         .where((r) =>
             r.gate != RecommendationGate.actionable &&
             r.severity != AlertSeverity.critical)
         .toList();
+    final infoNotes = channels.informational;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1229,41 +1304,82 @@ class _LiveTodoSections extends StatelessWidget {
           for (final r in urgent)
             RecommendationCard(
               recommendation: r,
-              onShown: () => onShown(r),
-              onLogged: onLogged,
+              onShown: () => widget.onShown(r),
+              onLogged: widget.onLogged,
             ),
           const SizedBox(height: 16),
         ],
-        if (today.isNotEmpty) ...[
-          _SectionHeader(label: 'BUGÜN', count: today.length),
-          for (final r in today)
-            RecommendationCard(
-              recommendation: r,
-              onShown: () => onShown(r),
-              onLogged: onLogged,
+        if (today.isNotEmpty)
+          _buildSection(
+            sectionKey: 'today',
+            label: 'BUGÜN',
+            list: today,
+            maxVisible: _maxToday,
+          ),
+        if (week.isNotEmpty)
+          _buildSection(
+            sectionKey: 'week',
+            label: 'BU HAFTA',
+            list: week,
+            maxVisible: _maxWeek,
+          ),
+        if (watch.isNotEmpty)
+          _buildSection(
+            sectionKey: 'watch',
+            label: 'İZLE',
+            list: watch,
+            maxVisible: _maxWatch,
+          ),
+        if (infoNotes.isNotEmpty)
+          _buildSection(
+            sectionKey: 'info_notes',
+            label: 'BİLGİ NOTLARI',
+            list: infoNotes,
+            maxVisible: 1,
+          ),
+      ],
+    );
+  }
+
+  Widget _buildSection({
+    required String sectionKey,
+    required String label,
+    required List<Recommendation> list,
+    required int maxVisible,
+  }) {
+    final isExpanded = _expanded.contains(sectionKey);
+    final visible = isExpanded ? list : list.take(maxVisible).toList();
+    final hidden = list.length - visible.length;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _SectionHeader(label: label, count: list.length),
+        for (final r in visible)
+          RecommendationCard(
+            recommendation: r,
+            onShown: () => widget.onShown(r),
+            onLogged: widget.onLogged,
+          ),
+        if (hidden > 0)
+          Padding(
+            padding: const EdgeInsets.only(top: 4, bottom: 4),
+            child: TextButton.icon(
+              onPressed: () => setState(() => _expanded.add(sectionKey)),
+              icon: const Icon(Icons.expand_more_rounded, size: 18),
+              label: Text('+$hidden öneri daha göster'),
             ),
-          const SizedBox(height: 16),
-        ],
-        if (week.isNotEmpty) ...[
-          _SectionHeader(label: 'BU HAFTA', count: week.length),
-          for (final r in week)
-            RecommendationCard(
-              recommendation: r,
-              onShown: () => onShown(r),
-              onLogged: onLogged,
+          )
+        else if (isExpanded && list.length > maxVisible)
+          Padding(
+            padding: const EdgeInsets.only(top: 4, bottom: 4),
+            child: TextButton.icon(
+              onPressed: () => setState(() => _expanded.remove(sectionKey)),
+              icon: const Icon(Icons.expand_less_rounded, size: 18),
+              label: const Text('Daha az göster'),
             ),
-          const SizedBox(height: 16),
-        ],
-        if (watch.isNotEmpty) ...[
-          _SectionHeader(label: 'İZLE', count: watch.length),
-          for (final r in watch)
-            RecommendationCard(
-              recommendation: r,
-              onShown: () => onShown(r),
-              onLogged: onLogged,
-            ),
-          const SizedBox(height: 16),
-        ],
+          ),
+        const SizedBox(height: 16),
       ],
     );
   }
@@ -1788,9 +1904,9 @@ class _InTreatmentBanner extends StatelessWidget {
           ],
           const SizedBox(height: 6),
           Text(
-            'Her $intervalDays günde bir uygulama (TAGEM/Zirai Mücadele Teknik '
-            'Talimatı). Etiket farklı süre belirtiyorsa etiket geçerlidir. '
-            'Doz ve hasada bekleme için bku.tarim.gov.tr kontrolü zorunlu.',
+            'Her $intervalDays günde bir uygulama önerilir. Etiket farklı '
+            'süre belirtiyorsa etiket geçerlidir. Doz ve hasada bekleme '
+            'süresi için ürün etiketini ve uzman önerisini esas alın.',
             style: AppText.xs(context)
                 .copyWith(color: AppColors.textSecondary, height: 1.35),
           ),

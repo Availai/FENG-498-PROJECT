@@ -86,15 +86,11 @@ class _HarvestOracleScreenState extends State<HarvestOracleScreen> {
     return Scaffold(
       backgroundColor: AppColors.bg,
       appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text('Hasat Oracle', style: AppText.h2(context)),
+        title: const Text('Hasat Oracle'),
         actions: [
           if (!_loading)
             IconButton(
-              icon: const Icon(Icons.refresh_rounded, color: AppColors.emerald),
+              icon: const Icon(Icons.refresh_rounded),
               onPressed: _fetch,
             ),
           IconButton(

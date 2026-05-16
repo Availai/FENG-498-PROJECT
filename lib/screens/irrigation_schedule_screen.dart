@@ -126,8 +126,6 @@ class _IrrigationScheduleScreenState
     return Scaffold(
       appBar: AppBar(
         title: const Text('Akıllı Sulama Programı'),
-        backgroundColor: Colors.teal,
-        foregroundColor: Colors.white,
         actions: [
           IconButton(
             tooltip: 'Yenile',

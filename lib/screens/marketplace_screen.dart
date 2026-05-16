@@ -246,18 +246,19 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
           SliverAppBar(
             floating: true,
             snap: true,
-            backgroundColor: AppColors.bg,
+            backgroundColor: AppColors.forest,
+            foregroundColor: Colors.white,
             elevation: 0,
             title: Row(
               children: [
                 Container(
                   padding: const EdgeInsets.all(7),
                   decoration: BoxDecoration(
-                    color: AppColors.mint,
+                    color: Colors.white.withValues(alpha: 0.18),
                     borderRadius: AppRadius.sm,
                   ),
                   child: const Icon(Icons.storefront_rounded,
-                      color: AppColors.emeraldDark, size: 20),
+                      color: Colors.white, size: 20),
                 ),
                 const SizedBox(width: 10),
                 Column(
@@ -266,10 +267,10 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
                   children: [
                     Text('Pazar & Topluluk',
                         style: AppText.h3(context)
-                            .copyWith(color: AppColors.textPrimary)),
+                            .copyWith(color: Colors.white)),
                     Text('İlan ver · hastalık paylaş · soru sor',
                         style: AppText.sm(context)
-                            .copyWith(color: AppColors.textTertiary, fontSize: 11)),
+                            .copyWith(color: Colors.white70, fontSize: 11)),
                   ],
                 ),
               ],
@@ -277,7 +278,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
             actions: [
               IconButton(
                 icon: const Icon(Icons.help_outline_rounded,
-                    color: AppColors.textTertiary),
+                    color: Colors.white),
                 tooltip: 'Yardım',
                 onPressed: _showHelp,
               ),
@@ -288,9 +289,9 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
                   fontSize: 14, fontWeight: FontWeight.w700),
               unselectedLabelStyle:
                   GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w500),
-              labelColor: AppColors.emeraldDark,
-              unselectedLabelColor: AppColors.textTertiary,
-              indicatorColor: AppColors.emerald,
+              labelColor: Colors.white,
+              unselectedLabelColor: Colors.white70,
+              indicatorColor: Colors.white,
               indicatorWeight: 3,
               tabs: const [
                 Tab(

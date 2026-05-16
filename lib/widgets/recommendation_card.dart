@@ -96,12 +96,12 @@ class _RecommendationCardState extends ConsumerState<RecommendationCard> {
 
   String _shortSource(String source) {
     final s = source.toLowerCase();
-    if (s.contains('bku') || s.contains('bitki koruma')) return 'BKÜ';
-    if (s.contains('fao')) return 'FAO-56';
-    if (s.contains('tagem')) return 'TAGEM';
-    if (s.contains('trakya')) return 'Trakya TAE';
+    if (s.contains('bku') || s.contains('bitki koruma')) return 'İlaç';
+    if (s.contains('fao')) return 'Sulama';
+    if (s.contains('tagem')) return 'Resmi';
+    if (s.contains('trakya')) return 'Resmi';
     if (s.contains('tarim ve orman') || s.contains('tarım ve orman')) {
-      return 'Bakanlık';
+      return 'Resmi';
     }
     return source.length <= 22 ? source : '${source.substring(0, 22)}...';
   }

@@ -62,10 +62,7 @@ class MyCropsScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: AppColors.bg,
       appBar: AppBar(
-        title: Text('Tarlalarım', style: AppText.h2(context)),
-        backgroundColor: AppColors.surface,
-        elevation: 0,
-        centerTitle: false,
+        title: const Text('Tarlalarım'),
         actions: [
           IconButton(
             icon: const Icon(Icons.help_outline_rounded),

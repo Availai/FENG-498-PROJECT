@@ -98,7 +98,6 @@ class _CropDailyPlanScreenState extends ConsumerState<CropDailyPlanScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Günlük Rehber'),
-        elevation: 0,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded),

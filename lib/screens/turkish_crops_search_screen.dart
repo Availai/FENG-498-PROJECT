@@ -515,7 +515,7 @@ class _CropDetailSheet extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _sectionTitle('Kaynaklı Ürün Rehberi', Icons.verified_rounded),
+        _sectionTitle('Ürün Rehberi', Icons.verified_rounded),
         const SizedBox(height: 8),
         Wrap(
           spacing: 6,
@@ -530,7 +530,7 @@ class _CropDetailSheet extends StatelessWidget {
         if (v2.growthStages.isNotEmpty) ...[
           const SizedBox(height: 14),
           _v2MapSection(
-            'Kaynaklı Dönemler',
+            'Yetişme Dönemleri',
             Icons.timeline_rounded,
             v2.growthStages,
             AppColors.emerald,
@@ -601,7 +601,7 @@ class _CropDetailSheet extends StatelessWidget {
         if (v2.evidence.isNotEmpty) ...[
           const SizedBox(height: 14),
           _v2MapSection(
-            'Kaynak Kanıtları',
+            'Notlar',
             Icons.source_rounded,
             v2.evidence,
             Colors.blueGrey,
@@ -932,15 +932,15 @@ class _CropDetailSheet extends StatelessWidget {
         'irrigation' => 'Sulama',
         'nutrition_risk' => 'Besleme riski',
         'harvest_quality' => 'Hasat kalitesi',
-        _ => 'Kaynaklı kural',
+        _ => 'Genel kural',
       };
 
   String _statusLabel(String? status) => switch (status) {
         'approved' => 'Onaylı',
         'review' => 'İncelemede',
         'draft' => 'Taslak',
-        'pending_sources' => 'Kaynak bekliyor',
-        _ => 'Kaynaklı',
+        'pending_sources' => 'Hazırlanıyor',
+        _ => 'Hazır',
       };
 
   String _confidenceLabel(String? confidence) => switch (confidence) {
@@ -966,10 +966,10 @@ class _CropDetailSheet extends StatelessWidget {
 
   String _sourceLabel(String? sourceId) {
     final id = sourceId ?? '';
-    if (id.contains('caykur')) return 'ÇAYKUR';
-    if (id.contains('tagem')) return 'TAGEM';
-    if (id.contains('mgm')) return 'MGM';
-    return 'Kaynak';
+    if (id.contains('caykur')) return 'Resmi';
+    if (id.contains('tagem')) return 'Resmi';
+    if (id.contains('mgm')) return 'Resmi';
+    return 'Not';
   }
 
   Widget _header() {
