@@ -48,7 +48,9 @@ void main() {
 
     expect(find.text('Bugün 2000 L sula'), findsOneWidget);
     expect(find.text('Suladım'), findsOneWidget);
-    expect(find.text('TAGEM'), findsOneWidget);
+    // Card kaynak rozetini kısaltır: 'TAGEM ...' → 'Resmi'. Hem TAGEM hem
+    // de Trakya/Tarım ve Orman gibi resmi kaynaklar 'Resmi' etiketi alır.
+    expect(find.text('Resmi'), findsOneWidget);
     expect(find.text('Neden'), findsOneWidget);
   });
 

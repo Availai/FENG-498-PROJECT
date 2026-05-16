@@ -1590,6 +1590,9 @@ class LocalDataRepository {
 
   /// Mevcut bitkilere dokunmadan tarlaya tek bir bitki ekler.
   /// [zonePolygonJson]: JSON dizesi [{"lat":...,"lng":...}, ...]
+  /// [isSeedling]: çok yıllık ürün (portakal, çay) için: true = yeni
+  /// fidan, false = olgun ağaç/bahçe, null = bilinmiyor / tek yıllık.
+  /// CropStateService.modeFor() bu değeri okur.
   Future<String> addSingleCropToField({
     required String fieldId,
     required String name,
@@ -1601,6 +1604,7 @@ class LocalDataRepository {
     double plantSpacingCm = 40.0,
     String? zonePolygonJson,
     String? facingDirection,
+    bool? isSeedling,
   }) async {
     final now = DateTime.now().toUtc();
     final cropId = _newId('crop');
@@ -1620,6 +1624,7 @@ class LocalDataRepository {
             waterIntervalDays: Value(waterIntervalDays),
             zonePolygonJson: Value(zonePolygonJson),
             facingDirection: Value(facingDirection),
+            isSeedling: Value(isSeedling),
             createdAt: now,
             updatedAt: now,
           ),
@@ -1643,6 +1648,7 @@ class LocalDataRepository {
         'water_interval_days': waterIntervalDays,
         'zone_polygon_json': zonePolygonJson,
         'facing_direction': facingDirection,
+        'is_seedling': isSeedling,
       },
       updatedAt: now,
     );

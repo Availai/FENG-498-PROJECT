@@ -33,6 +33,12 @@ import 'rules/recommendation.dart';
 import 'rules/recommendation_ledger.dart';
 import 'rules/sunflower_rules.dart';
 import 'rules/wheat_rules.dart';
+import 'rules/declarative_crop_rule_set.dart';
+import '../data/rule_packs/crop_registry.dart';
+import '../data/rule_packs/tea_rule_pack.dart';
+import '../data/rule_packs/orange_rule_pack.dart';
+import '../data/rule_packs/corn_rule_pack.dart';
+import '../data/rule_packs/tomato_rule_pack.dart';
 import 'api/sync_api_client.dart';
 
 final appDatabaseProvider = Provider<AppDatabase>((ref) {
@@ -357,11 +363,23 @@ final cropRuleSetsProvider = Provider<List<CropRuleSet>>((ref) {
   return const [
     // Elle-yazılı + declarative pack hibrit ürün
     SunflowerRules(),
-    // Pure declarative pack ürünleri buraya eklenir:
-    // DeclarativeCropRuleSet(
-    //   definition: CropRegistry.corn,
-    //   packBuilder: CornRulePack.all,
-    // ),
+    // Pure declarative pack ürünleri:
+    DeclarativeCropRuleSet(
+      definition: CropRegistry.tea,
+      packBuilder: TeaRulePack.all,
+    ),
+    DeclarativeCropRuleSet(
+      definition: CropRegistry.orange,
+      packBuilder: OrangeRulePack.all,
+    ),
+    DeclarativeCropRuleSet(
+      definition: CropRegistry.corn,
+      packBuilder: CornRulePack.all,
+    ),
+    DeclarativeCropRuleSet(
+      definition: CropRegistry.tomato,
+      packBuilder: TomatoRulePack.all,
+    ),
     WheatRules(),
   ];
 });

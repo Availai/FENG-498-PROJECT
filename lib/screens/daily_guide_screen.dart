@@ -1185,7 +1185,7 @@ class _FreshnessBar extends StatelessWidget {
   }
 }
 
-class _LiveTodoSections extends StatelessWidget {
+class _LiveTodoSections extends StatefulWidget {
   final List<Recommendation> recommendations;
   final ValueChanged<Recommendation> onShown;
   final VoidCallback onLogged;
@@ -1197,22 +1197,40 @@ class _LiveTodoSections extends StatelessWidget {
   });
 
   @override
+  State<_LiveTodoSections> createState() => _LiveTodoSectionsState();
+}
+
+class _LiveTodoSectionsState extends State<_LiveTodoSections> {
+  /// Kullanıcının "tümünü göster" diyerek açtığı kategoriler.
+  /// Varsayılan: hiçbiri açık değil — bilgi bombardımanı önlemek için
+  /// her bölüm sınırlı sayıda öneri gösterir.
+  final Set<String> _expanded = <String>{};
+
+  // CLAUDE.md sec 4.4-5.4 — sahada yaşlı kullanıcı, anlık karar.
+  // Her bölümde varsayılan limitler. ACİL'de sert sınır yok (çiftçi
+  // sağlığı + verim için her acil görünür); BUGÜN'de 5, BU HAFTA'da 3,
+  // İZLE'de 3.
+  static const int _maxToday = 5;
+  static const int _maxWeek = 3;
+  static const int _maxWatch = 3;
+
+  @override
   Widget build(BuildContext context) {
-    if (recommendations.isEmpty) return const SizedBox.shrink();
-    final urgent = recommendations
+    if (widget.recommendations.isEmpty) return const SizedBox.shrink();
+    final urgent = widget.recommendations
         .where((r) => r.severity == AlertSeverity.critical)
         .toList();
-    final today = recommendations
+    final today = widget.recommendations
         .where((r) =>
             r.severity == AlertSeverity.warning &&
             r.gate == RecommendationGate.actionable)
         .toList();
-    final week = recommendations
+    final week = widget.recommendations
         .where((r) =>
             r.severity == AlertSeverity.info &&
             r.gate == RecommendationGate.actionable)
         .toList();
-    final watch = recommendations
+    final watch = widget.recommendations
         .where((r) =>
             r.gate != RecommendationGate.actionable &&
             r.severity != AlertSeverity.critical)
@@ -1226,41 +1244,75 @@ class _LiveTodoSections extends StatelessWidget {
           for (final r in urgent)
             RecommendationCard(
               recommendation: r,
-              onShown: () => onShown(r),
-              onLogged: onLogged,
+              onShown: () => widget.onShown(r),
+              onLogged: widget.onLogged,
             ),
           const SizedBox(height: 16),
         ],
-        if (today.isNotEmpty) ...[
-          _SectionHeader(label: 'BUGÜN', count: today.length),
-          for (final r in today)
-            RecommendationCard(
-              recommendation: r,
-              onShown: () => onShown(r),
-              onLogged: onLogged,
+        if (today.isNotEmpty)
+          _buildSection(
+            sectionKey: 'today',
+            label: 'BUGÜN',
+            list: today,
+            maxVisible: _maxToday,
+          ),
+        if (week.isNotEmpty)
+          _buildSection(
+            sectionKey: 'week',
+            label: 'BU HAFTA',
+            list: week,
+            maxVisible: _maxWeek,
+          ),
+        if (watch.isNotEmpty)
+          _buildSection(
+            sectionKey: 'watch',
+            label: 'İZLE',
+            list: watch,
+            maxVisible: _maxWatch,
+          ),
+      ],
+    );
+  }
+
+  Widget _buildSection({
+    required String sectionKey,
+    required String label,
+    required List<Recommendation> list,
+    required int maxVisible,
+  }) {
+    final isExpanded = _expanded.contains(sectionKey);
+    final visible = isExpanded ? list : list.take(maxVisible).toList();
+    final hidden = list.length - visible.length;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _SectionHeader(label: label, count: list.length),
+        for (final r in visible)
+          RecommendationCard(
+            recommendation: r,
+            onShown: () => widget.onShown(r),
+            onLogged: widget.onLogged,
+          ),
+        if (hidden > 0)
+          Padding(
+            padding: const EdgeInsets.only(top: 4, bottom: 4),
+            child: TextButton.icon(
+              onPressed: () => setState(() => _expanded.add(sectionKey)),
+              icon: const Icon(Icons.expand_more_rounded, size: 18),
+              label: Text('+$hidden öneri daha göster'),
             ),
-          const SizedBox(height: 16),
-        ],
-        if (week.isNotEmpty) ...[
-          _SectionHeader(label: 'BU HAFTA', count: week.length),
-          for (final r in week)
-            RecommendationCard(
-              recommendation: r,
-              onShown: () => onShown(r),
-              onLogged: onLogged,
+          )
+        else if (isExpanded && list.length > maxVisible)
+          Padding(
+            padding: const EdgeInsets.only(top: 4, bottom: 4),
+            child: TextButton.icon(
+              onPressed: () => setState(() => _expanded.remove(sectionKey)),
+              icon: const Icon(Icons.expand_less_rounded, size: 18),
+              label: const Text('Daha az göster'),
             ),
-          const SizedBox(height: 16),
-        ],
-        if (watch.isNotEmpty) ...[
-          _SectionHeader(label: 'İZLE', count: watch.length),
-          for (final r in watch)
-            RecommendationCard(
-              recommendation: r,
-              onShown: () => onShown(r),
-              onLogged: onLogged,
-            ),
-          const SizedBox(height: 16),
-        ],
+          ),
+        const SizedBox(height: 16),
       ],
     );
   }

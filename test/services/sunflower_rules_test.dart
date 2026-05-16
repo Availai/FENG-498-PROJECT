@@ -159,19 +159,23 @@ void main() {
     ];
 
     final keys = recs.map((r) => r.ruleKey).toSet();
-    expect(
-      keys,
-      containsAll({
-        'sunflower.emergence.crusting.v1',
-        'sunflower.water_stress.flower.v1',
-        'sunflower.water_stress.grain.v1',
-        'sunflower.nutrition.ph_balance.v1',
-        'sunflower.disease.scouting_env.v1',
-        'sunflower.pest.helicoverpa.v1',
-        'sunflower.harvest.ready.v1',
-      }),
-    );
-    for (final rec in recs) {
+    const handWrittenKeys = {
+      'sunflower.emergence.crusting.v1',
+      'sunflower.water_stress.flower.v1',
+      'sunflower.water_stress.grain.v1',
+      'sunflower.nutrition.ph_balance.v1',
+      'sunflower.disease.scouting_env.v1',
+      'sunflower.pest.helicoverpa.v1',
+      'sunflower.harvest.ready.v1',
+    };
+    expect(keys, containsAll(handWrittenKeys));
+    // Elle yazılı 7 kural komut + kaynak + evidence taşımak ZORUNDA.
+    // Declarative pack tavsiyeleri ('pack:' prefix'li) bilgi/uyarı odaklı
+    // olabilir; ayrı sözleşme testleriyle (rule_pack_contract_test.dart)
+    // kapsanır.
+    final handWritten =
+        recs.where((r) => handWrittenKeys.contains(r.ruleKey)).toList();
+    for (final rec in handWritten) {
       expect(rec.sourceRefs, isNotEmpty, reason: rec.ruleKey);
       expect(rec.evidence, isNotEmpty, reason: rec.ruleKey);
       expect(rec.command, isNotNull, reason: rec.ruleKey);

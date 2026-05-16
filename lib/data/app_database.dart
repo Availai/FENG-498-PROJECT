@@ -47,6 +47,18 @@ class FieldCrops extends Table {
   /// Bitkinin baktığı yön — PlantFacingDirection.name değeri (ör. 'south').
   /// null ise belirsiz/girilmemiş.
   TextColumn get facingDirection => text().nullable()();
+
+  /// Çok yıllık ürünler (portakal, çay) için: kullanıcı bu kaydı yeni
+  /// fidan olarak mı, yoksa olgun ağaç olarak mı diktiğini belirtir.
+  ///   - true  → yeni fidan; CropStateService 'perennialSeedling' modu.
+  ///   - false → olgun ağaç/bahçe; 'perennialMature' modu.
+  ///   - null  → bilinmiyor; tarih + bitki tipi üzerinden tahmin edilir
+  ///            (3+ yaş varsayılan olarak mature).
+  ///
+  /// Tek yıllık bitkilerde (domates, mısır vb.) anlamı yok — null kalır.
+  /// CLAUDE.md sec 11 + CropStateService.modeFor() ile eşleşir.
+  BoolColumn get isSeedling => boolean().nullable()();
+
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
   DateTimeColumn get deletedAt => dateTime().nullable()();
@@ -314,7 +326,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 10;
+  int get schemaVersion => 11;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -380,6 +392,15 @@ class AppDatabase extends _$AppDatabase {
               // v10: standalone tekil bitkiler için baktığı yön oku.
               await m.addColumn(
                   fieldPlantInstances, fieldPlantInstances.facingDirection);
+            }
+            if (from < 11) {
+              // v11: çok yıllık ürünler için 'yeni fidan mı / olgun mu?'
+              // ayrımı. CropStateService bunu okur ve doğru % state +
+              // disclaimer üretir. Diğer migration'lardaki örüntüye
+              // uygun olarak customStatement ile eklenir (build_runner
+              // regenerate gerektirmez).
+              await customStatement(
+                  'ALTER TABLE field_crops ADD COLUMN is_seedling INTEGER;');
             }
           } catch (e, st) {
             debugPrint('Drift migration $from→$to hata: $e\n$st');
