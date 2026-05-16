@@ -12,7 +12,7 @@ import '../services/app_providers.dart';
 import '../services/crop_placement.dart';
 import '../services/crop_protocol_service.dart';
 import '../services/crop_schedule_seeder.dart';
-import '../services/growth_engine.dart';
+import '../services/crop_state_service.dart';
 import '../services/notification_service.dart';
 import '../services/task_directive_service.dart';
 import '../data/activity_types.dart';
@@ -613,6 +613,22 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
               final tcrop = TurkishCropsRepository.instance.findByName(
                 tooltipName,
               );
+              final tPlanted = _parsePlantedDate(
+                  _selectedCropForTooltip!['planted_date']?.toString());
+              final tIsSeedling =
+                  _selectedCropForTooltip!['is_seedling'] is bool
+                      ? _selectedCropForTooltip!['is_seedling'] as bool
+                      : null;
+              final tMode = CropStateService.modeFor(
+                cropName: tooltipName,
+                isSeedling: tIsSeedling,
+                plantedDate: tPlanted,
+              );
+              final tDisclaimer = CropStateService.disclaimerFor(
+                cropName: tooltipName,
+                mode: tMode,
+                plantedDate: tPlanted,
+              );
               return Positioned(
                 left: 0,
                 right: 0,
@@ -632,6 +648,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
                     stableId: tcrop?.stableId,
                     category: tcrop?.category,
                     harvestMonths: tcrop?.harvestMonths,
+                    lifecycleDisclaimer: tDisclaimer,
                     onDelete: () => _deleteCropZone(_selectedCropForTooltip!),
                     onClose: _closeTooltip,
                   ),
@@ -941,33 +958,38 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
     Map<String, dynamic> crop, {
     CropGrowthState? growthState,
   }) {
-    if (growthState != null) {
-      final canonical = SupportedCrops.canonicalName(crop['name']?.toString());
-      if (canonical != null) {
-        final key = SupportedCrops.normalize(canonical);
-        if (GrowthEngine.isSupported(key)) {
-          return (GrowthEngine.overallProgressFor(
-                    key,
-                    growthState.accumulatedGdd,
-                  ) *
-                  100)
-              .clamp(0, 100)
-              .toDouble();
-        }
-      }
-    }
-    final plantedDateStr = crop['planted_date']?.toString();
-    if (plantedDateStr == null) return 0;
-    DateTime? plantedDate;
-    final parts = plantedDateStr.split('.');
+    // 5 ana ürünün (CLAUDE.md §11) tek/çok yıllık ayrımı + fidan/olgun
+    // ayrımını [CropStateService] tek noktada yönetir. Eski elle-yazılı
+    // hesap (planted_date ± harvest_days) burada fallback olarak değil,
+    // CropStateService içinden çağrılır.
+    final cropName = crop['name']?.toString() ?? '';
+    final plantedDate = _parsePlantedDate(crop['planted_date']?.toString());
+    final harvestDays = (crop['harvest_days'] as num?)?.toInt();
+    final isSeedling =
+        crop['is_seedling'] is bool ? crop['is_seedling'] as bool : null;
+    final mode = CropStateService.modeFor(
+      cropName: cropName,
+      isSeedling: isSeedling,
+      plantedDate: plantedDate,
+    );
+    return CropStateService.percentFor(
+      cropName: cropName,
+      mode: mode,
+      plantedDate: plantedDate,
+      harvestDays: harvestDays,
+      accumulatedGdd: growthState?.accumulatedGdd,
+    );
+  }
+
+  /// "dd.MM.yyyy" veya ISO 8601 formatını DateTime'a çevirir.
+  DateTime? _parsePlantedDate(String? raw) {
+    if (raw == null || raw.isEmpty) return null;
+    final parts = raw.split('.');
     if (parts.length == 3) {
-      plantedDate = DateTime.tryParse('${parts[2]}-${parts[1]}-${parts[0]}');
+      final parsed = DateTime.tryParse('${parts[2]}-${parts[1]}-${parts[0]}');
+      if (parsed != null) return parsed;
     }
-    plantedDate ??= DateTime.tryParse(plantedDateStr);
-    if (plantedDate == null) return 0;
-    final harvestDays = (crop['harvest_days'] as num?)?.toInt() ?? 90;
-    final elapsed = DateTime.now().difference(plantedDate).inDays;
-    return ((elapsed / harvestDays) * 100).clamp(0, 100);
+    return DateTime.tryParse(raw);
   }
 
   // ignore: unused_element
@@ -1604,6 +1626,9 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
       plantSpacingCm: plantSpacingCm,
       zonePolygonJson: zonePolygonJson,
       facingDirection: facingDirection,
+      // Çok yıllık üründe kullanıcının "yeni fidan / olgun ağaç" işareti;
+      // tek yıllıkta config tarafı null bırakır.
+      isSeedling: config?.isSeedling,
     );
     const bool isReplant = false;
 

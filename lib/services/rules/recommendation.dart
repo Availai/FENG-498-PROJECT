@@ -222,6 +222,19 @@ class Recommendation {
   /// gösterilir, kullanıcı önce gözlem yapmaya yönlendirilir.
   final List<String> dependsOn;
 
+  /// Tavsiyenin rule pack kategorisi (CLAUDE.md sec 14):
+  /// `suitability`, `pre_planting`, `soil_analysis`, `irrigation`,
+  /// `fertilization`, `disease_risk`, `pest_risk`, `harvest`, vb.
+  ///
+  /// Ana ekran yalnız "aksiyon alınabilir" kategorileri gösterir;
+  /// `suitability` / `pre_planting` / `soil_analysis` gibi bilgi
+  /// niteliğindeki kategoriler "Bilgi Notları" kanalına ve ürün
+  /// ansiklopedisine yönlendirilir (bilgi bombardımanını önler).
+  ///
+  /// Eski/elle yazılı kurallar bu alanı `null` bırakabilir; bu durumda
+  /// tavsiye aksiyon kanalında kalır (geri uyumluluk).
+  final String? category;
+
   const Recommendation({
     required this.ruleKey,
     required this.severity,
@@ -238,7 +251,23 @@ class Recommendation {
     this.cooldownHours = 24,
     this.timing,
     this.dependsOn = const [],
+    this.category,
   });
+
+  /// Bu tavsiye "bilgi notu" kanalına mı düşmeli?
+  ///
+  /// Ana ekran (acil/bugün/hafta) bilgi notlarını göstermez — kullanıcı
+  /// bunları ürün ansiklopedisinde veya tarla bilgi notları sayfasında
+  /// görür. CLAUDE.md sec 12: rule pack çıktısı tek noktada ayrıştırılır,
+  /// UI tarafı `isInformational` üzerinden filtre uygular.
+  bool get isInformational {
+    const informational = <String>{
+      'suitability',
+      'pre_planting',
+      'soil_analysis',
+    };
+    return category != null && informational.contains(category);
+  }
 
   /// Severity için Türkçe etiket — UI'da rozet metninde kullanılır.
   static String severityLabel(AlertSeverity s) {
@@ -250,5 +279,36 @@ class Recommendation {
       case AlertSeverity.info:
         return 'Bilgi';
     }
+  }
+}
+
+/// Bir liste için tek noktada uygulanan kanal ayrımı.
+///
+/// Sahaya gerçek aksiyon üreten kayıtları (sulama, hastalık, gübreleme,
+/// hasat vb.) `actionable` kanalında bırakır; suitability / pre_planting
+/// / soil_analysis gibi bilgi kayıtlarını `informational` kanalına ayırır.
+class RecommendationChannels {
+  final List<Recommendation> actionable;
+  final List<Recommendation> informational;
+
+  const RecommendationChannels({
+    required this.actionable,
+    required this.informational,
+  });
+
+  factory RecommendationChannels.split(Iterable<Recommendation> input) {
+    final actionable = <Recommendation>[];
+    final informational = <Recommendation>[];
+    for (final r in input) {
+      if (r.isInformational) {
+        informational.add(r);
+      } else {
+        actionable.add(r);
+      }
+    }
+    return RecommendationChannels(
+      actionable: actionable,
+      informational: informational,
+    );
   }
 }

@@ -26,6 +26,11 @@ class CropZoneTooltip extends StatelessWidget {
   /// arası hasat" satırı gösterilir.
   final List<int>? harvestMonths;
 
+  /// CropStateService.disclaimerFor() çıktısı.
+  /// Kullanıcıya "Yeni fidan / Olgun ağaç / Tek yıllık" durumunu netleştirir.
+  /// Boş veya null ise satır gösterilmez (geri uyumluluk için).
+  final String? lifecycleDisclaimer;
+
   final VoidCallback onDelete;
   final VoidCallback onClose;
 
@@ -39,6 +44,7 @@ class CropZoneTooltip extends StatelessWidget {
     this.stableId,
     this.category,
     this.harvestMonths,
+    this.lifecycleDisclaimer,
     required this.onDelete,
     required this.onClose,
   });
@@ -136,6 +142,40 @@ class CropZoneTooltip extends StatelessWidget {
                 '⏳ Kalan',
                 remaining > 0 ? '$remaining gün' : 'Hasat zamanı!',
               ),
+          ],
+
+          // Yaşam döngüsü disclaimer'ı: "Yeni fidan / Olgun ağaç / Tek yıllık"
+          if (lifecycleDisclaimer != null &&
+              lifecycleDisclaimer!.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.10),
+                ),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.info_outline_rounded,
+                      color: Colors.white54, size: 13),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      lifecycleDisclaimer!,
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 11,
+                        height: 1.3,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
 
           // Olgunluk barı

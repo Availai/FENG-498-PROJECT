@@ -127,6 +127,7 @@ class DeclarativePackRunner {
       evidence: evidence,
       sourceRefs: sourceRefs,
       cooldownHours: 12,
+      category: match.category,
     );
   }
 

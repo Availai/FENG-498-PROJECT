@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../data/crop_lifecycle.dart';
 import '../data/crop_protocols.dart';
 import '../data/crop_setup_scenario.dart';
 import '../theme/app_theme.dart';
@@ -34,6 +35,12 @@ class _CropSetupSheetState extends State<CropSetupSheet> {
   late final TextEditingController _plantCtrl;
   late final TextEditingController _plantCountCtrl;
 
+  /// Çok yıllık ürünler için: kullanıcı yeni fidan mı, olgun ağaç mı
+  /// diktiğini işaretler. Tek yıllık üründe bu alan UI'da gösterilmez
+  /// ve null kalır. CropStateService.modeFor() bu değeri okuyup
+  /// doğru % state + disclaimer üretir.
+  bool? _isSeedling;
+
   static const _bg = Colors.white;
   static const _accent = AppColors.emerald;
   static const _card = AppColors.surface;
@@ -58,7 +65,13 @@ class _CropSetupSheetState extends State<CropSetupSheet> {
     _plantCountCtrl = TextEditingController(
       text: cfg?.targetPlantCount == null ? '' : '${cfg!.targetPlantCount}',
     );
+    _isSeedling = cfg?.isSeedling;
   }
+
+  /// Bu ürün çok yıllık mı? Picker yalnız `true` ise gösterilir.
+  bool get _isPerennial =>
+      cycleTypeFor(cropName: widget.protocol.displayName) ==
+      CropCycleType.perennial;
 
   @override
   void dispose() {
@@ -112,6 +125,8 @@ class _CropSetupSheetState extends State<CropSetupSheet> {
         rowSpacingCm: cleanRow,
         plantSpacingCm: cleanPlant,
         targetPlantCount: plantCount,
+        // Yalnız çok yıllık üründe anlamlı. Tek yıllıkta null bırakılır.
+        isSeedling: _isPerennial ? _isSeedling : null,
       ),
     );
   }
@@ -395,6 +410,46 @@ class _CropSetupSheetState extends State<CropSetupSheet> {
                 ),
               );
             }),
+            if (_isPerennial) ...[
+              const SizedBox(height: 20),
+              _sectionLabel('🌳 Fidan mı, Olgun Ağaç mı?'),
+              const SizedBox(height: 4),
+              const Text(
+                'Çok yıllık ürünlerde (portakal, çay) ilk ekonomik hasat yıllar sonra gelir. Doğru % ilerleme ve tavsiye için kaydın durumunu işaretleyin.',
+                style: TextStyle(
+                    color: _textSecondary, fontSize: 11, height: 1.35),
+              ),
+              const SizedBox(height: 8),
+              Row(children: [
+                Expanded(
+                  child: _seedlingChoice(
+                    label: 'Yeni fidan',
+                    description:
+                        'Yeni dikildi; ilk hasat için yıllar bekleniyor.',
+                    selected: _isSeedling == true,
+                    onTap: () => setState(() => _isSeedling = true),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _seedlingChoice(
+                    label: 'Olgun ağaç',
+                    description: 'Verim çağında; yıllık hasat döngüsünde.',
+                    selected: _isSeedling == false,
+                    onTap: () => setState(() => _isSeedling = false),
+                  ),
+                ),
+              ]),
+              if (_isSeedling == null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    'İşaretlemezsen dikim tarihinden tahmin edilir (~3 yıldan eskiyse olgun kabul edilir).',
+                    style: TextStyle(
+                        color: AppColors.warning, fontSize: 11, height: 1.35),
+                  ),
+                ),
+            ],
             const SizedBox(height: 20),
             _sectionLabel('📐 Tarla Alanı'),
             const SizedBox(height: 8),
@@ -576,6 +631,51 @@ class _CropSetupSheetState extends State<CropSetupSheet> {
           fontWeight: FontWeight.w700,
         ),
       );
+
+  Widget _seedlingChoice({
+    required String label,
+    required String description,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        decoration: BoxDecoration(
+          color: selected ? _accent.withValues(alpha: 0.15) : _card,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: selected ? _accent : _borderColor,
+            width: selected ? 1.5 : 1,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                color: selected ? _accent : _textPrimary,
+                fontSize: 13,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              description,
+              style: const TextStyle(
+                color: _textSecondary,
+                fontSize: 11,
+                height: 1.3,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   Widget _scenarioCard(CropSetupScenario scenario) {
     return Container(

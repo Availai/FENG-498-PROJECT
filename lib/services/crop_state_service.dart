@@ -102,7 +102,8 @@ class CropStateService {
     DateTime? now,
   }) {
     final stableId = _stableIdFor(cropName);
-    final isPerennial = stableId != null && _perennialStableIds.contains(stableId);
+    final isPerennial =
+        stableId != null && _perennialStableIds.contains(stableId);
 
     if (!isPerennial) {
       // Tek yıllık ürün — domates, mısır, ayçiçeği vb.
@@ -187,9 +188,8 @@ class CropStateService {
 
       case CropLifecycleMode.perennialSeedling:
         final stableId = _stableIdFor(cropName);
-        final targetDays = stableId != null
-            ? (_seedlingToMatureDays[stableId] ?? 1095)
-            : 1095;
+        final targetDays =
+            stableId != null ? (_seedlingToMatureDays[stableId] ?? 1095) : 1095;
         if (plantedDate == null) {
           return 'Yeni fidan — ilk ekonomik hasat ~${(targetDays / 365).toStringAsFixed(1)} yıl sonra';
         }
@@ -229,9 +229,8 @@ class CropStateService {
     final ref = now ?? DateTime.now();
     final ageInDays = ref.difference(plantedDate).inDays;
     final stableId = cropName != null ? _stableIdFor(cropName) : null;
-    final targetDays = stableId != null
-        ? (_seedlingToMatureDays[stableId] ?? 1095)
-        : 1095;
+    final targetDays =
+        stableId != null ? (_seedlingToMatureDays[stableId] ?? 1095) : 1095;
     return ageInDays < targetDays;
   }
 
@@ -277,9 +276,8 @@ class CropStateService {
   }) {
     if (plantedDate == null) return 0.0;
     final stableId = _stableIdFor(cropName);
-    final targetDays = stableId != null
-        ? (_seedlingToMatureDays[stableId] ?? 1095)
-        : 1095;
+    final targetDays =
+        stableId != null ? (_seedlingToMatureDays[stableId] ?? 1095) : 1095;
     final ageInDays = now.difference(plantedDate).inDays;
     return ((ageInDays / targetDays) * 100).clamp(0.0, 100.0);
   }

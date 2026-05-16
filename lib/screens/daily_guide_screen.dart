@@ -6,6 +6,7 @@ import '../data/app_database.dart';
 import '../data/turkiye_crop_guides.dart';
 import '../services/app_providers.dart';
 import '../services/crop_daily_plan.dart';
+import '../services/crop_general_rules.dart';
 import '../services/crop_protocol_service.dart';
 import '../services/disease_log_service.dart';
 import '../services/guide_engine.dart';
@@ -749,6 +750,59 @@ class _CropEncyclopediaPanelState extends State<_CropEncyclopediaPanel> {
       ));
     }
 
+    // ── Bu ürün için genel kurallar ──────────────────────────────────
+    // CLAUDE.md sec 12-14: suitability + pre_planting + soil_analysis
+    // kategorilerindeki kayıtlar burada gösterilir. Ana ekrandan filtrelenir
+    // (bilgi bombardımanını önlemek için), kullanıcı ihtiyaç duyduğunda
+    // ansiklopedide referans olarak okur.
+    final generalRules = CropGeneralRules.forCropName(widget.cropName);
+    if (generalRules.isNotEmpty) {
+      rows.add(const Divider(height: 18));
+      rows.add(Text(
+        'Bu ürün için genel kurallar',
+        style: AppText.bodyMd(context).copyWith(
+          fontWeight: FontWeight.w800,
+          color: AppColors.emeraldDark,
+        ),
+      ));
+      rows.add(const SizedBox(height: 4));
+      rows.add(Text(
+        'Kaynak kanıtlı uygunluk, ekim öncesi ve toprak analizi notları. Bunlar ana ekranda uyarı olarak gösterilmez; gerektiğinde buradan okunur.',
+        style: AppText.xs(context).copyWith(
+          color: AppColors.textSecondary,
+          height: 1.35,
+        ),
+      ));
+      // Kategoriye göre gruplandır.
+      final grouped = <String, List<String>>{};
+      for (final r in generalRules) {
+        final recs = r.result.recommendations;
+        if (recs.isEmpty) continue;
+        grouped.putIfAbsent(r.category, () => []).addAll(recs);
+      }
+      for (final entry in grouped.entries) {
+        rows.add(const SizedBox(height: 8));
+        rows.add(Text(
+          CropGeneralRules.categoryLabel(entry.key),
+          style: AppText.label(context),
+        ));
+        for (final rec in entry.value) {
+          rows.add(Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('• ', style: TextStyle(color: AppColors.emerald)),
+                Expanded(
+                  child: Text(rec, style: AppText.xs(context)),
+                ),
+              ],
+            ),
+          ));
+        }
+      }
+    }
+
     if (rows.isEmpty) {
       return Text(
         'Bu bitki için ayrıntılı çevrimdışı veri henüz hazır değil.',
@@ -1217,24 +1271,30 @@ class _LiveTodoSectionsState extends State<_LiveTodoSections> {
   @override
   Widget build(BuildContext context) {
     if (widget.recommendations.isEmpty) return const SizedBox.shrink();
-    final urgent = widget.recommendations
+    // CLAUDE.md sec 5.1 + bilgi bombardımanı önlemi: suitability /
+    // pre_planting / soil_analysis kategorileri "bilgi notu" sayılır
+    // ve ana ekranda gösterilmez. Bu kayıtlar Bilgi Notları paneli ile
+    // ürün ansiklopedisinde sunulur.
+    final channels = RecommendationChannels.split(widget.recommendations);
+    final urgent = channels.actionable
         .where((r) => r.severity == AlertSeverity.critical)
         .toList();
-    final today = widget.recommendations
+    final today = channels.actionable
         .where((r) =>
             r.severity == AlertSeverity.warning &&
             r.gate == RecommendationGate.actionable)
         .toList();
-    final week = widget.recommendations
+    final week = channels.actionable
         .where((r) =>
             r.severity == AlertSeverity.info &&
             r.gate == RecommendationGate.actionable)
         .toList();
-    final watch = widget.recommendations
+    final watch = channels.actionable
         .where((r) =>
             r.gate != RecommendationGate.actionable &&
             r.severity != AlertSeverity.critical)
         .toList();
+    final infoNotes = channels.informational;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1269,6 +1329,13 @@ class _LiveTodoSectionsState extends State<_LiveTodoSections> {
             label: 'İZLE',
             list: watch,
             maxVisible: _maxWatch,
+          ),
+        if (infoNotes.isNotEmpty)
+          _buildSection(
+            sectionKey: 'info_notes',
+            label: 'BİLGİ NOTLARI',
+            list: infoNotes,
+            maxVisible: 1,
           ),
       ],
     );
