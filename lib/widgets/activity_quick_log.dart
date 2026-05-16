@@ -311,7 +311,9 @@ class _QuickLogSheetState extends State<_QuickLogSheet> {
   PesticideProduct? _pickedPesticide;
   PesticideCategory? _pesticideCategoryFilter;
 
-  /// Seçili bitkinin playbook'u (Ayçiçeği/Mısır/Domates) — yoksa null.
+  /// Seçili bitkinin playbook'u — 5 ana ürün (Ayçiçeği, Mısır, Domates,
+  /// Portakal, Çay) için gübre + ilaç + su rehberi içerir. Diğer
+  /// bitkilerde null döner ve picker'lar gizlenir.
   CropPlaybook? get _playbook => CropPlaybooks.resolveByName(_selectedCropName);
 
   bool get _hasIpmRules => IpmDecisionService.supports(_selectedCropName);

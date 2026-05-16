@@ -2,6 +2,7 @@ library;
 
 import 'dart:math' as math;
 
+import 'crop_lifecycle.dart';
 import 'crop_protocols.dart';
 import 'turkiye_crop_guides.dart';
 
@@ -124,7 +125,7 @@ class CropSetupScenarioEngine {
         CropSetupScenarioLine(
           title: 'Kaynaklı ürün profili',
           body:
-              '${guide.cropName} için sıra arası ${_fmt(guide.rowSpacingCm)} cm, sıra üzeri ${_fmt(guide.plantSpacingCm)} cm, sezon suyu yaklaşık ${_fmt(guide.seasonalWaterMm)} mm ve hasat süresi ${guide.harvestDays} gün olarak izlenir.',
+              '${guide.cropName} için sıra arası ${_fmt(guide.rowSpacingCm)} cm, sıra üzeri ${_fmt(guide.plantSpacingCm)} cm, sezon suyu yaklaşık ${_fmt(guide.seasonalWaterMm)} mm ve ${_lowercaseFirst(harvestSummary(harvestDays: guide.harvestDays, cycle: cycleTypeFor(cropName: guide.cropName, category: guide.category)))} olarak izlenir.',
         )
       else
         const CropSetupScenarioLine(
@@ -381,6 +382,13 @@ class CropSetupScenarioEngine {
   static String _fmt(double value) => value == value.roundToDouble()
       ? value.toStringAsFixed(0)
       : value.toStringAsFixed(1);
+
+  /// "Hasat süresi: 120 gün (ekimden)" → "hasat süresi: 120 gün (ekimden)"
+  /// Cümle ortasına yerleştirilirken ilk harfin küçülmesi gerekir.
+  static String _lowercaseFirst(String s) {
+    if (s.isEmpty) return s;
+    return s[0].toLowerCase() + s.substring(1);
+  }
 
   static String _normalize(String input) {
     return input

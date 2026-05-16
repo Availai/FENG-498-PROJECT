@@ -607,28 +607,37 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
 
           // 6. Crop Zone Tooltip overlay
           if (_selectedCropForTooltip != null)
-            Positioned(
-              left: 0,
-              right: 0,
-              top: MediaQuery.of(context).size.height * 0.25,
-              child: Center(
-                child: CropZoneTooltip(
-                  cropName:
-                      _selectedCropForTooltip!['name']?.toString() ?? 'Bitki',
-                  cropColor: _cropColor(_selectedCropForTooltip!),
-                  plantedDate:
-                      _selectedCropForTooltip!['planted_date']?.toString(),
-                  harvestDays:
-                      (_selectedCropForTooltip!['harvest_days'] as num?)
-                              ?.toInt() ??
-                          90,
-                  maturityPercent:
-                      _computeMaturityPercent(_selectedCropForTooltip!),
-                  onDelete: () => _deleteCropZone(_selectedCropForTooltip!),
-                  onClose: _closeTooltip,
+            Builder(builder: (context) {
+              final tooltipName =
+                  _selectedCropForTooltip!['name']?.toString() ?? 'Bitki';
+              final tcrop = TurkishCropsRepository.instance.findByName(
+                tooltipName,
+              );
+              return Positioned(
+                left: 0,
+                right: 0,
+                top: MediaQuery.of(context).size.height * 0.25,
+                child: Center(
+                  child: CropZoneTooltip(
+                    cropName: tooltipName,
+                    cropColor: _cropColor(_selectedCropForTooltip!),
+                    plantedDate:
+                        _selectedCropForTooltip!['planted_date']?.toString(),
+                    harvestDays:
+                        (_selectedCropForTooltip!['harvest_days'] as num?)
+                                ?.toInt() ??
+                            90,
+                    maturityPercent:
+                        _computeMaturityPercent(_selectedCropForTooltip!),
+                    stableId: tcrop?.stableId,
+                    category: tcrop?.category,
+                    harvestMonths: tcrop?.harvestMonths,
+                    onDelete: () => _deleteCropZone(_selectedCropForTooltip!),
+                    onClose: _closeTooltip,
+                  ),
                 ),
-              ),
-            ),
+              );
+            }),
 
           // Analiz yükleniyorken küçük, blok etmeyen pill göstergesi.
           if (_isLoading)
