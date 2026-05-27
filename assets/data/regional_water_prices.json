@@ -1,0 +1,72 @@
+{
+  "schema_version": "2026-05-27",
+  "locale": "tr-TR",
+  "disclaimer": "Buradaki fiyatlar 2025 yili kamu tarifelerine ve ortalama degerlere dayanir. Yerel sulama birligi, DSI bolge mudurlugu veya elektrik dagitim sirketinizden faturaniza ozel guncel degerleri ogrenmeniz onerilir. Hesaplar bilgi amaclidir.",
+  "source_metadata": [
+    {
+      "id": "source.dsi.tarim_sulama_ucret_2025",
+      "title": "DSI Tarimsal Sulama Ucret Tarifeleri 2025",
+      "institution": "Devlet Su Isleri Genel Mudurlugu",
+      "source_type": "official",
+      "url": "https://www.dsi.gov.tr/",
+      "publication_year": 2025,
+      "retrieved_at": "2026-05-27",
+      "reliability": "high",
+      "notes": "Bolgesel sulama birlikleri kendi tarifelerini belirleyebilir; degerler ortalama referanstir."
+    },
+    {
+      "id": "source.epdk.tarimsal_sulama_tarife_2025",
+      "title": "EPDK Tarimsal Sulama Elektrik Tarifesi 2025",
+      "institution": "Enerji Piyasasi Duzenleme Kurumu (EPDK)",
+      "source_type": "official",
+      "url": "https://www.epdk.gov.tr/",
+      "publication_year": 2025,
+      "retrieved_at": "2026-05-27",
+      "reliability": "high",
+      "notes": "Tarimsal sulama abone grubu icin tek terimli tarife. Iletim, dagitim, vergi dahil."
+    }
+  ],
+  "defaults": {
+    "water_tl_per_m3": 1.20,
+    "electricity_tl_per_kwh": 2.45,
+    "pump_kwh_per_m3_shallow_well": 0.35,
+    "pump_kwh_per_m3_deep_well": 0.75
+  },
+  "regional_overrides": [
+    {
+      "province": "Konya",
+      "water_tl_per_m3": 0.95,
+      "note": "Konya Ovasi sulama birlikleri ortalamasi (DSI 4. Bolge)."
+    },
+    {
+      "province": "Sanliurfa",
+      "water_tl_per_m3": 0.85,
+      "note": "GAP havzasi, hari sulama (DSI 15. Bolge)."
+    },
+    {
+      "province": "Antalya",
+      "water_tl_per_m3": 1.40,
+      "note": "Antalya orta havzasi sulama birlikleri (DSI 13. Bolge)."
+    },
+    {
+      "province": "Mersin",
+      "water_tl_per_m3": 1.30,
+      "note": "Cukurova alt havza (DSI 6. Bolge)."
+    },
+    {
+      "province": "Adana",
+      "water_tl_per_m3": 1.25,
+      "note": "Cukurova orta havza (DSI 6. Bolge)."
+    },
+    {
+      "province": "Izmir",
+      "water_tl_per_m3": 1.55,
+      "note": "Ege havzasi sulama birlikleri (DSI 2. Bolge)."
+    },
+    {
+      "province": "Bursa",
+      "water_tl_per_m3": 1.45,
+      "note": "Marmara guneyi sulama birlikleri (DSI 1. Bolge)."
+    }
+  ]
+}

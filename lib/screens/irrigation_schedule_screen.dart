@@ -4,8 +4,12 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../data/crop_protocols.dart' show SoilType;
+import '../services/api/openweather_api.dart';
 import '../services/app_providers.dart';
 import '../services/irrigation_service.dart';
+import '../services/water_balance_engine.dart';
+import '../widgets/water_balance_panel.dart';
 import 'water_efficiency_guide_screen.dart';
 
 class IrrigationScheduleScreen extends ConsumerStatefulWidget {
@@ -15,6 +19,9 @@ class IrrigationScheduleScreen extends ConsumerStatefulWidget {
   final String cropTr;
   final String fieldName;
   final double soilMoisturePct;
+  final double fieldAreaDekar;
+  final SoilType soilType;
+  final String defaultIrrigationMethod;
 
   const IrrigationScheduleScreen({
     super.key,
@@ -24,6 +31,9 @@ class IrrigationScheduleScreen extends ConsumerStatefulWidget {
     required this.cropTr,
     required this.fieldName,
     this.soilMoisturePct = 25,
+    this.fieldAreaDekar = 1.0,
+    this.soilType = SoilType.loamy,
+    this.defaultIrrigationMethod = 'Damla sulama',
   });
 
   @override
@@ -34,6 +44,7 @@ class IrrigationScheduleScreen extends ConsumerStatefulWidget {
 class _IrrigationScheduleScreenState
     extends ConsumerState<IrrigationScheduleScreen> {
   IrrigationSchedule? _schedule;
+  WaterBalanceResult? _balance;
   String? _error;
   bool _loading = true;
 
@@ -49,12 +60,21 @@ class _IrrigationScheduleScreenState
       _error = null;
     });
     try {
-      final s = await IrrigationService.buildSchedule(
+      // Backend planı + lokal bilanço paralel.
+      final scheduleF = IrrigationService.buildSchedule(
         lat: widget.latitude,
         lon: widget.longitude,
         cropTr: widget.cropTr,
         soilMoisturePct: widget.soilMoisturePct,
       );
+      final balanceF = _computeLocalBalance();
+      final s = await scheduleF;
+      try {
+        _balance = await balanceF;
+      } catch (e) {
+        debugPrint('[IrrigationScreen] Bilanço hesap hatası: $e');
+        _balance = null;
+      }
       // Planı yerel Drift'e kaydet ve outbox'a sync job ekle (offline-first).
       if (widget.fieldId != null) {
         try {
@@ -89,6 +109,46 @@ class _IrrigationScheduleScreenState
         _loading = false;
       });
     }
+  }
+
+  /// 7 günlük OpenWeather forecast'ini WaterBalanceEngine'e besle.
+  /// Toprak tipi opsiyonel — bilinmiyorsa loamy varsayılan (TR çoğunluğu).
+  Future<WaterBalanceResult> _computeLocalBalance() async {
+    final pts = await OpenWeatherApi.forecast5Day(
+      lat: widget.latitude,
+      lon: widget.longitude,
+    );
+    final daily = OpenWeatherApi.aggregateDaily(pts);
+    final forecast = daily.take(7).map((d) {
+      // Min/max nem yaklaşığı: ortalamadan ±15 (forecast detayı yok).
+      final rhMean = d.avgHumidityPct.toDouble();
+      return DailyForecast(
+        date: d.date,
+        tMaxC: d.avgTempC + 4,
+        tMinC: d.avgTempC - 4,
+        rhMaxPct: (rhMean + 15).clamp(0, 100).toDouble(),
+        rhMinPct: (rhMean - 15).clamp(0, 100).toDouble(),
+        windMs: d.maxWindMs,
+        precipMm: d.totalPrecipMm,
+      );
+    }).toList();
+
+    final fc = WaterBalanceEngine.fieldCapacityMm(widget.soilType);
+    final currentMm = (widget.soilMoisturePct / 100.0) * fc;
+
+    const engine = WaterBalanceEngine();
+    return engine.compute(WaterBalanceFacts(
+      cropNameTr: widget.cropTr,
+      plantedDate: null,
+      totalSeasonDays: null,
+      areaDekar: widget.fieldAreaDekar,
+      soilType: widget.soilType,
+      irrigationMethod: widget.defaultIrrigationMethod,
+      currentSoilMoistureMm: currentMm,
+      forecast: forecast,
+      latitudeDeg: widget.latitude,
+      elevationM: 100,
+    ));
   }
 
   Color _levelColor(String level) {
@@ -178,6 +238,14 @@ class _IrrigationScheduleScreenState
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        if (_balance != null) ...[
+          WaterBalancePanel(
+            result: _balance!,
+            cropName: widget.cropTr,
+            method: widget.defaultIrrigationMethod,
+          ),
+          const SizedBox(height: 12),
+        ],
         Card(
           color: Colors.teal.shade50,
           child: Padding(

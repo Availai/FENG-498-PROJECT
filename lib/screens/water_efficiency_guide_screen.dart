@@ -7,6 +7,9 @@ library;
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../data/irrigation_methods_repository.dart';
+import '../data/water_prices_repository.dart';
+import '../services/irrigation_cost_engine.dart';
+import '../services/irrigation_savings_pdf_service.dart';
 import '../theme/app_theme.dart';
 
 class WaterEfficiencyGuideScreen extends StatefulWidget {
@@ -27,7 +30,7 @@ class _WaterEfficiencyGuideScreenState
   @override
   void initState() {
     super.initState();
-    _tabs = TabController(length: 4, vsync: this);
+    _tabs = TabController(length: 5, vsync: this);
     _load();
   }
 
@@ -65,6 +68,7 @@ class _WaterEfficiencyGuideScreenState
           tabs: const [
             Tab(text: 'Yöntemler'),
             Tab(text: 'Geçiş & Tasarruf'),
+            Tab(text: 'Hesaplayıcı'),
             Tab(text: 'Genel İpuçları'),
             Tab(text: 'Destekler & Kaynaklar'),
           ],
@@ -82,6 +86,7 @@ class _WaterEfficiencyGuideScreenState
                   children: [
                     _MethodsTab(data: _data!),
                     _TransitionsTab(data: _data!),
+                    _CalculatorTab(guide: _data!),
                     _TipsTab(data: _data!),
                     _SourcesTab(data: _data!),
                   ],
@@ -903,6 +908,563 @@ class _EvidenceTile extends StatelessWidget {
       ),
     );
   }
+}
+
+// ─── Sekme: Finansal Hesaplayıcı ────────────────────────────────────────────
+
+class _CalculatorTab extends StatefulWidget {
+  final IrrigationGuideData guide;
+  const _CalculatorTab({required this.guide});
+  @override
+  State<_CalculatorTab> createState() => _CalculatorTabState();
+}
+
+class _CalculatorTabState extends State<_CalculatorTab> {
+  static const _methods = [
+    'Salma sulama',
+    'Karık sulama',
+    'Yağmurlama',
+    'Center-pivot',
+    'Mikro yağmurlama',
+    'Damla sulama',
+    'Yüzey altı damla (SDI)',
+    'Elle sulama',
+  ];
+
+  String _current = 'Karık sulama';
+  String _alternative = 'Damla sulama';
+  final _areaCtrl = TextEditingController(text: '5');
+  final _seasonMmCtrl = TextEditingController(text: '400');
+  WaterPricesData? _prices;
+  String _province = 'Konya';
+  bool _deepWell = false;
+  bool _withSubsidy = true;
+
+  @override
+  void initState() {
+    super.initState();
+    WaterPricesRepository.instance.load().then((d) {
+      if (mounted) setState(() => _prices = d);
+    });
+  }
+
+  @override
+  void dispose() {
+    _areaCtrl.dispose();
+    _seasonMmCtrl.dispose();
+    super.dispose();
+  }
+
+  CostResult? _calculate() {
+    final p = _prices;
+    if (p == null) return null;
+    final area = double.tryParse(_areaCtrl.text.replaceAll(',', '.'));
+    final mm = double.tryParse(_seasonMmCtrl.text.replaceAll(',', '.'));
+    if (area == null || mm == null || area <= 0 || mm <= 0) return null;
+
+    final waterPrice = p.waterPriceFor(_province);
+    final pumpKwh = _deepWell
+        ? p.defaults.pumpKwhPerM3DeepWell
+        : p.defaults.pumpKwhPerM3ShallowWell;
+    final invest = IrrigationCostEngine.investmentTlPerDecareFromGuide(
+      guide: widget.guide,
+      methodNameTr: _alternative,
+    );
+
+    return const IrrigationCostEngine().compute(CostFacts(
+      areaDekar: area,
+      seasonNetMmTotal: mm,
+      currentMethod: _current,
+      alternativeMethod: _alternative,
+      waterTlPerM3: waterPrice,
+      electricityTlPerKwh: p.defaults.electricityTlPerKwh,
+      pumpKwhPerM3: pumpKwh,
+      estimatedInvestmentTlPerDecare: invest,
+      subsidyPct: _withSubsidy ? 0.50 : 0.0,
+    ));
+  }
+
+  Future<void> _exportPdf(CostResult result) async {
+    final p = _prices;
+    if (p == null) return;
+    final area = double.tryParse(_areaCtrl.text.replaceAll(',', '.')) ?? 0;
+    final mm = double.tryParse(_seasonMmCtrl.text.replaceAll(',', '.')) ?? 0;
+    final pumpKwh = _deepWell
+        ? p.defaults.pumpKwhPerM3DeepWell
+        : p.defaults.pumpKwhPerM3ShallowWell;
+
+    try {
+      await const IrrigationSavingsPdfService().generateAndOpen(
+        IrrigationSavingsPdfInput(
+          fieldName: 'Tarla',
+          province: _province.isEmpty ? null : _province,
+          areaDekar: area,
+          seasonNetMm: mm,
+          cropName: 'Genel',
+          result: result,
+          waterTlPerM3: p.waterPriceFor(_province),
+          electricityTlPerKwh: p.defaults.electricityTlPerKwh,
+          pumpKwhPerM3: pumpKwh,
+          withSubsidy: _withSubsidy,
+          farmerName: 'Çiftçi',
+          createdAt: DateTime.now(),
+        ),
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('PDF oluşturuldu ve açıldı.')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('PDF oluşturulamadı: $e')),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_prices == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    final result = _calculate();
+    final provinces = ['Türkiye ortalaması', ..._prices!.regions.map((r) => r.province)];
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        _SectionTitle('Tarla Bilgileri'),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: _NumField(
+                controller: _areaCtrl,
+                label: 'Alan (dekar)',
+                suffix: 'da',
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _NumField(
+                controller: _seasonMmCtrl,
+                label: 'Sezonluk ihtiyaç',
+                suffix: 'mm',
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        const Text(
+          'Sezonluk ihtiyaç: bitkinin tüm sezon boyu kullandığı net su (mm). Domates ≈ 400-600, mısır ≈ 500-700.',
+          style: TextStyle(fontSize: 11, color: AppColors.textTertiary),
+        ),
+        const SizedBox(height: 16),
+
+        _SectionTitle('Mevcut → Alternatif'),
+        const SizedBox(height: 8),
+        _MethodDropdown(
+          label: 'Şu anki yöntem',
+          value: _current,
+          values: _methods,
+          onChanged: (v) => setState(() => _current = v),
+        ),
+        const SizedBox(height: 10),
+        _MethodDropdown(
+          label: 'Geçmek istediğin yöntem',
+          value: _alternative,
+          values: _methods,
+          onChanged: (v) => setState(() => _alternative = v),
+        ),
+        const SizedBox(height: 16),
+
+        _SectionTitle('Maliyet Ayarları'),
+        const SizedBox(height: 8),
+        _MethodDropdown(
+          label: 'Bölge (su tarifesi için)',
+          value: provinces.contains(_province) ? _province : provinces.first,
+          values: provinces,
+          onChanged: (v) => setState(
+              () => _province = v == 'Türkiye ortalaması' ? '' : v),
+        ),
+        const SizedBox(height: 10),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          dense: true,
+          value: _deepWell,
+          onChanged: (v) => setState(() => _deepWell = v),
+          title: const Text('Derin kuyu (pompa enerjisi yüksek)',
+              style: TextStyle(fontSize: 13)),
+          subtitle: Text(
+            _deepWell
+                ? '${_prices!.defaults.pumpKwhPerM3DeepWell} kWh/m³'
+                : '${_prices!.defaults.pumpKwhPerM3ShallowWell} kWh/m³ (sığ kuyu)',
+            style: const TextStyle(fontSize: 11),
+          ),
+        ),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          dense: true,
+          value: _withSubsidy,
+          onChanged: (v) => setState(() => _withSubsidy = v),
+          title: const Text('KKYDP hibe desteği (%50)',
+              style: TextStyle(fontSize: 13)),
+          subtitle: const Text('Geri ödeme süresine etkisi',
+              style: TextStyle(fontSize: 11)),
+        ),
+        const SizedBox(height: 16),
+
+        if (result == null)
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppColors.warningBg,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Text(
+              'Geçerli alan ve sezonluk ihtiyaç girin.',
+              style: TextStyle(color: AppColors.warning),
+            ),
+          )
+        else ...[
+          _ResultPanel(result: result, disclaimer: _prices!.disclaimer),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () => _exportPdf(result),
+              icon: const Icon(Icons.picture_as_pdf_rounded),
+              label: const Text('PDF Olarak İndir'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.emeraldDark,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _NumField extends StatelessWidget {
+  final TextEditingController controller;
+  final String label;
+  final String suffix;
+  const _NumField({
+    required this.controller,
+    required this.label,
+    required this.suffix,
+  });
+  @override
+  Widget build(BuildContext context) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label,
+              style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textSecondary)),
+          const SizedBox(height: 4),
+          TextField(
+            controller: controller,
+            keyboardType:
+                const TextInputType.numberWithOptions(decimal: true),
+            onChanged: (_) => (context as Element).markNeedsBuild(),
+            decoration: InputDecoration(
+              suffixText: suffix,
+              filled: true,
+              fillColor: AppColors.surface,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(color: AppColors.border),
+              ),
+              isDense: true,
+            ),
+          ),
+        ],
+      );
+}
+
+class _MethodDropdown extends StatelessWidget {
+  final String label;
+  final String value;
+  final List<String> values;
+  final ValueChanged<String> onChanged;
+  const _MethodDropdown({
+    required this.label,
+    required this.value,
+    required this.values,
+    required this.onChanged,
+  });
+  @override
+  Widget build(BuildContext context) {
+    final effective = values.contains(value) ? value : values.first;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label,
+            style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textSecondary)),
+        const SizedBox(height: 4),
+        DropdownButtonFormField<String>(
+          initialValue: effective,
+          isExpanded: true,
+          items: values
+              .map((v) => DropdownMenuItem(value: v, child: Text(v)))
+              .toList(),
+          onChanged: (v) => onChanged(v ?? values.first),
+          decoration: InputDecoration(
+            filled: true,
+            fillColor: AppColors.surface,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(color: AppColors.border),
+            ),
+            isDense: true,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ResultPanel extends StatelessWidget {
+  final CostResult result;
+  final String disclaimer;
+  const _ResultPanel({required this.result, required this.disclaimer});
+
+  static String _vol(double m3) {
+    if (m3 >= 1000) return '${(m3 / 1000).toStringAsFixed(1)} bin m³';
+    return '${m3.toStringAsFixed(0)} m³';
+  }
+
+  static String _tl(double v) {
+    if (v.abs() >= 1000000) return '${(v / 1000000).toStringAsFixed(1)} M TL';
+    if (v.abs() >= 1000) return '${(v / 1000).toStringAsFixed(1)}K TL';
+    return '${v.toStringAsFixed(0)} TL';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isPositive = result.savedTlPerSeason > 0;
+    final headlineColor =
+        isPositive ? AppColors.emerald : AppColors.textTertiary;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Vurgu kartı
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: isPositive
+                  ? [AppColors.emerald, AppColors.emeraldDark]
+                  : [AppColors.textTertiary, AppColors.textSecondary],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('SEZONLUK TASARRUF',
+                  style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.5)),
+              const SizedBox(height: 4),
+              Text(_tl(result.savedTlPerSeason),
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 32,
+                      fontWeight: FontWeight.w900)),
+              Text(
+                isPositive
+                    ? '${_vol(result.savedM3)} su tasarrufu (yılda)'
+                    : 'Bu geçişte finansal kazanç görünmüyor',
+                style:
+                    const TextStyle(color: Colors.white70, fontSize: 13),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        // Kıyas tablosu
+        _CompareCard(
+          title: 'Şu anki: ${result.current.method}',
+          breakdown: result.current,
+          color: headlineColor,
+        ),
+        const SizedBox(height: 8),
+        _CompareCard(
+          title: 'Alternatif: ${result.alternative.method}',
+          breakdown: result.alternative,
+          color: AppColors.emerald,
+          highlight: true,
+        ),
+        const SizedBox(height: 12),
+
+        // Yatırım + payback
+        if (result.investmentTl != null)
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.warningBg,
+              borderRadius: BorderRadius.circular(12),
+              border:
+                  Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.account_balance,
+                        color: AppColors.warning, size: 18),
+                    const SizedBox(width: 6),
+                    const Text('Yatırım & Geri Ödeme',
+                        style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 13,
+                            color: AppColors.warning)),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                _Row('Tahmini yatırım',
+                    _tl(result.investmentTl!)),
+                _Row('Hibe sonrası net',
+                    _tl(result.investmentAfterSubsidyTl!)),
+                if (result.paybackYears != null)
+                  _Row('Geri ödeme (hibesiz)',
+                      '${result.paybackYears!.toStringAsFixed(1)} yıl'),
+                if (result.paybackYearsWithSubsidy != null)
+                  _Row('Geri ödeme (hibeli)',
+                      '${result.paybackYearsWithSubsidy!.toStringAsFixed(1)} yıl'),
+              ],
+            ),
+          ),
+        const SizedBox(height: 12),
+
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: AppColors.infoBg,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.info_outline,
+                  size: 14, color: AppColors.info),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(disclaimer,
+                    style: const TextStyle(
+                        fontSize: 11, color: AppColors.textSecondary)),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _CompareCard extends StatelessWidget {
+  final String title;
+  final MethodCostBreakdown breakdown;
+  final Color color;
+  final bool highlight;
+  const _CompareCard({
+    required this.title,
+    required this.breakdown,
+    required this.color,
+    this.highlight = false,
+  });
+
+  static String _tl(double v) {
+    if (v >= 1000) return '${(v / 1000).toStringAsFixed(1)}K TL';
+    return '${v.toStringAsFixed(0)} TL';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: highlight ? color.withValues(alpha: 0.10) : AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: highlight ? color : AppColors.border,
+          width: highlight ? 1.5 : 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(title,
+                    style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 13,
+                        color: color)),
+              ),
+              Text('verim %${(breakdown.efficiency * 100).toStringAsFixed(0)}',
+                  style: const TextStyle(
+                      fontSize: 11, color: AppColors.textTertiary)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          _Row('Verilen su',
+              '${breakdown.grossM3.toStringAsFixed(0)} m³'),
+          _Row('Su faturası', _tl(breakdown.waterCostTl)),
+          _Row('Pompa elektriği', _tl(breakdown.energyCostTl)),
+          const Divider(height: 14),
+          _Row('Toplam', _tl(breakdown.totalCostTl), bold: true),
+        ],
+      ),
+    );
+  }
+}
+
+class _Row extends StatelessWidget {
+  final String label;
+  final String value;
+  final bool bold;
+  const _Row(this.label, this.value, {this.bold = false});
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(label,
+                  style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: bold ? FontWeight.w800 : FontWeight.normal,
+                      color: AppColors.textPrimary)),
+            ),
+            Text(value,
+                style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: bold ? FontWeight.w800 : FontWeight.w600,
+                    color: AppColors.textPrimary)),
+          ],
+        ),
+      );
 }
 
 class _SourceChip extends StatelessWidget {
