@@ -35,10 +35,10 @@ void main() {
     );
 
     expect(result, isNotNull);
-    expect(result!.appliedIrrigationMm, closeTo(0.72, 0.001));
+    expect(result!.appliedIrrigationMm, closeTo(0.736, 0.001));
     expect(result.accountedRainMm, closeTo(4.0, 0.001));
     expect(result.today, isNotNull);
-    expect(result.today!.waterIrrigatedMm, closeTo(0.72, 0.001));
+    expect(result.today!.waterIrrigatedMm, closeTo(0.736, 0.001));
     expect(result.today!.waterRainMm, closeTo(4.0, 0.001));
   });
 

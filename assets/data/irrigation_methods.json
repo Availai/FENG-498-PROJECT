@@ -1,0 +1,373 @@
+{
+  "schema_version": "2026-05-27",
+  "locale": "tr-TR",
+  "disclaimer": "Buradaki sayisal degerler kamu kaynaklarinda yayinlanan aralik ve ortalamalardir. Tarla bazli kesin maliyet ve tasarruf icin yerel DSI, ziraat odasi veya il/ilce tarim mudurlugu ile gorusulmesi onerilir. Fiyatlar 2024-2025 aralik degerleridir, enflasyona ve bolgeye gore degisir.",
+  "source_metadata": [
+    {
+      "id": "source.suverimliligi.tagem.tarimsal_su_verimliligi",
+      "title": "Tarimsal Su Verimliligi Portali",
+      "institution": "Tarim ve Orman Bakanligi / TAGEM",
+      "source_type": "official",
+      "url": "https://www.suverimliligi.gov.tr/home/TarimsalSuVerimliligi",
+      "publication_year": null,
+      "retrieved_at": "2026-05-27",
+      "reliability": "high",
+      "notes": "Sulama yontemleri ve su verimliligi resmi portali."
+    },
+    {
+      "id": "source.tarimorman.ulusal_su_plani_2026_2035",
+      "title": "Ulusal Su Plani (2026-2035)",
+      "institution": "Tarim ve Orman Bakanligi / Su Yonetimi Genel Mudurlugu (SYGM)",
+      "source_type": "official",
+      "url": "https://www.tarimorman.gov.tr/SYGM/Belgeler/Ulusal%20Su%20Plan%C4%B1%20%20Resmi%20Gazete/Ulusal%20Su%20Plan%C4%B1%20(2026-2035).pdf",
+      "publication_year": 2025,
+      "retrieved_at": "2026-05-27",
+      "reliability": "high",
+      "notes": "Resmi Gazete'de yayinlanan ulusal su politikasi belgesi."
+    },
+    {
+      "id": "source.tagem.tarimsal_sulama_spb_2021_2025",
+      "title": "Tarimsal Sulama Sektor Politika Belgesi 2021-2025",
+      "institution": "Tarim ve Orman Bakanligi / TAGEM",
+      "source_type": "official",
+      "url": "https://www.tarimorman.gov.tr/TAGEM/Belgeler/yayin/Tar%C4%B1msal%20Sulama%20SPB_2021-2025.pdf",
+      "publication_year": 2021,
+      "retrieved_at": "2026-05-27",
+      "reliability": "high",
+      "notes": "Modern sulama yontemleri ve verim katsayilari icin ana referans."
+    },
+    {
+      "id": "source.suverimliligi.haber_15798",
+      "title": "Suverimliligi Portali - Detay Haber 15798",
+      "institution": "Tarim ve Orman Bakanligi",
+      "source_type": "official",
+      "url": "https://www.suverimliligi.gov.tr/Haber/Detay/15798",
+      "publication_year": null,
+      "retrieved_at": "2026-05-27",
+      "reliability": "high",
+      "notes": "Damla ve yagmurlama kiyaslamasi haber metni."
+    },
+    {
+      "id": "source.worldbank.turkiye_irrigation_2025",
+      "title": "World Bank to Support Farmers Enhance Crop Production in Turkiye",
+      "institution": "World Bank",
+      "source_type": "public_agency",
+      "url": "https://www.worldbank.org/en/news/press-release/2025/06/02/world-bank-to-support-farmers-enhance-crop-production-and-food-availability-in-turkiye",
+      "publication_year": 2025,
+      "retrieved_at": "2026-05-27",
+      "reliability": "medium",
+      "notes": "Modern sulamaya gecisin makro tasarruf etkisi icin destekleyici kaynak."
+    }
+  ],
+  "general_water_saving_tips": [
+    {
+      "id": "tip.early_morning_irrigation",
+      "title": "Sabah erken veya aksamustu sula",
+      "detail": "Ogle saatlerinde buharlasma yuksek oldugundan ayni sudan elde edilen yarar dusuktur. Sabah 06:00-09:00 veya aksam 18:00 sonrasi sulama buharlasma kaybini azaltir.",
+      "source_ids": ["source.suverimliligi.tagem.tarimsal_su_verimliligi"]
+    },
+    {
+      "id": "tip.soil_moisture_first",
+      "title": "Once toprak nemini kontrol et",
+      "detail": "Topragin ust 10-20 cm'i hala nemliyse sulama erteleyin. Kuru sulama hem suyu hem parayi bosa harcar; ayrica koklerin yuzeye yakin gelismesine neden olabilir.",
+      "source_ids": ["source.tagem.tarimsal_sulama_spb_2021_2025"]
+    },
+    {
+      "id": "tip.mulch_cover",
+      "title": "Malclama (orgu / saman / plastik ortu) kullan",
+      "detail": "Toprak yuzeyinin malclanmasi buharlasmayi onemli olcude azaltir ve bitki kok bolgesindeki nemi korur. Damla sulama ile birlikte kullanildiginda toplam su ihtiyaci dusurulebilir.",
+      "source_ids": ["source.tagem.tarimsal_sulama_spb_2021_2025"]
+    },
+    {
+      "id": "tip.maintenance",
+      "title": "Sistemin bakimini ihmal etme",
+      "detail": "Tikanmis damlatici, kacak yapan ek yeri veya bozuk yagmurlama memesi hem tasarrufu yok eder hem uniform sulamayi bozar. Sezon basinda ve ortasinda sistem kontrolu zorunludur.",
+      "source_ids": ["source.suverimliligi.tagem.tarimsal_su_verimliligi"]
+    },
+    {
+      "id": "tip.deficit_irrigation",
+      "title": "Kisitli sulama (deficit irrigation) yaklasimini ogren",
+      "detail": "Bazi urunlerde belirli fenoloji donemlerinde bilinçli olarak az su vermek, verimi cok dusurmeden onemli su tasarrufu saglar. Kritik donemler (cicekenme, meyve baglama) korunmalidir.",
+      "source_ids": ["source.tagem.tarimsal_sulama_spb_2021_2025"]
+    },
+    {
+      "id": "tip.harvest_rainwater",
+      "title": "Yagmur suyu hasadini degerlendir",
+      "detail": "Sera veya bina catilarindan toplanan yagmur suyu, tampon depoda biriktirilip sulamada kullanilabilir. Sebeke ve enerji maliyetini dusurur.",
+      "source_ids": ["source.tarimorman.ulusal_su_plani_2026_2035"]
+    }
+  ],
+  "methods": [
+    {
+      "id": "method.surface.furrow",
+      "category": "surface",
+      "name_tr": "Salma / Karik Sulama",
+      "summary": "Suyun yercekimiyle tarla yuzeyinden akitilarak bitkiye ulastirildigi geleneksel yontem. Tava, uzun tava ve karik alt tipleri vardir.",
+      "efficiency_pct_range": [40, 60],
+      "water_saving_vs_furrow_pct": 0,
+      "initial_investment_tl_per_decare_range": [0, 2000],
+      "operational_cost_level": "low",
+      "energy_requirement": "very_low",
+      "labor_requirement": "high",
+      "suitable_crops": ["tahil", "yonca", "celtik", "pamuk (geleneksel)"],
+      "suitable_terrain": "Az egimli, duzgun tesviyeli araziler",
+      "pros": [
+        "Ilk yatirim cok dusuk veya sifir",
+        "Enerji gerektirmez (yercekimi)",
+        "Basit, herkes uygulayabilir"
+      ],
+      "cons": [
+        "Su kaybi cok yuksek (sizma, buharlasma, akis)",
+        "Uniform dagilim zayif",
+        "Tuzlanma ve erozyon riski",
+        "Hastalik ve yabanci ot baskisini artirir"
+      ],
+      "evidence": [
+        {
+          "source_id": "source.tagem.tarimsal_sulama_spb_2021_2025",
+          "evidence_text": "Yuzey sulama yontemlerinde sulama randimani %40-60 araliginda raporlanmaktadir."
+        }
+      ],
+      "requires_expert_confirmation": false
+    },
+    {
+      "id": "method.sprinkler.fixed",
+      "category": "sprinkler",
+      "name_tr": "Sabit Yagmurlama",
+      "summary": "Sabit borularla yerlestirilen yagmurlama memeleri ile suyun yagmur seklinde dagitildigi yontem.",
+      "efficiency_pct_range": [70, 80],
+      "water_saving_vs_furrow_pct_range": [25, 40],
+      "initial_investment_tl_per_decare_range": [8000, 20000],
+      "operational_cost_level": "medium",
+      "energy_requirement": "medium_high",
+      "labor_requirement": "medium",
+      "suitable_crops": ["bugday", "arpa", "yonca", "mera", "patates"],
+      "suitable_terrain": "Engebeli arazide de calisir, tesviye gerektirmez",
+      "pros": [
+        "Yuzey sulamaya gore belirgin tasarruf",
+        "Tesviye gerektirmez",
+        "Soguklamada don korumasinda kullanilabilir"
+      ],
+      "cons": [
+        "Ruzgar dagilim uniformlugunu bozar",
+        "Yaprak islakligi bazi hastaliklari artirir",
+        "Pompa ve elektrik / yakit maliyeti var"
+      ],
+      "evidence": [
+        {
+          "source_id": "source.suverimliligi.haber_15798",
+          "evidence_text": "Yagmurlama sulama yontemleri yuzey sulamaya gore yaklasik %25-40 su tasarrufu saglamaktadir."
+        }
+      ],
+      "requires_expert_confirmation": false
+    },
+    {
+      "id": "method.sprinkler.center_pivot",
+      "category": "sprinkler",
+      "name_tr": "Center-Pivot (Donen Kollu) Yagmurlama",
+      "summary": "Merkez etrafinda donen uzun bir kol ile genis alanlari otomatik sulayan sistem. Buyuk olcekli ovalarda kullanilir.",
+      "efficiency_pct_range": [75, 85],
+      "water_saving_vs_furrow_pct_range": [30, 50],
+      "initial_investment_tl_per_decare_range": [12000, 30000],
+      "operational_cost_level": "medium",
+      "energy_requirement": "medium_high",
+      "labor_requirement": "low",
+      "suitable_crops": ["misir", "ayicicegi", "bugday", "soya", "yonca"],
+      "suitable_terrain": "Genis ve duz parseller (genelde 100 da uzeri)",
+      "pros": [
+        "Buyuk alan tek operatorle sulanir",
+        "Uniform dagilim yuksek",
+        "Otomasyon ve gubre/ilac uygulamasi entegre edilebilir"
+      ],
+      "cons": [
+        "Yuksek ilk yatirim",
+        "Kucuk veya duzensiz parsellere uygun degil",
+        "Elektrik kesintilerine duyarli"
+      ],
+      "evidence": [
+        {
+          "source_id": "source.tagem.tarimsal_sulama_spb_2021_2025",
+          "evidence_text": "Modern basincli sulama sistemleri sulama randimanini %75 ve uzerine cikarmaktadir."
+        }
+      ],
+      "requires_expert_confirmation": false
+    },
+    {
+      "id": "method.drip.surface",
+      "category": "drip",
+      "name_tr": "Yuzey Damla Sulama",
+      "summary": "Suyun bitki dibine damlaticilarla, dusuk basincta ve dogrudan kok bolgesine verildigi yontem. Sebze, meyve ve bagcilikta en yaygin modern sistem.",
+      "efficiency_pct_range": [90, 95],
+      "water_saving_vs_furrow_pct_range": [40, 60],
+      "initial_investment_tl_per_decare_range": [15000, 35000],
+      "operational_cost_level": "low_medium",
+      "energy_requirement": "low",
+      "labor_requirement": "low",
+      "suitable_crops": ["domates", "biber", "patlican", "uzum", "narenciye", "zeytin", "muz", "cilek", "sebze"],
+      "suitable_terrain": "Egimli, engebeli ve sinirli su kaynakli araziler dahil cogu yer",
+      "pros": [
+        "En yuksek su verimliligi (kaynaklarda %90-95)",
+        "Yaprak islakligi olusmaz, hastalik baskisi azalir",
+        "Gubre suyla beraber verilebilir (fertigasyon)",
+        "Tuzlu sularda dahi kullanilabilir (yonetimle)"
+      ],
+      "cons": [
+        "Yuksek ilk yatirim",
+        "Damlatici tikanma riski (filtrasyon zorunlu)",
+        "Kok bolgesi sinirli kalir, bilincli yonetim gerekir"
+      ],
+      "evidence": [
+        {
+          "source_id": "source.suverimliligi.haber_15798",
+          "evidence_text": "Damla sulama yontemlerinde sulama randimani %90 ve uzerine cikabilmekte, yuzey sulamaya gore %40-60 su tasarrufu saglanmaktadir."
+        },
+        {
+          "source_id": "source.worldbank.turkiye_irrigation_2025",
+          "evidence_text": "Modern sulamaya gecis su kullanim verimliligini onemli olcude artirmaktadir."
+        }
+      ],
+      "requires_expert_confirmation": false
+    },
+    {
+      "id": "method.drip.subsurface",
+      "category": "drip",
+      "name_tr": "Yuzey Alti Damla Sulama (SDI)",
+      "summary": "Damla borularinin toprak yuzeyinin 20-40 cm altina gomulerek dogrudan kok bolgesine sulama yapildigi sistem. Tarla bitkileri ve coklu sezon kullanimda etkili.",
+      "efficiency_pct_range": [92, 97],
+      "water_saving_vs_furrow_pct_range": [45, 65],
+      "initial_investment_tl_per_decare_range": [20000, 45000],
+      "operational_cost_level": "low_medium",
+      "energy_requirement": "low",
+      "labor_requirement": "low",
+      "suitable_crops": ["misir", "pamuk", "ayicicegi", "yonca", "domates (acik tarla)"],
+      "suitable_terrain": "Coklu yil ayni urun veya rotasyona uygun parseller",
+      "pros": [
+        "Buharlasma kaybi cok dusuk",
+        "Yabanci ot ve hastalik baskisi en az",
+        "Tarla ici trafik ve hasada engel olmaz"
+      ],
+      "cons": [
+        "En yuksek ilk yatirim",
+        "Kok ve kemirgen kaynakli zarara duyarli",
+        "Toprak alti tikanma teshisi zor"
+      ],
+      "evidence": [
+        {
+          "source_id": "source.tagem.tarimsal_sulama_spb_2021_2025",
+          "evidence_text": "Damla sulama yontemlerinin gelismis formlari modern basincli sulama sistemleri arasinda en yuksek su verimliligini sunmaktadir."
+        }
+      ],
+      "requires_expert_confirmation": true
+    },
+    {
+      "id": "method.micro.sprinkler",
+      "category": "micro",
+      "name_tr": "Mikro Yagmurlama / Mini Sprinkler",
+      "summary": "Damla ile yagmurlama arasi cozum. Bahce, fidanlik ve serada genis kok bolgesini hassas suluyor; don korumasinda da kullanilabilir.",
+      "efficiency_pct_range": [80, 90],
+      "water_saving_vs_furrow_pct_range": [30, 50],
+      "initial_investment_tl_per_decare_range": [12000, 25000],
+      "operational_cost_level": "low_medium",
+      "energy_requirement": "low_medium",
+      "labor_requirement": "low",
+      "suitable_crops": ["narenciye", "kayisi", "seftali", "elma", "fidanlik", "sera sebzeleri"],
+      "suitable_terrain": "Meyve bahceleri, seralar, fidanliklar",
+      "pros": [
+        "Genis kok bolgesini homojen sular",
+        "Don korumasinda kullanilabilir",
+        "Damlaya gore tikanmaya daha az duyarli"
+      ],
+      "cons": [
+        "Yapragi kismen islatabilir",
+        "Ruzgardan etkilenir",
+        "Damladan biraz daha yuksek su tuketimi"
+      ],
+      "evidence": [
+        {
+          "source_id": "source.suverimliligi.tagem.tarimsal_su_verimliligi",
+          "evidence_text": "Mikro yagmurlama yontemleri bahce bitkilerinde su tasarrufu saglayan basincli sulama sistemleri arasinda yer almaktadir."
+        }
+      ],
+      "requires_expert_confirmation": false
+    },
+    {
+      "id": "method.micro.fogger",
+      "category": "micro",
+      "name_tr": "Sisleme (Fogger / Mist)",
+      "summary": "Cok ince tanecikli su pusulamasi ile sera ici nem ve sicaklik kontrolu yapan sistem. Esas amaci sulama degil, mikroklima yonetimidir.",
+      "efficiency_pct_range": [85, 95],
+      "water_saving_vs_furrow_pct_range": [40, 60],
+      "initial_investment_tl_per_decare_range": [10000, 22000],
+      "operational_cost_level": "medium",
+      "energy_requirement": "medium",
+      "labor_requirement": "low",
+      "suitable_crops": ["sera sebzeleri", "cicek", "fide uretimi", "mantar"],
+      "suitable_terrain": "Kapali alanlar, sera ve fide tesisleri",
+      "pros": [
+        "Yaz aylarinda sera ici sicakligi dusurur",
+        "Cimlenme ve fide donemine cok uygun",
+        "Asiri sicaktan kaynakli urun kaybini azaltir"
+      ],
+      "cons": [
+        "Asiri nem mantari hastaliklari tetikleyebilir",
+        "Kaliteli su ve filtrasyon sart",
+        "Genelde sulama yerine ek sistem olarak kullanilir"
+      ],
+      "evidence": [
+        {
+          "source_id": "source.suverimliligi.tagem.tarimsal_su_verimliligi",
+          "evidence_text": "Sera ve fidanliklarda mikro sulama ve sisleme sistemleri kaynak verimliligi yuksek modern uygulamalar arasinda yer almaktadir."
+        }
+      ],
+      "requires_expert_confirmation": true
+    }
+  ],
+  "transition_savings_examples": [
+    {
+      "id": "transition.furrow_to_drip",
+      "from_method_id": "method.surface.furrow",
+      "to_method_id": "method.drip.surface",
+      "water_saving_pct_range": [40, 60],
+      "yield_increase_pct_range": [15, 40],
+      "payback_years_range": [3, 6],
+      "evidence": [
+        {
+          "source_id": "source.suverimliligi.haber_15798",
+          "evidence_text": "Salma sulamadan damla sulamaya gecis ile %40-60 araliginda su tasarrufu ve verim artisi raporlanmaktadir."
+        }
+      ],
+      "note": "Geri odeme suresi urun, bolge, su ucreti ve enerji maliyetine gore degisir. Devlet hibe ve KKYDP destekleri payback'i kisaltir."
+    },
+    {
+      "id": "transition.furrow_to_sprinkler",
+      "from_method_id": "method.surface.furrow",
+      "to_method_id": "method.sprinkler.fixed",
+      "water_saving_pct_range": [25, 40],
+      "yield_increase_pct_range": [10, 25],
+      "payback_years_range": [3, 5],
+      "evidence": [
+        {
+          "source_id": "source.tagem.tarimsal_sulama_spb_2021_2025",
+          "evidence_text": "Yagmurlama sulamaya gecis ile yuzey sulamaya gore belirgin su tasarrufu ve verim artisi saglanmaktadir."
+        }
+      ],
+      "note": "Tahil ve yem bitkilerinde en yaygin modernizasyon basamagidir."
+    }
+  ],
+  "incentives": [
+    {
+      "id": "incentive.kkydp",
+      "title": "KKYDP (Kirsal Kalkinma Yatirimlarinin Desteklenmesi Programi)",
+      "detail": "Bireysel sulama makine ve ekipman alimlarinda %50'ye varan hibe destegi. Damla, yagmurlama ve center-pivot sistemleri kapsam icindedir.",
+      "source_ids": ["source.tarimorman.ulusal_su_plani_2026_2035"],
+      "user_action": "Il/Ilce Tarim ve Orman Mudurlugu ile gorusup basvuru takvimini ogrenin."
+    },
+    {
+      "id": "incentive.dsi_modernization",
+      "title": "DSI Sulama Modernizasyonu",
+      "detail": "Acik sulama kanallarinin kapali borulu sisteme donusturulmesi ve cebri basincli sulamaya gecis projeleri.",
+      "source_ids": ["source.tarimorman.ulusal_su_plani_2026_2035"],
+      "user_action": "Bagli oldugunuz Sulama Birligi veya DSI bolge mudurluguyle iletisime gecin."
+    }
+  ]
+}

@@ -112,30 +112,80 @@ class WaterAccounting {
     if (minutes <= 0 || areaSqm <= 0) return 0;
     final hours = minutes / 60.0;
     final key = SupportedCrops.normalize(method);
-    if (key.contains('damla') || key.contains('drip')) {
+    // SDI ve yüzey damla — damlatıcı başına ~1.6 L/saat.
+    if (key.contains('sdi') ||
+        key.contains('yuzey alti') ||
+        key.contains('subsurface') ||
+        key.contains('damla') ||
+        key.contains('drip')) {
       const dripperLiterPerHour = 1.6;
       if (plantCount != null && plantCount > 0) {
         return (plantCount * dripperLiterPerHour * hours) / areaSqm;
       }
       return minutes * fallbackMmPerWaterMinute;
     }
+    // Sisleme — saatte ~3 mm (kuru hava nem yönetimi).
+    if (key.contains('sis') || key.contains('fog') || key.contains('mist')) {
+      return 3.0 * hours;
+    }
+    // Mikro yağmurlama — ~5 mm/sa (bahçe).
+    if (key.contains('mikro') || key.contains('micro')) {
+      return 5.0 * hours;
+    }
+    // Center-pivot — geniş alan, saatte ~6 mm.
+    if (key.contains('pivot')) {
+      return 6.0 * hours;
+    }
+    // Sabit yağmurlama — saatte ~7 mm.
     if (key.contains('yagmurlama') || key.contains('sprinkler')) {
       return 7.0 * hours;
     }
-    if (key.contains('karik') || key.contains('furrow')) {
-      return 10.0 * hours;
+    // Karık/salma — saatte ~12 mm (yüksek hacim, düşük verim).
+    if (key.contains('karik') ||
+        key.contains('salma') ||
+        key.contains('tava') ||
+        key.contains('furrow')) {
+      return 12.0 * hours;
     }
+    // Elle (kova/hortum) — saatte ~5 mm.
     if (key.contains('el') || key.contains('elle') || key.contains('hand')) {
       return 5.0 * hours;
     }
     return minutes * fallbackMmPerWaterMinute;
   }
 
+  /// Sulama yöntemi randımanı (etken su / verilen su).
+  ///
+  /// Değerler `assets/data/irrigation_methods.json` aralıklarının orta noktası
+  /// alınarak hizalanmıştır (kaynaklar: TAGEM, suverimliligi.gov.tr).
+  ///
+  /// - Yüzey altı damla (SDI): %92-97 → 0.94
+  /// - Yüzey damla: %90-95 → 0.92
+  /// - Mikro yağmurlama / sisleme: %80-90 → 0.85
+  /// - Center-pivot: %75-85 → 0.80
+  /// - Sabit yağmurlama: %70-80 → 0.75
+  /// - Karık / salma: %40-60 → 0.50
+  /// - Elle (kova/hortum, yerel): ~0.80 (hedefli ama yüksek değişken)
   static double methodEfficiency(String method) {
     final key = SupportedCrops.normalize(method);
-    if (key.contains('damla') || key.contains('drip')) return 0.90;
+    if (key.contains('sdi') ||
+        key.contains('yuzey alti') ||
+        key.contains('subsurface')) {
+      return 0.94;
+    }
+    if (key.contains('damla') || key.contains('drip')) return 0.92;
+    if (key.contains('sis') || key.contains('fog') || key.contains('mist')) {
+      return 0.88;
+    }
+    if (key.contains('mikro') || key.contains('micro')) return 0.85;
+    if (key.contains('pivot')) return 0.80;
     if (key.contains('yagmurlama') || key.contains('sprinkler')) return 0.75;
-    if (key.contains('karik') || key.contains('furrow')) return 0.65;
+    if (key.contains('karik') ||
+        key.contains('salma') ||
+        key.contains('tava') ||
+        key.contains('furrow')) {
+      return 0.50;
+    }
     if (key.contains('el') || key.contains('elle') || key.contains('hand')) {
       return 0.80;
     }

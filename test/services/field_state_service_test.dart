@@ -61,8 +61,9 @@ void main() {
     expect(states, hasLength(1));
     expect(states.single.areaDekar, closeTo(1.5, 0.001));
     expect(states.single.estimatedPlantCount, 3000);
-    expect(states.single.weeklyWaterMm, closeTo(3.92, 0.001));
-    expect(states.single.weeklyWaterLiters, closeTo(5880, 0.001));
+    // Damla verimi 0.92 (kaynak: irrigation_methods.json) ile hizalanmıştır.
+    expect(states.single.weeklyWaterMm, closeTo(3.936, 0.001));
+    expect(states.single.weeklyWaterLiters, closeTo(5904, 0.001));
   });
 
   test('auto_seed ve gelecek sulama kayitlarini su etkisine katmaz', () {

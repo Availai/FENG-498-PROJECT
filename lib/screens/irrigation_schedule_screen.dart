@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/app_providers.dart';
 import '../services/irrigation_service.dart';
+import 'water_efficiency_guide_screen.dart';
 
 class IrrigationScheduleScreen extends ConsumerStatefulWidget {
   final String? fieldId;
@@ -127,6 +128,15 @@ class _IrrigationScheduleScreenState
       appBar: AppBar(
         title: const Text('Akıllı Sulama Programı'),
         actions: [
+          IconButton(
+            tooltip: 'Su Tasarrufu Rehberi',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => const WaterEfficiencyGuideScreen(),
+              ),
+            ),
+            icon: const Icon(Icons.eco),
+          ),
           IconButton(
             tooltip: 'Yenile',
             onPressed: _loading ? null : _load,

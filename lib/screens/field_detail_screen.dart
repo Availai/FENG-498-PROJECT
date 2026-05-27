@@ -26,6 +26,8 @@ import '../widgets/activity_quick_log.dart';
 import '../widgets/contextual_tip.dart';
 import '../widgets/floating_toast.dart';
 import '../widgets/glass_panel.dart';
+import '../widgets/last_irrigation_card.dart';
+import 'irrigation_history_screen.dart';
 import '../widgets/season_summary_card.dart';
 import '../widgets/help_panel.dart';
 import '../widgets/zone_drawing_toolbar.dart';
@@ -4608,8 +4610,37 @@ class _DirectivesModalContent extends ConsumerWidget {
                   fieldStates: fieldStateMap,
                   scheduledEvents: scheduledAsync.valueOrNull,
                 );
+                // Son sulama özet kartı — sezon başı olarak ilk ekili
+                // bitkinin dikim tarihi alınır; ekili bitki yoksa yıl başı.
+                DateTime? seasonStart;
+                for (final crop in fieldCrops) {
+                  final planted =
+                      _parsePlantedDate(crop['planted_date']?.toString());
+                  if (planted != null) {
+                    seasonStart = planted;
+                    break;
+                  }
+                }
+
                 // Sezon özet kartları (her ekili 3-vitrin bitki için).
-                final summaryCards = <Widget>[];
+                final summaryCards = <Widget>[
+                  LastIrrigationCard(
+                    activities: activities,
+                    seasonStart: seasonStart,
+                    fieldAreaDekar: fieldAreaDekar,
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => IrrigationHistoryScreen(
+                          fieldId: fieldId,
+                          fieldName:
+                              fieldData['name']?.toString() ?? 'Tarla',
+                          fieldAreaDekar: fieldAreaDekar,
+                          seasonStart: seasonStart,
+                        ),
+                      ),
+                    ),
+                  ),
+                ];
                 for (final crop in fieldCrops) {
                   if (!SupportedCrops.isSupported(crop['name']?.toString())) {
                     continue;

@@ -13,8 +13,9 @@ void main() {
       plantCount: 3000,
     );
 
-    expect(impact.mm, closeTo(0.72, 0.001));
-    expect(impact.liters, closeTo(1080, 0.001));
+    // Damla %92 → 1200 L × 0.92 = 1104 L → 1104 / 1500 = 0.736 mm
+    expect(impact.mm, closeTo(0.736, 0.001));
+    expect(impact.liters, closeTo(1104, 0.001));
     expect(impact.source, 'liters');
   });
 
@@ -27,10 +28,15 @@ void main() {
           areaSqm: 1000,
         );
 
-    expect(impact('Damla sulama').mm, closeTo(0.90, 0.001));
+    // Kaynak: assets/data/irrigation_methods.json verim aralık ortalamaları.
+    expect(impact('Yüzey altı damla (SDI)').mm, closeTo(0.94, 0.001));
+    expect(impact('Damla sulama').mm, closeTo(0.92, 0.001));
+    expect(impact('Mikro yağmurlama').mm, closeTo(0.85, 0.001));
+    expect(impact('Center-pivot').mm, closeTo(0.80, 0.001));
     expect(impact('Yağmurlama').mm, closeTo(0.75, 0.001));
-    expect(impact('Karık sulama').mm, closeTo(0.65, 0.001));
     expect(impact('Elle sulama').mm, closeTo(0.80, 0.001));
+    expect(impact('Karık sulama').mm, closeTo(0.50, 0.001));
+    expect(impact('Salma sulama').mm, closeTo(0.50, 0.001));
   });
 
   test('damla sulama suresini bitki sayisina gore mm etkisine cevirir', () {

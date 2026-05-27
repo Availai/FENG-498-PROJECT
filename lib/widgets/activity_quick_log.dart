@@ -12,6 +12,7 @@ import '../services/rules/timing_window.dart';
 import '../services/water_accounting.dart';
 import '../theme/app_theme.dart';
 import 'floating_toast.dart';
+import 'irrigation_impact_sheet.dart';
 import 'tap_scale.dart';
 
 Future<bool> showActivityQuickLogSheet({
@@ -72,6 +73,17 @@ Future<bool> showActivityQuickLogSheet({
         message: '${ActivityType.actionLabel(type)} kaydedildi',
         type: ToastType.success,
       );
+      // Sulama kaydından sonra çiftçiye etkili kullanım, kayıp ve
+      // alternatif yöntem kıyaslaması içeren özet sheet'i göster.
+      if (type == ActivityType.watering) {
+        final impact = _buildWaterImpactFromDetail(
+          detail: detail,
+          fieldAreaDekar: fieldAreaDekar,
+        );
+        if (impact != null && context.mounted) {
+          await showIrrigationImpactSheet(context: context, data: impact);
+        }
+      }
     }
     return true;
   } catch (e) {
@@ -84,6 +96,33 @@ Future<bool> showActivityQuickLogSheet({
     }
     return false;
   }
+}
+
+/// Aktivite kaydından sonra `IrrigationImpactSheet`'i besleyen veri kurucu.
+/// Metadata `activity_quick_log` içinde `_save()` tarafından doldurulur.
+IrrigationImpactData? _buildWaterImpactFromDetail({
+  required _QuickLogDetail detail,
+  required double fieldAreaDekar,
+}) {
+  final meta = detail.metadata;
+  final method = (meta['irrigation_method'] as String?) ?? 'Damla sulama';
+  final givenLiters = (meta['water_liters'] as num?)?.toDouble() ?? 0;
+  if (givenLiters <= 0) return null;
+  final effectiveLiters =
+      (meta['effective_water_liters'] as num?)?.toDouble() ?? givenLiters * 0.9;
+  final effectiveMm = (meta['effective_water_mm'] as num?)?.toDouble() ?? 0;
+  final areaSqm = (fieldAreaDekar <= 0 ? 1.0 : fieldAreaDekar) * 1000.0;
+  final weeklyTarget = (meta['recommended_weekly_mm'] as num?)?.toDouble();
+  final stage = meta['stage_label'] as String?;
+  return IrrigationImpactData(
+    method: method,
+    givenLiters: givenLiters,
+    effectiveLiters: effectiveLiters,
+    effectiveMm: effectiveMm,
+    areaSqm: areaSqm,
+    weeklyTargetMm: weeklyTarget,
+    stageLabel: stage,
+  );
 }
 
 bool _isTopLevelLiterUnit(String? unit) {
@@ -809,10 +848,16 @@ class _QuickLogSheetState extends State<_QuickLogSheet> {
           _methodDropdown(
             label: 'Sulama yöntemi',
             values: const [
+              // Verim sırasıyla — yüksekten düşüğe.
+              'Yüzey altı damla (SDI)',
               'Damla sulama',
-              'Karık sulama',
+              'Mikro yağmurlama',
+              'Sisleme (fogger)',
+              'Center-pivot',
               'Yağmurlama',
-              'Elle sulama'
+              'Elle sulama',
+              'Karık sulama',
+              'Salma sulama',
             ],
           ),
           const SizedBox(height: 14),
