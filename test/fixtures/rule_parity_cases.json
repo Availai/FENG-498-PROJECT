@@ -1,0 +1,16 @@
+{
+  "_comment": "Çift kural motoru (Dart OfflineRuleEngine ↔ Python rule_engine.py) parite fixture'ı. B2 — CLAUDE.md sec 28. Her vaka facts içerir; iki motor da bu facts ile çalıştırılıp ortak kategorilerdeki (category,level,title) imzaları karşılaştırılır.",
+  "shared_categories": ["weather","irrigation","disease","pest","soil","season","compatibility","harvest"],
+  "cases": [
+    {"id": "don", "facts": {"common_name": "Domates", "temperature": 2, "avg_weekly_temp": 2, "humidity": 60, "weekly_rain": 10, "soil_ph": 6.5, "month": 1}},
+    {"id": "sicak_kurak", "facts": {"common_name": "Misir", "temperature": 41, "avg_weekly_temp": 38, "humidity": 20, "weekly_rain": 1, "soil_ph": 7.0, "month": 7}},
+    {"id": "asiri_yagis", "facts": {"common_name": "Bugday", "temperature": 18, "avg_weekly_temp": 17, "humidity": 85, "weekly_rain": 90, "soil_ph": 6.8, "month": 4}},
+    {"id": "mildiyo", "facts": {"common_name": "Domates", "temperature": 22, "avg_weekly_temp": 22, "humidity": 92, "weekly_rain": 20, "soil_moisture": 0.5, "soil_ph": 6.5, "month": 6}},
+    {"id": "asit_toprak", "facts": {"common_name": "Arpa", "temperature": 15, "avg_weekly_temp": 15, "humidity": 55, "weekly_rain": 12, "soil_ph": 4.5, "month": 3}},
+    {"id": "ruzgar", "facts": {"common_name": "Bugday", "temperature": 20, "avg_weekly_temp": 19, "humidity": 50, "weekly_rain": 8, "wind_speed": 16, "soil_ph": 6.8, "month": 5}},
+    {"id": "kurak_dusuk_nem", "facts": {"common_name": "Aycicegi", "temperature": 30, "avg_weekly_temp": 29, "humidity": 25, "weekly_rain": 2, "soil_ph": 7.2, "month": 8}},
+    {"id": "yagmur_yakin", "facts": {"common_name": "Domates", "temperature": 24, "avg_weekly_temp": 23, "humidity": 70, "weekly_rain": 15, "precip_prob_next3h": 80, "soil_ph": 6.5, "month": 6}},
+    {"id": "alkali_toprak", "facts": {"common_name": "Misir", "temperature": 22, "avg_weekly_temp": 21, "humidity": 50, "weekly_rain": 10, "soil_ph": 8.7, "month": 5}},
+    {"id": "ideal", "facts": {"common_name": "Domates", "temperature": 24, "avg_weekly_temp": 23, "humidity": 60, "weekly_rain": 15, "soil_ph": 6.5, "soil_moisture": 0.25, "month": 6}}
+  ]
+}

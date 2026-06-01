@@ -11,6 +11,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../data/rule_packs/region_inference.dart';
 import '../data/turkiye_crop_guides.dart';
 import '../services/app_providers.dart';
 import '../services/crop_recommendations.dart';
@@ -45,6 +46,13 @@ class _TavsiyelerScreenState extends ConsumerState<TavsiyelerScreen> {
   // Skorlama için kullanılan çevre değerleri (kullanıcıya gösterilir).
   double? _envTemp;
   double? _envPh;
+  double? _envWeeklyRain;
+  String? _regionLabel;
+
+  // Hangi girdiler gerçek ölçüm/tahmin, hangileri varsayılan? Kullanıcıya
+  // dürüstçe göstermek için (B1/B4/B5 — kaynaksız değeri kesin gibi sunma).
+  bool _phIsEstimated = true;
+  bool _locationResolved = false;
 
   @override
   void initState() {
@@ -53,23 +61,57 @@ class _TavsiyelerScreenState extends ConsumerState<TavsiyelerScreen> {
     _loadEasyCrops();
   }
 
-  /// Mevcut konumdan çevre koşullarını alıp en kolay yetişen ~15 bitkiyi
-  /// skorlar. Konum/internet yoksa Türkiye ortalama koşullarına düşer
+  /// Mevcut konumdan çevre koşullarını alıp en uygun ~15 bitkiyi skorlar.
+  /// Konum/internet yoksa Türkiye ortalama koşullarına düşer
   /// (offline-first — sonsuz loading yasak).
+  ///
+  /// Doğruluk notları:
+  /// - Bölge (B3): lat/lng → [RegionInference] → DB bölge adı → skorlamaya
+  ///   `region` olarak geçer.
+  /// - Haftalık yağış (B4): sabit varsayım yerine 48 saatlik gerçek Open-Meteo
+  ///   tahmininden ölçeklenir; alınamazsa varsayılan kullanılır ve tahmini
+  ///   olarak işaretlenir.
+  /// - pH (B5/B1): yalnızca backend toprak verisi geldiyse "ölçülen" sayılır;
+  ///   aksi halde varsayılan kabul edilip rozetle "tahmini" gösterilir.
   Future<void> _loadEasyCrops() async {
     // Varsayılan: Türkiye geneli makul ortalama (konum alınamazsa).
     double temp = 20.0;
     double ph = 6.8;
-    double weeklyRain = 12.0;
+    double? weeklyRain; // null = gerçek tahmin alınamadı
+    String? region;
+    bool phMeasured = false;
+    bool locationOk = false;
+
     try {
       await ensureLocationPermission();
       final pos = await getCurrentPosition();
-      final cond = await const WeatherSoilService().fetchDashboardConditions(
+      locationOk = true;
+
+      const weather = WeatherSoilService();
+      final cond = await weather.fetchDashboardConditions(
         latitude: pos.latitude,
         longitude: pos.longitude,
       );
       if (cond.temperatureC != null) temp = cond.temperatureC!;
-      ph = cond.phH2O;
+      // pH yalnızca backend toprak servisi gerçek değer döndürdüyse doludur
+      // (DashboardConditions.phH2O artık nullable — sessiz 6.8 yok). Null ise
+      // varsayılan kalır ve UI'da "tahmini" rozetiyle gösterilir.
+      if (cond.phH2O != null) {
+        ph = cond.phH2O!;
+        phMeasured = true;
+      }
+
+      // B4 — gerçek yağış: 48 saatlik tahmini haftalığa ölçekle (≈ ×3.5).
+      final hourly = await weather.fetchHourlyForecast(
+        latitude: pos.latitude,
+        longitude: pos.longitude,
+      );
+      if (!hourly.isEmpty) {
+        weeklyRain = hourly.rainSumNext(48) * 3.5;
+      }
+
+      // B3 — bölge: lat/lng → bölge kodu → DB'deki bölge adı.
+      region = _regionNameFor(pos.latitude, pos.longitude);
     } catch (_) {
       // Konum/hava alınamadı — varsayılan ortalama ile devam (sessiz fallback).
     }
@@ -78,8 +120,9 @@ class _TavsiyelerScreenState extends ConsumerState<TavsiyelerScreen> {
       final ranked = await ref.read(cropScoringServiceProvider).rankForEnv(
             temperature: temp,
             soilPh: ph,
-            weeklyRain: weeklyRain,
+            weeklyRain: weeklyRain ?? 12.0,
             month: DateTime.now().month,
+            region: region,
             topN: 15,
           );
       if (!mounted) return;
@@ -87,6 +130,10 @@ class _TavsiyelerScreenState extends ConsumerState<TavsiyelerScreen> {
         _easyCrops = ranked;
         _envTemp = temp;
         _envPh = ph;
+        _envWeeklyRain = weeklyRain;
+        _regionLabel = region;
+        _phIsEstimated = !phMeasured;
+        _locationResolved = locationOk;
         _easyLoading = false;
       });
     } catch (_) {
@@ -95,6 +142,30 @@ class _TavsiyelerScreenState extends ConsumerState<TavsiyelerScreen> {
         _easyError = 'Bitki veritabanı yüklenemedi.';
         _easyLoading = false;
       });
+    }
+  }
+
+  /// lat/lng → DB'deki TÜİK bölge adı (`region_suitability` ile eşleşir).
+  /// [RegionInference] bölge **kodu** döndürür; DB insan-okunur ad tutar.
+  static String? _regionNameFor(double lat, double lng) {
+    final code = RegionInference.fromLatLng(lat, lng);
+    switch (code) {
+      case 'trakya':
+        return 'Marmara';
+      case 'ege':
+        return 'Ege';
+      case 'akdeniz':
+        return 'Akdeniz';
+      case 'karadeniz':
+        return 'Karadeniz';
+      case 'ic_anadolu':
+        return 'İç Anadolu';
+      case 'dogu_anadolu':
+        return 'Doğu Anadolu';
+      case 'gap':
+        return 'Güneydoğu Anadolu';
+      default:
+        return null;
     }
   }
 
@@ -128,6 +199,10 @@ class _TavsiyelerScreenState extends ConsumerState<TavsiyelerScreen> {
             crops: _easyCrops,
             envTemp: _envTemp,
             envPh: _envPh,
+            envWeeklyRain: _envWeeklyRain,
+            regionLabel: _regionLabel,
+            phIsEstimated: _phIsEstimated,
+            locationResolved: _locationResolved,
           ),
           const SizedBox(height: 18),
           _CropFilterChips(
@@ -158,6 +233,10 @@ class _EasyCropsSection extends StatelessWidget {
     required this.crops,
     required this.envTemp,
     required this.envPh,
+    required this.envWeeklyRain,
+    required this.regionLabel,
+    required this.phIsEstimated,
+    required this.locationResolved,
   });
 
   final bool loading;
@@ -165,40 +244,69 @@ class _EasyCropsSection extends StatelessWidget {
   final List<ScoredCrop>? crops;
   final double? envTemp;
   final double? envPh;
+  final double? envWeeklyRain;
+  final String? regionLabel;
+  final bool phIsEstimated;
+  final bool locationResolved;
 
   @override
   Widget build(BuildContext context) {
+    // Başlık, konum gerçekten çözüldüyse "Konumunuza Göre" der; aksi halde
+    // söz vermez (B3/B5 — yapmadığın şeyi iddia etme).
+    final title = locationResolved
+        ? 'Bölgenize Göre Uygun Bitkiler'
+        : 'Genel Koşullara Göre Uygun Bitkiler';
+    final intro = locationResolved
+        ? (regionLabel != null
+            ? '$regionLabel bölgesinin sıcaklık, toprak ve yağış koşullarına '
+                'en uygun bitkiler. Uygunluk yükseldikçe yetiştirmek kolaylaşır.'
+            : 'Konumunuzun sıcaklık ve toprak koşullarına en uygun bitkiler. '
+                'Uygunluk yükseldikçe yetiştirmek kolaylaşır.')
+        : 'Konum alınamadığı için Türkiye geneli ortalama koşullara göre '
+            'sıralanmıştır. Kesin sonuç için konum izni verin.';
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Row(
           children: [
-            const Icon(Icons.place_rounded,
+            const Icon(Icons.eco_rounded,
                 color: AppColors.emeraldDark, size: 20),
             const SizedBox(width: 6),
-            Expanded(
-              child: Text('Konumunuza Göre Kolay Yetişenler',
-                  style: AppText.h3(context)),
-            ),
+            Expanded(child: Text(title, style: AppText.h3(context))),
           ],
         ),
         const SizedBox(height: 4),
-        Text(
-          'Bulunduğunuz yerin sıcaklık ve toprak koşullarına en uygun, '
-          'yetiştirmesi kolay bitkiler. Skor yükseldikçe işiniz kolaylaşır.',
-          style: AppText.sm(context),
-        ),
-        if (envTemp != null && envPh != null) ...[
+        Text(intro, style: AppText.sm(context)),
+        if (envTemp != null) ...[
           const SizedBox(height: 8),
           Wrap(
             spacing: 6,
             runSpacing: 6,
             children: [
+              if (regionLabel != null)
+                AppTag(regionLabel!, color: AppColors.emeraldDark),
               AppTag('Sıcaklık ${envTemp!.toStringAsFixed(0)}°C',
                   color: AppColors.warning),
-              AppTag('pH ${envPh!.toStringAsFixed(1)}', color: AppColors.info),
+              if (envPh != null)
+                AppTag(
+                  phIsEstimated
+                      ? 'pH ~${envPh!.toStringAsFixed(1)} (tahmini)'
+                      : 'pH ${envPh!.toStringAsFixed(1)} (ölçülen)',
+                  color: AppColors.info,
+                ),
+              if (envWeeklyRain != null)
+                AppTag(
+                    'Haftalık yağış ~${envWeeklyRain!.toStringAsFixed(0)} mm',
+                    color: AppColors.frost),
             ],
           ),
+        ],
+        // pH tahmini ise çiftçiyi açıkça uyar — toprak analizi olmadan kesin
+        // pH iddia edilmez (CLAUDE.md sec 16).
+        if (!loading && phIsEstimated && envPh != null) ...[
+          const SizedBox(height: 8),
+          _PhDisclaimer(),
         ],
         const SizedBox(height: 12),
         if (loading)
@@ -218,6 +326,35 @@ class _EasyCropsSection extends StatelessWidget {
             const SizedBox(height: 8),
           ],
       ],
+    );
+  }
+}
+
+class _PhDisclaimer extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: AppColors.infoBg,
+        borderRadius: AppRadius.sm,
+        border: Border.all(color: AppColors.info.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.info_outline_rounded,
+              size: 14, color: AppColors.info),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              'Toprak pH değeri tahminidir. Kesin sonuç için tarlanızdan '
+              'toprak analizi yaptırın; sıralama gerçek pH ile değişebilir.',
+              style: AppText.xs(context),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -273,27 +410,40 @@ class _EasyCropCard extends StatelessWidget {
   final ScoredCrop scored;
   final int rank;
 
-  /// Skoru kullanıcı diline çevir: yüksek = kolay.
-  ({String label, Color color, Color bg}) _ease(double score) {
+  /// Skoru kullanıcı diline çevir. Skor "çevre uygunluğu"nu ölçer; "kolaylık"
+  /// iddiası değildir (B5 — kaynaksız kesin dil kullanma).
+  ({String label, Color color, Color bg}) _fit(double score) {
     if (score >= 80) {
       return (
-        label: 'Çok kolay',
+        label: 'Yüksek uygunluk',
         color: AppColors.success,
         bg: AppColors.successBg
       );
     }
     if (score >= 65) {
-      return (label: 'Kolay', color: AppColors.emeraldDark, bg: AppColors.mint);
+      return (
+        label: 'İyi uygunluk',
+        color: AppColors.emeraldDark,
+        bg: AppColors.mint
+      );
     }
     if (score >= 50) {
-      return (label: 'Orta', color: AppColors.warning, bg: AppColors.warningBg);
+      return (
+        label: 'Orta uygunluk',
+        color: AppColors.warning,
+        bg: AppColors.warningBg
+      );
     }
-    return (label: 'Zorlu', color: AppColors.error, bg: AppColors.errorBg);
+    return (
+      label: 'Düşük uygunluk',
+      color: AppColors.error,
+      bg: AppColors.errorBg
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final ease = _ease(scored.score);
+    final ease = _fit(scored.score);
     final crop = scored.crop;
     final reasons = scored.reasons.take(3).toList();
 

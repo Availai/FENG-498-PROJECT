@@ -57,3 +57,6 @@ backend/tests/__pycache__/
 # alıntı olarak yer aldığından bu dosyalar repo'ya eklenmez.
 backend/data_pipeline/sources_pdf/
 backend/data_pipeline/output/
+
+# B2 parite testi — Python tarafından üretilen ara çıktı (pytest üretir)
+test/fixtures/_py_parity_out.json

@@ -20,14 +20,20 @@ class DashboardConditions {
   final int? humidity;
   final double? windSpeedMs;
   final String weatherDescriptionTr;
-  final double phH2O;
+
+  /// Toprak pH'ı — **yalnızca gerçek bir kaynaktan** (backend toprak servisi
+  /// veya SoilGrids) geldiğinde doludur. Hava-yalnız kaynaklarda (Open-Meteo)
+  /// null kalır; tüketici varsayıma kendi düşmeli ve kullanıcıya bunu
+  /// "tahmini" olarak göstermelidir. Sessiz 6.8 sabiti çiftçiyi yanıltır
+  /// (CLAUDE.md sec 16 — toprak analizi yoksa kesin değer önerme).
+  final double? phH2O;
 
   const DashboardConditions({
     this.temperatureC,
     this.humidity,
     this.windSpeedMs,
     this.weatherDescriptionTr = '',
-    this.phH2O = 6.8,
+    this.phH2O,
   });
 
   bool get isEmpty =>
@@ -47,7 +53,7 @@ class DashboardConditions {
       humidity: (j['humidity'] as num?)?.toInt(),
       windSpeedMs: (j['wind'] as num?)?.toDouble(),
       weatherDescriptionTr: j['weather_desc']?.toString() ?? '',
-      phH2O: (j['ph'] as num?)?.toDouble() ?? 6.8,
+      phH2O: (j['ph'] as num?)?.toDouble(),
     );
   }
 }
@@ -210,7 +216,9 @@ class WeatherSoilService {
         humidity: (env['humidity'] as num?)?.round(),
         windSpeedMs: (env['wind'] as num?)?.toDouble(),
         weatherDescriptionTr: env['weather_desc']?.toString() ?? '',
-        phH2O: (env['ph'] as num?)?.toDouble() ?? 6.8,
+        // Backend gerçek toprak pH'ı döndürürse dolu; aksi halde null kalır
+        // (sessiz 6.8 yok — tüketici "tahmini" gösterir).
+        phH2O: (env['ph'] as num?)?.toDouble(),
       );
     });
 
@@ -285,7 +293,8 @@ class WeatherSoilService {
     required double longitude,
   }) async {
     final box = Hive.isBoxOpen(_cacheBox) ? Hive.box(_cacheBox) : null;
-    final key = '$_hourlyCachePrefix${latitude.toStringAsFixed(2)}_${longitude.toStringAsFixed(2)}';
+    final key =
+        '$_hourlyCachePrefix${latitude.toStringAsFixed(2)}_${longitude.toStringAsFixed(2)}';
 
     // Cache fresh mi?
     if (box != null) {

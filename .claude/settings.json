@@ -51,7 +51,12 @@
       "Bash(python -c ' *)",
       "Bash(/c/Users/eness/AppData/Roaming/uv/python/cpython-3.14.4-windows-x86_64-none/python.exe data_pipeline/_pdf_extract.py tea_caykur_2025.pdf 28 35)",
       "Bash(/c/Users/eness/AppData/Roaming/uv/python/cpython-3.14.4-windows-x86_64-none/python.exe data_pipeline/build_turkish_crops_db.py)",
-      "Bash(/c/Users/eness/AppData/Roaming/uv/python/cpython-3.14.4-windows-x86_64-none/python.exe -c ' *)"
+      "Bash(/c/Users/eness/AppData/Roaming/uv/python/cpython-3.14.4-windows-x86_64-none/python.exe -c ' *)",
+      "Bash(./venv/Scripts/python.exe -c ' *)",
+      "Bash(./venv/Scripts/python.exe -m pytest tests/test_rule_parity.py -q)",
+      "Bash(cp test/services/rule_engine_parity_test.dart /tmp/parity_backup.dart)",
+      "Bash(sed -i \"s|  'asiri_yagis::disease|warning|Yağış Sonrası Patojen Baskısı': 'python',||\" test/services/rule_engine_parity_test.dart)",
+      "Bash(git check-ignore *)"
     ],
     "additionalDirectories": [
       "c:\\FENG 498\\feng_498"

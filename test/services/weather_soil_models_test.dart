@@ -23,11 +23,14 @@ void main() {
       expect(parsed.isEmpty, isFalse);
     });
 
-    test('eksik pH icin guvenli varsayilan degeri kullanir', () {
+    test('eksik pH null kalir — sessiz varsayim uretmez (B1)', () {
+      // Hava-yalniz kaynaklarda (Open-Meteo) toprak pH'i yoktur. Sessiz 6.8
+      // sabiti cifticiyi yanlis toprak degerine inandirir; bu yuzden null
+      // kalmali ve tuketici degeri "tahmini" olarak gostermeli.
       final parsed = DashboardConditions.fromJson(const {});
 
       expect(parsed.isEmpty, isTrue);
-      expect(parsed.phH2O, 6.8);
+      expect(parsed.phH2O, isNull);
     });
   });
 
