@@ -118,7 +118,7 @@ class AnalyzeRequest(BaseModel):
     ndvi: float = 0.6
     wind_speed: float = 3.0
     month: int = 6
-    precip_prob_next3h: float = 0.0
+    precip_prob_next3h: float = 0.0  # yagis olasiligi, % (0-100) — Dart ile ayni birim
 
     # Türkiye coğrafyası için ek girdiler
     latitude: float = 39.9      # Ankara varsayılan
@@ -159,7 +159,7 @@ _LIMITS = {
     "ndvi": (-1.0, 1.0),               # NDVI teknik aralığı
     "wind_speed": (0.0, 60.0),         # m/s; 60+ hortum/fırtına
     "month": (1, 12),
-    "precip_prob_next3h": (0.0, 1.0),
+    "precip_prob_next3h": (0.0, 100.0),  # yagis olasiligi %; kural mantigi >= 70 (0-100)
     "latitude": (35.0, 43.0),          # Türkiye enlem aralığı
     "longitude": (25.0, 45.5),         # Türkiye boylam aralığı
     "slope_deg": (0.0, 60.0),

@@ -56,7 +56,11 @@
       "Bash(./venv/Scripts/python.exe -m pytest tests/test_rule_parity.py -q)",
       "Bash(cp test/services/rule_engine_parity_test.dart /tmp/parity_backup.dart)",
       "Bash(sed -i \"s|  'asiri_yagis::disease|warning|Yağış Sonrası Patojen Baskısı': 'python',||\" test/services/rule_engine_parity_test.dart)",
-      "Bash(git check-ignore *)"
+      "Bash(git check-ignore *)",
+      "Bash(./venv/Scripts/python.exe -m pytest tests/test_rule_parity.py tests/test_rule_engine.py -q)",
+      "Bash(./venv/Scripts/python.exe -m pytest tests/ -q)",
+      "Bash(./venv/Scripts/python.exe -m pytest tests/test_sync_endpoints.py -q)",
+      "Bash(./venv/Scripts/python.exe -m pytest tests/test_rule_engine.py tests/test_rule_parity.py -q)"
     ],
     "additionalDirectories": [
       "c:\\FENG 498\\feng_498"

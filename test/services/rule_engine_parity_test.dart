@@ -47,12 +47,9 @@ const Map<String, String> _knownDivergences = {
   // Python'da olan, Dart'ta bulunmayan ek hastalık kuralları.
   'asiri_yagis::disease|warning|Yağış Sonrası Patojen Baskısı': 'python',
   'mildiyo::disease|warning|Toprak Kaynaklı Patojen Riski': 'python',
-  // `precip_prob_next3h` birim uyuşmazlığı: Python 0-1 bekler, Dart 0-100.
-  // Python 80'i "aralık dışı" sayıp clamp'ler → "Veri Kalitesi Düşük" rozeti
-  // çıkar ve "Yağmur Geliyor" kuralını kaçırır. Dart 0-100 ile doğru üretir.
-  // NOT: Bu gerçek bir birim hatası; rapora ayrı bulgu olarak işlendi.
-  'yagmur_yakin::weather|info|Veri Kalitesi Düşük': 'python',
-  'yagmur_yakin::weather|warning|Sulama Yapma — Yağmur Geliyor': 'dart',
+  // ÇÖZÜLDÜ — `precip_prob_next3h` birim uyuşmazlığı: rule_engine.py _LIMITS
+  // satırı yanlışlıkla (0,1) idi; kural mantığı `>= 70` ise 0-100 kullanıyordu.
+  // _LIMITS (0,100) yapıldı; artık iki motor da %0-100 ile aynı sonucu verir.
 };
 
 const Set<String> _sharedCategories = {
