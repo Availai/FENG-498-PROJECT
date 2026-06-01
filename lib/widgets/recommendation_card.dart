@@ -33,8 +33,7 @@ class RecommendationCard extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<RecommendationCard> createState() =>
-      _RecommendationCardState();
+  ConsumerState<RecommendationCard> createState() => _RecommendationCardState();
 }
 
 class _RecommendationCardState extends ConsumerState<RecommendationCard> {
@@ -96,14 +95,30 @@ class _RecommendationCardState extends ConsumerState<RecommendationCard> {
 
   String _shortSource(String source) {
     final s = source.toLowerCase();
-    if (s.contains('bku') || s.contains('bitki koruma')) return 'İlaç';
-    if (s.contains('fao')) return 'Sulama';
-    if (s.contains('tagem')) return 'Resmi';
-    if (s.contains('trakya')) return 'Resmi';
-    if (s.contains('tarim ve orman') || s.contains('tarım ve orman')) {
-      return 'Resmi';
+    // Pack runner zaten temiz kurum etiketleri üretir (ÇAYKUR, TAGEM,
+    // MGM, BKÜ Veritabanı ...). Bunları olduğu gibi göster — ham
+    // `source.*` ID'leri buraya artık ulaşmaz, ama eski/elle yazılı
+    // kurallar için kısa eşlemeler korunur.
+    if (s.contains('çaykur') || s.contains('caykur')) return 'ÇAYKUR';
+    if (s.contains('bkü') || s.contains('bku') || s.contains('bitki koruma')) {
+      return 'BKÜ';
     }
-    return source.length <= 22 ? source : '${source.substring(0, 22)}...';
+    if (s.contains('mgm') || s.contains('meteoroloji')) return 'MGM';
+    if (s.contains('fao')) return 'Sulama';
+    if (s.contains('tagem')) return 'TAGEM';
+    if (s.contains('trakya')) return 'Trakya Araştırma';
+    if (s.contains('gap')) return 'GAP Araştırma';
+    if (s.contains('üniversite') || s.contains('universite')) {
+      return 'Üniversite';
+    }
+    if (s.contains('tarim ve orman') ||
+        s.contains('tarım ve orman') ||
+        s.contains('bakanlığı') ||
+        s.contains('resmî') ||
+        s.contains('resmi')) {
+      return 'Resmî';
+    }
+    return source.length <= 22 ? source : '${source.substring(0, 22)}…';
   }
 
   String _buttonLabel(Recommendation r) {
@@ -126,9 +141,7 @@ class _RecommendationCardState extends ConsumerState<RecommendationCard> {
   Future<void> _runCommand() async {
     final r = widget.recommendation;
     final command = r.command;
-    if (command == null ||
-        r.gate == RecommendationGate.blocked ||
-        _logging) {
+    if (command == null || r.gate == RecommendationGate.blocked || _logging) {
       return;
     }
     setState(() => _logging = true);
@@ -145,12 +158,10 @@ class _RecommendationCardState extends ConsumerState<RecommendationCard> {
           type: command.activityType,
           cropId: r.target.cropId,
           fieldCrops: crops,
-          fieldAreaDekar:
-              (field?['area_dekar'] as num?)?.toDouble() ?? 1.0,
-          recommendedQuantity:
-              command.recommendedQuantity ?? command.quantity,
-          quantityUnit:
-              command.quantityUnit ?? ActivityType.quantityUnit(command.activityType),
+          fieldAreaDekar: (field?['area_dekar'] as num?)?.toDouble() ?? 1.0,
+          recommendedQuantity: command.recommendedQuantity ?? command.quantity,
+          quantityUnit: command.quantityUnit ??
+              ActivityType.quantityUnit(command.activityType),
           note: r.actionHint,
         );
         if (ok) widget.onLogged?.call();
@@ -165,10 +176,9 @@ class _RecommendationCardState extends ConsumerState<RecommendationCard> {
         subtype: command.subtype,
         note: command.note,
         quantity: command.quantity,
-        quantityUnit:
-            command.quantityUnit ?? ActivityType.quantityUnit(command.activityType),
-        recommendedQuantity:
-            command.recommendedQuantity ?? command.quantity,
+        quantityUnit: command.quantityUnit ??
+            ActivityType.quantityUnit(command.activityType),
+        recommendedQuantity: command.recommendedQuantity ?? command.quantity,
         metadata: {
           ...command.metadata,
           'recommendation_rule_key': r.ruleKey,
@@ -222,8 +232,7 @@ class _RecommendationCardState extends ConsumerState<RecommendationCard> {
         isDeadRemoval ? Colors.white70 : AppColors.textSecondary;
     final tertiaryText =
         isDeadRemoval ? Colors.white54 : AppColors.textTertiary;
-    final expandText =
-        isDeadRemoval ? Colors.white : AppColors.emeraldDark;
+    final expandText = isDeadRemoval ? Colors.white : AppColors.emeraldDark;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -322,13 +331,16 @@ class _RecommendationCardState extends ConsumerState<RecommendationCard> {
                           color: primaryText,
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      // Tek satır neden
-                      Text(
-                        r.reasonText,
-                        style:
-                            AppText.sm(context).copyWith(color: secondaryText),
-                      ),
+                      // Tek satır neden — boşsa (başlık zaten asıl mesajsa)
+                      // gizlenir; boş satır + boşluk bırakmaz.
+                      if (r.reasonText.trim().isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          r.reasonText,
+                          style: AppText.sm(context)
+                              .copyWith(color: secondaryText),
+                        ),
+                      ],
                       // Neden ▾ expander
                       if (hasBullets) ...[
                         const SizedBox(height: 6),
@@ -388,8 +400,8 @@ class _RecommendationCardState extends ConsumerState<RecommendationCard> {
                                         Expanded(
                                           child: Text(
                                             b,
-                                            style: AppText.sm(context).copyWith(
-                                                color: secondaryText),
+                                            style: AppText.sm(context)
+                                                .copyWith(color: secondaryText),
                                           ),
                                         ),
                                       ],
@@ -528,6 +540,106 @@ class _RecommendationCardState extends ConsumerState<RecommendationCard> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Uygunluk / bölge / toprak gibi **bilgi notu** kategorileri için sade,
+/// butonsuz kart. Aksiyon kartının (severity rozet, scope rozet, "Neden"
+/// expander, kaydet butonu) aksine; tek bir net cümle + küçük kaynak
+/// etiketi gösterir. Saha kullanımında bilgi bombardımanını azaltır
+/// (CLAUDE.md sec 5.4 / sec 12).
+///
+/// Tasarım: solda küçük yeşil bilgi noktası, ortada başlık + opsiyonel tek
+/// satır gerekçe, altta tek kaynak rozeti. Tıklanabilir değildir.
+class RecommendationInfoCard extends StatelessWidget {
+  final Recommendation recommendation;
+
+  const RecommendationInfoCard({super.key, required this.recommendation});
+
+  @override
+  Widget build(BuildContext context) {
+    final r = recommendation;
+    final detail = r.reasonText.trim().isNotEmpty
+        ? r.reasonText.trim()
+        : r.actionHint.trim();
+    final showDetail = detail.isNotEmpty && detail != r.title;
+    final source = r.sourceRefs.isNotEmpty ? r.sourceRefs.first : null;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: AppRadius.md,
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 3),
+            child: Container(
+              width: 8,
+              height: 8,
+              decoration: const BoxDecoration(
+                color: AppColors.emerald,
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  r.title,
+                  style: AppText.sm(context).copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                    height: 1.35,
+                  ),
+                ),
+                if (showDetail) ...[
+                  const SizedBox(height: 3),
+                  Text(
+                    detail,
+                    style: AppText.xs(context).copyWith(
+                      color: AppColors.textSecondary,
+                      height: 1.35,
+                    ),
+                  ),
+                ],
+                if (source != null) ...[
+                  const SizedBox(height: 6),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.verified_rounded,
+                        size: 11,
+                        color: AppColors.emeraldDark,
+                      ),
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          source,
+                          style: AppText.xs(context).copyWith(
+                            color: AppColors.emeraldDark,
+                            fontWeight: FontWeight.w700,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

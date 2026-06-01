@@ -1330,13 +1330,7 @@ class _LiveTodoSectionsState extends State<_LiveTodoSections> {
             list: watch,
             maxVisible: _maxWatch,
           ),
-        if (infoNotes.isNotEmpty)
-          _buildSection(
-            sectionKey: 'info_notes',
-            label: 'BİLGİ NOTLARI',
-            list: infoNotes,
-            maxVisible: 1,
-          ),
+        if (infoNotes.isNotEmpty) _buildInfoNotesSection(infoNotes),
       ],
     );
   }
@@ -1368,6 +1362,44 @@ class _LiveTodoSectionsState extends State<_LiveTodoSections> {
               onPressed: () => setState(() => _expanded.add(sectionKey)),
               icon: const Icon(Icons.expand_more_rounded, size: 18),
               label: Text('+$hidden öneri daha göster'),
+            ),
+          )
+        else if (isExpanded && list.length > maxVisible)
+          Padding(
+            padding: const EdgeInsets.only(top: 4, bottom: 4),
+            child: TextButton.icon(
+              onPressed: () => setState(() => _expanded.remove(sectionKey)),
+              icon: const Icon(Icons.expand_less_rounded, size: 18),
+              label: const Text('Daha az göster'),
+            ),
+          ),
+        const SizedBox(height: 16),
+      ],
+    );
+  }
+
+  /// Bilgi notları (uygunluk/bölge/toprak) için sade, butonsuz kart bölümü.
+  /// Aksiyon kartlarından görsel olarak ayrışır; bilgi bombardımanını azaltır
+  /// (CLAUDE.md sec 12). Varsayılan olarak 1 not görünür, gerisi katlanır.
+  Widget _buildInfoNotesSection(List<Recommendation> list) {
+    const sectionKey = 'info_notes';
+    const maxVisible = 1;
+    final isExpanded = _expanded.contains(sectionKey);
+    final visible = isExpanded ? list : list.take(maxVisible).toList();
+    final hidden = list.length - visible.length;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _SectionHeader(label: 'BÖLGE VE UYGUNLUK NOTLARI', count: list.length),
+        for (final r in visible) RecommendationInfoCard(recommendation: r),
+        if (hidden > 0)
+          Padding(
+            padding: const EdgeInsets.only(top: 4, bottom: 4),
+            child: TextButton.icon(
+              onPressed: () => setState(() => _expanded.add(sectionKey)),
+              icon: const Icon(Icons.expand_more_rounded, size: 18),
+              label: Text('+$hidden not daha göster'),
             ),
           )
         else if (isExpanded && list.length > maxVisible)

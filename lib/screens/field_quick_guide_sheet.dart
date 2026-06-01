@@ -684,8 +684,7 @@ class _PlantHealthAlertState extends ConsumerState<_PlantHealthAlert> {
     CropV2Bundle v2,
     Map<String, dynamic>? disease,
   ) {
-    final title =
-        disease?['name_tr']?.toString() ?? 'Hastalık gözlemi';
+    final title = disease?['name_tr']?.toString() ?? 'Hastalık gözlemi';
     final summary = disease?['summary']?.toString();
     final controls =
         ((disease?['control_methods_cultural'] as List?) ?? const [])
@@ -1317,9 +1316,11 @@ class _DirectiveList extends StatelessWidget {
       );
     }
 
-    // Kritikler önce, max 5
+    // Kritikler önce, max 5. Uygunluk/bölge/toprak bilgi notları (CLAUDE.md
+    // sec 12) bu hızlı aksiyon listesinde gösterilmez.
     final sorted = recs!
-        .where((r) => !r.ruleKey.startsWith('plant.dead.remove.'))
+        .where((r) =>
+            !r.ruleKey.startsWith('plant.dead.remove.') && !r.isInformational)
         .toList()
       ..sort((a, b) => b.severity.index.compareTo(a.severity.index));
     final top = sorted.take(5).toList();

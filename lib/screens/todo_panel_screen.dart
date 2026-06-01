@@ -122,7 +122,11 @@ class _AggregatedTodos extends ConsumerWidget {
         loading: () => anyLoading = true,
         error: (_, __) {},
         data: (recs) {
+          // CLAUDE.md sec 12 — bu panel aksiyon listesidir; uygunluk/bölge/
+          // toprak bilgi notları (isInformational) görev olarak gösterilmez,
+          // ürün ansiklopedisi ve tarla takip ekranındaki ayrı bölümde kalır.
           for (final r in recs) {
+            if (r.isInformational) continue;
             aggregated.add(_FieldTodo(field: field, recommendation: r));
           }
         },
@@ -568,7 +572,9 @@ class _PlantHealthRow extends StatelessWidget {
       final t = d.diseaseType?.trim();
       if (t != null && t.isNotEmpty) unique.add(t);
     }
-    if (unique.isEmpty) return 'Hastalık türü kaydedilmedi — yakından kontrol et';
+    if (unique.isEmpty) {
+      return 'Hastalık türü kaydedilmedi — yakından kontrol et';
+    }
     if (unique.length == 1) return 'Tür: ${unique.first}';
     return 'Türler: ${unique.take(3).join(", ")}';
   }

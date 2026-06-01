@@ -60,7 +60,13 @@
       "Bash(./venv/Scripts/python.exe -m pytest tests/test_rule_parity.py tests/test_rule_engine.py -q)",
       "Bash(./venv/Scripts/python.exe -m pytest tests/ -q)",
       "Bash(./venv/Scripts/python.exe -m pytest tests/test_sync_endpoints.py -q)",
-      "Bash(./venv/Scripts/python.exe -m pytest tests/test_rule_engine.py tests/test_rule_parity.py -q)"
+      "Bash(./venv/Scripts/python.exe -m pytest tests/test_rule_engine.py tests/test_rule_parity.py -q)",
+      "Bash(grep -rndE \"debugBypass|devLogin|seedDemo|demo_mode|skipAuth|DEV_|kDebugMode\" lib/main.dart lib/screens/)",
+      "Bash(adb -s emulator-5554 shell monkey -p com.example.feng_498 -c android.intent.category.LAUNCHER 1)",
+      "Bash(mkdir -p /tmp/tarlam_verify)",
+      "Read(//tmp/tarlam_verify/**)",
+      "Bash(flutter install *)",
+      "Bash(adb shell *)"
     ],
     "additionalDirectories": [
       "c:\\FENG 498\\feng_498"

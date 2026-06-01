@@ -81,25 +81,60 @@ class DeclarativePackRunner {
     required RuleMatch match,
   }) {
     final severity = _mapSeverity(match.result.riskLevel, match.priority);
-    final title = match.explanation ?? _titleFromCategory(match.category);
-    final actionHint = match.result.recommendations.isNotEmpty
-        ? match.result.recommendations.first
-        : 'Detayları kontrol edin.';
-    final reasonBullets = <String>[
-      if (match.explanation != null && match.explanation!.isNotEmpty)
-        match.explanation!,
-      ...match.matchedConditions.map((c) => 'Eşleşen koşul: $c'),
-    ];
-    final reasonText = match.explanation ?? match.matchedConditions.join(', ');
+    final recs = match.result.recommendations;
+    final explain = match.explanation?.trim();
+    final firstRec = recs.isNotEmpty ? recs.first.trim() : null;
 
+    // ── Sharp, human-friendly content (CLAUDE.md sec 5.1 / sec 22) ────────
+    // Hiçbir zaman ham koşul (`crop_id=crop.tea`, `weekly_rain_mm=0.0`)
+    // kullanıcıya gösterilmez. Başlık ve gerekçe yalnız kaynaklı, Türkçe
+    // cümlelerden üretilir.
+    //
+    // Başlık önceliği:
+    //   1) kuralın `explain` cümlesi (kısa gerekçe)
+    //   2) ilk öneri cümlesi (asıl aksiyon mesajı) — kısaltılmış
+    //   3) kategori etiketi (son çare)
+    final title = (explain != null && explain.isNotEmpty)
+        ? explain
+        : (firstRec != null && firstRec.isNotEmpty
+            ? _shorten(firstRec)
+            : _titleFromCategory(match.category));
+
+    final actionHint = (firstRec != null && firstRec.isNotEmpty)
+        ? firstRec
+        : 'Detayları kontrol edin.';
+
+    // Tek satır gerekçe: explain başlık olarak kullanıldıysa tekrar etmesin.
+    // Başlık ilk öneriden türetildiyse explain gerekçe satırına düşer.
+    // Aksi halde boş bırakılır (kart neden satırını tamamen gizler).
+    final reasonText =
+        (explain != null && explain.isNotEmpty && explain != title)
+            ? explain
+            : '';
+
+    // "Neden" listesi: explain + 1. öneriden sonraki öneri cümleleri.
+    // Ham eşleşen koşullar ARTIK eklenmez.
+    final extraRecs = recs.length > 1
+        ? recs.sublist(1).map((r) => r.trim()).where((r) => r.isNotEmpty)
+        : const <String>[];
+    final reasonBullets = <String>[
+      if (explain != null && explain.isNotEmpty && explain != title) explain,
+      ...extraRecs,
+    ];
+
+    // Kaynak rozetleri: ham `source.caykur.tea_agronomy_guide` yerine
+    // okunabilir kurum adı ("ÇAYKUR", "TAGEM" ...).
     final evidence = <RecommendationEvidence>[];
     for (final e in match.evidence) {
       evidence.add(RecommendationEvidence(
         label: 'Kaynak',
-        value: e.sourceId,
+        value: _sourceLabel(e.sourceId),
       ));
     }
-    final sourceRefs = match.evidence.map((e) => e.sourceId).toList();
+    final sourceRefs = match.evidence
+        .map((e) => _sourceLabel(e.sourceId))
+        .toSet()
+        .toList(growable: false);
 
     final target = ctx.crop.id.isNotEmpty
         ? RecommendationTarget.crop(fieldId: ctx.fieldId, cropId: ctx.crop.id)
@@ -111,17 +146,13 @@ class DeclarativePackRunner {
         ? RecommendationGate.observeFirst
         : RecommendationGate.actionable;
 
-    final extraRecs = match.result.recommendations.length > 1
-        ? match.result.recommendations.sublist(1)
-        : const <String>[];
-
     return Recommendation(
       ruleKey: 'pack:${match.id}:v1',
       severity: severity,
       target: target,
       title: title,
       reasonText: reasonText,
-      reasonBullets: [...reasonBullets, ...extraRecs],
+      reasonBullets: reasonBullets,
       actionHint: actionHint,
       gate: gate,
       evidence: evidence,
@@ -155,5 +186,44 @@ class DeclarativePackRunner {
       'crop_unique' => 'Bitkiye özel not',
       _ => 'Tavsiye',
     };
+  }
+
+  /// Uzun bir öneri cümlesini başlık olarak kullanılabilecek kısa, keskin
+  /// bir ifadeye indirger. İlk cümleyi (nokta/iki nokta'ya kadar) alır,
+  /// gerekiyorsa kelime sınırından kırpar — kelime ortasında kesmez.
+  static String _shorten(String text, {int maxLen = 70}) {
+    var s = text.trim();
+    // İlk cümle: ilk nokta veya ' — ' ayıracına kadar.
+    final dot = s.indexOf('. ');
+    if (dot > 0 && dot <= maxLen) {
+      s = s.substring(0, dot).trim();
+    }
+    final dash = s.indexOf(' — ');
+    if (dash > 0 && dash <= maxLen) {
+      s = s.substring(0, dash).trim();
+    }
+    if (s.length <= maxLen) return s;
+    final cut = s.substring(0, maxLen);
+    final lastSpace = cut.lastIndexOf(' ');
+    return '${(lastSpace > 40 ? cut.substring(0, lastSpace) : cut).trim()}…';
+  }
+
+  /// Ham kaynak ID'sini (`source.caykur.tea_agronomy_guide`) kullanıcıya
+  /// gösterilebilir kısa kurum etiketine çevirir. CLAUDE.md sec 10 öncelik
+  /// sırasındaki kurum adları kullanılır; bilinmeyen ID'ler için son ek
+  /// temizlenerek okunabilir bir karşılık üretilir (ham ID asla sızmaz).
+  static String _sourceLabel(String sourceId) {
+    final id = sourceId.toLowerCase();
+    if (id.contains('caykur')) return 'ÇAYKUR';
+    if (id.contains('.bku')) return 'BKÜ Veritabanı';
+    if (id.contains('.mgm')) return 'MGM';
+    if (id.contains('tagem')) return 'TAGEM';
+    if (id.contains('trakya')) return 'Trakya Tarımsal Araştırma';
+    if (id.contains('gap')) return 'GAP Tarımsal Araştırma';
+    if (id.contains('tarim') || id.contains('orman')) {
+      return 'Tarım ve Orman Bakanlığı';
+    }
+    if (id.contains('universite') || id.contains('univ')) return 'Üniversite';
+    return 'Resmî kaynak';
   }
 }

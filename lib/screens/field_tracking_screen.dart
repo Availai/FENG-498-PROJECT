@@ -206,6 +206,11 @@ class _GeneralTabState extends ConsumerState<_GeneralTab> {
         plants.where((p) => p.healthStatus == 'treating').length;
     final recs = _recs;
 
+    // CLAUDE.md sec 12 — aksiyon kayıtları ile uygunluk/bölge/toprak bilgi
+    // notlarını tek noktada ayır. Aksiyonlar tam kartla, bilgi notları ayrı
+    // bölümde sade kartla gösterilir.
+    final channels = recs == null ? null : RecommendationChannels.split(recs);
+
     return RefreshIndicator(
       onRefresh: () async {
         ref.invalidate(fieldLiveTodosProvider(widget.fieldId));
@@ -226,19 +231,34 @@ class _GeneralTabState extends ConsumerState<_GeneralTab> {
           const SizedBox(height: 14),
           _SectionLabel('CANLI TAVSİYELER'),
           const SizedBox(height: 8),
-          if (recs == null)
+          if (channels == null)
             const _LoadingCard()
-          else if (recs.isEmpty)
+          else if (channels.actionable.isEmpty &&
+              channels.informational.isEmpty)
             _EmptyCard(
               icon: Icons.check_circle_outline_rounded,
               text:
                   'Şu an açık tavsiye yok. Sulama, gübreleme ve hastalık sekmelerinden bugünün yönergesini gözden geçirebilirsin.',
             )
-          else
-            for (final r in recs) ...[
+          else ...[
+            for (final r in channels.actionable) ...[
               RecommendationCard(recommendation: r),
               const SizedBox(height: 8),
             ],
+            if (channels.actionable.isEmpty)
+              _EmptyCard(
+                icon: Icons.check_circle_outline_rounded,
+                text:
+                    'Bugün için açık bir aksiyon yok. Aşağıdaki bölge ve uygunluk notları bu ürün için geçerli.',
+              ),
+            if (channels.informational.isNotEmpty) ...[
+              const SizedBox(height: 14),
+              _SectionLabel('BÖLGE VE UYGUNLUK NOTLARI'),
+              const SizedBox(height: 8),
+              for (final r in channels.informational)
+                RecommendationInfoCard(recommendation: r),
+            ],
+          ],
           const SizedBox(height: 18),
           _QuickLogButton(
             fieldId: widget.fieldId,
