@@ -60,6 +60,14 @@ class _SoilTestEntryScreenState extends ConsumerState<SoilTestEntryScreen> {
   double? _sampleLat;
   double? _sampleLng;
   SoilTestAdvice? _advice;
+
+  /// Öneri paneli açık mı (katlanabilir). Kaydet sonrası varsayılan kapalı;
+  /// geçmiş analiz açıldığında otomatik açık gelir.
+  bool _showAdvice = false;
+
+  /// Geçmiş bir analiz görüntüleniyor mu — formu gizleyip yalnızca önerileri
+  /// gösterir (ekran kalabalığını önler).
+  bool _viewingPast = false;
   final _resultKey = GlobalKey();
 
   @override
@@ -141,7 +149,7 @@ class _SoilTestEntryScreenState extends ConsumerState<SoilTestEntryScreen> {
       if (!mounted) return;
       AppToast.show(
         context,
-        message: 'Analiz kaydedildi ve öneriler oluşturuldu.',
+        message: 'Analiz kaydedildi. Öneriler hazır — açmak için dokunun.',
         type: ToastType.success,
       );
     } catch (_) {
@@ -153,15 +161,13 @@ class _SoilTestEntryScreenState extends ConsumerState<SoilTestEntryScreen> {
       );
     }
 
-    setState(() => _advice = advice);
-    // Sonuç bölümüne kaydır.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final ctx = _resultKey.currentContext;
-      if (ctx != null) {
-        Scrollable.ensureVisible(ctx,
-            duration: const Duration(milliseconds: 350), curve: Curves.easeOut);
-      }
+    setState(() {
+      _advice = advice;
+      _viewingPast = false;
+      // Öneriler arka planda hazır; katlanmış gelir, kullanıcı isterse açar.
+      _showAdvice = false;
     });
+    _scrollToResults();
   }
 
   /// Geçmiş bir kaydı forma yükler ve yeniden yorumlar.
@@ -195,9 +201,14 @@ class _SoilTestEntryScreenState extends ConsumerState<SoilTestEntryScreen> {
       textureClass: t.textureClass,
       cropName: widget.cropName,
     ));
-    setState(() => _advice = advice);
+    setState(() {
+      _advice = advice;
+      _showAdvice = true;
+      _viewingPast = true;
+    });
     AppToast.show(context,
-        message: 'Geçmiş analiz forma yüklendi.', type: ToastType.info);
+        message: 'Geçmiş analiz önerileri gösteriliyor.', type: ToastType.info);
+    _scrollToResults();
   }
 
   Future<void> _confirmDelete(SoilTest t) async {
@@ -362,29 +373,32 @@ class _SoilTestEntryScreenState extends ConsumerState<SoilTestEntryScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _introCard(),
-            const SizedBox(height: 14),
-            _formCard(),
-            const SizedBox(height: 14),
-            FilledButton.icon(
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.emerald,
-                foregroundColor: Colors.white,
-                minimumSize: const Size.fromHeight(52),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14)),
+            if (!_viewingPast) ...[
+              _introCard(),
+              const SizedBox(height: 14),
+              _formCard(),
+              const SizedBox(height: 14),
+              FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.emerald,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size.fromHeight(52),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14)),
+                ),
+                onPressed: _analyzeAndSave,
+                icon: const Icon(Icons.save_rounded),
+                label: Text(
+                  'Kaydet',
+                  style: GoogleFonts.outfit(
+                      fontSize: 16, fontWeight: FontWeight.w700),
+                ),
               ),
-              onPressed: _analyzeAndSave,
-              icon: const Icon(Icons.science_rounded),
-              label: Text(
-                'Önerileri Oluştur',
-                style: GoogleFonts.outfit(
-                    fontSize: 16, fontWeight: FontWeight.w700),
-              ),
-            ),
+            ] else
+              _viewingPastBanner(),
             if (_advice != null) ...[
               const SizedBox(height: 18),
-              KeyedSubtree(key: _resultKey, child: _resultsSection(_advice!)),
+              _recsToggle(),
             ],
             const SizedBox(height: 18),
             _historySection(),
@@ -394,7 +408,123 @@ class _SoilTestEntryScreenState extends ConsumerState<SoilTestEntryScreen> {
     );
   }
 
+  void _scrollToResults() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final ctx = _resultKey.currentContext;
+      if (ctx != null) {
+        Scrollable.ensureVisible(ctx,
+            duration: const Duration(milliseconds: 350), curve: Curves.easeOut);
+      }
+    });
+  }
+
+  /// Geçmiş görüntüleme modundan çıkıp boş form ile yeni analiz girişine döner.
+  void _resetToNewEntry() {
+    for (final c in [
+      _sampleLabelCtrl,
+      _labNameCtrl,
+      _phCtrl,
+      _saltCtrl,
+      _ecCtrl,
+      _limeCtrl,
+      _omCtrl,
+      _pCtrl,
+      _kCtrl,
+      _nCtrl,
+      _satCtrl,
+    ]) {
+      c.clear();
+    }
+    setState(() {
+      _sampledAt = null;
+      _sampleLat = null;
+      _sampleLng = null;
+      _advice = null;
+      _showAdvice = false;
+      _viewingPast = false;
+    });
+  }
+
   // ── Bölümler ───────────────────────────────────────────────────────────
+
+  Widget _viewingPastBanner() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.infoBg,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.info.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.history_rounded, color: AppColors.info),
+          const SizedBox(width: 10),
+          const Expanded(
+            child: Text(
+              'Geçmiş bir analizin önerileri görüntüleniyor.',
+              style: TextStyle(fontSize: 13),
+            ),
+          ),
+          TextButton.icon(
+            onPressed: _resetToNewEntry,
+            icon: const Icon(Icons.add_rounded, size: 18),
+            label: const Text('Yeni analiz'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Önerileri katlanabilir gösterir — başlığa basınca aç/gizle.
+  Widget _recsToggle() {
+    return Column(
+      key: _resultKey,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Material(
+          color: AppColors.successBg,
+          borderRadius: BorderRadius.circular(12),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: () {
+              setState(() => _showAdvice = !_showAdvice);
+              if (_showAdvice) _scrollToResults();
+            },
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+              child: Row(
+                children: [
+                  const Icon(Icons.insights_rounded,
+                      color: AppColors.emeraldDark),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      _showAdvice ? 'Önerileri gizle' : 'Önerileri göster',
+                      style: GoogleFonts.outfit(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.emeraldDark),
+                    ),
+                  ),
+                  Icon(
+                    _showAdvice
+                        ? Icons.expand_less_rounded
+                        : Icons.expand_more_rounded,
+                    color: AppColors.emeraldDark,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        if (_showAdvice) ...[
+          const SizedBox(height: 12),
+          _resultsSection(_advice!),
+        ],
+      ],
+    );
+  }
 
   Widget _introCard() {
     return Container(
@@ -595,36 +725,116 @@ class _SoilTestEntryScreenState extends ConsumerState<SoilTestEntryScreen> {
       if (t.potassiumKgDa != null) 'K ${_fmt(t.potassiumKgDa!)}',
       if (t.organicMatterPct != null) 'OM %${_fmt(t.organicMatterPct!)}',
     ];
+
+    // Açıldığında gösterilecek tüm girilen değerler.
+    final rows = <MapEntry<String, String>>[
+      if (t.ph != null) MapEntry('pH', _fmt(t.ph!)),
+      if (t.saltPct != null)
+        MapEntry('Tuzluluk (% tuz)', '%${_fmt(t.saltPct!)}'),
+      if (t.ecDsM != null) MapEntry('Tuzluluk (EC)', '${_fmt(t.ecDsM!)} dS/m'),
+      if (t.limePct != null) MapEntry('Kireç (CaCO₃)', '%${_fmt(t.limePct!)}'),
+      if (t.organicMatterPct != null)
+        MapEntry('Organik madde', '%${_fmt(t.organicMatterPct!)}'),
+      if (t.phosphorusKgDa != null)
+        MapEntry('Fosfor (P₂O₅)', '${_fmt(t.phosphorusKgDa!)} kg/dekar'),
+      if (t.potassiumKgDa != null)
+        MapEntry('Potasyum (K₂O)', '${_fmt(t.potassiumKgDa!)} kg/dekar'),
+      if (t.nitrogenPct != null)
+        MapEntry('Toplam azot', '%${_fmt(t.nitrogenPct!)}'),
+      if (t.saturationPct != null)
+        MapEntry('Suyla doygunluk', '%${_fmt(t.saturationPct!)}'),
+      if (t.labName?.isNotEmpty == true) MapEntry('Laboratuvar', t.labName!),
+      if (t.sampleLat != null && t.sampleLng != null)
+        MapEntry('Konum',
+            '${t.sampleLat!.toStringAsFixed(5)}, ${t.sampleLng!.toStringAsFixed(5)}'),
+    ];
+
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: AppColors.surfaceAlt,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: AppColors.border),
       ),
-      child: ListTile(
-        onTap: () => _loadFromRecord(t),
-        leading: Icon(
-          t.sampleLat != null ? Icons.place_rounded : Icons.science_outlined,
-          color:
-              t.sampleLat != null ? AppColors.emerald : AppColors.textSecondary,
-        ),
-        title: Text(
-          t.sampleLabel?.isNotEmpty == true ? t.sampleLabel! : 'Toprak örneği',
-          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-        ),
-        subtitle: Text(
-          '${df.format(when.toLocal())}'
-          '${parts.isEmpty ? '' : ' · ${parts.join(' · ')}'}'
-          '${t.labName?.isNotEmpty == true ? '\n${t.labName}' : ''}',
-          style: const TextStyle(fontSize: 12),
-        ),
-        isThreeLine: t.labName?.isNotEmpty == true,
-        trailing: IconButton(
-          tooltip: 'Sil',
-          icon:
-              const Icon(Icons.delete_outline_rounded, color: AppColors.error),
-          onPressed: () => _confirmDelete(t),
+      child: Theme(
+        // ExpansionTile'ın varsayılan ayraç çizgilerini gizle.
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          // Detaylar varsayılan olarak KAPALI — basınca açılır.
+          initiallyExpanded: false,
+          tilePadding: const EdgeInsets.symmetric(horizontal: 12),
+          childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+          leading: Icon(
+            t.sampleLat != null ? Icons.place_rounded : Icons.science_outlined,
+            color: t.sampleLat != null
+                ? AppColors.emerald
+                : AppColors.textSecondary,
+          ),
+          title: Text(
+            t.sampleLabel?.isNotEmpty == true
+                ? t.sampleLabel!
+                : 'Toprak örneği',
+            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+          ),
+          subtitle: Text(
+            '${df.format(when.toLocal())}'
+            '${parts.isEmpty ? '' : ' · ${parts.join(' · ')}'}',
+            style: const TextStyle(fontSize: 12),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          children: [
+            ...rows.map((e) => Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        flex: 3,
+                        child: Text(e.key,
+                            style: const TextStyle(
+                                fontSize: 12.5,
+                                color: AppColors.textSecondary)),
+                      ),
+                      Expanded(
+                        flex: 2,
+                        child: Text(e.value,
+                            style: const TextStyle(
+                                fontSize: 13, fontWeight: FontWeight.w600)),
+                      ),
+                    ],
+                  ),
+                )),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: FilledButton.tonalIcon(
+                    onPressed: () => _loadFromRecord(t),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.successBg,
+                      foregroundColor: AppColors.emeraldDark,
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    icon: const Icon(Icons.insights_rounded, size: 18),
+                    label: const Text('Önerileri göster'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                OutlinedButton.icon(
+                  onPressed: () => _confirmDelete(t),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.error,
+                    side: BorderSide(
+                        color: AppColors.error.withValues(alpha: 0.5)),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  icon: const Icon(Icons.delete_outline_rounded, size: 18),
+                  label: const Text('Sil'),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
@@ -797,6 +1007,13 @@ class _SoilTestEntryScreenState extends ConsumerState<SoilTestEntryScreen> {
       padding: const EdgeInsets.only(bottom: 12),
       child: TextField(
         controller: controller,
+        // Türkçe karakter (ı, ü, ş, ğ, ö, ç) girişini engelleyen IME
+        // otomatik düzeltme/önerisini kapat — aksi halde İngilizce klavye
+        // sözlüğü harfleri değiştirebiliyor.
+        keyboardType: TextInputType.text,
+        textCapitalization: TextCapitalization.sentences,
+        autocorrect: false,
+        enableSuggestions: false,
         style: const TextStyle(fontSize: 14),
         decoration: InputDecoration(
           labelText: label,

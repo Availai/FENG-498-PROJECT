@@ -388,7 +388,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 12;
+  int get schemaVersion => 13;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -468,6 +468,21 @@ class AppDatabase extends _$AppDatabase {
               // v12: çiftçinin laboratuvardan aldığı gerçek toprak analizi
               // sonuçları için yeni tablo (lab girişi + deterministik öneri).
               await m.createTable(soilTests);
+            }
+            if (from < 13) {
+              // v13: toprak analizi örnek noktası koordinatları (haritadan
+              // seçim). v12'de soil_tests tablosunu lat/lng'siz oluşturmuş
+              // cihazlara kolonları ekler. from<12 yolunda tablo zaten güncel
+              // tanımla (lat/lng dahil) oluştuğundan tekrar-ekleme hatasını
+              // tek tek yutarız (yoksa tüm migration aborte olurdu).
+              try {
+                await customStatement(
+                    'ALTER TABLE soil_tests ADD COLUMN sample_lat REAL;');
+              } catch (_) {}
+              try {
+                await customStatement(
+                    'ALTER TABLE soil_tests ADD COLUMN sample_lng REAL;');
+              } catch (_) {}
             }
           } catch (e, st) {
             debugPrint('Drift migration $from→$to hata: $e\n$st');
