@@ -215,6 +215,12 @@ class LocalDataRepository {
             .get())
         .map((r) => r.id)
         .toList();
+    final soilTestIds = (await (_db.select(_db.soilTests)
+              ..where((tbl) =>
+                  tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull()))
+            .get())
+        .map((s) => s.id)
+        .toList();
 
     await _db.transaction(() async {
       // Kalıcı temizlik: tarla ve ilişkili geçmiş kayıtları fiziksel olarak sil.
@@ -235,6 +241,10 @@ class LocalDataRepository {
             ..where((tbl) => tbl.fieldId.equals(fieldId)))
           .go();
       await (_db.delete(_db.suitabilityReports)
+            ..where((tbl) => tbl.fieldId.equals(fieldId)))
+          .go();
+      // v12: tarlanın toprak analizi kayıtlarını da temizle.
+      await (_db.delete(_db.soilTests)
             ..where((tbl) => tbl.fieldId.equals(fieldId)))
           .go();
 
@@ -292,6 +302,15 @@ class LocalDataRepository {
     for (final id in suitabilityIds) {
       await _enqueueSyncJob(
         entityType: 'suitability_reports',
+        entityId: id,
+        operation: 'delete',
+        payload: {'id': id, 'field_id': fieldId},
+        updatedAt: now,
+      );
+    }
+    for (final id in soilTestIds) {
+      await _enqueueSyncJob(
+        entityType: 'soil_tests',
         entityId: id,
         operation: 'delete',
         payload: {'id': id, 'field_id': fieldId},
@@ -1398,6 +1417,123 @@ class LocalDataRepository {
       'created_at': report.createdAt,
       'updated_at': report.updatedAt,
     };
+  }
+
+  // ───────────────────────────────────────────────────────────────────────
+  // TOPRAK ANALİZİ (laboratuvar sonuçları)
+  // Kullanıcıya ait kayıt — farmerUid izolasyonu (CLAUDE.md §5.5). Çiftçi
+  // tarlanın istediği kısmından aldığı örneği laboratuvarda analiz ettirip
+  // sonuçları buraya girer; deterministik öneri SoilTestAdvisor'da üretilir.
+  // ───────────────────────────────────────────────────────────────────────
+
+  Future<String> saveSoilTest({
+    required String fieldId,
+    String? sampleLabel,
+    String? labName,
+    DateTime? sampledAt,
+    double? ph,
+    double? saltPct,
+    double? ecDsM,
+    double? limePct,
+    double? organicMatterPct,
+    double? phosphorusKgDa,
+    double? potassiumKgDa,
+    double? nitrogenPct,
+    double? saturationPct,
+    String? textureClass,
+    double? sampleLat,
+    double? sampleLng,
+    String? notes,
+  }) async {
+    final now = DateTime.now().toUtc();
+    final id = _newId('soiltest');
+    await _db.into(_db.soilTests).insert(
+          SoilTestsCompanion.insert(
+            id: id,
+            fieldId: fieldId,
+            farmerUid: Value(currentUid),
+            sampleLabel: Value(sampleLabel),
+            labName: Value(labName),
+            sampledAt: Value(sampledAt?.toUtc()),
+            ph: Value(ph),
+            saltPct: Value(saltPct),
+            ecDsM: Value(ecDsM),
+            limePct: Value(limePct),
+            organicMatterPct: Value(organicMatterPct),
+            phosphorusKgDa: Value(phosphorusKgDa),
+            potassiumKgDa: Value(potassiumKgDa),
+            nitrogenPct: Value(nitrogenPct),
+            saturationPct: Value(saturationPct),
+            textureClass: Value(textureClass),
+            sampleLat: Value(sampleLat),
+            sampleLng: Value(sampleLng),
+            notes: Value(notes),
+            createdAt: now,
+            updatedAt: now,
+          ),
+        );
+
+    await _enqueueSyncJob(
+      entityType: 'soil_tests',
+      entityId: id,
+      operation: 'upsert',
+      payload: {
+        'id': id,
+        'field_id': fieldId,
+        'sample_label': sampleLabel,
+        'lab_name': labName,
+        'sampled_at': sampledAt?.toUtc().toIso8601String(),
+        'ph': ph,
+        'salt_pct': saltPct,
+        'ec_ds_m': ecDsM,
+        'lime_pct': limePct,
+        'organic_matter_pct': organicMatterPct,
+        'phosphorus_kg_da': phosphorusKgDa,
+        'potassium_kg_da': potassiumKgDa,
+        'nitrogen_pct': nitrogenPct,
+        'saturation_pct': saturationPct,
+        'texture_class': textureClass,
+        'sample_lat': sampleLat,
+        'sample_lng': sampleLng,
+        'notes': notes,
+        'updated_at': now.toIso8601String(),
+      },
+      updatedAt: now,
+    );
+    return id;
+  }
+
+  /// Tarlanın toprak analizlerini canlı dinler (yeni → eski).
+  Stream<List<SoilTest>> watchSoilTests(String fieldId) {
+    return (_db.select(_db.soilTests)
+          ..where((tbl) => tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull())
+          ..orderBy([(tbl) => OrderingTerm.desc(tbl.createdAt)]))
+        .watch();
+  }
+
+  /// Tarlanın toprak analizlerini tek seferlik yükler (yeni → eski).
+  Future<List<SoilTest>> loadSoilTests(String fieldId) {
+    return (_db.select(_db.soilTests)
+          ..where((tbl) => tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull())
+          ..orderBy([(tbl) => OrderingTerm.desc(tbl.createdAt)]))
+        .get();
+  }
+
+  /// Toprak analizi kaydını soft-delete yapar.
+  Future<void> deleteSoilTest(String id) async {
+    final now = DateTime.now().toUtc();
+    await (_db.update(_db.soilTests)..where((tbl) => tbl.id.equals(id)))
+        .write(SoilTestsCompanion(
+      deletedAt: Value(now),
+      updatedAt: Value(now),
+    ));
+    await _enqueueSyncJob(
+      entityType: 'soil_tests',
+      entityId: id,
+      operation: 'delete',
+      payload: {'id': id, 'deleted_at': now.toIso8601String()},
+      updatedAt: now,
+    );
   }
 
   Future<void> _regenerateIrrigationPlans({

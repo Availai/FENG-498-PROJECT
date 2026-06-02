@@ -6549,6 +6549,1060 @@ class PlantConditionEventsCompanion
   }
 }
 
+class $SoilTestsTable extends SoilTests
+    with TableInfo<$SoilTestsTable, SoilTest> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SoilTestsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _farmerUidMeta =
+      const VerificationMeta('farmerUid');
+  @override
+  late final GeneratedColumn<String> farmerUid = GeneratedColumn<String>(
+      'farmer_uid', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _fieldIdMeta =
+      const VerificationMeta('fieldId');
+  @override
+  late final GeneratedColumn<String> fieldId = GeneratedColumn<String>(
+      'field_id', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: true,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('REFERENCES fields (id)'));
+  static const VerificationMeta _sampleLabelMeta =
+      const VerificationMeta('sampleLabel');
+  @override
+  late final GeneratedColumn<String> sampleLabel = GeneratedColumn<String>(
+      'sample_label', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _labNameMeta =
+      const VerificationMeta('labName');
+  @override
+  late final GeneratedColumn<String> labName = GeneratedColumn<String>(
+      'lab_name', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _sampledAtMeta =
+      const VerificationMeta('sampledAt');
+  @override
+  late final GeneratedColumn<DateTime> sampledAt = GeneratedColumn<DateTime>(
+      'sampled_at', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _phMeta = const VerificationMeta('ph');
+  @override
+  late final GeneratedColumn<double> ph = GeneratedColumn<double>(
+      'ph', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _saltPctMeta =
+      const VerificationMeta('saltPct');
+  @override
+  late final GeneratedColumn<double> saltPct = GeneratedColumn<double>(
+      'salt_pct', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _ecDsMMeta = const VerificationMeta('ecDsM');
+  @override
+  late final GeneratedColumn<double> ecDsM = GeneratedColumn<double>(
+      'ec_ds_m', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _limePctMeta =
+      const VerificationMeta('limePct');
+  @override
+  late final GeneratedColumn<double> limePct = GeneratedColumn<double>(
+      'lime_pct', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _organicMatterPctMeta =
+      const VerificationMeta('organicMatterPct');
+  @override
+  late final GeneratedColumn<double> organicMatterPct = GeneratedColumn<double>(
+      'organic_matter_pct', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _phosphorusKgDaMeta =
+      const VerificationMeta('phosphorusKgDa');
+  @override
+  late final GeneratedColumn<double> phosphorusKgDa = GeneratedColumn<double>(
+      'phosphorus_kg_da', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _potassiumKgDaMeta =
+      const VerificationMeta('potassiumKgDa');
+  @override
+  late final GeneratedColumn<double> potassiumKgDa = GeneratedColumn<double>(
+      'potassium_kg_da', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _nitrogenPctMeta =
+      const VerificationMeta('nitrogenPct');
+  @override
+  late final GeneratedColumn<double> nitrogenPct = GeneratedColumn<double>(
+      'nitrogen_pct', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _saturationPctMeta =
+      const VerificationMeta('saturationPct');
+  @override
+  late final GeneratedColumn<double> saturationPct = GeneratedColumn<double>(
+      'saturation_pct', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _textureClassMeta =
+      const VerificationMeta('textureClass');
+  @override
+  late final GeneratedColumn<String> textureClass = GeneratedColumn<String>(
+      'texture_class', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _sampleLatMeta =
+      const VerificationMeta('sampleLat');
+  @override
+  late final GeneratedColumn<double> sampleLat = GeneratedColumn<double>(
+      'sample_lat', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _sampleLngMeta =
+      const VerificationMeta('sampleLng');
+  @override
+  late final GeneratedColumn<double> sampleLng = GeneratedColumn<double>(
+      'sample_lng', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _notesMeta = const VerificationMeta('notes');
+  @override
+  late final GeneratedColumn<String> notes = GeneratedColumn<String>(
+      'notes', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _updatedAtMeta =
+      const VerificationMeta('updatedAt');
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+      'updated_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _deletedAtMeta =
+      const VerificationMeta('deletedAt');
+  @override
+  late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
+      'deleted_at', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        farmerUid,
+        fieldId,
+        sampleLabel,
+        labName,
+        sampledAt,
+        ph,
+        saltPct,
+        ecDsM,
+        limePct,
+        organicMatterPct,
+        phosphorusKgDa,
+        potassiumKgDa,
+        nitrogenPct,
+        saturationPct,
+        textureClass,
+        sampleLat,
+        sampleLng,
+        notes,
+        createdAt,
+        updatedAt,
+        deletedAt
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'soil_tests';
+  @override
+  VerificationContext validateIntegrity(Insertable<SoilTest> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('farmer_uid')) {
+      context.handle(_farmerUidMeta,
+          farmerUid.isAcceptableOrUnknown(data['farmer_uid']!, _farmerUidMeta));
+    }
+    if (data.containsKey('field_id')) {
+      context.handle(_fieldIdMeta,
+          fieldId.isAcceptableOrUnknown(data['field_id']!, _fieldIdMeta));
+    } else if (isInserting) {
+      context.missing(_fieldIdMeta);
+    }
+    if (data.containsKey('sample_label')) {
+      context.handle(
+          _sampleLabelMeta,
+          sampleLabel.isAcceptableOrUnknown(
+              data['sample_label']!, _sampleLabelMeta));
+    }
+    if (data.containsKey('lab_name')) {
+      context.handle(_labNameMeta,
+          labName.isAcceptableOrUnknown(data['lab_name']!, _labNameMeta));
+    }
+    if (data.containsKey('sampled_at')) {
+      context.handle(_sampledAtMeta,
+          sampledAt.isAcceptableOrUnknown(data['sampled_at']!, _sampledAtMeta));
+    }
+    if (data.containsKey('ph')) {
+      context.handle(_phMeta, ph.isAcceptableOrUnknown(data['ph']!, _phMeta));
+    }
+    if (data.containsKey('salt_pct')) {
+      context.handle(_saltPctMeta,
+          saltPct.isAcceptableOrUnknown(data['salt_pct']!, _saltPctMeta));
+    }
+    if (data.containsKey('ec_ds_m')) {
+      context.handle(_ecDsMMeta,
+          ecDsM.isAcceptableOrUnknown(data['ec_ds_m']!, _ecDsMMeta));
+    }
+    if (data.containsKey('lime_pct')) {
+      context.handle(_limePctMeta,
+          limePct.isAcceptableOrUnknown(data['lime_pct']!, _limePctMeta));
+    }
+    if (data.containsKey('organic_matter_pct')) {
+      context.handle(
+          _organicMatterPctMeta,
+          organicMatterPct.isAcceptableOrUnknown(
+              data['organic_matter_pct']!, _organicMatterPctMeta));
+    }
+    if (data.containsKey('phosphorus_kg_da')) {
+      context.handle(
+          _phosphorusKgDaMeta,
+          phosphorusKgDa.isAcceptableOrUnknown(
+              data['phosphorus_kg_da']!, _phosphorusKgDaMeta));
+    }
+    if (data.containsKey('potassium_kg_da')) {
+      context.handle(
+          _potassiumKgDaMeta,
+          potassiumKgDa.isAcceptableOrUnknown(
+              data['potassium_kg_da']!, _potassiumKgDaMeta));
+    }
+    if (data.containsKey('nitrogen_pct')) {
+      context.handle(
+          _nitrogenPctMeta,
+          nitrogenPct.isAcceptableOrUnknown(
+              data['nitrogen_pct']!, _nitrogenPctMeta));
+    }
+    if (data.containsKey('saturation_pct')) {
+      context.handle(
+          _saturationPctMeta,
+          saturationPct.isAcceptableOrUnknown(
+              data['saturation_pct']!, _saturationPctMeta));
+    }
+    if (data.containsKey('texture_class')) {
+      context.handle(
+          _textureClassMeta,
+          textureClass.isAcceptableOrUnknown(
+              data['texture_class']!, _textureClassMeta));
+    }
+    if (data.containsKey('sample_lat')) {
+      context.handle(_sampleLatMeta,
+          sampleLat.isAcceptableOrUnknown(data['sample_lat']!, _sampleLatMeta));
+    }
+    if (data.containsKey('sample_lng')) {
+      context.handle(_sampleLngMeta,
+          sampleLng.isAcceptableOrUnknown(data['sample_lng']!, _sampleLngMeta));
+    }
+    if (data.containsKey('notes')) {
+      context.handle(
+          _notesMeta, notes.isAcceptableOrUnknown(data['notes']!, _notesMeta));
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(_updatedAtMeta,
+          updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(_deletedAtMeta,
+          deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  SoilTest map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SoilTest(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      farmerUid: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}farmer_uid']),
+      fieldId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}field_id'])!,
+      sampleLabel: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}sample_label']),
+      labName: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}lab_name']),
+      sampledAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}sampled_at']),
+      ph: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}ph']),
+      saltPct: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}salt_pct']),
+      ecDsM: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}ec_ds_m']),
+      limePct: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}lime_pct']),
+      organicMatterPct: attachedDatabase.typeMapping.read(
+          DriftSqlType.double, data['${effectivePrefix}organic_matter_pct']),
+      phosphorusKgDa: attachedDatabase.typeMapping.read(
+          DriftSqlType.double, data['${effectivePrefix}phosphorus_kg_da']),
+      potassiumKgDa: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}potassium_kg_da']),
+      nitrogenPct: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}nitrogen_pct']),
+      saturationPct: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}saturation_pct']),
+      textureClass: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}texture_class']),
+      sampleLat: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}sample_lat']),
+      sampleLng: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}sample_lng']),
+      notes: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}notes']),
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+      updatedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
+      deletedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}deleted_at']),
+    );
+  }
+
+  @override
+  $SoilTestsTable createAlias(String alias) {
+    return $SoilTestsTable(attachedDatabase, alias);
+  }
+}
+
+class SoilTest extends DataClass implements Insertable<SoilTest> {
+  final String id;
+  final String? farmerUid;
+  final String fieldId;
+
+  /// Örneğin alındığı tarla kısmı (serbest metin).
+  final String? sampleLabel;
+
+  /// Analizi yapan laboratuvar/kurum adı.
+  final String? labName;
+
+  /// Örneğin alındığı/analiz tarihi.
+  final DateTime? sampledAt;
+  final double? ph;
+
+  /// % toplam tuz (satüre çamur).
+  final double? saltPct;
+
+  /// EC — elektriksel iletkenlik (dS/m).
+  final double? ecDsM;
+
+  /// Kireç CaCO₃ %.
+  final double? limePct;
+
+  /// Organik madde %.
+  final double? organicMatterPct;
+
+  /// Fosfor P₂O₅ kg/dekar.
+  final double? phosphorusKgDa;
+
+  /// Potasyum K₂O kg/dekar.
+  final double? potassiumKgDa;
+
+  /// Toplam azot %.
+  final double? nitrogenPct;
+
+  /// Suyla doygunluk %.
+  final double? saturationPct;
+
+  /// Doku sınıfı (girilen veya doygunluktan türetilen).
+  final String? textureClass;
+
+  /// Örneğin haritadan seçilen noktası (tarla içi). null → harita seçimi yok.
+  final double? sampleLat;
+  final double? sampleLng;
+  final String? notes;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final DateTime? deletedAt;
+  const SoilTest(
+      {required this.id,
+      this.farmerUid,
+      required this.fieldId,
+      this.sampleLabel,
+      this.labName,
+      this.sampledAt,
+      this.ph,
+      this.saltPct,
+      this.ecDsM,
+      this.limePct,
+      this.organicMatterPct,
+      this.phosphorusKgDa,
+      this.potassiumKgDa,
+      this.nitrogenPct,
+      this.saturationPct,
+      this.textureClass,
+      this.sampleLat,
+      this.sampleLng,
+      this.notes,
+      required this.createdAt,
+      required this.updatedAt,
+      this.deletedAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    if (!nullToAbsent || farmerUid != null) {
+      map['farmer_uid'] = Variable<String>(farmerUid);
+    }
+    map['field_id'] = Variable<String>(fieldId);
+    if (!nullToAbsent || sampleLabel != null) {
+      map['sample_label'] = Variable<String>(sampleLabel);
+    }
+    if (!nullToAbsent || labName != null) {
+      map['lab_name'] = Variable<String>(labName);
+    }
+    if (!nullToAbsent || sampledAt != null) {
+      map['sampled_at'] = Variable<DateTime>(sampledAt);
+    }
+    if (!nullToAbsent || ph != null) {
+      map['ph'] = Variable<double>(ph);
+    }
+    if (!nullToAbsent || saltPct != null) {
+      map['salt_pct'] = Variable<double>(saltPct);
+    }
+    if (!nullToAbsent || ecDsM != null) {
+      map['ec_ds_m'] = Variable<double>(ecDsM);
+    }
+    if (!nullToAbsent || limePct != null) {
+      map['lime_pct'] = Variable<double>(limePct);
+    }
+    if (!nullToAbsent || organicMatterPct != null) {
+      map['organic_matter_pct'] = Variable<double>(organicMatterPct);
+    }
+    if (!nullToAbsent || phosphorusKgDa != null) {
+      map['phosphorus_kg_da'] = Variable<double>(phosphorusKgDa);
+    }
+    if (!nullToAbsent || potassiumKgDa != null) {
+      map['potassium_kg_da'] = Variable<double>(potassiumKgDa);
+    }
+    if (!nullToAbsent || nitrogenPct != null) {
+      map['nitrogen_pct'] = Variable<double>(nitrogenPct);
+    }
+    if (!nullToAbsent || saturationPct != null) {
+      map['saturation_pct'] = Variable<double>(saturationPct);
+    }
+    if (!nullToAbsent || textureClass != null) {
+      map['texture_class'] = Variable<String>(textureClass);
+    }
+    if (!nullToAbsent || sampleLat != null) {
+      map['sample_lat'] = Variable<double>(sampleLat);
+    }
+    if (!nullToAbsent || sampleLng != null) {
+      map['sample_lng'] = Variable<double>(sampleLng);
+    }
+    if (!nullToAbsent || notes != null) {
+      map['notes'] = Variable<String>(notes);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt);
+    }
+    return map;
+  }
+
+  SoilTestsCompanion toCompanion(bool nullToAbsent) {
+    return SoilTestsCompanion(
+      id: Value(id),
+      farmerUid: farmerUid == null && nullToAbsent
+          ? const Value.absent()
+          : Value(farmerUid),
+      fieldId: Value(fieldId),
+      sampleLabel: sampleLabel == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sampleLabel),
+      labName: labName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(labName),
+      sampledAt: sampledAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sampledAt),
+      ph: ph == null && nullToAbsent ? const Value.absent() : Value(ph),
+      saltPct: saltPct == null && nullToAbsent
+          ? const Value.absent()
+          : Value(saltPct),
+      ecDsM:
+          ecDsM == null && nullToAbsent ? const Value.absent() : Value(ecDsM),
+      limePct: limePct == null && nullToAbsent
+          ? const Value.absent()
+          : Value(limePct),
+      organicMatterPct: organicMatterPct == null && nullToAbsent
+          ? const Value.absent()
+          : Value(organicMatterPct),
+      phosphorusKgDa: phosphorusKgDa == null && nullToAbsent
+          ? const Value.absent()
+          : Value(phosphorusKgDa),
+      potassiumKgDa: potassiumKgDa == null && nullToAbsent
+          ? const Value.absent()
+          : Value(potassiumKgDa),
+      nitrogenPct: nitrogenPct == null && nullToAbsent
+          ? const Value.absent()
+          : Value(nitrogenPct),
+      saturationPct: saturationPct == null && nullToAbsent
+          ? const Value.absent()
+          : Value(saturationPct),
+      textureClass: textureClass == null && nullToAbsent
+          ? const Value.absent()
+          : Value(textureClass),
+      sampleLat: sampleLat == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sampleLat),
+      sampleLng: sampleLng == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sampleLng),
+      notes:
+          notes == null && nullToAbsent ? const Value.absent() : Value(notes),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
+    );
+  }
+
+  factory SoilTest.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SoilTest(
+      id: serializer.fromJson<String>(json['id']),
+      farmerUid: serializer.fromJson<String?>(json['farmerUid']),
+      fieldId: serializer.fromJson<String>(json['fieldId']),
+      sampleLabel: serializer.fromJson<String?>(json['sampleLabel']),
+      labName: serializer.fromJson<String?>(json['labName']),
+      sampledAt: serializer.fromJson<DateTime?>(json['sampledAt']),
+      ph: serializer.fromJson<double?>(json['ph']),
+      saltPct: serializer.fromJson<double?>(json['saltPct']),
+      ecDsM: serializer.fromJson<double?>(json['ecDsM']),
+      limePct: serializer.fromJson<double?>(json['limePct']),
+      organicMatterPct: serializer.fromJson<double?>(json['organicMatterPct']),
+      phosphorusKgDa: serializer.fromJson<double?>(json['phosphorusKgDa']),
+      potassiumKgDa: serializer.fromJson<double?>(json['potassiumKgDa']),
+      nitrogenPct: serializer.fromJson<double?>(json['nitrogenPct']),
+      saturationPct: serializer.fromJson<double?>(json['saturationPct']),
+      textureClass: serializer.fromJson<String?>(json['textureClass']),
+      sampleLat: serializer.fromJson<double?>(json['sampleLat']),
+      sampleLng: serializer.fromJson<double?>(json['sampleLng']),
+      notes: serializer.fromJson<String?>(json['notes']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'farmerUid': serializer.toJson<String?>(farmerUid),
+      'fieldId': serializer.toJson<String>(fieldId),
+      'sampleLabel': serializer.toJson<String?>(sampleLabel),
+      'labName': serializer.toJson<String?>(labName),
+      'sampledAt': serializer.toJson<DateTime?>(sampledAt),
+      'ph': serializer.toJson<double?>(ph),
+      'saltPct': serializer.toJson<double?>(saltPct),
+      'ecDsM': serializer.toJson<double?>(ecDsM),
+      'limePct': serializer.toJson<double?>(limePct),
+      'organicMatterPct': serializer.toJson<double?>(organicMatterPct),
+      'phosphorusKgDa': serializer.toJson<double?>(phosphorusKgDa),
+      'potassiumKgDa': serializer.toJson<double?>(potassiumKgDa),
+      'nitrogenPct': serializer.toJson<double?>(nitrogenPct),
+      'saturationPct': serializer.toJson<double?>(saturationPct),
+      'textureClass': serializer.toJson<String?>(textureClass),
+      'sampleLat': serializer.toJson<double?>(sampleLat),
+      'sampleLng': serializer.toJson<double?>(sampleLng),
+      'notes': serializer.toJson<String?>(notes),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
+    };
+  }
+
+  SoilTest copyWith(
+          {String? id,
+          Value<String?> farmerUid = const Value.absent(),
+          String? fieldId,
+          Value<String?> sampleLabel = const Value.absent(),
+          Value<String?> labName = const Value.absent(),
+          Value<DateTime?> sampledAt = const Value.absent(),
+          Value<double?> ph = const Value.absent(),
+          Value<double?> saltPct = const Value.absent(),
+          Value<double?> ecDsM = const Value.absent(),
+          Value<double?> limePct = const Value.absent(),
+          Value<double?> organicMatterPct = const Value.absent(),
+          Value<double?> phosphorusKgDa = const Value.absent(),
+          Value<double?> potassiumKgDa = const Value.absent(),
+          Value<double?> nitrogenPct = const Value.absent(),
+          Value<double?> saturationPct = const Value.absent(),
+          Value<String?> textureClass = const Value.absent(),
+          Value<double?> sampleLat = const Value.absent(),
+          Value<double?> sampleLng = const Value.absent(),
+          Value<String?> notes = const Value.absent(),
+          DateTime? createdAt,
+          DateTime? updatedAt,
+          Value<DateTime?> deletedAt = const Value.absent()}) =>
+      SoilTest(
+        id: id ?? this.id,
+        farmerUid: farmerUid.present ? farmerUid.value : this.farmerUid,
+        fieldId: fieldId ?? this.fieldId,
+        sampleLabel: sampleLabel.present ? sampleLabel.value : this.sampleLabel,
+        labName: labName.present ? labName.value : this.labName,
+        sampledAt: sampledAt.present ? sampledAt.value : this.sampledAt,
+        ph: ph.present ? ph.value : this.ph,
+        saltPct: saltPct.present ? saltPct.value : this.saltPct,
+        ecDsM: ecDsM.present ? ecDsM.value : this.ecDsM,
+        limePct: limePct.present ? limePct.value : this.limePct,
+        organicMatterPct: organicMatterPct.present
+            ? organicMatterPct.value
+            : this.organicMatterPct,
+        phosphorusKgDa:
+            phosphorusKgDa.present ? phosphorusKgDa.value : this.phosphorusKgDa,
+        potassiumKgDa:
+            potassiumKgDa.present ? potassiumKgDa.value : this.potassiumKgDa,
+        nitrogenPct: nitrogenPct.present ? nitrogenPct.value : this.nitrogenPct,
+        saturationPct:
+            saturationPct.present ? saturationPct.value : this.saturationPct,
+        textureClass:
+            textureClass.present ? textureClass.value : this.textureClass,
+        sampleLat: sampleLat.present ? sampleLat.value : this.sampleLat,
+        sampleLng: sampleLng.present ? sampleLng.value : this.sampleLng,
+        notes: notes.present ? notes.value : this.notes,
+        createdAt: createdAt ?? this.createdAt,
+        updatedAt: updatedAt ?? this.updatedAt,
+        deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+      );
+  SoilTest copyWithCompanion(SoilTestsCompanion data) {
+    return SoilTest(
+      id: data.id.present ? data.id.value : this.id,
+      farmerUid: data.farmerUid.present ? data.farmerUid.value : this.farmerUid,
+      fieldId: data.fieldId.present ? data.fieldId.value : this.fieldId,
+      sampleLabel:
+          data.sampleLabel.present ? data.sampleLabel.value : this.sampleLabel,
+      labName: data.labName.present ? data.labName.value : this.labName,
+      sampledAt: data.sampledAt.present ? data.sampledAt.value : this.sampledAt,
+      ph: data.ph.present ? data.ph.value : this.ph,
+      saltPct: data.saltPct.present ? data.saltPct.value : this.saltPct,
+      ecDsM: data.ecDsM.present ? data.ecDsM.value : this.ecDsM,
+      limePct: data.limePct.present ? data.limePct.value : this.limePct,
+      organicMatterPct: data.organicMatterPct.present
+          ? data.organicMatterPct.value
+          : this.organicMatterPct,
+      phosphorusKgDa: data.phosphorusKgDa.present
+          ? data.phosphorusKgDa.value
+          : this.phosphorusKgDa,
+      potassiumKgDa: data.potassiumKgDa.present
+          ? data.potassiumKgDa.value
+          : this.potassiumKgDa,
+      nitrogenPct:
+          data.nitrogenPct.present ? data.nitrogenPct.value : this.nitrogenPct,
+      saturationPct: data.saturationPct.present
+          ? data.saturationPct.value
+          : this.saturationPct,
+      textureClass: data.textureClass.present
+          ? data.textureClass.value
+          : this.textureClass,
+      sampleLat: data.sampleLat.present ? data.sampleLat.value : this.sampleLat,
+      sampleLng: data.sampleLng.present ? data.sampleLng.value : this.sampleLng,
+      notes: data.notes.present ? data.notes.value : this.notes,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SoilTest(')
+          ..write('id: $id, ')
+          ..write('farmerUid: $farmerUid, ')
+          ..write('fieldId: $fieldId, ')
+          ..write('sampleLabel: $sampleLabel, ')
+          ..write('labName: $labName, ')
+          ..write('sampledAt: $sampledAt, ')
+          ..write('ph: $ph, ')
+          ..write('saltPct: $saltPct, ')
+          ..write('ecDsM: $ecDsM, ')
+          ..write('limePct: $limePct, ')
+          ..write('organicMatterPct: $organicMatterPct, ')
+          ..write('phosphorusKgDa: $phosphorusKgDa, ')
+          ..write('potassiumKgDa: $potassiumKgDa, ')
+          ..write('nitrogenPct: $nitrogenPct, ')
+          ..write('saturationPct: $saturationPct, ')
+          ..write('textureClass: $textureClass, ')
+          ..write('sampleLat: $sampleLat, ')
+          ..write('sampleLng: $sampleLng, ')
+          ..write('notes: $notes, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hashAll([
+        id,
+        farmerUid,
+        fieldId,
+        sampleLabel,
+        labName,
+        sampledAt,
+        ph,
+        saltPct,
+        ecDsM,
+        limePct,
+        organicMatterPct,
+        phosphorusKgDa,
+        potassiumKgDa,
+        nitrogenPct,
+        saturationPct,
+        textureClass,
+        sampleLat,
+        sampleLng,
+        notes,
+        createdAt,
+        updatedAt,
+        deletedAt
+      ]);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SoilTest &&
+          other.id == this.id &&
+          other.farmerUid == this.farmerUid &&
+          other.fieldId == this.fieldId &&
+          other.sampleLabel == this.sampleLabel &&
+          other.labName == this.labName &&
+          other.sampledAt == this.sampledAt &&
+          other.ph == this.ph &&
+          other.saltPct == this.saltPct &&
+          other.ecDsM == this.ecDsM &&
+          other.limePct == this.limePct &&
+          other.organicMatterPct == this.organicMatterPct &&
+          other.phosphorusKgDa == this.phosphorusKgDa &&
+          other.potassiumKgDa == this.potassiumKgDa &&
+          other.nitrogenPct == this.nitrogenPct &&
+          other.saturationPct == this.saturationPct &&
+          other.textureClass == this.textureClass &&
+          other.sampleLat == this.sampleLat &&
+          other.sampleLng == this.sampleLng &&
+          other.notes == this.notes &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.deletedAt == this.deletedAt);
+}
+
+class SoilTestsCompanion extends UpdateCompanion<SoilTest> {
+  final Value<String> id;
+  final Value<String?> farmerUid;
+  final Value<String> fieldId;
+  final Value<String?> sampleLabel;
+  final Value<String?> labName;
+  final Value<DateTime?> sampledAt;
+  final Value<double?> ph;
+  final Value<double?> saltPct;
+  final Value<double?> ecDsM;
+  final Value<double?> limePct;
+  final Value<double?> organicMatterPct;
+  final Value<double?> phosphorusKgDa;
+  final Value<double?> potassiumKgDa;
+  final Value<double?> nitrogenPct;
+  final Value<double?> saturationPct;
+  final Value<String?> textureClass;
+  final Value<double?> sampleLat;
+  final Value<double?> sampleLng;
+  final Value<String?> notes;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<DateTime?> deletedAt;
+  final Value<int> rowid;
+  const SoilTestsCompanion({
+    this.id = const Value.absent(),
+    this.farmerUid = const Value.absent(),
+    this.fieldId = const Value.absent(),
+    this.sampleLabel = const Value.absent(),
+    this.labName = const Value.absent(),
+    this.sampledAt = const Value.absent(),
+    this.ph = const Value.absent(),
+    this.saltPct = const Value.absent(),
+    this.ecDsM = const Value.absent(),
+    this.limePct = const Value.absent(),
+    this.organicMatterPct = const Value.absent(),
+    this.phosphorusKgDa = const Value.absent(),
+    this.potassiumKgDa = const Value.absent(),
+    this.nitrogenPct = const Value.absent(),
+    this.saturationPct = const Value.absent(),
+    this.textureClass = const Value.absent(),
+    this.sampleLat = const Value.absent(),
+    this.sampleLng = const Value.absent(),
+    this.notes = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  SoilTestsCompanion.insert({
+    required String id,
+    this.farmerUid = const Value.absent(),
+    required String fieldId,
+    this.sampleLabel = const Value.absent(),
+    this.labName = const Value.absent(),
+    this.sampledAt = const Value.absent(),
+    this.ph = const Value.absent(),
+    this.saltPct = const Value.absent(),
+    this.ecDsM = const Value.absent(),
+    this.limePct = const Value.absent(),
+    this.organicMatterPct = const Value.absent(),
+    this.phosphorusKgDa = const Value.absent(),
+    this.potassiumKgDa = const Value.absent(),
+    this.nitrogenPct = const Value.absent(),
+    this.saturationPct = const Value.absent(),
+    this.textureClass = const Value.absent(),
+    this.sampleLat = const Value.absent(),
+    this.sampleLng = const Value.absent(),
+    this.notes = const Value.absent(),
+    required DateTime createdAt,
+    required DateTime updatedAt,
+    this.deletedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  })  : id = Value(id),
+        fieldId = Value(fieldId),
+        createdAt = Value(createdAt),
+        updatedAt = Value(updatedAt);
+  static Insertable<SoilTest> custom({
+    Expression<String>? id,
+    Expression<String>? farmerUid,
+    Expression<String>? fieldId,
+    Expression<String>? sampleLabel,
+    Expression<String>? labName,
+    Expression<DateTime>? sampledAt,
+    Expression<double>? ph,
+    Expression<double>? saltPct,
+    Expression<double>? ecDsM,
+    Expression<double>? limePct,
+    Expression<double>? organicMatterPct,
+    Expression<double>? phosphorusKgDa,
+    Expression<double>? potassiumKgDa,
+    Expression<double>? nitrogenPct,
+    Expression<double>? saturationPct,
+    Expression<String>? textureClass,
+    Expression<double>? sampleLat,
+    Expression<double>? sampleLng,
+    Expression<String>? notes,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<DateTime>? deletedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (farmerUid != null) 'farmer_uid': farmerUid,
+      if (fieldId != null) 'field_id': fieldId,
+      if (sampleLabel != null) 'sample_label': sampleLabel,
+      if (labName != null) 'lab_name': labName,
+      if (sampledAt != null) 'sampled_at': sampledAt,
+      if (ph != null) 'ph': ph,
+      if (saltPct != null) 'salt_pct': saltPct,
+      if (ecDsM != null) 'ec_ds_m': ecDsM,
+      if (limePct != null) 'lime_pct': limePct,
+      if (organicMatterPct != null) 'organic_matter_pct': organicMatterPct,
+      if (phosphorusKgDa != null) 'phosphorus_kg_da': phosphorusKgDa,
+      if (potassiumKgDa != null) 'potassium_kg_da': potassiumKgDa,
+      if (nitrogenPct != null) 'nitrogen_pct': nitrogenPct,
+      if (saturationPct != null) 'saturation_pct': saturationPct,
+      if (textureClass != null) 'texture_class': textureClass,
+      if (sampleLat != null) 'sample_lat': sampleLat,
+      if (sampleLng != null) 'sample_lng': sampleLng,
+      if (notes != null) 'notes': notes,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  SoilTestsCompanion copyWith(
+      {Value<String>? id,
+      Value<String?>? farmerUid,
+      Value<String>? fieldId,
+      Value<String?>? sampleLabel,
+      Value<String?>? labName,
+      Value<DateTime?>? sampledAt,
+      Value<double?>? ph,
+      Value<double?>? saltPct,
+      Value<double?>? ecDsM,
+      Value<double?>? limePct,
+      Value<double?>? organicMatterPct,
+      Value<double?>? phosphorusKgDa,
+      Value<double?>? potassiumKgDa,
+      Value<double?>? nitrogenPct,
+      Value<double?>? saturationPct,
+      Value<String?>? textureClass,
+      Value<double?>? sampleLat,
+      Value<double?>? sampleLng,
+      Value<String?>? notes,
+      Value<DateTime>? createdAt,
+      Value<DateTime>? updatedAt,
+      Value<DateTime?>? deletedAt,
+      Value<int>? rowid}) {
+    return SoilTestsCompanion(
+      id: id ?? this.id,
+      farmerUid: farmerUid ?? this.farmerUid,
+      fieldId: fieldId ?? this.fieldId,
+      sampleLabel: sampleLabel ?? this.sampleLabel,
+      labName: labName ?? this.labName,
+      sampledAt: sampledAt ?? this.sampledAt,
+      ph: ph ?? this.ph,
+      saltPct: saltPct ?? this.saltPct,
+      ecDsM: ecDsM ?? this.ecDsM,
+      limePct: limePct ?? this.limePct,
+      organicMatterPct: organicMatterPct ?? this.organicMatterPct,
+      phosphorusKgDa: phosphorusKgDa ?? this.phosphorusKgDa,
+      potassiumKgDa: potassiumKgDa ?? this.potassiumKgDa,
+      nitrogenPct: nitrogenPct ?? this.nitrogenPct,
+      saturationPct: saturationPct ?? this.saturationPct,
+      textureClass: textureClass ?? this.textureClass,
+      sampleLat: sampleLat ?? this.sampleLat,
+      sampleLng: sampleLng ?? this.sampleLng,
+      notes: notes ?? this.notes,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (farmerUid.present) {
+      map['farmer_uid'] = Variable<String>(farmerUid.value);
+    }
+    if (fieldId.present) {
+      map['field_id'] = Variable<String>(fieldId.value);
+    }
+    if (sampleLabel.present) {
+      map['sample_label'] = Variable<String>(sampleLabel.value);
+    }
+    if (labName.present) {
+      map['lab_name'] = Variable<String>(labName.value);
+    }
+    if (sampledAt.present) {
+      map['sampled_at'] = Variable<DateTime>(sampledAt.value);
+    }
+    if (ph.present) {
+      map['ph'] = Variable<double>(ph.value);
+    }
+    if (saltPct.present) {
+      map['salt_pct'] = Variable<double>(saltPct.value);
+    }
+    if (ecDsM.present) {
+      map['ec_ds_m'] = Variable<double>(ecDsM.value);
+    }
+    if (limePct.present) {
+      map['lime_pct'] = Variable<double>(limePct.value);
+    }
+    if (organicMatterPct.present) {
+      map['organic_matter_pct'] = Variable<double>(organicMatterPct.value);
+    }
+    if (phosphorusKgDa.present) {
+      map['phosphorus_kg_da'] = Variable<double>(phosphorusKgDa.value);
+    }
+    if (potassiumKgDa.present) {
+      map['potassium_kg_da'] = Variable<double>(potassiumKgDa.value);
+    }
+    if (nitrogenPct.present) {
+      map['nitrogen_pct'] = Variable<double>(nitrogenPct.value);
+    }
+    if (saturationPct.present) {
+      map['saturation_pct'] = Variable<double>(saturationPct.value);
+    }
+    if (textureClass.present) {
+      map['texture_class'] = Variable<String>(textureClass.value);
+    }
+    if (sampleLat.present) {
+      map['sample_lat'] = Variable<double>(sampleLat.value);
+    }
+    if (sampleLng.present) {
+      map['sample_lng'] = Variable<double>(sampleLng.value);
+    }
+    if (notes.present) {
+      map['notes'] = Variable<String>(notes.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SoilTestsCompanion(')
+          ..write('id: $id, ')
+          ..write('farmerUid: $farmerUid, ')
+          ..write('fieldId: $fieldId, ')
+          ..write('sampleLabel: $sampleLabel, ')
+          ..write('labName: $labName, ')
+          ..write('sampledAt: $sampledAt, ')
+          ..write('ph: $ph, ')
+          ..write('saltPct: $saltPct, ')
+          ..write('ecDsM: $ecDsM, ')
+          ..write('limePct: $limePct, ')
+          ..write('organicMatterPct: $organicMatterPct, ')
+          ..write('phosphorusKgDa: $phosphorusKgDa, ')
+          ..write('potassiumKgDa: $potassiumKgDa, ')
+          ..write('nitrogenPct: $nitrogenPct, ')
+          ..write('saturationPct: $saturationPct, ')
+          ..write('textureClass: $textureClass, ')
+          ..write('sampleLat: $sampleLat, ')
+          ..write('sampleLng: $sampleLng, ')
+          ..write('notes: $notes, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -6567,6 +7621,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $FieldPlantInstancesTable(this);
   late final $PlantConditionEventsTable plantConditionEvents =
       $PlantConditionEventsTable(this);
+  late final $SoilTestsTable soilTests = $SoilTestsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -6581,7 +7636,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         syncState,
         cropGrowthStates,
         fieldPlantInstances,
-        plantConditionEvents
+        plantConditionEvents,
+        soilTests
       ];
 }
 
@@ -6699,6 +7755,20 @@ final class $$FieldsTableReferences
 
     final cache =
         $_typedResult.readTableOrNull(_fieldPlantInstancesRefsTable($_db));
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: cache));
+  }
+
+  static MultiTypedResultKey<$SoilTestsTable, List<SoilTest>>
+      _soilTestsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+          db.soilTests,
+          aliasName: $_aliasNameGenerator(db.fields.id, db.soilTests.fieldId));
+
+  $$SoilTestsTableProcessedTableManager get soilTestsRefs {
+    final manager = $$SoilTestsTableTableManager($_db, $_db.soilTests)
+        .filter((f) => f.fieldId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_soilTestsRefsTable($_db));
     return ProcessedTableManager(
         manager.$state.copyWith(prefetchedData: cache));
   }
@@ -6849,6 +7919,27 @@ class $$FieldsTableFilterComposer
             $$FieldPlantInstancesTableFilterComposer(
               $db: $db,
               $table: $db.fieldPlantInstances,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
+
+  Expression<bool> soilTestsRefs(
+      Expression<bool> Function($$SoilTestsTableFilterComposer f) f) {
+    final $$SoilTestsTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.soilTests,
+        getReferencedColumn: (t) => t.fieldId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$SoilTestsTableFilterComposer(
+              $db: $db,
+              $table: $db.soilTests,
               $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
               joinBuilder: joinBuilder,
               $removeJoinBuilderFromRootComposer:
@@ -7062,6 +8153,27 @@ class $$FieldsTableAnnotationComposer
                 ));
     return f(composer);
   }
+
+  Expression<T> soilTestsRefs<T extends Object>(
+      Expression<T> Function($$SoilTestsTableAnnotationComposer a) f) {
+    final $$SoilTestsTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.soilTests,
+        getReferencedColumn: (t) => t.fieldId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$SoilTestsTableAnnotationComposer(
+              $db: $db,
+              $table: $db.soilTests,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
 }
 
 class $$FieldsTableTableManager extends RootTableManager<
@@ -7080,7 +8192,8 @@ class $$FieldsTableTableManager extends RootTableManager<
         bool calendarEventsRefs,
         bool irrigationPlansRefs,
         bool suitabilityReportsRefs,
-        bool fieldPlantInstancesRefs})> {
+        bool fieldPlantInstancesRefs,
+        bool soilTestsRefs})> {
   $$FieldsTableTableManager(_$AppDatabase db, $FieldsTable table)
       : super(TableManagerState(
           db: db,
@@ -7164,7 +8277,8 @@ class $$FieldsTableTableManager extends RootTableManager<
               calendarEventsRefs = false,
               irrigationPlansRefs = false,
               suitabilityReportsRefs = false,
-              fieldPlantInstancesRefs = false}) {
+              fieldPlantInstancesRefs = false,
+              soilTestsRefs = false}) {
             return PrefetchHooks(
               db: db,
               explicitlyWatchedTables: [
@@ -7172,7 +8286,8 @@ class $$FieldsTableTableManager extends RootTableManager<
                 if (calendarEventsRefs) db.calendarEvents,
                 if (irrigationPlansRefs) db.irrigationPlans,
                 if (suitabilityReportsRefs) db.suitabilityReports,
-                if (fieldPlantInstancesRefs) db.fieldPlantInstances
+                if (fieldPlantInstancesRefs) db.fieldPlantInstances,
+                if (soilTestsRefs) db.soilTests
               ],
               addJoins: null,
               getPrefetchedDataCallback: (items) async {
@@ -7240,6 +8355,18 @@ class $$FieldsTableTableManager extends RootTableManager<
                         referencedItemsForCurrentItem: (item,
                                 referencedItems) =>
                             referencedItems.where((e) => e.fieldId == item.id),
+                        typedResults: items),
+                  if (soilTestsRefs)
+                    await $_getPrefetchedData<Field, $FieldsTable, SoilTest>(
+                        currentTable: table,
+                        referencedTable:
+                            $$FieldsTableReferences._soilTestsRefsTable(db),
+                        managerFromTypedResult: (p0) =>
+                            $$FieldsTableReferences(db, table, p0)
+                                .soilTestsRefs,
+                        referencedItemsForCurrentItem: (item,
+                                referencedItems) =>
+                            referencedItems.where((e) => e.fieldId == item.id),
                         typedResults: items)
                 ];
               },
@@ -7264,7 +8391,8 @@ typedef $$FieldsTableProcessedTableManager = ProcessedTableManager<
         bool calendarEventsRefs,
         bool irrigationPlansRefs,
         bool suitabilityReportsRefs,
-        bool fieldPlantInstancesRefs})>;
+        bool fieldPlantInstancesRefs,
+        bool soilTestsRefs})>;
 typedef $$FieldCropsTableCreateCompanionBuilder = FieldCropsCompanion Function({
   required String id,
   required String fieldId,
@@ -10907,6 +12035,540 @@ typedef $$PlantConditionEventsTableProcessedTableManager
         ),
         PlantConditionEvent,
         PrefetchHooks Function()>;
+typedef $$SoilTestsTableCreateCompanionBuilder = SoilTestsCompanion Function({
+  required String id,
+  Value<String?> farmerUid,
+  required String fieldId,
+  Value<String?> sampleLabel,
+  Value<String?> labName,
+  Value<DateTime?> sampledAt,
+  Value<double?> ph,
+  Value<double?> saltPct,
+  Value<double?> ecDsM,
+  Value<double?> limePct,
+  Value<double?> organicMatterPct,
+  Value<double?> phosphorusKgDa,
+  Value<double?> potassiumKgDa,
+  Value<double?> nitrogenPct,
+  Value<double?> saturationPct,
+  Value<String?> textureClass,
+  Value<double?> sampleLat,
+  Value<double?> sampleLng,
+  Value<String?> notes,
+  required DateTime createdAt,
+  required DateTime updatedAt,
+  Value<DateTime?> deletedAt,
+  Value<int> rowid,
+});
+typedef $$SoilTestsTableUpdateCompanionBuilder = SoilTestsCompanion Function({
+  Value<String> id,
+  Value<String?> farmerUid,
+  Value<String> fieldId,
+  Value<String?> sampleLabel,
+  Value<String?> labName,
+  Value<DateTime?> sampledAt,
+  Value<double?> ph,
+  Value<double?> saltPct,
+  Value<double?> ecDsM,
+  Value<double?> limePct,
+  Value<double?> organicMatterPct,
+  Value<double?> phosphorusKgDa,
+  Value<double?> potassiumKgDa,
+  Value<double?> nitrogenPct,
+  Value<double?> saturationPct,
+  Value<String?> textureClass,
+  Value<double?> sampleLat,
+  Value<double?> sampleLng,
+  Value<String?> notes,
+  Value<DateTime> createdAt,
+  Value<DateTime> updatedAt,
+  Value<DateTime?> deletedAt,
+  Value<int> rowid,
+});
+
+final class $$SoilTestsTableReferences
+    extends BaseReferences<_$AppDatabase, $SoilTestsTable, SoilTest> {
+  $$SoilTestsTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $FieldsTable _fieldIdTable(_$AppDatabase db) => db.fields
+      .createAlias($_aliasNameGenerator(db.soilTests.fieldId, db.fields.id));
+
+  $$FieldsTableProcessedTableManager get fieldId {
+    final $_column = $_itemColumn<String>('field_id')!;
+
+    final manager = $$FieldsTableTableManager($_db, $_db.fields)
+        .filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_fieldIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: [item]));
+  }
+}
+
+class $$SoilTestsTableFilterComposer
+    extends Composer<_$AppDatabase, $SoilTestsTable> {
+  $$SoilTestsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get farmerUid => $composableBuilder(
+      column: $table.farmerUid, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get sampleLabel => $composableBuilder(
+      column: $table.sampleLabel, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get labName => $composableBuilder(
+      column: $table.labName, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get sampledAt => $composableBuilder(
+      column: $table.sampledAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get ph => $composableBuilder(
+      column: $table.ph, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get saltPct => $composableBuilder(
+      column: $table.saltPct, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get ecDsM => $composableBuilder(
+      column: $table.ecDsM, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get limePct => $composableBuilder(
+      column: $table.limePct, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get organicMatterPct => $composableBuilder(
+      column: $table.organicMatterPct,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get phosphorusKgDa => $composableBuilder(
+      column: $table.phosphorusKgDa,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get potassiumKgDa => $composableBuilder(
+      column: $table.potassiumKgDa, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get nitrogenPct => $composableBuilder(
+      column: $table.nitrogenPct, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get saturationPct => $composableBuilder(
+      column: $table.saturationPct, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get textureClass => $composableBuilder(
+      column: $table.textureClass, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get sampleLat => $composableBuilder(
+      column: $table.sampleLat, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get sampleLng => $composableBuilder(
+      column: $table.sampleLng, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get notes => $composableBuilder(
+      column: $table.notes, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get deletedAt => $composableBuilder(
+      column: $table.deletedAt, builder: (column) => ColumnFilters(column));
+
+  $$FieldsTableFilterComposer get fieldId {
+    final $$FieldsTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.fieldId,
+        referencedTable: $db.fields,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$FieldsTableFilterComposer(
+              $db: $db,
+              $table: $db.fields,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$SoilTestsTableOrderingComposer
+    extends Composer<_$AppDatabase, $SoilTestsTable> {
+  $$SoilTestsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get farmerUid => $composableBuilder(
+      column: $table.farmerUid, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get sampleLabel => $composableBuilder(
+      column: $table.sampleLabel, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get labName => $composableBuilder(
+      column: $table.labName, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get sampledAt => $composableBuilder(
+      column: $table.sampledAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get ph => $composableBuilder(
+      column: $table.ph, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get saltPct => $composableBuilder(
+      column: $table.saltPct, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get ecDsM => $composableBuilder(
+      column: $table.ecDsM, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get limePct => $composableBuilder(
+      column: $table.limePct, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get organicMatterPct => $composableBuilder(
+      column: $table.organicMatterPct,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get phosphorusKgDa => $composableBuilder(
+      column: $table.phosphorusKgDa,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get potassiumKgDa => $composableBuilder(
+      column: $table.potassiumKgDa,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get nitrogenPct => $composableBuilder(
+      column: $table.nitrogenPct, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get saturationPct => $composableBuilder(
+      column: $table.saturationPct,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get textureClass => $composableBuilder(
+      column: $table.textureClass,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get sampleLat => $composableBuilder(
+      column: $table.sampleLat, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get sampleLng => $composableBuilder(
+      column: $table.sampleLng, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get notes => $composableBuilder(
+      column: $table.notes, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get deletedAt => $composableBuilder(
+      column: $table.deletedAt, builder: (column) => ColumnOrderings(column));
+
+  $$FieldsTableOrderingComposer get fieldId {
+    final $$FieldsTableOrderingComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.fieldId,
+        referencedTable: $db.fields,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$FieldsTableOrderingComposer(
+              $db: $db,
+              $table: $db.fields,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$SoilTestsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SoilTestsTable> {
+  $$SoilTestsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get farmerUid =>
+      $composableBuilder(column: $table.farmerUid, builder: (column) => column);
+
+  GeneratedColumn<String> get sampleLabel => $composableBuilder(
+      column: $table.sampleLabel, builder: (column) => column);
+
+  GeneratedColumn<String> get labName =>
+      $composableBuilder(column: $table.labName, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get sampledAt =>
+      $composableBuilder(column: $table.sampledAt, builder: (column) => column);
+
+  GeneratedColumn<double> get ph =>
+      $composableBuilder(column: $table.ph, builder: (column) => column);
+
+  GeneratedColumn<double> get saltPct =>
+      $composableBuilder(column: $table.saltPct, builder: (column) => column);
+
+  GeneratedColumn<double> get ecDsM =>
+      $composableBuilder(column: $table.ecDsM, builder: (column) => column);
+
+  GeneratedColumn<double> get limePct =>
+      $composableBuilder(column: $table.limePct, builder: (column) => column);
+
+  GeneratedColumn<double> get organicMatterPct => $composableBuilder(
+      column: $table.organicMatterPct, builder: (column) => column);
+
+  GeneratedColumn<double> get phosphorusKgDa => $composableBuilder(
+      column: $table.phosphorusKgDa, builder: (column) => column);
+
+  GeneratedColumn<double> get potassiumKgDa => $composableBuilder(
+      column: $table.potassiumKgDa, builder: (column) => column);
+
+  GeneratedColumn<double> get nitrogenPct => $composableBuilder(
+      column: $table.nitrogenPct, builder: (column) => column);
+
+  GeneratedColumn<double> get saturationPct => $composableBuilder(
+      column: $table.saturationPct, builder: (column) => column);
+
+  GeneratedColumn<String> get textureClass => $composableBuilder(
+      column: $table.textureClass, builder: (column) => column);
+
+  GeneratedColumn<double> get sampleLat =>
+      $composableBuilder(column: $table.sampleLat, builder: (column) => column);
+
+  GeneratedColumn<double> get sampleLng =>
+      $composableBuilder(column: $table.sampleLng, builder: (column) => column);
+
+  GeneratedColumn<String> get notes =>
+      $composableBuilder(column: $table.notes, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+
+  $$FieldsTableAnnotationComposer get fieldId {
+    final $$FieldsTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.fieldId,
+        referencedTable: $db.fields,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$FieldsTableAnnotationComposer(
+              $db: $db,
+              $table: $db.fields,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$SoilTestsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $SoilTestsTable,
+    SoilTest,
+    $$SoilTestsTableFilterComposer,
+    $$SoilTestsTableOrderingComposer,
+    $$SoilTestsTableAnnotationComposer,
+    $$SoilTestsTableCreateCompanionBuilder,
+    $$SoilTestsTableUpdateCompanionBuilder,
+    (SoilTest, $$SoilTestsTableReferences),
+    SoilTest,
+    PrefetchHooks Function({bool fieldId})> {
+  $$SoilTestsTableTableManager(_$AppDatabase db, $SoilTestsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SoilTestsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SoilTestsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$SoilTestsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<String?> farmerUid = const Value.absent(),
+            Value<String> fieldId = const Value.absent(),
+            Value<String?> sampleLabel = const Value.absent(),
+            Value<String?> labName = const Value.absent(),
+            Value<DateTime?> sampledAt = const Value.absent(),
+            Value<double?> ph = const Value.absent(),
+            Value<double?> saltPct = const Value.absent(),
+            Value<double?> ecDsM = const Value.absent(),
+            Value<double?> limePct = const Value.absent(),
+            Value<double?> organicMatterPct = const Value.absent(),
+            Value<double?> phosphorusKgDa = const Value.absent(),
+            Value<double?> potassiumKgDa = const Value.absent(),
+            Value<double?> nitrogenPct = const Value.absent(),
+            Value<double?> saturationPct = const Value.absent(),
+            Value<String?> textureClass = const Value.absent(),
+            Value<double?> sampleLat = const Value.absent(),
+            Value<double?> sampleLng = const Value.absent(),
+            Value<String?> notes = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<DateTime> updatedAt = const Value.absent(),
+            Value<DateTime?> deletedAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              SoilTestsCompanion(
+            id: id,
+            farmerUid: farmerUid,
+            fieldId: fieldId,
+            sampleLabel: sampleLabel,
+            labName: labName,
+            sampledAt: sampledAt,
+            ph: ph,
+            saltPct: saltPct,
+            ecDsM: ecDsM,
+            limePct: limePct,
+            organicMatterPct: organicMatterPct,
+            phosphorusKgDa: phosphorusKgDa,
+            potassiumKgDa: potassiumKgDa,
+            nitrogenPct: nitrogenPct,
+            saturationPct: saturationPct,
+            textureClass: textureClass,
+            sampleLat: sampleLat,
+            sampleLng: sampleLng,
+            notes: notes,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            deletedAt: deletedAt,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String id,
+            Value<String?> farmerUid = const Value.absent(),
+            required String fieldId,
+            Value<String?> sampleLabel = const Value.absent(),
+            Value<String?> labName = const Value.absent(),
+            Value<DateTime?> sampledAt = const Value.absent(),
+            Value<double?> ph = const Value.absent(),
+            Value<double?> saltPct = const Value.absent(),
+            Value<double?> ecDsM = const Value.absent(),
+            Value<double?> limePct = const Value.absent(),
+            Value<double?> organicMatterPct = const Value.absent(),
+            Value<double?> phosphorusKgDa = const Value.absent(),
+            Value<double?> potassiumKgDa = const Value.absent(),
+            Value<double?> nitrogenPct = const Value.absent(),
+            Value<double?> saturationPct = const Value.absent(),
+            Value<String?> textureClass = const Value.absent(),
+            Value<double?> sampleLat = const Value.absent(),
+            Value<double?> sampleLng = const Value.absent(),
+            Value<String?> notes = const Value.absent(),
+            required DateTime createdAt,
+            required DateTime updatedAt,
+            Value<DateTime?> deletedAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              SoilTestsCompanion.insert(
+            id: id,
+            farmerUid: farmerUid,
+            fieldId: fieldId,
+            sampleLabel: sampleLabel,
+            labName: labName,
+            sampledAt: sampledAt,
+            ph: ph,
+            saltPct: saltPct,
+            ecDsM: ecDsM,
+            limePct: limePct,
+            organicMatterPct: organicMatterPct,
+            phosphorusKgDa: phosphorusKgDa,
+            potassiumKgDa: potassiumKgDa,
+            nitrogenPct: nitrogenPct,
+            saturationPct: saturationPct,
+            textureClass: textureClass,
+            sampleLat: sampleLat,
+            sampleLng: sampleLng,
+            notes: notes,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            deletedAt: deletedAt,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (
+                    e.readTable(table),
+                    $$SoilTestsTableReferences(db, table, e)
+                  ))
+              .toList(),
+          prefetchHooksCallback: ({fieldId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins: <
+                  T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic>>(state) {
+                if (fieldId) {
+                  state = state.withJoin(
+                    currentTable: table,
+                    currentColumn: table.fieldId,
+                    referencedTable:
+                        $$SoilTestsTableReferences._fieldIdTable(db),
+                    referencedColumn:
+                        $$SoilTestsTableReferences._fieldIdTable(db).id,
+                  ) as T;
+                }
+
+                return state;
+              },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ));
+}
+
+typedef $$SoilTestsTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $SoilTestsTable,
+    SoilTest,
+    $$SoilTestsTableFilterComposer,
+    $$SoilTestsTableOrderingComposer,
+    $$SoilTestsTableAnnotationComposer,
+    $$SoilTestsTableCreateCompanionBuilder,
+    $$SoilTestsTableUpdateCompanionBuilder,
+    (SoilTest, $$SoilTestsTableReferences),
+    SoilTest,
+    PrefetchHooks Function({bool fieldId})>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -10931,4 +12593,6 @@ class $AppDatabaseManager {
       $$FieldPlantInstancesTableTableManager(_db, _db.fieldPlantInstances);
   $$PlantConditionEventsTableTableManager get plantConditionEvents =>
       $$PlantConditionEventsTableTableManager(_db, _db.plantConditionEvents);
+  $$SoilTestsTableTableManager get soilTests =>
+      $$SoilTestsTableTableManager(_db, _db.soilTests);
 }

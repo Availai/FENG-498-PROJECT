@@ -213,6 +213,14 @@ final fieldCropsStreamProvider = StreamProvider.family
   return ref.watch(localDataRepositoryProvider).watchFieldCrops(fieldId);
 });
 
+/// Tarlanın laboratuvar toprak analizleri (geçmiş dahil) canlı stream.
+/// Yeni analiz kaydedildiğinde toprak analizi ekranı anında yenilensin diye
+/// expose edilir.
+final fieldSoilTestsProvider =
+    StreamProvider.family.autoDispose<List<SoilTest>, String>((ref, fieldId) {
+  return ref.watch(localDataRepositoryProvider).watchSoilTests(fieldId);
+});
+
 /// Bitki hastalığı teşhis servisi — şimdilik stub. AI eklendiğinde tek
 /// satır değişikliği ile `GeminiDiseaseDiagnosisService(...)` döndürülecek.
 final diseaseDiagnosisServiceProvider = Provider<DiseaseDiagnosisService>((_) {
@@ -510,6 +518,15 @@ Future<RuleEnvironmentSnapshot?> _buildRuleEnvironmentSnapshot({
   final weatherSnapshot = _mapValue(report?['weather_snapshot']);
   final soilSnapshot = _mapValue(report?['soil_snapshot']);
 
+  // Çiftçinin girdiği EN GÜNCEL laboratuvar toprak analizi — varsa pH/NPK
+  // için en yüksek öncelikli (gerçek ölçüm) kaynaktır; uydu/tahminin önüne
+  // geçer (CLAUDE.md §16). Ağ gerektirmez → çevrimdışı da çalışır.
+  final labTests = await repo.loadSoilTests(fieldId);
+  final lab = labTests.isNotEmpty ? labTests.first : null;
+  // Lab toplam azot % → kg N/dekar (estimateNpk ile aynı ölçek: %×10 g/kg ×0.28).
+  final labNitrogenKgDa =
+      lab?.nitrogenPct != null ? lab!.nitrogenPct! * 2.8 : null;
+
   final lat = (fieldMap?['latitude'] as num?)?.toDouble();
   final lng = (fieldMap?['longitude'] as num?)?.toDouble();
   DashboardConditions? conditions;
@@ -517,6 +534,9 @@ Future<RuleEnvironmentSnapshot?> _buildRuleEnvironmentSnapshot({
   SoilProfile? soilProfile;
 
   final sources = <String>[];
+  if (lab != null) {
+    sources.add('lab analizi');
+  }
   if (weatherSnapshot != null || soilSnapshot != null) {
     sources.add('son analiz');
   }
@@ -590,14 +610,18 @@ Future<RuleEnvironmentSnapshot?> _buildRuleEnvironmentSnapshot({
         _firstDouble(soilSnapshot, const ['soil_moisture', 'moisture']),
     soilTempC: satelliteSoil?['soil_temp_c'] ??
         _firstDouble(soilSnapshot, const ['soil_temp_c', 'soil_temp']),
-    soilPh: soilProfile?.phReal ??
+    soilPh: lab?.ph ??
+        soilProfile?.phReal ??
         conditions?.phH2O ??
         _firstDouble(soilSnapshot, const ['ph', 'soil_ph', 'ph_h2o']),
-    nitrogenKgDekar: npk?.nitrogenKgDekar ??
+    nitrogenKgDekar: labNitrogenKgDa ??
+        npk?.nitrogenKgDekar ??
         _firstDouble(soilSnapshot, const ['nitrogen_kg_dekar', 'n_kg_dekar']),
-    phosphorusKgDekar: npk?.phosphorusKgDekar ??
+    phosphorusKgDekar: lab?.phosphorusKgDa ??
+        npk?.phosphorusKgDekar ??
         _firstDouble(soilSnapshot, const ['phosphorus_kg_dekar', 'p_kg_dekar']),
-    potassiumKgDekar: npk?.potassiumKgDekar ??
+    potassiumKgDekar: lab?.potassiumKgDa ??
+        npk?.potassiumKgDekar ??
         _firstDouble(soilSnapshot, const ['potassium_kg_dekar', 'k_kg_dekar']),
     fetchedAt: DateTime.now(),
     source:

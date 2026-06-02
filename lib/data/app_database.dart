@@ -287,6 +287,67 @@ class PlantConditionEvents extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
+/// Çiftçinin akredite laboratuvardan aldığı GERÇEK toprak analizi sonuçları.
+/// Örnek, tarlanın istediği bir kısmından alınır; `sampleLabel` o kısmı
+/// (ör. "Kuzey köşe", "dere kenarı") serbest metin olarak tutar. Tüm ölçüm
+/// alanları nullable — raporda olmayan değer girilmez ve yorumlanmaz.
+/// Kullanıcıya ait kayıt (CLAUDE.md §5.5) → `farmerUid` taşır.
+class SoilTests extends Table {
+  TextColumn get id => text()();
+  TextColumn get farmerUid => text().nullable()();
+  TextColumn get fieldId => text().references(Fields, #id)();
+
+  /// Örneğin alındığı tarla kısmı (serbest metin).
+  TextColumn get sampleLabel => text().nullable()();
+
+  /// Analizi yapan laboratuvar/kurum adı.
+  TextColumn get labName => text().nullable()();
+
+  /// Örneğin alındığı/analiz tarihi.
+  DateTimeColumn get sampledAt => dateTime().nullable()();
+
+  RealColumn get ph => real().nullable()();
+
+  /// % toplam tuz (satüre çamur).
+  RealColumn get saltPct => real().nullable()();
+
+  /// EC — elektriksel iletkenlik (dS/m).
+  RealColumn get ecDsM => real().nullable()();
+
+  /// Kireç CaCO₃ %.
+  RealColumn get limePct => real().nullable()();
+
+  /// Organik madde %.
+  RealColumn get organicMatterPct => real().nullable()();
+
+  /// Fosfor P₂O₅ kg/dekar.
+  RealColumn get phosphorusKgDa => real().nullable()();
+
+  /// Potasyum K₂O kg/dekar.
+  RealColumn get potassiumKgDa => real().nullable()();
+
+  /// Toplam azot %.
+  RealColumn get nitrogenPct => real().nullable()();
+
+  /// Suyla doygunluk %.
+  RealColumn get saturationPct => real().nullable()();
+
+  /// Doku sınıfı (girilen veya doygunluktan türetilen).
+  TextColumn get textureClass => text().nullable()();
+
+  /// Örneğin haritadan seçilen noktası (tarla içi). null → harita seçimi yok.
+  RealColumn get sampleLat => real().nullable()();
+  RealColumn get sampleLng => real().nullable()();
+
+  TextColumn get notes => text().nullable()();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+  DateTimeColumn get deletedAt => dateTime().nullable()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
 class SyncJobs extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get entityType => text()();
@@ -320,13 +381,14 @@ class SyncState extends Table {
     CropGrowthStates,
     FieldPlantInstances,
     PlantConditionEvents,
+    SoilTests,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 11;
+  int get schemaVersion => 12;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -401,6 +463,11 @@ class AppDatabase extends _$AppDatabase {
               // regenerate gerektirmez).
               await customStatement(
                   'ALTER TABLE field_crops ADD COLUMN is_seedling INTEGER;');
+            }
+            if (from < 12) {
+              // v12: çiftçinin laboratuvardan aldığı gerçek toprak analizi
+              // sonuçları için yeni tablo (lab girişi + deterministik öneri).
+              await m.createTable(soilTests);
             }
           } catch (e, st) {
             debugPrint('Drift migration $from→$to hata: $e\n$st');

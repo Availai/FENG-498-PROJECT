@@ -40,6 +40,7 @@ import 'cost_ledger_screen.dart';
 import 'disease_capture_screen.dart';
 import 'farm_journal_screen.dart';
 import 'field_tracking_screen.dart';
+import 'soil_test_entry_screen.dart';
 import 'plant_zone_drawing_screen.dart';
 import 'turkish_crops_search_screen.dart';
 import '../widgets/animated_route.dart';
@@ -430,6 +431,11 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
         ),
         centerTitle: false,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.science_outlined, color: Colors.white70),
+            tooltip: 'Toprak Analizi',
+            onPressed: _openSoilTest,
+          ),
           IconButton(
             icon: const Icon(Icons.account_balance_wallet_outlined,
                 color: Colors.white70),
@@ -1400,6 +1406,29 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
       context,
       MaterialPageRoute(
         builder: (_) => FarmJournalScreen(fieldId: id),
+      ),
+    );
+  }
+
+  void _openSoilTest() {
+    final d = widget.fieldData;
+    final id = d['id']?.toString();
+    if (id == null || id.isEmpty) return;
+    // Aktif ilk ekin varsa gübre takvimi için ürün adını geçir.
+    final crop = _fieldCrops.isNotEmpty
+        ? _fieldCrops.first['name']?.toString()
+        : d['crop']?.toString();
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => SoilTestEntryScreen(
+          fieldId: id,
+          fieldName: d['name']?.toString() ?? 'Tarla',
+          cropName: (crop != null && crop.isNotEmpty && crop != 'Belirtilmedi')
+              ? crop
+              : null,
+          fieldPolygon: _polygonPoints(d),
+        ),
       ),
     );
   }
@@ -4632,8 +4661,7 @@ class _DirectivesModalContent extends ConsumerWidget {
                       MaterialPageRoute(
                         builder: (_) => IrrigationHistoryScreen(
                           fieldId: fieldId,
-                          fieldName:
-                              fieldData['name']?.toString() ?? 'Tarla',
+                          fieldName: fieldData['name']?.toString() ?? 'Tarla',
                           fieldAreaDekar: fieldAreaDekar,
                           seasonStart: seasonStart,
                         ),
