@@ -1,0 +1,39 @@
+<mxfile host="app.diagrams.net" version="24.0.0" type="device">
+  <diagram id="fig13-sync-state" name="Fig13 Sync-State">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" page="1" pageWidth="1100" pageHeight="700" math="0" shadow="0">
+      <root>
+        <mxCell id="0" /><mxCell id="1" parent="0" />
+
+        <mxCell id="title" value="Tarlam — SyncJob State Machine (offline outbox, LWW)" style="text;html=1;align=left;fontSize=18;fontStyle=1;fontColor=#1B3A2B;" vertex="1" parent="1"><mxGeometry x="40" y="20" width="640" height="30" as="geometry" /></mxCell>
+
+        <!-- initial -->
+        <mxCell id="init" value="" style="ellipse;html=1;fillColor=#1B3A2B;strokeColor=#1B3A2B;" vertex="1" parent="1"><mxGeometry x="90" y="120" width="20" height="20" as="geometry" /></mxCell>
+
+        <mxCell id="pending" value="pending&#10;(in SyncJobs outbox)" style="rounded=1;whiteSpace=wrap;html=1;arcSize=30;fontSize=12;fillColor=#E8F5E9;strokeColor=#2E7D32;" vertex="1" parent="1"><mxGeometry x="200" y="110" width="170" height="56" as="geometry" /></mxCell>
+        <mxCell id="inflight" value="inFlight&#10;(POST /api/sync/push)" style="rounded=1;whiteSpace=wrap;html=1;arcSize=30;fontSize=12;fillColor=#E8F5E9;strokeColor=#2E7D32;" vertex="1" parent="1"><mxGeometry x="470" y="110" width="170" height="56" as="geometry" /></mxCell>
+        <mxCell id="synced" value="synced&#10;(server applied; status='synced')" style="rounded=1;whiteSpace=wrap;html=1;arcSize=30;fontSize=12;fillColor=#C8E6C9;strokeColor=#2E7D32;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="760" y="60" width="200" height="56" as="geometry" /></mxCell>
+        <mxCell id="rejected" value="rejected (stale)&#10;incoming.updated_at &#8804; stored&#10;&#8594; pull authoritative record" style="rounded=1;whiteSpace=wrap;html=1;arcSize=30;fontSize=11;fillColor=#FFF3E0;strokeColor=#EF8E3B;" vertex="1" parent="1"><mxGeometry x="760" y="160" width="200" height="64" as="geometry" /></mxCell>
+        <mxCell id="failed" value="failed&#10;(network / 5xx; lastError set)" style="rounded=1;whiteSpace=wrap;html=1;arcSize=30;fontSize=12;fillColor=#FDECEA;strokeColor=#D9534F;" vertex="1" parent="1"><mxGeometry x="470" y="300" width="170" height="56" as="geometry" /></mxCell>
+        <mxCell id="offline" value="offline / no signal&#10;(write stays queued locally)" style="rounded=1;whiteSpace=wrap;html=1;arcSize=30;fontSize=11;fillColor=#E1F0FB;strokeColor=#4A90C2;" vertex="1" parent="1"><mxGeometry x="200" y="300" width="170" height="56" as="geometry" /></mxCell>
+
+        <!-- final -->
+        <mxCell id="final" value="" style="ellipse;html=1;fillColor=#FFFFFF;strokeColor=#1B3A2B;" vertex="1" parent="1"><mxGeometry x="1010" y="78" width="22" height="22" as="geometry" /></mxCell>
+        <mxCell id="finalInner" value="" style="ellipse;html=1;fillColor=#1B3A2B;strokeColor=#1B3A2B;" vertex="1" parent="1"><mxGeometry x="1015" y="83" width="12" height="12" as="geometry" /></mxCell>
+
+        <!-- transitions -->
+        <mxCell id="t0" value="local write enqueued" style="endArrow=block;html=1;fontSize=10;strokeColor=#1B3A2B;" edge="1" parent="1" source="init" target="pending"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="t1" value="connectivity available / push batch" style="endArrow=block;html=1;fontSize=10;strokeColor=#1B3A2B;" edge="1" parent="1" source="pending" target="inflight"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="t2" value="200 OK / _upsert_sync_record accepted" style="endArrow=block;html=1;fontSize=10;strokeColor=#2E7D32;" edge="1" parent="1" source="inflight" target="synced"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="t3" value="LWW: incoming not newer" style="endArrow=block;html=1;fontSize=10;strokeColor=#EF8E3B;" edge="1" parent="1" source="inflight" target="rejected"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="t4" value="network error / 5xx / timeout (&gt;10 s)" style="endArrow=block;html=1;fontSize=10;strokeColor=#D9534F;" edge="1" parent="1" source="inflight" target="failed"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="t5" value="exponential backoff / attemptCount++" style="endArrow=block;html=1;fontSize=10;strokeColor=#D9534F;" edge="1" parent="1" source="failed" target="pending"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="285" y="240" /></Array></mxGeometry></mxCell>
+        <mxCell id="t6" value="no connectivity at push time" style="endArrow=block;html=1;fontSize=10;strokeColor=#4A90C2;" edge="1" parent="1" source="pending" target="offline"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="t7" value="WorkManager reconnect" style="endArrow=block;html=1;fontSize=10;strokeColor=#4A90C2;" edge="1" parent="1" source="offline" target="pending"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="160" y="290" /><mxPoint x="160" y="160" /></Array></mxGeometry></mxCell>
+        <mxCell id="t8" value="pull merges authoritative state" style="endArrow=block;dashed=1;html=1;fontSize=10;strokeColor=#EF8E3B;" edge="1" parent="1" source="rejected" target="synced"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="t9" value="acked &amp; cleared from outbox" style="endArrow=block;html=1;fontSize=10;strokeColor=#1B3A2B;" edge="1" parent="1" source="synced" target="final"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="note" value="LWW (Last-Write-Wins) is enforced server-side by _upsert_sync_record: an incoming record is applied only&#10;if its updated_at is strictly newer than the stored one — otherwise rejected as stale and the client pulls the&#10;authoritative record. This realises NFR-6 (consistency) and the 'sync data conflicts' mitigation in Table 3.3." style="text;html=1;align=left;verticalAlign=top;fontSize=11;fillColor=#F6FBF4;strokeColor=#A5C9AE;spacingLeft=6;" vertex="1" parent="1"><mxGeometry x="40" y="430" width="900" height="70" as="geometry" /></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

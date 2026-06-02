@@ -66,10 +66,21 @@
       "Bash(mkdir -p /tmp/tarlam_verify)",
       "Read(//tmp/tarlam_verify/**)",
       "Bash(flutter install *)",
-      "Bash(adb shell *)"
+      "Bash(adb shell *)",
+      "WebFetch(domain:docs.google.com)",
+      "WebFetch(domain:doi.org)",
+      "WebFetch(domain:onlinelibrary.wiley.com)",
+      "WebFetch(domain:www.nature.com)",
+      "WebFetch(domain:iopscience.iop.org)",
+      "Bash(npm install *)",
+      "Bash(cd \"c:\\\\dev\\\\feng_498/docs/diagrams\" && rm -f *.svg && echo \"svg cleaned\")",
+      "Bash(ls -la Dockerfile backend/Dockerfile)",
+      "Bash(ls backend/*.yaml backend/*.yml backend/app.yaml backend/cloudbuild.yaml backend/.gcloudignore backend/Procfile)",
+      "Bash(docker --version)"
     ],
     "additionalDirectories": [
-      "c:\\FENG 498\\feng_498"
+      "c:\\FENG 498\\feng_498",
+      "C:\\dev\\feng_498\\docs\\diagrams"
     ]
   }
 }

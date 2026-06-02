@@ -1,0 +1,41 @@
+<mxfile host="app.diagrams.net" version="24.0.0" type="device">
+  <diagram id="fig12-deployment" name="Fig12 Deployment">
+    <mxGraphModel dx="1300" dy="900" grid="1" gridSize="10" page="1" pageWidth="1200" pageHeight="780" math="0" shadow="0">
+      <root>
+        <mxCell id="0" /><mxCell id="1" parent="0" />
+
+        <mxCell id="title" value="Tarlam — UML Deployment View" style="text;html=1;align=left;fontSize=18;fontStyle=1;fontColor=#1B3A2B;" vertex="1" parent="1"><mxGeometry x="40" y="20" width="500" height="30" as="geometry" /></mxCell>
+
+        <!-- Device node -->
+        <mxCell id="device" value="&lt;&lt;device&gt;&gt;  Farmer Android Phone&#10;(low-end: ~2 GB RAM, Android 8.0+)" style="shape=cube;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;darkOpacity=0.05;verticalAlign=top;fontSize=12;fontStyle=1;fillColor=#F6FBF4;strokeColor=#2E7D32;fontColor=#1B3A2B;" vertex="1" parent="1"><mxGeometry x="60" y="100" width="360" height="340" as="geometry" /></mxCell>
+        <mxCell id="d_app" value="&lt;&lt;artifact&gt;&gt;  Tarlam.apk  (Flutter)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#E8F5E9;strokeColor=#2E7D32;" vertex="1" parent="1"><mxGeometry x="90" y="150" width="300" height="40" as="geometry" /></mxCell>
+        <mxCell id="d_engine" value="Dart Rule Engine (offline path — no network)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#C8E6C9;strokeColor=#2E7D32;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="90" y="205" width="300" height="40" as="geometry" /></mxCell>
+        <mxCell id="d_sqlite" value="&lt;&lt;db&gt;&gt; SQLite (Drift v11)" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=10;fontSize=10;fillColor=#E8F5E9;strokeColor=#2E7D32;" vertex="1" parent="1"><mxGeometry x="90" y="265" width="140" height="64" as="geometry" /></mxCell>
+        <mxCell id="d_hive" value="&lt;&lt;db&gt;&gt; Hive cache" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=10;fontSize=10;fillColor=#E8F5E9;strokeColor=#2E7D32;" vertex="1" parent="1"><mxGeometry x="250" y="265" width="140" height="64" as="geometry" /></mxCell>
+        <mxCell id="d_assets" value="292-crop SQLite asset + rule packs (bundled)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;fillColor=#FFF8E1;strokeColor=#F9A825;" vertex="1" parent="1"><mxGeometry x="90" y="345" width="300" height="36" as="geometry" /></mxCell>
+        <mxCell id="d_wm" value="WorkManager outbox (defers writes until reconnect)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;fillColor=#E8F5E9;strokeColor=#2E7D32;" vertex="1" parent="1"><mxGeometry x="90" y="390" width="300" height="36" as="geometry" /></mxCell>
+
+        <!-- Cloud Run node -->
+        <mxCell id="cloud" value="&lt;&lt;execution environment&gt;&gt;  Google Cloud Run&#10;(Docker container, serverless, scale-to-zero)" style="shape=cube;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;darkOpacity=0.05;verticalAlign=top;fontSize=12;fontStyle=1;fillColor=#F6FBF4;strokeColor=#2E7D32;fontColor=#1B3A2B;" vertex="1" parent="1"><mxGeometry x="560" y="100" width="340" height="220" as="geometry" /></mxCell>
+        <mxCell id="c_api" value="&lt;&lt;artifact&gt;&gt;  FastAPI + Uvicorn (ASGI)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#E8F5E9;strokeColor=#2E7D32;" vertex="1" parent="1"><mxGeometry x="585" y="150" width="290" height="40" as="geometry" /></mxCell>
+        <mxCell id="c_engine" value="Python Rule Engine (parity twin)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#C8E6C9;strokeColor=#2E7D32;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="585" y="205" width="140" height="44" as="geometry" /></mxCell>
+        <mxCell id="c_proxy" value="Key-isolating proxy" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#E8F5E9;strokeColor=#2E7D32;" vertex="1" parent="1"><mxGeometry x="735" y="205" width="140" height="44" as="geometry" /></mxCell>
+        <mxCell id="c_fallback" value="In-memory sync fallback (SYNC_STORE=memory, dev/CI)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;fillColor=#E8F5E9;strokeColor=#2E7D32;dashed=1;" vertex="1" parent="1"><mxGeometry x="585" y="262" width="290" height="36" as="geometry" /></mxCell>
+
+        <!-- DB node -->
+        <mxCell id="dbnode" value="&lt;&lt;device&gt;&gt;  Managed DB Instance" style="shape=cube;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;darkOpacity=0.05;verticalAlign=top;fontSize=12;fontStyle=1;fillColor=#F6FBF4;strokeColor=#607D8B;fontColor=#37474F;" vertex="1" parent="1"><mxGeometry x="560" y="380" width="340" height="120" as="geometry" /></mxCell>
+        <mxCell id="db_pg" value="&lt;&lt;db&gt;&gt; PostgreSQL + PostGIS&#10;(farmers, fields[geometry POLYGON 4326], sync_records)" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=10;fontSize=10;fillColor=#ECEFF1;strokeColor=#607D8B;" vertex="1" parent="1"><mxGeometry x="585" y="415" width="290" height="70" as="geometry" /></mxCell>
+
+        <!-- Firebase node -->
+        <mxCell id="fbnode" value="&lt;&lt;service&gt;&gt;  Firebase&#10;(Auth identity + FCM push)" style="shape=cube;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;darkOpacity=0.05;verticalAlign=top;fontSize=11;fontStyle=1;fillColor=#F6FBF4;strokeColor=#607D8B;fontColor=#37474F;" vertex="1" parent="1"><mxGeometry x="60" y="490" width="300" height="80" as="geometry" /></mxCell>
+
+        <!-- Comm links -->
+        <mxCell id="lk1" value="HTTPS / REST  &#171;Bearer JWT&#187;&#10;(opportunistic, &#8804;10 s timeout)" style="endArrow=open;startArrow=open;html=1;fontSize=10;strokeColor=#1B3A2B;" edge="1" parent="1" source="device" target="cloud"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="lk2" value="TCP / asyncpg" style="endArrow=open;html=1;fontSize=10;strokeColor=#607D8B;" edge="1" parent="1" source="cloud" target="dbnode"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="lk3" value="HTTPS &#171;auth / token verify&#187;" style="endArrow=open;html=1;fontSize=10;strokeColor=#607D8B;" edge="1" parent="1" source="device" target="fbnode"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="note" value="Key claim made physical: everything inside the Android node runs with NO network — SQLite, Hive,&#10;rule packs and the Dart engine ship in the APK. The Cloud Run node scales to zero (NFR-5); the&#10;phone keeps full core function offline (NFR-1) and syncs via the WorkManager outbox on reconnect." style="text;html=1;align=left;verticalAlign=top;fontSize=11;fillColor=#F6FBF4;strokeColor=#A5C9AE;spacingLeft=6;" vertex="1" parent="1"><mxGeometry x="60" y="600" width="840" height="70" as="geometry" /></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

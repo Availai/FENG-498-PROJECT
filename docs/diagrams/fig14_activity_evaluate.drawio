@@ -1,0 +1,48 @@
+<mxfile host="app.diagrams.net" version="24.0.0" type="device">
+  <diagram id="fig14-activity-evaluate" name="Fig14 Activity-Evaluate">
+    <mxGraphModel dx="1100" dy="900" grid="1" gridSize="10" page="1" pageWidth="760" pageHeight="1000" math="0" shadow="0">
+      <root>
+        <mxCell id="0" /><mxCell id="1" parent="0" />
+
+        <mxCell id="title" value="Tarlam — Rule Engine evaluate(facts, rulePack)" style="text;html=1;align=left;fontSize=17;fontStyle=1;fontColor=#1B3A2B;" vertex="1" parent="1"><mxGeometry x="40" y="20" width="600" height="28" as="geometry" /></mxCell>
+
+        <mxCell id="start" value="" style="ellipse;html=1;fillColor=#1B3A2B;strokeColor=#1B3A2B;" vertex="1" parent="1"><mxGeometry x="350" y="70" width="24" height="24" as="geometry" /></mxCell>
+
+        <mxCell id="a_in" value="Receive facts&#10;(crop, env, weather, soil, observation)" style="rounded=1;whiteSpace=wrap;html=1;arcSize=30;fontSize=11;fillColor=#E8F5E9;strokeColor=#2E7D32;" vertex="1" parent="1"><mxGeometry x="250" y="120" width="220" height="48" as="geometry" /></mxCell>
+        <mxCell id="a_val" value="_validate_env: clamp out-of-range inputs,&#10;collect input issues" style="rounded=1;whiteSpace=wrap;html=1;arcSize=30;fontSize=11;fillColor=#E8F5E9;strokeColor=#2E7D32;" vertex="1" parent="1"><mxGeometry x="250" y="195" width="220" height="48" as="geometry" /></mxCell>
+
+        <mxCell id="d_issues" value="input issues?" style="rhombus;whiteSpace=wrap;html=1;fontSize=11;fillColor=#FFF8E1;strokeColor=#F9A825;" vertex="1" parent="1"><mxGeometry x="290" y="270" width="140" height="80" as="geometry" /></mxCell>
+        <mxCell id="a_badge" value="Emit 'Veri Kalitesi Düşük' result;&#10;confidence = low/medium" style="rounded=1;whiteSpace=wrap;html=1;arcSize=30;fontSize=11;fillColor=#FFF3E0;strokeColor=#EF8E3B;" vertex="1" parent="1"><mxGeometry x="500" y="278" width="220" height="56" as="geometry" /></mxCell>
+
+        <mxCell id="a_iter" value="For each category rule set&#10;(weather, irrigation, disease, pest, soil,&#10;season, compatibility, harvest, geography,&#10;frost, rotation)" style="rounded=1;whiteSpace=wrap;html=1;arcSize=30;fontSize=11;fillColor=#E8F5E9;strokeColor=#2E7D32;" vertex="1" parent="1"><mxGeometry x="240" y="380" width="240" height="74" as="geometry" /></mxCell>
+
+        <mxCell id="d_match" value="all conditions&#10;match facts?" style="rhombus;whiteSpace=wrap;html=1;fontSize=11;fillColor=#FFF8E1;strokeColor=#F9A825;" vertex="1" parent="1"><mxGeometry x="290" y="480" width="140" height="90" as="geometry" /></mxCell>
+        <mxCell id="a_collect" value="Build RuleResult&#10;(evidence + Turkish recommendations)" style="rounded=1;whiteSpace=wrap;html=1;arcSize=30;fontSize=11;fillColor=#C8E6C9;strokeColor=#2E7D32;" vertex="1" parent="1"><mxGeometry x="500" y="495" width="220" height="56" as="geometry" /></mxCell>
+
+        <mxCell id="a_sort" value="Sort results by priority / severity (desc)" style="rounded=1;whiteSpace=wrap;html=1;arcSize=30;fontSize=11;fillColor=#E8F5E9;strokeColor=#2E7D32;" vertex="1" parent="1"><mxGeometry x="250" y="610" width="220" height="48" as="geometry" /></mxCell>
+        <mxCell id="a_flags" value="Attach safety flags&#10;requiresExpertConfirmation / requiresBkuCheck" style="rounded=1;whiteSpace=wrap;html=1;arcSize=30;fontSize=11;fillColor=#C8E6C9;strokeColor=#2E7D32;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="250" y="685" width="220" height="56" as="geometry" /></mxCell>
+        <mxCell id="a_render" value="Render &quot;Result → Why? → To-do&quot;&#10;(deterministic, explainable, Turkish)" style="rounded=1;whiteSpace=wrap;html=1;arcSize=30;fontSize=11;fillColor=#E8F5E9;strokeColor=#2E7D32;" vertex="1" parent="1"><mxGeometry x="250" y="770" width="220" height="56" as="geometry" /></mxCell>
+
+        <mxCell id="end" value="" style="ellipse;html=1;fillColor=#FFFFFF;strokeColor=#1B3A2B;" vertex="1" parent="1"><mxGeometry x="349" y="860" width="26" height="26" as="geometry" /></mxCell>
+        <mxCell id="endIn" value="" style="ellipse;html=1;fillColor=#1B3A2B;strokeColor=#1B3A2B;" vertex="1" parent="1"><mxGeometry x="354" y="865" width="16" height="16" as="geometry" /></mxCell>
+
+        <!-- edges -->
+        <mxCell id="e0" style="endArrow=block;html=1;strokeColor=#1B3A2B;" edge="1" parent="1" source="start" target="a_in"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e1" style="endArrow=block;html=1;strokeColor=#1B3A2B;" edge="1" parent="1" source="a_in" target="a_val"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e2" style="endArrow=block;html=1;strokeColor=#1B3A2B;" edge="1" parent="1" source="a_val" target="d_issues"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e3" value="yes" style="endArrow=block;html=1;fontSize=10;strokeColor=#EF8E3B;" edge="1" parent="1" source="d_issues" target="a_badge"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e4" value="no" style="endArrow=block;html=1;fontSize=10;strokeColor=#1B3A2B;" edge="1" parent="1" source="d_issues" target="a_iter"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e5" style="endArrow=block;dashed=1;html=1;strokeColor=#EF8E3B;" edge="1" parent="1" source="a_badge" target="a_iter"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="610" y="417" /></Array></mxGeometry></mxCell>
+        <mxCell id="e6" style="endArrow=block;html=1;strokeColor=#1B3A2B;" edge="1" parent="1" source="a_iter" target="d_match"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e7" value="yes" style="endArrow=block;html=1;fontSize=10;strokeColor=#2E7D32;" edge="1" parent="1" source="d_match" target="a_collect"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e8" value="no / next rule" style="endArrow=block;html=1;fontSize=10;strokeColor=#1B3A2B;" edge="1" parent="1" source="d_match" target="a_iter"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="200" y="525" /><mxPoint x="200" y="417" /></Array></mxGeometry></mxCell>
+        <mxCell id="e9" value="all rules done" style="endArrow=block;html=1;fontSize=10;strokeColor=#2E7D32;" edge="1" parent="1" source="a_collect" target="a_sort"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="610" y="634" /></Array></mxGeometry></mxCell>
+        <mxCell id="e10" style="endArrow=block;html=1;strokeColor=#1B3A2B;" edge="1" parent="1" source="a_sort" target="a_flags"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e11" style="endArrow=block;html=1;strokeColor=#1B3A2B;" edge="1" parent="1" source="a_flags" target="a_render"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e12" style="endArrow=block;html=1;strokeColor=#1B3A2B;" edge="1" parent="1" source="a_render" target="end"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="note" value="Pure function of (facts, rules): same inputs → same outputs (NFR-8). Evaluation is O(R·C), sort O(R log R);&#10;no network on the offline path. Mirrors analyze() in rule_engine.py and offline_rule_engine.dart (parity-tested)." style="text;html=1;align=left;verticalAlign=top;fontSize=10;fillColor=#F6FBF4;strokeColor=#A5C9AE;spacingLeft=6;" vertex="1" parent="1"><mxGeometry x="40" y="910" width="700" height="56" as="geometry" /></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
