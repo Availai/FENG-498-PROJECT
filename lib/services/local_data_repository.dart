@@ -68,10 +68,85 @@ class LocalDataRepository {
       await _settingsBox.put(globalMigrationKey, true);
     }
 
+    // Eski Hive 'cost_ledger' masraflarını Drift CostEntries'e tek seferlik taşı.
+    await _migrateLegacyCostLedger();
+
     // Aktif kullanıcı değiştiğinde Hive mirror'ı temizle — önceki kullanıcının
     // aynasındaki kayıtlar yeni kullanıcıya sızmasın.
     await _legacyFieldsBox.clear();
     await _mirrorActiveFieldsToHive();
+  }
+
+  /// Pre-Drift Hive 'cost_ledger' kayıtlarını CostEntries tablosuna aktarır.
+  /// Global flag ile yalnızca bir kez çalışır; best-effort (hata yutulur).
+  /// field_id olmayan eski global kayıtlar atlanır (CostEntries fieldId ister).
+  Future<void> _migrateLegacyCostLedger() async {
+    const flagKey = 'cost_ledger_migrated_to_drift_v1';
+    if (_settingsBox.get(flagKey) == true) return;
+    try {
+      if (!Hive.isBoxOpen('cost_ledger')) {
+        await _settingsBox.put(flagKey, true);
+        return;
+      }
+      final box = Hive.box('cost_ledger');
+      final now = DateTime.now().toUtc();
+      for (int i = 0; i < box.length; i++) {
+        final raw = box.getAt(i);
+        if (raw is! Map) continue;
+        final e = Map<String, dynamic>.from(raw);
+        final fieldId = e['field_id']?.toString();
+        if (fieldId == null || fieldId.isEmpty) continue; // fieldId zorunlu
+        final amount = (e['total_try'] as num?)?.toDouble() ??
+            (((e['per_dekar_try'] as num?)?.toDouble() ?? 0) *
+                ((e['dekar'] as num?)?.toDouble() ?? 0));
+        if (amount <= 0) continue;
+        final kind = _legacyCostKind(e['kind']?.toString());
+        final when =
+            DateTime.tryParse(e['date']?.toString() ?? '')?.toUtc() ?? now;
+        await _db.into(_db.costEntries).insert(
+              CostEntriesCompanion.insert(
+                id: _newId('cost'),
+                fieldId: fieldId,
+                farmerUid: Value(currentUid),
+                cropId: const Value(null),
+                kind: kind,
+                amountTry: amount,
+                quantity: Value((e['dekar'] as num?)?.toDouble()),
+                unit: const Value('dekar'),
+                unitPriceTry: Value((e['per_dekar_try'] as num?)?.toDouble()),
+                note: Value(e['note']?.toString()),
+                date: when,
+                createdAt: now,
+                updatedAt: now,
+              ),
+            );
+      }
+    } catch (_) {
+      // best-effort — eski kutu bozulmaz, akış kesilmez.
+    }
+    await _settingsBox.put(flagKey, true);
+  }
+
+  /// Eski Türkçe masraf etiketini CostKinds anahtarına çevirir.
+  static String _legacyCostKind(String? raw) {
+    switch ((raw ?? '').trim()) {
+      case 'DAP':
+      case 'Üre':
+      case 'Kompoze':
+      case 'NPK':
+      case 'CAN':
+        return 'fertilizer';
+      case 'Mazot':
+        return 'fuel';
+      case 'İlaç':
+        return 'pesticide';
+      case 'Tohum':
+        return 'seed';
+      case 'İşçilik':
+        return 'labor';
+      default:
+        return 'other';
+    }
   }
 
   Stream<List<Map<String, dynamic>>> watchFieldMaps() {
@@ -221,6 +296,12 @@ class LocalDataRepository {
             .get())
         .map((s) => s.id)
         .toList();
+    final costEntryIds = (await (_db.select(_db.costEntries)
+              ..where((tbl) =>
+                  tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull()))
+            .get())
+        .map((c) => c.id)
+        .toList();
 
     await _db.transaction(() async {
       // Kalıcı temizlik: tarla ve ilişkili geçmiş kayıtları fiziksel olarak sil.
@@ -245,6 +326,10 @@ class LocalDataRepository {
           .go();
       // v12: tarlanın toprak analizi kayıtlarını da temizle.
       await (_db.delete(_db.soilTests)
+            ..where((tbl) => tbl.fieldId.equals(fieldId)))
+          .go();
+      // v14: tarlanın masraf kayıtlarını da temizle.
+      await (_db.delete(_db.costEntries)
             ..where((tbl) => tbl.fieldId.equals(fieldId)))
           .go();
 
@@ -311,6 +396,15 @@ class LocalDataRepository {
     for (final id in soilTestIds) {
       await _enqueueSyncJob(
         entityType: 'soil_tests',
+        entityId: id,
+        operation: 'delete',
+        payload: {'id': id, 'field_id': fieldId},
+        updatedAt: now,
+      );
+    }
+    for (final id in costEntryIds) {
+      await _enqueueSyncJob(
+        entityType: 'cost_entries',
         entityId: id,
         operation: 'delete',
         payload: {'id': id, 'field_id': fieldId},
@@ -1529,6 +1623,95 @@ class LocalDataRepository {
     ));
     await _enqueueSyncJob(
       entityType: 'soil_tests',
+      entityId: id,
+      operation: 'delete',
+      payload: {'id': id, 'deleted_at': now.toIso8601String()},
+      updatedAt: now,
+    );
+  }
+
+  // ───────────────────────────────────────────────────────────────────────
+  // MASRAF (gider) KAYITLARI — ürün bazlı, farmerUid izole
+  // ───────────────────────────────────────────────────────────────────────
+
+  Future<String> saveCostEntry({
+    required String fieldId,
+    String? cropId,
+    required String kind,
+    required double amountTry,
+    double? quantity,
+    String? unit,
+    double? unitPriceTry,
+    String? note,
+    DateTime? date,
+  }) async {
+    final now = DateTime.now().toUtc();
+    final id = _newId('cost');
+    final when = (date ?? DateTime.now()).toUtc();
+    await _db.into(_db.costEntries).insert(
+          CostEntriesCompanion.insert(
+            id: id,
+            fieldId: fieldId,
+            farmerUid: Value(currentUid),
+            cropId: Value(cropId),
+            kind: kind,
+            amountTry: amountTry,
+            quantity: Value(quantity),
+            unit: Value(unit),
+            unitPriceTry: Value(unitPriceTry),
+            note: Value(note),
+            date: when,
+            createdAt: now,
+            updatedAt: now,
+          ),
+        );
+
+    await _enqueueSyncJob(
+      entityType: 'cost_entries',
+      entityId: id,
+      operation: 'upsert',
+      payload: {
+        'id': id,
+        'field_id': fieldId,
+        'crop_id': cropId,
+        'kind': kind,
+        'amount_try': amountTry,
+        'quantity': quantity,
+        'unit': unit,
+        'unit_price_try': unitPriceTry,
+        'note': note,
+        'date': when.toIso8601String(),
+        'updated_at': now.toIso8601String(),
+      },
+      updatedAt: now,
+    );
+    return id;
+  }
+
+  /// Tarlanın masraf kayıtlarını canlı dinler (yeni → eski).
+  Stream<List<CostEntry>> watchCostEntries(String fieldId) {
+    return (_db.select(_db.costEntries)
+          ..where((tbl) => tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull())
+          ..orderBy([(tbl) => OrderingTerm.desc(tbl.date)]))
+        .watch();
+  }
+
+  Future<List<CostEntry>> loadCostEntries(String fieldId) {
+    return (_db.select(_db.costEntries)
+          ..where((tbl) => tbl.fieldId.equals(fieldId) & tbl.deletedAt.isNull())
+          ..orderBy([(tbl) => OrderingTerm.desc(tbl.date)]))
+        .get();
+  }
+
+  Future<void> deleteCostEntry(String id) async {
+    final now = DateTime.now().toUtc();
+    await (_db.update(_db.costEntries)..where((tbl) => tbl.id.equals(id)))
+        .write(CostEntriesCompanion(
+      deletedAt: Value(now),
+      updatedAt: Value(now),
+    ));
+    await _enqueueSyncJob(
+      entityType: 'cost_entries',
       entityId: id,
       operation: 'delete',
       payload: {'id': id, 'deleted_at': now.toIso8601String()},

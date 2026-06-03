@@ -7603,6 +7603,689 @@ class SoilTestsCompanion extends UpdateCompanion<SoilTest> {
   }
 }
 
+class $CostEntriesTable extends CostEntries
+    with TableInfo<$CostEntriesTable, CostEntry> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CostEntriesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _farmerUidMeta =
+      const VerificationMeta('farmerUid');
+  @override
+  late final GeneratedColumn<String> farmerUid = GeneratedColumn<String>(
+      'farmer_uid', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _fieldIdMeta =
+      const VerificationMeta('fieldId');
+  @override
+  late final GeneratedColumn<String> fieldId = GeneratedColumn<String>(
+      'field_id', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: true,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('REFERENCES fields (id)'));
+  static const VerificationMeta _cropIdMeta = const VerificationMeta('cropId');
+  @override
+  late final GeneratedColumn<String> cropId = GeneratedColumn<String>(
+      'crop_id', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _kindMeta = const VerificationMeta('kind');
+  @override
+  late final GeneratedColumn<String> kind = GeneratedColumn<String>(
+      'kind', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _amountTryMeta =
+      const VerificationMeta('amountTry');
+  @override
+  late final GeneratedColumn<double> amountTry = GeneratedColumn<double>(
+      'amount_try', aliasedName, false,
+      type: DriftSqlType.double, requiredDuringInsert: true);
+  static const VerificationMeta _quantityMeta =
+      const VerificationMeta('quantity');
+  @override
+  late final GeneratedColumn<double> quantity = GeneratedColumn<double>(
+      'quantity', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _unitMeta = const VerificationMeta('unit');
+  @override
+  late final GeneratedColumn<String> unit = GeneratedColumn<String>(
+      'unit', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _unitPriceTryMeta =
+      const VerificationMeta('unitPriceTry');
+  @override
+  late final GeneratedColumn<double> unitPriceTry = GeneratedColumn<double>(
+      'unit_price_try', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _noteMeta = const VerificationMeta('note');
+  @override
+  late final GeneratedColumn<String> note = GeneratedColumn<String>(
+      'note', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _dateMeta = const VerificationMeta('date');
+  @override
+  late final GeneratedColumn<DateTime> date = GeneratedColumn<DateTime>(
+      'date', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _updatedAtMeta =
+      const VerificationMeta('updatedAt');
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+      'updated_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _deletedAtMeta =
+      const VerificationMeta('deletedAt');
+  @override
+  late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
+      'deleted_at', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        farmerUid,
+        fieldId,
+        cropId,
+        kind,
+        amountTry,
+        quantity,
+        unit,
+        unitPriceTry,
+        note,
+        date,
+        createdAt,
+        updatedAt,
+        deletedAt
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'cost_entries';
+  @override
+  VerificationContext validateIntegrity(Insertable<CostEntry> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('farmer_uid')) {
+      context.handle(_farmerUidMeta,
+          farmerUid.isAcceptableOrUnknown(data['farmer_uid']!, _farmerUidMeta));
+    }
+    if (data.containsKey('field_id')) {
+      context.handle(_fieldIdMeta,
+          fieldId.isAcceptableOrUnknown(data['field_id']!, _fieldIdMeta));
+    } else if (isInserting) {
+      context.missing(_fieldIdMeta);
+    }
+    if (data.containsKey('crop_id')) {
+      context.handle(_cropIdMeta,
+          cropId.isAcceptableOrUnknown(data['crop_id']!, _cropIdMeta));
+    }
+    if (data.containsKey('kind')) {
+      context.handle(
+          _kindMeta, kind.isAcceptableOrUnknown(data['kind']!, _kindMeta));
+    } else if (isInserting) {
+      context.missing(_kindMeta);
+    }
+    if (data.containsKey('amount_try')) {
+      context.handle(_amountTryMeta,
+          amountTry.isAcceptableOrUnknown(data['amount_try']!, _amountTryMeta));
+    } else if (isInserting) {
+      context.missing(_amountTryMeta);
+    }
+    if (data.containsKey('quantity')) {
+      context.handle(_quantityMeta,
+          quantity.isAcceptableOrUnknown(data['quantity']!, _quantityMeta));
+    }
+    if (data.containsKey('unit')) {
+      context.handle(
+          _unitMeta, unit.isAcceptableOrUnknown(data['unit']!, _unitMeta));
+    }
+    if (data.containsKey('unit_price_try')) {
+      context.handle(
+          _unitPriceTryMeta,
+          unitPriceTry.isAcceptableOrUnknown(
+              data['unit_price_try']!, _unitPriceTryMeta));
+    }
+    if (data.containsKey('note')) {
+      context.handle(
+          _noteMeta, note.isAcceptableOrUnknown(data['note']!, _noteMeta));
+    }
+    if (data.containsKey('date')) {
+      context.handle(
+          _dateMeta, date.isAcceptableOrUnknown(data['date']!, _dateMeta));
+    } else if (isInserting) {
+      context.missing(_dateMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(_updatedAtMeta,
+          updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(_deletedAtMeta,
+          deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  CostEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CostEntry(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      farmerUid: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}farmer_uid']),
+      fieldId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}field_id'])!,
+      cropId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}crop_id']),
+      kind: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}kind'])!,
+      amountTry: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}amount_try'])!,
+      quantity: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}quantity']),
+      unit: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}unit']),
+      unitPriceTry: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}unit_price_try']),
+      note: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}note']),
+      date: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}date'])!,
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+      updatedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
+      deletedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}deleted_at']),
+    );
+  }
+
+  @override
+  $CostEntriesTable createAlias(String alias) {
+    return $CostEntriesTable(attachedDatabase, alias);
+  }
+}
+
+class CostEntry extends DataClass implements Insertable<CostEntry> {
+  final String id;
+  final String? farmerUid;
+  final String fieldId;
+
+  /// Giderin atandığı ürün (FieldCrops.id). null → tarla geneli.
+  final String? cropId;
+
+  /// Gider türü: 'fertilizer'|'fuel'|'seed'|'labor'|'pesticide'|'irrigation'|'other'.
+  final String kind;
+
+  /// Toplam tutar (₺).
+  final double amountTry;
+
+  /// İsteğe bağlı miktar + birim + birim fiyat (kırılım/şeffaflık için).
+  final double? quantity;
+  final String? unit;
+  final double? unitPriceTry;
+  final String? note;
+  final DateTime date;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final DateTime? deletedAt;
+  const CostEntry(
+      {required this.id,
+      this.farmerUid,
+      required this.fieldId,
+      this.cropId,
+      required this.kind,
+      required this.amountTry,
+      this.quantity,
+      this.unit,
+      this.unitPriceTry,
+      this.note,
+      required this.date,
+      required this.createdAt,
+      required this.updatedAt,
+      this.deletedAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    if (!nullToAbsent || farmerUid != null) {
+      map['farmer_uid'] = Variable<String>(farmerUid);
+    }
+    map['field_id'] = Variable<String>(fieldId);
+    if (!nullToAbsent || cropId != null) {
+      map['crop_id'] = Variable<String>(cropId);
+    }
+    map['kind'] = Variable<String>(kind);
+    map['amount_try'] = Variable<double>(amountTry);
+    if (!nullToAbsent || quantity != null) {
+      map['quantity'] = Variable<double>(quantity);
+    }
+    if (!nullToAbsent || unit != null) {
+      map['unit'] = Variable<String>(unit);
+    }
+    if (!nullToAbsent || unitPriceTry != null) {
+      map['unit_price_try'] = Variable<double>(unitPriceTry);
+    }
+    if (!nullToAbsent || note != null) {
+      map['note'] = Variable<String>(note);
+    }
+    map['date'] = Variable<DateTime>(date);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt);
+    }
+    return map;
+  }
+
+  CostEntriesCompanion toCompanion(bool nullToAbsent) {
+    return CostEntriesCompanion(
+      id: Value(id),
+      farmerUid: farmerUid == null && nullToAbsent
+          ? const Value.absent()
+          : Value(farmerUid),
+      fieldId: Value(fieldId),
+      cropId:
+          cropId == null && nullToAbsent ? const Value.absent() : Value(cropId),
+      kind: Value(kind),
+      amountTry: Value(amountTry),
+      quantity: quantity == null && nullToAbsent
+          ? const Value.absent()
+          : Value(quantity),
+      unit: unit == null && nullToAbsent ? const Value.absent() : Value(unit),
+      unitPriceTry: unitPriceTry == null && nullToAbsent
+          ? const Value.absent()
+          : Value(unitPriceTry),
+      note: note == null && nullToAbsent ? const Value.absent() : Value(note),
+      date: Value(date),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
+    );
+  }
+
+  factory CostEntry.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CostEntry(
+      id: serializer.fromJson<String>(json['id']),
+      farmerUid: serializer.fromJson<String?>(json['farmerUid']),
+      fieldId: serializer.fromJson<String>(json['fieldId']),
+      cropId: serializer.fromJson<String?>(json['cropId']),
+      kind: serializer.fromJson<String>(json['kind']),
+      amountTry: serializer.fromJson<double>(json['amountTry']),
+      quantity: serializer.fromJson<double?>(json['quantity']),
+      unit: serializer.fromJson<String?>(json['unit']),
+      unitPriceTry: serializer.fromJson<double?>(json['unitPriceTry']),
+      note: serializer.fromJson<String?>(json['note']),
+      date: serializer.fromJson<DateTime>(json['date']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'farmerUid': serializer.toJson<String?>(farmerUid),
+      'fieldId': serializer.toJson<String>(fieldId),
+      'cropId': serializer.toJson<String?>(cropId),
+      'kind': serializer.toJson<String>(kind),
+      'amountTry': serializer.toJson<double>(amountTry),
+      'quantity': serializer.toJson<double?>(quantity),
+      'unit': serializer.toJson<String?>(unit),
+      'unitPriceTry': serializer.toJson<double?>(unitPriceTry),
+      'note': serializer.toJson<String?>(note),
+      'date': serializer.toJson<DateTime>(date),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
+    };
+  }
+
+  CostEntry copyWith(
+          {String? id,
+          Value<String?> farmerUid = const Value.absent(),
+          String? fieldId,
+          Value<String?> cropId = const Value.absent(),
+          String? kind,
+          double? amountTry,
+          Value<double?> quantity = const Value.absent(),
+          Value<String?> unit = const Value.absent(),
+          Value<double?> unitPriceTry = const Value.absent(),
+          Value<String?> note = const Value.absent(),
+          DateTime? date,
+          DateTime? createdAt,
+          DateTime? updatedAt,
+          Value<DateTime?> deletedAt = const Value.absent()}) =>
+      CostEntry(
+        id: id ?? this.id,
+        farmerUid: farmerUid.present ? farmerUid.value : this.farmerUid,
+        fieldId: fieldId ?? this.fieldId,
+        cropId: cropId.present ? cropId.value : this.cropId,
+        kind: kind ?? this.kind,
+        amountTry: amountTry ?? this.amountTry,
+        quantity: quantity.present ? quantity.value : this.quantity,
+        unit: unit.present ? unit.value : this.unit,
+        unitPriceTry:
+            unitPriceTry.present ? unitPriceTry.value : this.unitPriceTry,
+        note: note.present ? note.value : this.note,
+        date: date ?? this.date,
+        createdAt: createdAt ?? this.createdAt,
+        updatedAt: updatedAt ?? this.updatedAt,
+        deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+      );
+  CostEntry copyWithCompanion(CostEntriesCompanion data) {
+    return CostEntry(
+      id: data.id.present ? data.id.value : this.id,
+      farmerUid: data.farmerUid.present ? data.farmerUid.value : this.farmerUid,
+      fieldId: data.fieldId.present ? data.fieldId.value : this.fieldId,
+      cropId: data.cropId.present ? data.cropId.value : this.cropId,
+      kind: data.kind.present ? data.kind.value : this.kind,
+      amountTry: data.amountTry.present ? data.amountTry.value : this.amountTry,
+      quantity: data.quantity.present ? data.quantity.value : this.quantity,
+      unit: data.unit.present ? data.unit.value : this.unit,
+      unitPriceTry: data.unitPriceTry.present
+          ? data.unitPriceTry.value
+          : this.unitPriceTry,
+      note: data.note.present ? data.note.value : this.note,
+      date: data.date.present ? data.date.value : this.date,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CostEntry(')
+          ..write('id: $id, ')
+          ..write('farmerUid: $farmerUid, ')
+          ..write('fieldId: $fieldId, ')
+          ..write('cropId: $cropId, ')
+          ..write('kind: $kind, ')
+          ..write('amountTry: $amountTry, ')
+          ..write('quantity: $quantity, ')
+          ..write('unit: $unit, ')
+          ..write('unitPriceTry: $unitPriceTry, ')
+          ..write('note: $note, ')
+          ..write('date: $date, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+      id,
+      farmerUid,
+      fieldId,
+      cropId,
+      kind,
+      amountTry,
+      quantity,
+      unit,
+      unitPriceTry,
+      note,
+      date,
+      createdAt,
+      updatedAt,
+      deletedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CostEntry &&
+          other.id == this.id &&
+          other.farmerUid == this.farmerUid &&
+          other.fieldId == this.fieldId &&
+          other.cropId == this.cropId &&
+          other.kind == this.kind &&
+          other.amountTry == this.amountTry &&
+          other.quantity == this.quantity &&
+          other.unit == this.unit &&
+          other.unitPriceTry == this.unitPriceTry &&
+          other.note == this.note &&
+          other.date == this.date &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.deletedAt == this.deletedAt);
+}
+
+class CostEntriesCompanion extends UpdateCompanion<CostEntry> {
+  final Value<String> id;
+  final Value<String?> farmerUid;
+  final Value<String> fieldId;
+  final Value<String?> cropId;
+  final Value<String> kind;
+  final Value<double> amountTry;
+  final Value<double?> quantity;
+  final Value<String?> unit;
+  final Value<double?> unitPriceTry;
+  final Value<String?> note;
+  final Value<DateTime> date;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<DateTime?> deletedAt;
+  final Value<int> rowid;
+  const CostEntriesCompanion({
+    this.id = const Value.absent(),
+    this.farmerUid = const Value.absent(),
+    this.fieldId = const Value.absent(),
+    this.cropId = const Value.absent(),
+    this.kind = const Value.absent(),
+    this.amountTry = const Value.absent(),
+    this.quantity = const Value.absent(),
+    this.unit = const Value.absent(),
+    this.unitPriceTry = const Value.absent(),
+    this.note = const Value.absent(),
+    this.date = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  CostEntriesCompanion.insert({
+    required String id,
+    this.farmerUid = const Value.absent(),
+    required String fieldId,
+    this.cropId = const Value.absent(),
+    required String kind,
+    required double amountTry,
+    this.quantity = const Value.absent(),
+    this.unit = const Value.absent(),
+    this.unitPriceTry = const Value.absent(),
+    this.note = const Value.absent(),
+    required DateTime date,
+    required DateTime createdAt,
+    required DateTime updatedAt,
+    this.deletedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  })  : id = Value(id),
+        fieldId = Value(fieldId),
+        kind = Value(kind),
+        amountTry = Value(amountTry),
+        date = Value(date),
+        createdAt = Value(createdAt),
+        updatedAt = Value(updatedAt);
+  static Insertable<CostEntry> custom({
+    Expression<String>? id,
+    Expression<String>? farmerUid,
+    Expression<String>? fieldId,
+    Expression<String>? cropId,
+    Expression<String>? kind,
+    Expression<double>? amountTry,
+    Expression<double>? quantity,
+    Expression<String>? unit,
+    Expression<double>? unitPriceTry,
+    Expression<String>? note,
+    Expression<DateTime>? date,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<DateTime>? deletedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (farmerUid != null) 'farmer_uid': farmerUid,
+      if (fieldId != null) 'field_id': fieldId,
+      if (cropId != null) 'crop_id': cropId,
+      if (kind != null) 'kind': kind,
+      if (amountTry != null) 'amount_try': amountTry,
+      if (quantity != null) 'quantity': quantity,
+      if (unit != null) 'unit': unit,
+      if (unitPriceTry != null) 'unit_price_try': unitPriceTry,
+      if (note != null) 'note': note,
+      if (date != null) 'date': date,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  CostEntriesCompanion copyWith(
+      {Value<String>? id,
+      Value<String?>? farmerUid,
+      Value<String>? fieldId,
+      Value<String?>? cropId,
+      Value<String>? kind,
+      Value<double>? amountTry,
+      Value<double?>? quantity,
+      Value<String?>? unit,
+      Value<double?>? unitPriceTry,
+      Value<String?>? note,
+      Value<DateTime>? date,
+      Value<DateTime>? createdAt,
+      Value<DateTime>? updatedAt,
+      Value<DateTime?>? deletedAt,
+      Value<int>? rowid}) {
+    return CostEntriesCompanion(
+      id: id ?? this.id,
+      farmerUid: farmerUid ?? this.farmerUid,
+      fieldId: fieldId ?? this.fieldId,
+      cropId: cropId ?? this.cropId,
+      kind: kind ?? this.kind,
+      amountTry: amountTry ?? this.amountTry,
+      quantity: quantity ?? this.quantity,
+      unit: unit ?? this.unit,
+      unitPriceTry: unitPriceTry ?? this.unitPriceTry,
+      note: note ?? this.note,
+      date: date ?? this.date,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (farmerUid.present) {
+      map['farmer_uid'] = Variable<String>(farmerUid.value);
+    }
+    if (fieldId.present) {
+      map['field_id'] = Variable<String>(fieldId.value);
+    }
+    if (cropId.present) {
+      map['crop_id'] = Variable<String>(cropId.value);
+    }
+    if (kind.present) {
+      map['kind'] = Variable<String>(kind.value);
+    }
+    if (amountTry.present) {
+      map['amount_try'] = Variable<double>(amountTry.value);
+    }
+    if (quantity.present) {
+      map['quantity'] = Variable<double>(quantity.value);
+    }
+    if (unit.present) {
+      map['unit'] = Variable<String>(unit.value);
+    }
+    if (unitPriceTry.present) {
+      map['unit_price_try'] = Variable<double>(unitPriceTry.value);
+    }
+    if (note.present) {
+      map['note'] = Variable<String>(note.value);
+    }
+    if (date.present) {
+      map['date'] = Variable<DateTime>(date.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CostEntriesCompanion(')
+          ..write('id: $id, ')
+          ..write('farmerUid: $farmerUid, ')
+          ..write('fieldId: $fieldId, ')
+          ..write('cropId: $cropId, ')
+          ..write('kind: $kind, ')
+          ..write('amountTry: $amountTry, ')
+          ..write('quantity: $quantity, ')
+          ..write('unit: $unit, ')
+          ..write('unitPriceTry: $unitPriceTry, ')
+          ..write('note: $note, ')
+          ..write('date: $date, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -7622,6 +8305,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $PlantConditionEventsTable plantConditionEvents =
       $PlantConditionEventsTable(this);
   late final $SoilTestsTable soilTests = $SoilTestsTable(this);
+  late final $CostEntriesTable costEntries = $CostEntriesTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -7637,7 +8321,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         cropGrowthStates,
         fieldPlantInstances,
         plantConditionEvents,
-        soilTests
+        soilTests,
+        costEntries
       ];
 }
 
@@ -7769,6 +8454,21 @@ final class $$FieldsTableReferences
         .filter((f) => f.fieldId.id.sqlEquals($_itemColumn<String>('id')!));
 
     final cache = $_typedResult.readTableOrNull(_soilTestsRefsTable($_db));
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: cache));
+  }
+
+  static MultiTypedResultKey<$CostEntriesTable, List<CostEntry>>
+      _costEntriesRefsTable(_$AppDatabase db) =>
+          MultiTypedResultKey.fromTable(db.costEntries,
+              aliasName:
+                  $_aliasNameGenerator(db.fields.id, db.costEntries.fieldId));
+
+  $$CostEntriesTableProcessedTableManager get costEntriesRefs {
+    final manager = $$CostEntriesTableTableManager($_db, $_db.costEntries)
+        .filter((f) => f.fieldId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_costEntriesRefsTable($_db));
     return ProcessedTableManager(
         manager.$state.copyWith(prefetchedData: cache));
   }
@@ -7940,6 +8640,27 @@ class $$FieldsTableFilterComposer
             $$SoilTestsTableFilterComposer(
               $db: $db,
               $table: $db.soilTests,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
+
+  Expression<bool> costEntriesRefs(
+      Expression<bool> Function($$CostEntriesTableFilterComposer f) f) {
+    final $$CostEntriesTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.costEntries,
+        getReferencedColumn: (t) => t.fieldId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$CostEntriesTableFilterComposer(
+              $db: $db,
+              $table: $db.costEntries,
               $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
               joinBuilder: joinBuilder,
               $removeJoinBuilderFromRootComposer:
@@ -8174,6 +8895,27 @@ class $$FieldsTableAnnotationComposer
             ));
     return f(composer);
   }
+
+  Expression<T> costEntriesRefs<T extends Object>(
+      Expression<T> Function($$CostEntriesTableAnnotationComposer a) f) {
+    final $$CostEntriesTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.costEntries,
+        getReferencedColumn: (t) => t.fieldId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$CostEntriesTableAnnotationComposer(
+              $db: $db,
+              $table: $db.costEntries,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
 }
 
 class $$FieldsTableTableManager extends RootTableManager<
@@ -8193,7 +8935,8 @@ class $$FieldsTableTableManager extends RootTableManager<
         bool irrigationPlansRefs,
         bool suitabilityReportsRefs,
         bool fieldPlantInstancesRefs,
-        bool soilTestsRefs})> {
+        bool soilTestsRefs,
+        bool costEntriesRefs})> {
   $$FieldsTableTableManager(_$AppDatabase db, $FieldsTable table)
       : super(TableManagerState(
           db: db,
@@ -8278,7 +9021,8 @@ class $$FieldsTableTableManager extends RootTableManager<
               irrigationPlansRefs = false,
               suitabilityReportsRefs = false,
               fieldPlantInstancesRefs = false,
-              soilTestsRefs = false}) {
+              soilTestsRefs = false,
+              costEntriesRefs = false}) {
             return PrefetchHooks(
               db: db,
               explicitlyWatchedTables: [
@@ -8287,7 +9031,8 @@ class $$FieldsTableTableManager extends RootTableManager<
                 if (irrigationPlansRefs) db.irrigationPlans,
                 if (suitabilityReportsRefs) db.suitabilityReports,
                 if (fieldPlantInstancesRefs) db.fieldPlantInstances,
-                if (soilTestsRefs) db.soilTests
+                if (soilTestsRefs) db.soilTests,
+                if (costEntriesRefs) db.costEntries
               ],
               addJoins: null,
               getPrefetchedDataCallback: (items) async {
@@ -8367,6 +9112,18 @@ class $$FieldsTableTableManager extends RootTableManager<
                         referencedItemsForCurrentItem: (item,
                                 referencedItems) =>
                             referencedItems.where((e) => e.fieldId == item.id),
+                        typedResults: items),
+                  if (costEntriesRefs)
+                    await $_getPrefetchedData<Field, $FieldsTable, CostEntry>(
+                        currentTable: table,
+                        referencedTable:
+                            $$FieldsTableReferences._costEntriesRefsTable(db),
+                        managerFromTypedResult: (p0) =>
+                            $$FieldsTableReferences(db, table, p0)
+                                .costEntriesRefs,
+                        referencedItemsForCurrentItem: (item,
+                                referencedItems) =>
+                            referencedItems.where((e) => e.fieldId == item.id),
                         typedResults: items)
                 ];
               },
@@ -8392,7 +9149,8 @@ typedef $$FieldsTableProcessedTableManager = ProcessedTableManager<
         bool irrigationPlansRefs,
         bool suitabilityReportsRefs,
         bool fieldPlantInstancesRefs,
-        bool soilTestsRefs})>;
+        bool soilTestsRefs,
+        bool costEntriesRefs})>;
 typedef $$FieldCropsTableCreateCompanionBuilder = FieldCropsCompanion Function({
   required String id,
   required String fieldId,
@@ -12569,6 +13327,416 @@ typedef $$SoilTestsTableProcessedTableManager = ProcessedTableManager<
     (SoilTest, $$SoilTestsTableReferences),
     SoilTest,
     PrefetchHooks Function({bool fieldId})>;
+typedef $$CostEntriesTableCreateCompanionBuilder = CostEntriesCompanion
+    Function({
+  required String id,
+  Value<String?> farmerUid,
+  required String fieldId,
+  Value<String?> cropId,
+  required String kind,
+  required double amountTry,
+  Value<double?> quantity,
+  Value<String?> unit,
+  Value<double?> unitPriceTry,
+  Value<String?> note,
+  required DateTime date,
+  required DateTime createdAt,
+  required DateTime updatedAt,
+  Value<DateTime?> deletedAt,
+  Value<int> rowid,
+});
+typedef $$CostEntriesTableUpdateCompanionBuilder = CostEntriesCompanion
+    Function({
+  Value<String> id,
+  Value<String?> farmerUid,
+  Value<String> fieldId,
+  Value<String?> cropId,
+  Value<String> kind,
+  Value<double> amountTry,
+  Value<double?> quantity,
+  Value<String?> unit,
+  Value<double?> unitPriceTry,
+  Value<String?> note,
+  Value<DateTime> date,
+  Value<DateTime> createdAt,
+  Value<DateTime> updatedAt,
+  Value<DateTime?> deletedAt,
+  Value<int> rowid,
+});
+
+final class $$CostEntriesTableReferences
+    extends BaseReferences<_$AppDatabase, $CostEntriesTable, CostEntry> {
+  $$CostEntriesTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $FieldsTable _fieldIdTable(_$AppDatabase db) => db.fields
+      .createAlias($_aliasNameGenerator(db.costEntries.fieldId, db.fields.id));
+
+  $$FieldsTableProcessedTableManager get fieldId {
+    final $_column = $_itemColumn<String>('field_id')!;
+
+    final manager = $$FieldsTableTableManager($_db, $_db.fields)
+        .filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_fieldIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: [item]));
+  }
+}
+
+class $$CostEntriesTableFilterComposer
+    extends Composer<_$AppDatabase, $CostEntriesTable> {
+  $$CostEntriesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get farmerUid => $composableBuilder(
+      column: $table.farmerUid, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get cropId => $composableBuilder(
+      column: $table.cropId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get kind => $composableBuilder(
+      column: $table.kind, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get amountTry => $composableBuilder(
+      column: $table.amountTry, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get quantity => $composableBuilder(
+      column: $table.quantity, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get unit => $composableBuilder(
+      column: $table.unit, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get unitPriceTry => $composableBuilder(
+      column: $table.unitPriceTry, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get note => $composableBuilder(
+      column: $table.note, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get date => $composableBuilder(
+      column: $table.date, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get deletedAt => $composableBuilder(
+      column: $table.deletedAt, builder: (column) => ColumnFilters(column));
+
+  $$FieldsTableFilterComposer get fieldId {
+    final $$FieldsTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.fieldId,
+        referencedTable: $db.fields,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$FieldsTableFilterComposer(
+              $db: $db,
+              $table: $db.fields,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$CostEntriesTableOrderingComposer
+    extends Composer<_$AppDatabase, $CostEntriesTable> {
+  $$CostEntriesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get farmerUid => $composableBuilder(
+      column: $table.farmerUid, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get cropId => $composableBuilder(
+      column: $table.cropId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get kind => $composableBuilder(
+      column: $table.kind, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get amountTry => $composableBuilder(
+      column: $table.amountTry, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get quantity => $composableBuilder(
+      column: $table.quantity, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get unit => $composableBuilder(
+      column: $table.unit, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get unitPriceTry => $composableBuilder(
+      column: $table.unitPriceTry,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get note => $composableBuilder(
+      column: $table.note, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get date => $composableBuilder(
+      column: $table.date, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get deletedAt => $composableBuilder(
+      column: $table.deletedAt, builder: (column) => ColumnOrderings(column));
+
+  $$FieldsTableOrderingComposer get fieldId {
+    final $$FieldsTableOrderingComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.fieldId,
+        referencedTable: $db.fields,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$FieldsTableOrderingComposer(
+              $db: $db,
+              $table: $db.fields,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$CostEntriesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CostEntriesTable> {
+  $$CostEntriesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get farmerUid =>
+      $composableBuilder(column: $table.farmerUid, builder: (column) => column);
+
+  GeneratedColumn<String> get cropId =>
+      $composableBuilder(column: $table.cropId, builder: (column) => column);
+
+  GeneratedColumn<String> get kind =>
+      $composableBuilder(column: $table.kind, builder: (column) => column);
+
+  GeneratedColumn<double> get amountTry =>
+      $composableBuilder(column: $table.amountTry, builder: (column) => column);
+
+  GeneratedColumn<double> get quantity =>
+      $composableBuilder(column: $table.quantity, builder: (column) => column);
+
+  GeneratedColumn<String> get unit =>
+      $composableBuilder(column: $table.unit, builder: (column) => column);
+
+  GeneratedColumn<double> get unitPriceTry => $composableBuilder(
+      column: $table.unitPriceTry, builder: (column) => column);
+
+  GeneratedColumn<String> get note =>
+      $composableBuilder(column: $table.note, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get date =>
+      $composableBuilder(column: $table.date, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+
+  $$FieldsTableAnnotationComposer get fieldId {
+    final $$FieldsTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.fieldId,
+        referencedTable: $db.fields,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$FieldsTableAnnotationComposer(
+              $db: $db,
+              $table: $db.fields,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$CostEntriesTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $CostEntriesTable,
+    CostEntry,
+    $$CostEntriesTableFilterComposer,
+    $$CostEntriesTableOrderingComposer,
+    $$CostEntriesTableAnnotationComposer,
+    $$CostEntriesTableCreateCompanionBuilder,
+    $$CostEntriesTableUpdateCompanionBuilder,
+    (CostEntry, $$CostEntriesTableReferences),
+    CostEntry,
+    PrefetchHooks Function({bool fieldId})> {
+  $$CostEntriesTableTableManager(_$AppDatabase db, $CostEntriesTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CostEntriesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CostEntriesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$CostEntriesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<String?> farmerUid = const Value.absent(),
+            Value<String> fieldId = const Value.absent(),
+            Value<String?> cropId = const Value.absent(),
+            Value<String> kind = const Value.absent(),
+            Value<double> amountTry = const Value.absent(),
+            Value<double?> quantity = const Value.absent(),
+            Value<String?> unit = const Value.absent(),
+            Value<double?> unitPriceTry = const Value.absent(),
+            Value<String?> note = const Value.absent(),
+            Value<DateTime> date = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<DateTime> updatedAt = const Value.absent(),
+            Value<DateTime?> deletedAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              CostEntriesCompanion(
+            id: id,
+            farmerUid: farmerUid,
+            fieldId: fieldId,
+            cropId: cropId,
+            kind: kind,
+            amountTry: amountTry,
+            quantity: quantity,
+            unit: unit,
+            unitPriceTry: unitPriceTry,
+            note: note,
+            date: date,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            deletedAt: deletedAt,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String id,
+            Value<String?> farmerUid = const Value.absent(),
+            required String fieldId,
+            Value<String?> cropId = const Value.absent(),
+            required String kind,
+            required double amountTry,
+            Value<double?> quantity = const Value.absent(),
+            Value<String?> unit = const Value.absent(),
+            Value<double?> unitPriceTry = const Value.absent(),
+            Value<String?> note = const Value.absent(),
+            required DateTime date,
+            required DateTime createdAt,
+            required DateTime updatedAt,
+            Value<DateTime?> deletedAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              CostEntriesCompanion.insert(
+            id: id,
+            farmerUid: farmerUid,
+            fieldId: fieldId,
+            cropId: cropId,
+            kind: kind,
+            amountTry: amountTry,
+            quantity: quantity,
+            unit: unit,
+            unitPriceTry: unitPriceTry,
+            note: note,
+            date: date,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            deletedAt: deletedAt,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (
+                    e.readTable(table),
+                    $$CostEntriesTableReferences(db, table, e)
+                  ))
+              .toList(),
+          prefetchHooksCallback: ({fieldId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins: <
+                  T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic>>(state) {
+                if (fieldId) {
+                  state = state.withJoin(
+                    currentTable: table,
+                    currentColumn: table.fieldId,
+                    referencedTable:
+                        $$CostEntriesTableReferences._fieldIdTable(db),
+                    referencedColumn:
+                        $$CostEntriesTableReferences._fieldIdTable(db).id,
+                  ) as T;
+                }
+
+                return state;
+              },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ));
+}
+
+typedef $$CostEntriesTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $CostEntriesTable,
+    CostEntry,
+    $$CostEntriesTableFilterComposer,
+    $$CostEntriesTableOrderingComposer,
+    $$CostEntriesTableAnnotationComposer,
+    $$CostEntriesTableCreateCompanionBuilder,
+    $$CostEntriesTableUpdateCompanionBuilder,
+    (CostEntry, $$CostEntriesTableReferences),
+    CostEntry,
+    PrefetchHooks Function({bool fieldId})>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -12595,4 +13763,6 @@ class $AppDatabaseManager {
       $$PlantConditionEventsTableTableManager(_db, _db.plantConditionEvents);
   $$SoilTestsTableTableManager get soilTests =>
       $$SoilTestsTableTableManager(_db, _db.soilTests);
+  $$CostEntriesTableTableManager get costEntries =>
+      $$CostEntriesTableTableManager(_db, _db.costEntries);
 }

@@ -28,6 +28,8 @@ import 'alert_journal_service.dart';
 import 'guide_engine.dart';
 import 'live_todo_service.dart';
 import 'soil_fertilization_service.dart';
+import 'cost_service.dart';
+import 'price_book.dart';
 import 'rules/crop_rule_set.dart';
 import 'rules/recommendation.dart';
 import 'rules/recommendation_ledger.dart';
@@ -220,6 +222,88 @@ final fieldSoilTestsProvider =
     StreamProvider.family.autoDispose<List<SoilTest>, String>((ref, fieldId) {
   return ref.watch(localDataRepositoryProvider).watchSoilTests(fieldId);
 });
+
+/// Tarlanın manuel masraf kayıtları canlı stream.
+final fieldCostEntriesProvider =
+    StreamProvider.family.autoDispose<List<CostEntry>, String>((ref, fieldId) {
+  return ref.watch(localDataRepositoryProvider).watchCostEntries(fieldId);
+});
+
+/// Düzenlenebilir fiyat defteri + canlı akaryakıt (EPDK). Masraf algoritması
+/// birim fiyatları buradan alır.
+final priceBookProvider = FutureProvider<PriceBook>((ref) {
+  return PriceBookService.load();
+});
+
+/// Tarla için ürün bazlı maliyet raporu. Aktiviteler (otomatik gübre gideri),
+/// manuel masraflar ve fiyat defterini birleştirir; herhangi biri değişince
+/// otomatik yeniden hesaplanır.
+final fieldCostReportProvider =
+    FutureProvider.family.autoDispose<FieldCostReport, String>(
+  (ref, fieldId) async {
+    final repo = ref.watch(localDataRepositoryProvider);
+    final cropMaps = await ref.watch(fieldCropsStreamProvider(fieldId).future);
+    final activities =
+        await ref.watch(fieldActivityLogProvider(fieldId).future);
+    final entries = await ref.watch(fieldCostEntriesProvider(fieldId).future);
+    final prices = await ref.watch(priceBookProvider.future);
+
+    final fieldMap = await repo.loadFieldById(fieldId);
+    final fieldArea = (fieldMap?['area_dekar'] as num?)?.toDouble();
+
+    final crops = <CostCrop>[];
+    for (final c in cropMaps) {
+      double? area;
+      if (fieldArea != null && fieldArea > 0) {
+        final zs = (c['zone_start'] as num?)?.toDouble();
+        final ze = (c['zone_end'] as num?)?.toDouble();
+        if (zs != null && ze != null && ze > zs) {
+          area = fieldArea * (ze - zs).clamp(0.0, 1.0);
+        } else {
+          area = cropMaps.isEmpty ? fieldArea : fieldArea / cropMaps.length;
+        }
+      }
+      crops.add(CostCrop(
+        id: c['id'].toString(),
+        name: c['name']?.toString() ?? 'Bitki',
+        areaDekar: area,
+      ));
+    }
+
+    final acts = <CostActivity>[];
+    for (final a in activities) {
+      if (a['type'] != 'fertilizing') continue;
+      final meta = a['metadata'];
+      final metaMap = meta is Map ? meta : const {};
+      final kg = (a['quantity'] as num?)?.toDouble() ??
+          (metaMap['fertilizer_kg'] as num?)?.toDouble();
+      acts.add(CostActivity(
+        type: 'fertilizing',
+        cropId: a['crop_id']?.toString(),
+        fertilizerKg: kg,
+        fertilizerName: metaMap['fertilizer_name']?.toString(),
+      ));
+    }
+
+    final manual = entries
+        .map((e) => ManualCost(
+              id: e.id,
+              cropId: e.cropId,
+              kind: e.kind,
+              amountTry: e.amountTry,
+              note: e.note,
+              date: e.date,
+            ))
+        .toList();
+
+    return CostService.build(
+      crops: crops,
+      activities: acts,
+      manualEntries: manual,
+      prices: prices,
+    );
+  },
+);
 
 /// Bitki hastalığı teşhis servisi — şimdilik stub. AI eklendiğinde tek
 /// satır değişikliği ile `GeminiDiseaseDiagnosisService(...)` döndürülecek.

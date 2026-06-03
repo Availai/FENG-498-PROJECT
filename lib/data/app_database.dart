@@ -348,6 +348,41 @@ class SoilTests extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
+/// Çiftçinin masraf (gider) kayıtları — ürün bazlı maliyet için.
+/// Yalnızca MANUEL giderler burada tutulur (mazot, tohum, işçilik, ilaç,
+/// "diğer"). Gübre gideri ayrıca loglanan aktivitelerden anlık türetilir
+/// (CostService) — burada da manuel gübre eklenebilir. `cropId` null ise
+/// gider tarla geneli/paylaşılan kabul edilir. Kullanıcıya ait kayıt →
+/// `farmerUid` taşır (CLAUDE.md §5.5).
+class CostEntries extends Table {
+  TextColumn get id => text()();
+  TextColumn get farmerUid => text().nullable()();
+  TextColumn get fieldId => text().references(Fields, #id)();
+
+  /// Giderin atandığı ürün (FieldCrops.id). null → tarla geneli.
+  TextColumn get cropId => text().nullable()();
+
+  /// Gider türü: 'fertilizer'|'fuel'|'seed'|'labor'|'pesticide'|'irrigation'|'other'.
+  TextColumn get kind => text()();
+
+  /// Toplam tutar (₺).
+  RealColumn get amountTry => real()();
+
+  /// İsteğe bağlı miktar + birim + birim fiyat (kırılım/şeffaflık için).
+  RealColumn get quantity => real().nullable()();
+  TextColumn get unit => text().nullable()();
+  RealColumn get unitPriceTry => real().nullable()();
+
+  TextColumn get note => text().nullable()();
+  DateTimeColumn get date => dateTime()();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+  DateTimeColumn get deletedAt => dateTime().nullable()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
 class SyncJobs extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get entityType => text()();
@@ -382,13 +417,14 @@ class SyncState extends Table {
     FieldPlantInstances,
     PlantConditionEvents,
     SoilTests,
+    CostEntries,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 13;
+  int get schemaVersion => 14;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -483,6 +519,10 @@ class AppDatabase extends _$AppDatabase {
                 await customStatement(
                     'ALTER TABLE soil_tests ADD COLUMN sample_lng REAL;');
               } catch (_) {}
+            }
+            if (from < 14) {
+              // v14: ürün bazlı manuel masraf kayıtları tablosu.
+              await m.createTable(costEntries);
             }
           } catch (e, st) {
             debugPrint('Drift migration $from→$to hata: $e\n$st');
