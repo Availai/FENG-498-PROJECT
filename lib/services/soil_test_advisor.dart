@@ -158,7 +158,7 @@ class SoilTestAdvisor {
     final findings = <SoilFinding>[];
 
     final texture =
-        input.textureClass ?? _textureFromSaturation(input.saturationPct);
+        input.textureClass ?? textureFromSaturation(input.saturationPct);
 
     // ── Doku (suyla doygunluk) ──────────────────────────────────────────
     if (texture != null) {
@@ -646,7 +646,9 @@ class SoilTestAdvisor {
   // ───────────────────────────────────────────────────────────────────────
 
   /// Suyla doygunluk %'sinden doku sınıfı türetir (standart aralıklar).
-  static String? _textureFromSaturation(double? saturationPct) {
+  /// Public — `SoilIrrigationAdvisor` aynı eşik tablosunu yeniden kullanır
+  /// (tek doğruluk kaynağı; duplike edilmez).
+  static String? textureFromSaturation(double? saturationPct) {
     if (saturationPct == null) return null;
     final s = saturationPct;
     if (s < 30) return 'Kumlu';

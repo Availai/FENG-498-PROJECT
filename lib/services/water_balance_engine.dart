@@ -15,6 +15,7 @@ library;
 
 import '../data/crop_protocols.dart' show SoilType;
 import 'fao_eto_service.dart';
+import 'soil_irrigation_advisor.dart';
 import 'water_accounting.dart';
 
 class DailyForecast {
@@ -49,6 +50,12 @@ class WaterBalanceFacts {
   final double latitudeDeg;
   final double elevationM;
 
+  /// Laboratuvar toprak analizinden türetilen sulama profili (opsiyonel).
+  /// Verilirse: organik madde → tarla su kapasitesi düzeltmesi, tuzluluk →
+  /// yıkama (leaching) suyu brüt litreye eklenir. **null ise çıktı bugünküyle
+  /// birebir aynıdır** (geriye dönük uyumlu, regresyon güvenli).
+  final SoilIrrigationProfile? soilProfile;
+
   const WaterBalanceFacts({
     required this.cropNameTr,
     required this.plantedDate,
@@ -60,6 +67,7 @@ class WaterBalanceFacts {
     required this.forecast,
     required this.latitudeDeg,
     required this.elevationM,
+    this.soilProfile,
   });
 }
 
@@ -188,7 +196,10 @@ class WaterBalanceEngine {
 
   /// Ana hesap.
   WaterBalanceResult compute(WaterBalanceFacts f) {
-    final fc = fieldCapacityMm(f.soilType);
+    // Lab analizi varsa tarla su kapasitesini organik maddeye göre rafine et;
+    // yoksa çarpan 1.0 → mevcut 4-kova SoilType değeri birebir korunur.
+    final fcMultiplier = f.soilProfile?.fieldCapacityMultiplier ?? 1.0;
+    final fc = fieldCapacityMm(f.soilType) * fcMultiplier;
     final raw = fc * _depletionFraction; // okunabilir su miktarı
     final criticalLevel = fc - raw; // bu seviyenin altına düşmemeli
 
@@ -277,7 +288,11 @@ class WaterBalanceEngine {
     final areaSqm = (f.areaDekar <= 0 ? 1.0 : f.areaDekar) * 1000.0;
     final netLiters = recommendedDose * areaSqm;
     final eff = WaterAccounting.methodEfficiency(f.irrigationMethod);
-    final grossLiters = eff > 0 ? netLiters / eff : netLiters;
+    // Tuzlu toprakta kök bölgesini yıkamak için ek su (FAO-29). Lab analizi
+    // yoksa çarpan 1.0 → değişmez.
+    final leachMultiplier = f.soilProfile?.grossWaterMultiplier ?? 1.0;
+    final grossLiters =
+        (eff > 0 ? netLiters / eff : netLiters) * leachMultiplier;
 
     return WaterBalanceResult(
       currentSoilMm: f.currentSoilMoistureMm > 0

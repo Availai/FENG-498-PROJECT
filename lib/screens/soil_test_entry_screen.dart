@@ -8,6 +8,7 @@ import 'package:latlong2/latlong.dart';
 import '../data/app_database.dart';
 import '../services/app_providers.dart';
 import '../services/soil_fertilization_service.dart';
+import '../services/soil_irrigation_advisor.dart';
 import '../services/soil_test_advisor.dart';
 import '../theme/app_theme.dart';
 import '../widgets/floating_toast.dart';
@@ -62,6 +63,10 @@ class _SoilTestEntryScreenState extends ConsumerState<SoilTestEntryScreen> {
   double? _sampleLng;
   double? _sampleRadius;
   SoilTestAdvice? _advice;
+
+  /// Toprak analizinden türetilen sulama rehberi — `_advice` ile birlikte set
+  /// edilir (aynı girdiden). Analiz yoksa null.
+  SoilIrrigationProfile? _irrigation;
 
   /// Öneri paneli açık mı (katlanabilir). Kaydet sonrası varsayılan kapalı;
   /// geçmiş analiz açıldığında otomatik açık gelir.
@@ -125,6 +130,13 @@ class _SoilTestEntryScreenState extends ConsumerState<SoilTestEntryScreen> {
     }
 
     final advice = SoilTestAdvisor.analyze(input);
+    final irrigation = SoilIrrigationAdvisor.analyze(
+      saturationPct: input.saturationPct,
+      textureClass: input.textureClass,
+      ecDsM: input.ecDsM,
+      saltPct: input.saltPct,
+      organicMatterPct: input.organicMatterPct,
+    );
 
     try {
       await ref.read(localDataRepositoryProvider).saveSoilTest(
@@ -172,6 +184,7 @@ class _SoilTestEntryScreenState extends ConsumerState<SoilTestEntryScreen> {
 
     setState(() {
       _advice = advice;
+      _irrigation = irrigation;
       _viewingPast = false;
       // Öneriler arka planda hazır; katlanmış gelir, kullanıcı isterse açar.
       _showAdvice = false;
@@ -232,8 +245,16 @@ class _SoilTestEntryScreenState extends ConsumerState<SoilTestEntryScreen> {
       textureClass: t.textureClass,
       cropName: widget.cropName,
     ));
+    final irrigation = SoilIrrigationAdvisor.analyze(
+      saturationPct: t.saturationPct,
+      textureClass: t.textureClass,
+      ecDsM: t.ecDsM,
+      saltPct: t.saltPct,
+      organicMatterPct: t.organicMatterPct,
+    );
     setState(() {
       _advice = advice;
+      _irrigation = irrigation;
       _showAdvice = true;
       _viewingPast = true;
     });
@@ -517,6 +538,7 @@ class _SoilTestEntryScreenState extends ConsumerState<SoilTestEntryScreen> {
       _sampleLng = null;
       _sampleRadius = null;
       _advice = null;
+      _irrigation = null;
       _showAdvice = false;
       _viewingPast = false;
     });
@@ -741,6 +763,12 @@ class _SoilTestEntryScreenState extends ConsumerState<SoilTestEntryScreen> {
               ],
             ),
           ),
+        ],
+
+        // Sulama rehberi — toprak analizine göre (doku/tuzluluk/organik madde)
+        if (_irrigation != null && _irrigation!.notes.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          _irrigationCard(_irrigation!),
         ],
 
         const SizedBox(height: 12),
@@ -1009,6 +1037,106 @@ class _SoilTestEntryScreenState extends ConsumerState<SoilTestEntryScreen> {
           ],
           const SizedBox(height: 6),
           Text('Kaynak: ${f.source}',
+              style: TextStyle(
+                  fontSize: 10.5,
+                  color: AppColors.textSecondary,
+                  fontStyle: FontStyle.italic)),
+        ],
+      ),
+    );
+  }
+
+  /// Toprak analizine göre sulama rehberi kartı — doku (sıklık/doz), tuzluluk
+  /// (yıkama suyu) ve organik madde (su tutma) etkilerini gösterir.
+  Widget _irrigationCard(SoilIrrigationProfile p) {
+    return _card(
+      icon: Icons.water_drop_rounded,
+      color: AppColors.info,
+      title: 'Sulama Rehberi',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              if (p.textureLabel != null)
+                _irrigationChip(Icons.terrain_rounded, p.textureLabel!),
+              if (p.intervalFactor != 1.0)
+                _irrigationChip(
+                  p.intervalFactor < 1.0
+                      ? Icons.fast_forward_rounded
+                      : Icons.slow_motion_video_rounded,
+                  p.intervalFactor < 1.0
+                      ? 'Daha sık sulama'
+                      : 'Daha seyrek sulama',
+                ),
+              if (p.leachingFraction > 0)
+                _irrigationChip(
+                  Icons.shower_rounded,
+                  '+%${((p.grossWaterMultiplier - 1) * 100).round()} yıkama suyu',
+                ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          ...p.notes.map(_irrigationNoteTile),
+        ],
+      ),
+    );
+  }
+
+  Widget _irrigationChip(IconData icon, String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppColors.info.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.info.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 15, color: AppColors.info),
+          const SizedBox(width: 5),
+          Text(label,
+              style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary)),
+        ],
+      ),
+    );
+  }
+
+  Widget _irrigationNoteTile(SoilIrrigationNote n) {
+    final c = _severityColor(n.severity);
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: _severityBg(n.severity),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: c.withValues(alpha: 0.5)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(_severityIcon(n.severity), size: 16, color: c),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(n.title,
+                    style: GoogleFonts.outfit(
+                        fontWeight: FontWeight.w700, fontSize: 13.5)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 5),
+          Text(n.message, style: const TextStyle(fontSize: 12.5, height: 1.32)),
+          const SizedBox(height: 5),
+          Text('Kaynak: ${n.source}',
               style: TextStyle(
                   fontSize: 10.5,
                   color: AppColors.textSecondary,

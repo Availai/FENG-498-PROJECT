@@ -15,6 +15,7 @@ import '../services/crop_schedule_seeder.dart';
 import '../services/crop_state_service.dart';
 import '../services/field_setup_defaults.dart';
 import '../services/notification_service.dart';
+import '../services/soil_irrigation_advisor.dart';
 import '../services/task_directive_service.dart';
 import '../data/activity_types.dart';
 import '../data/app_database.dart';
@@ -47,6 +48,29 @@ import 'plant_zone_drawing_screen.dart';
 import 'turkish_crops_search_screen.dart';
 import '../widgets/animated_route.dart';
 import '../theme/app_theme.dart';
+
+/// Tarlanın EN GÜNCEL laboratuvar toprak analizinden sulama profili türetir
+/// (defansif). Analiz yoksa/okunamazsa null → çağıran taraf yöntem-bazlı
+/// sulama aralığına düşer (mevcut davranış). Sulama aralığını ekim/kurulum
+/// anında toprak dokusuna göre rafine etmek için kullanılır.
+Future<SoilIrrigationProfile?> _loadSoilIrrigationProfile(
+    WidgetRef ref, String fieldId) async {
+  try {
+    final tests =
+        await ref.read(localDataRepositoryProvider).loadSoilTests(fieldId);
+    if (tests.isEmpty) return null;
+    final s = tests.first;
+    return SoilIrrigationAdvisor.analyze(
+      saturationPct: s.saturationPct,
+      textureClass: s.textureClass,
+      ecDsM: s.ecDsM,
+      saltPct: s.saltPct,
+      organicMatterPct: s.organicMatterPct,
+    );
+  } catch (_) {
+    return null;
+  }
+}
 
 class FieldDetailScreen extends ConsumerStatefulWidget {
   final dynamic fieldData;
@@ -1678,8 +1702,11 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
         config?.rowSpacingCm ?? protocol?.defaultRowSpacingCm ?? 50.0;
     final plantSpacingCm =
         config?.plantSpacingCm ?? protocol?.defaultPlantSpacingCm ?? 40.0;
-    final waterIntervalDays =
-        CropScheduleSeeder.intervalForMethod(config?.irrigationMethod);
+    // Sulama aralığını toprak dokusuna göre rafine et (kumlu sık, killi seyrek).
+    // Analiz yoksa yöntem-bazlı varsayılana düşer (mevcut davranış).
+    final soilIrrigation = await _loadSoilIrrigationProfile(ref, fieldId);
+    final waterIntervalDays = CropScheduleSeeder.intervalForMethodAndSoil(
+        config?.irrigationMethod, soilIrrigation);
     final plantedDate =
         '${DateTime.now().day.toString().padLeft(2, '0')}.${DateTime.now().month.toString().padLeft(2, '0')}.${DateTime.now().year}';
 
@@ -5457,8 +5484,10 @@ class _CropRoadmapCardState extends ConsumerState<_CropRoadmapCard> {
       config: config,
     );
 
-    final waterIntervalDays =
-        CropScheduleSeeder.intervalForMethod(config.irrigationMethod);
+    final soilIrrigation =
+        await _loadSoilIrrigationProfile(ref, widget.fieldId);
+    final waterIntervalDays = CropScheduleSeeder.intervalForMethodAndSoil(
+        config.irrigationMethod, soilIrrigation);
     final repo = ref.read(localDataRepositoryProvider);
     await repo.updateCropSetup(
       cropId: cropId,

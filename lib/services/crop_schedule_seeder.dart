@@ -8,6 +8,7 @@ import '../data/crop_ipm_rules.dart';
 import '../data/crop_playbooks.dart';
 import '../data/crop_protocols.dart' show IrrigationMethod;
 import 'ipm_decision_service.dart';
+import 'soil_irrigation_advisor.dart';
 
 /// Bitki tarlaya eklendiğinde sezonluk takvim programını (sulama + gübreleme +
 /// gözlem/ilaçlama) `CalendarEvents` tablosuna **source='auto_seed'** olarak yazan
@@ -41,6 +42,18 @@ class CropScheduleSeeder {
       case null:
         return 7;
     }
+  }
+
+  /// Sulama yöntemi + toprak analizine göre aralık (gün). Toprak profili yoksa
+  /// veya etkisi nötrse [intervalForMethod] ile **birebir aynıdır** (geriye
+  /// uyumlu). Kumlu toprak aralığı kısaltır (daha sık), killi uzatır (daha
+  /// seyrek) — FAO-56 kullanılabilir su mantığı. Sonuç 1–30 gün aralığına clamp.
+  static int intervalForMethodAndSoil(
+      IrrigationMethod? m, SoilIrrigationProfile? soil) {
+    final base = intervalForMethod(m);
+    final factor = soil?.intervalFactor ?? 1.0;
+    if (factor == 1.0) return base;
+    return (base * factor).round().clamp(1, 30);
   }
 
   /// Tek bitkinin sezonluk programını yazar. Aynı crop için önceki auto_seed

@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:feng_498/data/crop_protocols.dart' show SoilType;
+import 'package:feng_498/services/soil_irrigation_advisor.dart';
 import 'package:feng_498/services/water_balance_engine.dart';
 
 /// Pure-function engine — aynı girdiyle aynı çıktı, deterministik.
@@ -13,6 +14,7 @@ void main() {
     String method = 'Damla sulama',
     double soilMoistureMm = 0,
     DateTime? planted,
+    SoilIrrigationProfile? soilProfile,
   }) {
     return WaterBalanceFacts(
       cropNameTr: 'Domates',
@@ -25,6 +27,7 @@ void main() {
       forecast: forecast,
       latitudeDeg: 37.0,
       elevationM: 100,
+      soilProfile: soilProfile,
     );
   }
 
@@ -63,8 +66,7 @@ void main() {
     ));
     final wet = engine.compute(buildFacts(
       forecast: [
-        for (int i = 0; i < 7; i++)
-          day(dayOffset: i, precip: i == 1 ? 25 : 0),
+        for (int i = 0; i < 7; i++) day(dayOffset: i, precip: i == 1 ? 25 : 0),
       ],
     ));
     // Yağışlı senaryoda sonraki sulama daha sonraya öteleniyor.
@@ -142,5 +144,46 @@ void main() {
     final sandyDays = sandy.daysUntilIrrigation ?? 99;
     final clayDays = clay.daysUntilIrrigation ?? 99;
     expect(sandyDays, lessThanOrEqualTo(clayDays));
+  });
+
+  // ── Toprak analizi entegrasyonu (geriye uyumlu) ──────────────────────────
+
+  group('toprak profili entegrasyonu', () {
+    final dryWeek = [for (int i = 0; i < 7; i++) day(dayOffset: i)];
+
+    test('soilProfile null → cikti bugunkuyle birebir ayni (regresyon)', () {
+      final withoutFacts = buildFacts(forecast: dryWeek);
+      final withNeutral = buildFacts(
+        forecast: dryWeek,
+        soilProfile: SoilIrrigationProfile.neutral,
+      );
+      final a = engine.compute(withoutFacts);
+      final b = engine.compute(withNeutral);
+      expect(a.fieldCapacityMm, b.fieldCapacityMm);
+      expect(a.recommendedDoseMm, b.recommendedDoseMm);
+      expect(a.recommendedGrossLiters, b.recommendedGrossLiters);
+      expect(a.nextIrrigationDate, b.nextIrrigationDate);
+    });
+
+    test('yuksek organik madde tarla su kapasitesini artirir', () {
+      final base = engine.compute(buildFacts(forecast: dryWeek));
+      final richOm = engine.compute(buildFacts(
+        forecast: dryWeek,
+        soilProfile: SoilIrrigationAdvisor.analyze(organicMatterPct: 5.0),
+      ));
+      expect(richOm.fieldCapacityMm, greaterThan(base.fieldCapacityMm));
+    });
+
+    test('yuksek tuzluluk brut su (litre) ihtiyacini artirir (yikama)', () {
+      final base = engine.compute(buildFacts(forecast: dryWeek));
+      final saline = engine.compute(buildFacts(
+        forecast: dryWeek,
+        soilProfile: SoilIrrigationAdvisor.analyze(ecDsM: 10.0),
+      ));
+      // Aynı net doz için tuzlu toprak yıkama suyuyla daha fazla litre ister.
+      expect(base.recommendedDoseMm, greaterThan(0));
+      expect(saline.recommendedGrossLiters,
+          greaterThan(base.recommendedGrossLiters));
+    });
   });
 }
