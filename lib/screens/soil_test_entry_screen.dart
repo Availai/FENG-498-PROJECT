@@ -12,6 +12,7 @@ import '../services/soil_test_advisor.dart';
 import '../theme/app_theme.dart';
 import '../widgets/floating_toast.dart';
 import '../widgets/help_panel.dart';
+import 'soil_lab_finder_screen.dart';
 import 'soil_sample_point_picker_screen.dart';
 
 /// Laboratuvar Toprak Analizi — manuel sonuç girişi + deterministik öneri.
@@ -59,6 +60,7 @@ class _SoilTestEntryScreenState extends ConsumerState<SoilTestEntryScreen> {
   DateTime? _sampledAt;
   double? _sampleLat;
   double? _sampleLng;
+  double? _sampleRadius;
   SoilTestAdvice? _advice;
 
   /// Öneri paneli açık mı (katlanabilir). Kaydet sonrası varsayılan kapalı;
@@ -145,7 +147,14 @@ class _SoilTestEntryScreenState extends ConsumerState<SoilTestEntryScreen> {
             saturationPct: input.saturationPct,
             sampleLat: _sampleLat,
             sampleLng: _sampleLng,
+            sampleRadius: _sampleRadius,
           );
+
+      // Yeni toprak analizi büyüme/verim tahminini etkiler (başlangıç besin
+      // stresi). Bu tarlanın ekinlerini yeniden hesapla → canlı büyüme,
+      // evre ve verim çarpanı analize göre anında güncellensin.
+      await _recomputeFieldGrowth();
+
       if (!mounted) return;
       AppToast.show(
         context,
@@ -170,6 +179,27 @@ class _SoilTestEntryScreenState extends ConsumerState<SoilTestEntryScreen> {
     _scrollToResults();
   }
 
+  /// Bu tarlanın ekinleri için büyüme durumunu yeniden hesaplar.
+  /// Yeni toprak analizi başlangıç besin stresini değiştirir; GrowthEngine
+  /// yalnızca desteklenen vitrin ürünlerini işler, diğerleri no-op döner.
+  /// Hata fatal değildir — analiz kaydı yine de geçerlidir.
+  Future<void> _recomputeFieldGrowth() async {
+    try {
+      final crops = await ref
+          .read(localDataRepositoryProvider)
+          .loadFieldCrops(widget.fieldId);
+      final engine = ref.read(growthEngineProvider);
+      for (final c in crops) {
+        final cropId = c['id']?.toString();
+        if (cropId != null && cropId.isNotEmpty) {
+          await engine.recompute(cropId: cropId);
+        }
+      }
+    } catch (_) {
+      // Büyüme yeniden hesabı başarısız olsa bile analiz kaydı korunur.
+    }
+  }
+
   /// Geçmiş bir kaydı forma yükler ve yeniden yorumlar.
   void _loadFromRecord(SoilTest t) {
     String s(double? v) => v == null ? '' : _fmt(v);
@@ -178,6 +208,7 @@ class _SoilTestEntryScreenState extends ConsumerState<SoilTestEntryScreen> {
     _sampledAt = t.sampledAt?.toLocal();
     _sampleLat = t.sampleLat;
     _sampleLng = t.sampleLng;
+    _sampleRadius = t.sampleRadius;
     _phCtrl.text = s(t.ph);
     _saltCtrl.text = s(t.saltPct);
     _ecCtrl.text = s(t.ecDsM);
@@ -257,26 +288,69 @@ class _SoilTestEntryScreenState extends ConsumerState<SoilTestEntryScreen> {
     final initial = (_sampleLat != null && _sampleLng != null)
         ? LatLng(_sampleLat!, _sampleLng!)
         : null;
-    final result = await Navigator.push<LatLng>(
+    final result = await Navigator.push<SoilSampleArea>(
       context,
       MaterialPageRoute(
         builder: (_) => SoilSamplePointPickerScreen(
           fieldPolygon: widget.fieldPolygon,
           fieldName: widget.fieldName,
           initialPoint: initial,
+          initialRadiusMeters: _sampleRadius ?? 25,
           pastPoints: past,
         ),
       ),
     );
     if (result != null) {
       setState(() {
-        _sampleLat = result.latitude;
-        _sampleLng = result.longitude;
+        _sampleLat = result.center.latitude;
+        _sampleLng = result.center.longitude;
+        _sampleRadius = result.radiusMeters;
         if (_sampleLabelCtrl.text.trim().isEmpty) {
-          _sampleLabelCtrl.text = 'Haritadan seçilen nokta';
+          _sampleLabelCtrl.text = 'Haritadan seçilen alan';
         }
       });
     }
+  }
+
+  /// Örnek/tarla konumu — seçilen nokta varsa onu, yoksa tarla merkezini kullanır.
+  /// Hiçbiri yoksa null (lab bulucu açılamaz).
+  LatLng? _searchCenter() {
+    if (_sampleLat != null && _sampleLng != null) {
+      return LatLng(_sampleLat!, _sampleLng!);
+    }
+    if (widget.fieldPolygon.isEmpty) return null;
+    double lat = 0, lng = 0;
+    for (final p in widget.fieldPolygon) {
+      lat += p.latitude;
+      lng += p.longitude;
+    }
+    return LatLng(
+      lat / widget.fieldPolygon.length,
+      lng / widget.fieldPolygon.length,
+    );
+  }
+
+  /// Yakındaki toprak analizi laboratuvarı bulucu ekranını açar.
+  void _openLabFinder() {
+    final center = _searchCenter();
+    if (center == null) {
+      AppToast.show(
+        context,
+        message:
+            'Konum yok. Önce haritadan örnek alanı seçin veya tarla sınırı tanımlı olsun.',
+        type: ToastType.warning,
+      );
+      return;
+    }
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => SoilLabFinderScreen(
+          latitude: center.latitude,
+          longitude: center.longitude,
+        ),
+      ),
+    );
   }
 
   Widget _mapPickRow() {
@@ -314,6 +388,7 @@ class _SoilTestEntryScreenState extends ConsumerState<SoilTestEntryScreen> {
                   onPressed: () => setState(() {
                     _sampleLat = null;
                     _sampleLng = null;
+                    _sampleRadius = null;
                   }),
                   icon: const Icon(Icons.close_rounded,
                       color: AppColors.textSecondary),
@@ -330,7 +405,8 @@ class _SoilTestEntryScreenState extends ConsumerState<SoilTestEntryScreen> {
                       size: 14, color: AppColors.emerald),
                   const SizedBox(width: 4),
                   Text(
-                    '${_sampleLat!.toStringAsFixed(5)}, ${_sampleLng!.toStringAsFixed(5)}',
+                    '${_sampleLat!.toStringAsFixed(5)}, ${_sampleLng!.toStringAsFixed(5)}'
+                    '${_sampleRadius != null ? ' • yarıçap ${_sampleRadius!.toStringAsFixed(0)} m' : ''}',
                     style: const TextStyle(
                         fontSize: 11.5, color: AppColors.textSecondary),
                   ),
@@ -439,6 +515,7 @@ class _SoilTestEntryScreenState extends ConsumerState<SoilTestEntryScreen> {
       _sampledAt = null;
       _sampleLat = null;
       _sampleLng = null;
+      _sampleRadius = null;
       _advice = null;
       _showAdvice = false;
       _viewingPast = false;
@@ -586,6 +663,21 @@ class _SoilTestEntryScreenState extends ConsumerState<SoilTestEntryScreen> {
             label: 'Laboratuvar / kurum (isteğe bağlı)',
             hint: 'ör. İl Tarım Müdürlüğü laboratuvarı',
           ),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: OutlinedButton.icon(
+              onPressed: _openLabFinder,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.emeraldDark,
+                side: const BorderSide(color: AppColors.emeraldLight),
+                minimumSize: const Size.fromHeight(46),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
+              ),
+              icon: const Icon(Icons.travel_explore_rounded, size: 18),
+              label: const Text('Yakındaki toprak laboratuvarı bul'),
+            ),
+          ),
           _dateRow(),
           const SizedBox(height: 4),
           const Divider(),
@@ -641,7 +733,12 @@ class _SoilTestEntryScreenState extends ConsumerState<SoilTestEntryScreen> {
             title:
                 'Gübreleme Takvimi — ${widget.cropName ?? ''} (genel rehber)',
             child: Column(
-              children: advice.fertilizationPlan.map(_fertStepTile).toList(),
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ...advice.fertilizationPlan.map(_fertStepTile),
+                const SizedBox(height: 4),
+                _fertPlanFootnote(advice),
+              ],
             ),
           ),
         ],
@@ -921,6 +1018,38 @@ class _SoilTestEntryScreenState extends ConsumerState<SoilTestEntryScreen> {
     );
   }
 
+  /// Takvimin altına bağlam notu: analize göre uyarlandıysa bilgi, aksi
+  /// halde "genel rehber, kesin doz için analiz girin" uyarısı (CLAUDE.md §16).
+  Widget _fertPlanFootnote(SoilTestAdvice advice) {
+    final adjusted = advice.fertilizationPlan.any((s) => s.adjustedBySoil);
+    final text = adjusted
+        ? 'Dozlar girdiğiniz toprak analizine göre uyarlandı. Kesin uygulama '
+            'için laboratuvar raporundaki ziraat mühendisi önerisini esas alın.'
+        : 'Bu dozlar genel rehberdir. Tarlanıza özel kesin doz için azot, '
+            'fosfor ve potasyum değerlerini içeren toprak analizi girin.';
+    final color = adjusted ? AppColors.emeraldDark : AppColors.warning;
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(adjusted ? Icons.verified_rounded : Icons.info_outline_rounded,
+              size: 15, color: color),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(text,
+                style: TextStyle(fontSize: 11, height: 1.35, color: color)),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _fertStepTile(FertilizationStep step) {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -942,7 +1071,13 @@ class _SoilTestEntryScreenState extends ConsumerState<SoilTestEntryScreen> {
                         fontSize: 13,
                         color: AppColors.warning)),
               ),
-              Text('${step.doseKgDekar.toStringAsFixed(0)} kg/dekar',
+              if (step.adjustedBySoil)
+                Padding(
+                  padding: const EdgeInsets.only(right: 6),
+                  child: Icon(Icons.tune_rounded,
+                      size: 14, color: AppColors.emeraldDark),
+                ),
+              Text('${_fmt(step.doseKgDekar)} kg/dekar',
                   style: const TextStyle(
                       fontWeight: FontWeight.bold, fontSize: 13)),
             ],
@@ -956,6 +1091,32 @@ class _SoilTestEntryScreenState extends ConsumerState<SoilTestEntryScreen> {
                   fontSize: 11,
                   color: AppColors.textSecondary,
                   fontStyle: FontStyle.italic)),
+          if (step.adjustmentNote != null) ...[
+            const SizedBox(height: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppColors.emerald.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.science_outlined,
+                      size: 13, color: AppColors.emeraldDark),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(step.adjustmentNote!,
+                        style: const TextStyle(
+                            fontSize: 11,
+                            height: 1.3,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.emeraldDark)),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );

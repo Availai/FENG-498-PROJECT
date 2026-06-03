@@ -51,13 +51,43 @@ class FertilizationStep {
   final String fertilizer; // "20-20-0" "Üre" "DAP" vb.
   final double doseKgDekar;
   final String note;
+
+  /// Toprak analizine göre doz ayarlandıysa açıklama (Türkçe), yoksa null.
+  /// Örn. "Toprağınızda fosfor yüksek — doz %40 azaltıldı."
+  final String? adjustmentNote;
+
+  /// Bu adımın dozu lab analizine göre ölçeklendiyse true. UI rozet gösterir.
+  final bool adjustedBySoil;
+
   const FertilizationStep({
     required this.period,
     required this.fertilizer,
     required this.doseKgDekar,
     required this.note,
+    this.adjustmentNote,
+    this.adjustedBySoil = false,
   });
+
+  /// Bu adımı yeni doz + ayarlama notuyla kopyalar (immutable).
+  FertilizationStep copyWith({
+    double? doseKgDekar,
+    String? adjustmentNote,
+    bool? adjustedBySoil,
+  }) {
+    return FertilizationStep(
+      period: period,
+      fertilizer: fertilizer,
+      doseKgDekar: doseKgDekar ?? this.doseKgDekar,
+      note: note,
+      adjustmentNote: adjustmentNote ?? this.adjustmentNote,
+      adjustedBySoil: adjustedBySoil ?? this.adjustedBySoil,
+    );
+  }
 }
+
+/// Bir gübreleme adımının baskın besin odağı — doz ayarı bu eksene göre yapılır.
+/// Dahili enum (İngilizce), kullanıcıya görünmez.
+enum FertilizerFocus { nitrogen, phosphorus, potassium, balanced, organic }
 
 /// pH değiştirme hesabı sonucu.
 class AmendmentResult {
@@ -342,6 +372,156 @@ class SoilFertilizationService {
         note: 'Ürün kalitesini artırır.',
       ),
     ];
+  }
+
+  // ───────────────────────────────────────────────────────────────────
+  // 3b. ANALİZE DUYARLI DOZ AYARI
+  // Sabit takvim taban kalır; laboratuvar N/P/K seviyesine göre her adımın
+  // dozu ölçeklenir. Toprak analizi yoksa plan AYNEN döner (CLAUDE.md §16):
+  // kesin doz tahmin edilmez, sadece mevcut genel rehber gösterilir.
+  // ───────────────────────────────────────────────────────────────────
+
+  /// Bir gübreleme adımının baskın besin odağını gübre adından çıkarır.
+  /// Doz ayarı bu eksendeki lab seviyesine göre yapılır.
+  static FertilizerFocus focusOf(String fertilizer) {
+    final f = _normalizeCropName(fertilizer);
+    // Organik / çiftlik gübresi — kimyasal doz ayarına tabi tutulmaz.
+    if (f.contains('ciftlik') ||
+        f.contains('ahir') ||
+        f.contains('kompost') ||
+        f.contains('organik')) {
+      return FertilizerFocus.organic;
+    }
+    // Potasyum kaynakları
+    if (f.contains('potasyum') ||
+        f.contains('mkp') ||
+        f.contains('mono potasyum') ||
+        f.contains('kalium') ||
+        f.contains('kcl') ||
+        f.contains('k2so4') ||
+        f.contains('0-0-')) {
+      return FertilizerFocus.potassium;
+    }
+    // Fosfor kaynakları (saf azotlu üre/CAN'dan önce kontrol et)
+    if (f.contains('dap') ||
+        f.contains('tsp') ||
+        f.contains('fosfat') ||
+        f.contains('20-20-0')) {
+      return FertilizerFocus.phosphorus;
+    }
+    // Azot kaynakları
+    if (f.contains('ure') ||
+        f.contains('can') ||
+        f.contains('amonyum') ||
+        f.contains('azot') ||
+        f.contains('nitrat')) {
+      return FertilizerFocus.nitrogen;
+    }
+    // Kompoze NPK (15-15-15 vb.) — dengeli
+    return FertilizerFocus.balanced;
+  }
+
+  /// Gübre takvimini laboratuvar analizine göre ayarlar. Her adımın dozu,
+  /// adımın baskın besin ekseninin lab seviyesine göre ölçeklenir; ayrıca
+  /// kısa bir Türkçe gerekçe notu eklenir.
+  ///
+  /// Tüm lab parametreleri null ise (analiz yok) plan **aynen** döner —
+  /// kesin doz uydurulmaz (CLAUDE.md §16). Bir besin ölçülmemişse o eksendeki
+  /// adımlar ayarlanmaz.
+  ///
+  /// - [nitrogenPct]: toplam azot %. (SoilTestAdvisor eşikleriyle uyumlu)
+  /// - [phosphorusKgDa]: P₂O₅ kg/dekar (Olsen).
+  /// - [potassiumKgDa]: K₂O kg/dekar.
+  static List<FertilizationStep> adjustPlanForSoil(
+    List<FertilizationStep> plan, {
+    double? nitrogenPct,
+    double? phosphorusKgDa,
+    double? potassiumKgDa,
+  }) {
+    if (nitrogenPct == null &&
+        phosphorusKgDa == null &&
+        potassiumKgDa == null) {
+      return plan; // analiz yok → değiştirme
+    }
+    return plan.map((step) {
+      final focus = focusOf(step.fertilizer);
+      final (level, measured) = switch (focus) {
+        FertilizerFocus.nitrogen => (_nitrogenLevel(nitrogenPct), nitrogenPct),
+        FertilizerFocus.phosphorus => (
+            _phosphorusLevel(phosphorusKgDa),
+            phosphorusKgDa
+          ),
+        FertilizerFocus.potassium => (
+            _potassiumLevel(potassiumKgDa),
+            potassiumKgDa
+          ),
+        // Dengeli/organik adımlar tek eksene bağlanamaz → ayarlanmaz.
+        _ => (null, null),
+      };
+      if (level == null || measured == null) return step;
+
+      final (factor, reason) = _doseFactorFor(focus, level);
+      if (factor == 1.0) {
+        // Seviye ideal → doz değişmez ama bilgi notu yine de faydalı.
+        return step.copyWith(
+          adjustedBySoil: true,
+          adjustmentNote: reason,
+        );
+      }
+      final newDose =
+          (step.doseKgDekar * factor).clamp(0.0, step.doseKgDekar * 1.6);
+      return step.copyWith(
+        doseKgDekar: double.parse(newDose.toStringAsFixed(1)),
+        adjustedBySoil: true,
+        adjustmentNote: reason,
+      );
+    }).toList();
+  }
+
+  /// Besin eksenine + lab seviyesine göre doz çarpanı ve Türkçe gerekçe.
+  /// Düşük seviye → artır; yüksek → azalt/atla.
+  static (double, String) _doseFactorFor(
+      FertilizerFocus focus, NutrientLevel level) {
+    final besin = switch (focus) {
+      FertilizerFocus.nitrogen => 'azot',
+      FertilizerFocus.phosphorus => 'fosfor',
+      FertilizerFocus.potassium => 'potasyum',
+      _ => 'besin',
+    };
+    switch (level) {
+      case NutrientLevel.dusuk:
+        return (1.3, 'Toprağınızda $besin düşük — doz %30 artırıldı.');
+      case NutrientLevel.orta:
+        return (1.0, 'Toprağınızda $besin orta düzeyde — standart doz uygun.');
+      case NutrientLevel.yuksek:
+        return (
+          0.6,
+          'Toprağınızda $besin yüksek — doz %40 azaltıldı, '
+              'gerekirse bu adımı atlayabilirsiniz.'
+        );
+    }
+  }
+
+  // Lab değer → seviye sınıflaması. SoilTestAdvisor eşikleriyle hizalı.
+  static NutrientLevel? _nitrogenLevel(double? n) {
+    if (n == null) return null;
+    if (n < 0.09) return NutrientLevel.dusuk; // çok az + az
+    if (n < 0.17) return NutrientLevel.orta;
+    return NutrientLevel.yuksek;
+  }
+
+  static NutrientLevel? _phosphorusLevel(double? p) {
+    if (p == null) return null;
+    if (p < 6) return NutrientLevel.dusuk; // çok az + az
+    if (p <= 9) return NutrientLevel.orta;
+    return NutrientLevel.yuksek;
+  }
+
+  static NutrientLevel? _potassiumLevel(double? k) {
+    if (k == null) return null;
+    if (k < 20) return NutrientLevel.dusuk;
+    if (k < 30) return NutrientLevel.orta;
+    return NutrientLevel.yuksek;
   }
 
   // ───────────────────────────────────────────────────────────────────

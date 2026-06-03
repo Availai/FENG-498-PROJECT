@@ -339,6 +339,10 @@ class SoilTests extends Table {
   RealColumn get sampleLat => real().nullable()();
   RealColumn get sampleLng => real().nullable()();
 
+  /// Örnek alanının yarıçapı (metre). Haritadan alan seçilince yazılır;
+  /// null → yarıçap belirtilmemiş (eski kayıt veya yalnızca nokta).
+  RealColumn get sampleRadius => real().nullable()();
+
   TextColumn get notes => text().nullable()();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
@@ -424,6 +428,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
+  int get schemaVersion => 14;
   int get schemaVersion => 14;
 
   @override
@@ -519,10 +524,6 @@ class AppDatabase extends _$AppDatabase {
                 await customStatement(
                     'ALTER TABLE soil_tests ADD COLUMN sample_lng REAL;');
               } catch (_) {}
-            }
-            if (from < 14) {
-              // v14: ürün bazlı manuel masraf kayıtları tablosu.
-              await m.createTable(costEntries);
             }
           } catch (e, st) {
             debugPrint('Drift migration $from→$to hata: $e\n$st');

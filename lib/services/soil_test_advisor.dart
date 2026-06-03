@@ -220,11 +220,20 @@ class SoilTestAdvisor {
     final ordered = List<SoilFinding>.from(findings);
     _stableSortBySeverity(ordered);
 
-    // ── Ürün gübre takvimi (genel rehber) ───────────────────────────────
+    // ── Ürün gübre takvimi — laboratuvar değerlerine göre ayarlanır ──────
+    // Taban takvim üründen gelir; N/P/K seviyesine göre dozlar ölçeklenir.
+    // Analiz değeri yoksa adjustPlanForSoil planı aynen döndürür (§16).
     final crop = input.cropName?.trim();
-    final plan = (crop != null && crop.isNotEmpty && input.hasAnyMeasurement)
-        ? SoilFertilizationService.fertilizationPlan(crop)
-        : const <FertilizationStep>[];
+    final basePlan =
+        (crop != null && crop.isNotEmpty && input.hasAnyMeasurement)
+            ? SoilFertilizationService.fertilizationPlan(crop)
+            : const <FertilizationStep>[];
+    final plan = SoilFertilizationService.adjustPlanForSoil(
+      basePlan,
+      nitrogenPct: input.nitrogenPct,
+      phosphorusKgDa: input.phosphorusKgDa,
+      potassiumKgDa: input.potassiumKgDa,
+    );
 
     return SoilTestAdvice(
       findings: ordered,
