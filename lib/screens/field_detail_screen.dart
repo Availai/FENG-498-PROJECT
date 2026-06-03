@@ -390,6 +390,38 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
     );
   }
 
+  /// Üst bardaki aksiyon ikonu — üstüne gelince (masaüstü/web'de hover, dokunmatik
+  /// cihazda uzun basınca) ikonun adını gösteren stilize bir önizleme balonu.
+  /// İsim yalnızca etkileşimde görünür; ekranda kalıcı etiket bırakmaz.
+  Widget _topBarAction({
+    required IconData icon,
+    required String label,
+    required VoidCallback onPressed,
+  }) {
+    return Tooltip(
+      message: label,
+      preferBelow: true,
+      waitDuration: const Duration(milliseconds: 150),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      margin: const EdgeInsets.symmetric(horizontal: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0D1811).withValues(alpha: 0.96),
+        borderRadius: BorderRadius.circular(8),
+        border:
+            Border.all(color: const Color(0xFF00E676).withValues(alpha: 0.6)),
+      ),
+      textStyle: const TextStyle(
+        color: Colors.white,
+        fontSize: 12.5,
+        fontWeight: FontWeight.w600,
+      ),
+      child: IconButton(
+        icon: Icon(icon, color: Colors.white70),
+        onPressed: onPressed,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final d = widget.fieldData;
@@ -457,25 +489,24 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
         ),
         centerTitle: false,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.folder_open_rounded, color: Colors.white70),
-            tooltip: 'Tarla Dosyası',
+          _topBarAction(
+            icon: Icons.folder_open_rounded,
+            label: 'Tarla Dosyası',
             onPressed: _openFieldDossier,
           ),
-          IconButton(
-            icon: const Icon(Icons.science_outlined, color: Colors.white70),
-            tooltip: 'Toprak Analizi',
+          _topBarAction(
+            icon: Icons.science_outlined,
+            label: 'Toprak Analizi',
             onPressed: _openSoilTest,
           ),
-          IconButton(
-            icon: const Icon(Icons.account_balance_wallet_outlined,
-                color: Colors.white70),
-            tooltip: 'ÇKS Cüzdanı',
+          _topBarAction(
+            icon: Icons.account_balance_wallet_outlined,
+            label: 'ÇKS Cüzdanı',
             onPressed: _openCostLedger,
           ),
-          IconButton(
-            icon: const Icon(Icons.help_outline_rounded, color: Colors.white70),
-            tooltip: 'Yardım',
+          _topBarAction(
+            icon: Icons.help_outline_rounded,
+            label: 'Yardım',
             onPressed: () => HelpPanel.show(context, HelpContent.fieldDetail),
           ),
           const SizedBox(width: 8),

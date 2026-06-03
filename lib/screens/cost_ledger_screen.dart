@@ -186,6 +186,10 @@ class _CostLedgerScreenState extends ConsumerState<CostLedgerScreen> {
           data: (pb) {
             final dateStr =
                 DateFormat('dd.MM.yyyy', 'tr_TR').format(pb.updatedAt);
+            // Yakıt kaynağı etiketi: elle girildiyse override, değilse canlı/tahmini.
+            final fuelSub = pb.fuelManual
+                ? 'Elle girildi · $dateStr'
+                : (pb.fuelFromLive ? 'EPDK · canlı' : 'EPDK · tahmini');
             return Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -219,14 +223,14 @@ class _CostLedgerScreenState extends ConsumerState<CostLedgerScreen> {
                     icon: Icons.local_gas_station_rounded,
                     label: 'Mazot (Motorin)',
                     value: '${pb.dieselPerL.toStringAsFixed(2)} ₺/L',
-                    sub: pb.fuelFromLive ? 'EPDK · canlı' : 'EPDK · önbellek',
+                    sub: fuelSub,
                     color: AppColors.emeraldDark,
                   ),
                   _priceRow(
                     icon: Icons.local_gas_station_outlined,
                     label: 'Benzin',
                     value: '${pb.gasolinePerL.toStringAsFixed(2)} ₺/L',
-                    sub: pb.fuelFromLive ? 'EPDK · canlı' : 'EPDK · önbellek',
+                    sub: fuelSub,
                     color: AppColors.emeraldDark,
                   ),
                   const Divider(height: 18),
@@ -248,8 +252,9 @@ class _CostLedgerScreenState extends ConsumerState<CostLedgerScreen> {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'Akaryakıt EPDK\'dan canlı; gübre/tohum/satış fiyatları '
-                    'çiftçi tarafından güncellenir.',
+                    'Akaryakıt EPDK\'dan canlı gelir; alınamazsa tahmini '
+                    'gösterilir. "Güncelle" ile tüm fiyatları (mazot/benzin dahil) '
+                    'kendi bayi değerinizle düzeltebilirsiniz.',
                     style: AppText.xs(context)
                         .copyWith(fontSize: 10, color: AppColors.textTertiary),
                   ),
@@ -1009,6 +1014,8 @@ class _PriceEditSheetState extends ConsumerState<_PriceEditSheet> {
   late final Map<String, TextEditingController> _fertCtrls;
   late final TextEditingController _seedCtrl;
   late final TextEditingController _laborCtrl;
+  late final TextEditingController _dieselCtrl;
+  late final TextEditingController _gasolineCtrl;
   late final Map<String, TextEditingController> _saleCtrls;
 
   static const _fertOrder = ['dap', 'ure', 'npk', 'amonyum', 'can'];
@@ -1031,6 +1038,9 @@ class _PriceEditSheetState extends ConsumerState<_PriceEditSheet> {
     };
     _seedCtrl = TextEditingController(text: pb.seedPerKg.toStringAsFixed(0));
     _laborCtrl = TextEditingController(text: pb.laborPerDay.toStringAsFixed(0));
+    _dieselCtrl = TextEditingController(text: pb.dieselPerL.toStringAsFixed(2));
+    _gasolineCtrl =
+        TextEditingController(text: pb.gasolinePerL.toStringAsFixed(2));
     // Tarladaki ürünler için satış fiyatı alanları.
     _saleCtrls = {};
     for (final name in widget.cropNames) {
@@ -1051,6 +1061,8 @@ class _PriceEditSheetState extends ConsumerState<_PriceEditSheet> {
     }
     _seedCtrl.dispose();
     _laborCtrl.dispose();
+    _dieselCtrl.dispose();
+    _gasolineCtrl.dispose();
     super.dispose();
   }
 
@@ -1068,11 +1080,17 @@ class _PriceEditSheetState extends ConsumerState<_PriceEditSheet> {
       final v = _num(c, 0);
       if (v > 0) sale[key] = v;
     });
+    // Yakıt elle girildi → fuelManual=true, böylece canlı EPDK üzerine yazmaz.
+    final diesel = _num(_dieselCtrl, pb.dieselPerL);
+    final gasoline = _num(_gasolineCtrl, pb.gasolinePerL);
     final updated = pb.copyWith(
       fertilizerPerKg: fert,
       seedPerKg: _num(_seedCtrl, pb.seedPerKg),
       laborPerDay: _num(_laborCtrl, pb.laborPerDay),
       cropSalePerKg: sale,
+      dieselPerL: diesel,
+      gasolinePerL: gasoline,
+      fuelManual: true,
       updatedAt: DateTime.now(),
     );
     await PriceBookService.save(updated);
@@ -1080,6 +1098,22 @@ class _PriceEditSheetState extends ConsumerState<_PriceEditSheet> {
       Navigator.pop(context);
       AppToast.show(context,
           message: 'Fiyatlar güncellendi.', type: ToastType.success);
+    }
+  }
+
+  /// Mazot/benzini elle-giriş kilidinden çıkarıp tekrar canlı EPDK fiyatına
+  /// döndürür (fuelManual=false → bir sonraki yüklemede canlı değer gelir).
+  Future<void> _resetFuelToLive() async {
+    final updated = widget.priceBook.copyWith(
+      fuelManual: false,
+      updatedAt: DateTime.now(),
+    );
+    await PriceBookService.save(updated);
+    if (mounted) {
+      Navigator.pop(context);
+      AppToast.show(context,
+          message: 'Akaryakıt canlı EPDK fiyatına döndürülecek.',
+          type: ToastType.info);
     }
   }
 
@@ -1104,8 +1138,9 @@ class _PriceEditSheetState extends ConsumerState<_PriceEditSheet> {
             Text('Güncel Fiyatlar', style: AppText.h2(context)),
             const SizedBox(height: 4),
             Text(
-              'Akaryakıt EPDK\'dan canlı gelir; buradaki gübre/tohum/işçilik ve '
-              'ürün satış fiyatlarını güncel bayi değerlerinizle düzeltin.',
+              'Tüm birim fiyatları güncel bayi değerlerinizle düzeltin. Mazot/benzin '
+              'normalde EPDK\'dan canlı gelir; burada değiştirirseniz sizin değeriniz '
+              'esas alınır ("Canlıya dön" ile geri alabilirsiniz).',
               style: AppText.sm(context),
             ),
             const SizedBox(height: 16),
@@ -1118,6 +1153,34 @@ class _PriceEditSheetState extends ConsumerState<_PriceEditSheet> {
             const SizedBox(height: 8),
             _priceField('Tohum (₺/kg)', _seedCtrl),
             _priceField('İşçilik (₺/gün)', _laborCtrl),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Text('Akaryakıt (₺/L)',
+                    style: AppText.bodyMd(context)
+                        .copyWith(fontWeight: FontWeight.w700)),
+                const Spacer(),
+                if (widget.priceBook.fuelManual)
+                  TextButton.icon(
+                    onPressed: _resetFuelToLive,
+                    icon: const Icon(Icons.bolt_rounded, size: 16),
+                    label: const Text('Canlıya dön'),
+                    style: TextButton.styleFrom(
+                        visualDensity: VisualDensity.compact),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            _priceField('Mazot / Motorin (₺/L)', _dieselCtrl),
+            _priceField('Benzin (₺/L)', _gasolineCtrl),
+            Text(
+              widget.priceBook.fuelManual
+                  ? 'Mazot/benzin elle girildi; canlı EPDK fiyatı üzerine yazmaz.'
+                  : 'Mazot/benzin EPDK\'dan gelir. Burada değiştirirseniz kendi '
+                      'bayi fiyatınız esas alınır (canlı değeri kilitler).',
+              style: AppText.xs(context)
+                  .copyWith(fontSize: 10, color: AppColors.textTertiary),
+            ),
             if (_saleCtrls.isNotEmpty) ...[
               const SizedBox(height: 12),
               Text('Ürün satış fiyatı (₺/kg)',

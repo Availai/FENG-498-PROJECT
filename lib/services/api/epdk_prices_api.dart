@@ -116,13 +116,15 @@ class EpdkPricesApi {
     return null;
   }
 
-  /// Fallback — internetsiz durumda makul fiyatlar döndür
-  /// (Nisan 2026 ortalama değerleri)
+  /// Fallback — canlı bülten alınamazsa kaba bir TAHMİN döndürür.
+  /// Bu değerler kesin değildir; UI bunu "tahmini" olarak etiketler ve çiftçi
+  /// kendi bayi fiyatıyla değiştirebilir (PriceBook manuel override).
+  /// `fromCache: true` → değer "canlı" gibi gösterilmez (dürüstlük, CLAUDE.md §28).
   static FuelPrices fallbackPrices() => FuelPrices(
-        dieselTry: 32.5, // Güncel ortalama mazot
-        gasolineTry: 35.8, // Güncel ortalama benzin
+        dieselTry: 50.0, // kaba tahmin — lütfen güncelleyin
+        gasolineTry: 52.0, // kaba tahmin — lütfen güncelleyin
         fetchedAt: DateTime.now(),
         city: _city,
-        fromCache: false,
+        fromCache: true,
       );
 }

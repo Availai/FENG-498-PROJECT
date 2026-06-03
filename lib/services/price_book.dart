@@ -51,6 +51,11 @@ class PriceBook {
   /// Akaryakıt değerleri canlı EPDK'dan mı geldi.
   final bool fuelFromLive;
 
+  /// Çiftçi mazot/benzin fiyatını elle girdi mi. true ise canlı EPDK değeri
+  /// ÜZERİNE YAZILMAZ (kullanıcı bayi fiyatını esas alır). [PriceBookService]
+  /// bu bayrağı saklar; "Canlı fiyata dön" ile sıfırlanır.
+  final bool fuelManual;
+
   const PriceBook({
     required this.fertilizerPerKg,
     required this.seedPerKg,
@@ -60,6 +65,7 @@ class PriceBook {
     required this.gasolinePerL,
     required this.updatedAt,
     required this.fuelFromLive,
+    this.fuelManual = false,
   });
 
   /// Genel gübre ortalaması (bilinmeyen ad için fallback).
@@ -115,6 +121,7 @@ class PriceBook {
     double? gasolinePerL,
     DateTime? updatedAt,
     bool? fuelFromLive,
+    bool? fuelManual,
   }) {
     return PriceBook(
       fertilizerPerKg: fertilizerPerKg ?? this.fertilizerPerKg,
@@ -125,6 +132,7 @@ class PriceBook {
       gasolinePerL: gasolinePerL ?? this.gasolinePerL,
       updatedAt: updatedAt ?? this.updatedAt,
       fuelFromLive: fuelFromLive ?? this.fuelFromLive,
+      fuelManual: fuelManual ?? this.fuelManual,
     );
   }
 
@@ -133,6 +141,11 @@ class PriceBook {
         'seedPerKg': seedPerKg,
         'laborPerDay': laborPerDay,
         'cropSalePerKg': cropSalePerKg,
+        // Akaryakıt da saklanır — çiftçi elle girdiyse ([fuelManual]) canlı
+        // EPDK değerinin üzerine yazılmaz.
+        'dieselPerL': dieselPerL,
+        'gasolinePerL': gasolinePerL,
+        'fuelManual': fuelManual,
         'updatedAt': updatedAt.toIso8601String(),
       };
 
@@ -190,6 +203,7 @@ class PriceBook {
       gasolinePerL: 0,
       updatedAt: DateTime.now(),
       fuelFromLive: false,
+      fuelManual: false,
     );
   }
 }
@@ -218,7 +232,13 @@ class PriceBookService {
       }
     } catch (_) {}
 
-    // Akaryakıt — canlı EPDK (fallback: cache → makul varsayılan).
+    // Çiftçi yakıtı elle girdiyse canlı EPDK değerini ÜZERİNE YAZMA — bayi
+    // fiyatı esas alınır. "Canlı fiyata dön" ile fuelManual sıfırlanır.
+    if (base.fuelManual && base.dieselPerL > 0) {
+      return base.copyWith(fuelFromLive: false);
+    }
+
+    // Akaryakıt — canlı EPDK (fallback: cache → makul varsayılan/tahmini).
     double diesel = base.dieselPerL;
     double gasoline = base.gasolinePerL;
     bool live = false;
@@ -234,6 +254,7 @@ class PriceBookService {
       dieselPerL: diesel,
       gasolinePerL: gasoline,
       fuelFromLive: live,
+      fuelManual: false,
     );
   }
 
@@ -267,11 +288,13 @@ class PriceBookService {
       laborPerDay:
           (m['laborPerDay'] as num?)?.toDouble() ?? fallback.laborPerDay,
       cropSalePerKg: dbl(m['cropSalePerKg'], fallback.cropSalePerKg),
-      dieselPerL: 0,
-      gasolinePerL: 0,
+      dieselPerL: (m['dieselPerL'] as num?)?.toDouble() ?? fallback.dieselPerL,
+      gasolinePerL:
+          (m['gasolinePerL'] as num?)?.toDouble() ?? fallback.gasolinePerL,
       updatedAt: DateTime.tryParse(m['updatedAt']?.toString() ?? '') ??
           fallback.updatedAt,
       fuelFromLive: false,
+      fuelManual: m['fuelManual'] == true,
     );
   }
 }
