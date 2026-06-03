@@ -336,6 +336,9 @@ final fieldGuideProvider = FutureProvider.family
   final growthList = await ref.watch(
     fieldGrowthStatesProvider(fieldId).future,
   );
+  // Toprak analizi değişince rehber de tazelensin (büyüme recompute'a bağlı
+  // kalmadan; desteklenmeyen ürünlerde de tutarlı). Sadece bağımlılık.
+  await ref.watch(fieldSoilTestsProvider(fieldId).future);
 
   // GrowthState[] → Map<cropId, GrowthSnapshot>
   final growthMap = <String, GrowthSnapshot>{};
@@ -510,6 +513,12 @@ final fieldLiveTodosProvider = FutureProvider.family
   final growthList = await ref.watch(fieldGrowthStatesProvider(fieldId).future);
   final plantInstances =
       await ref.watch(fieldPlantInstancesProvider(fieldId).future);
+  // Toprak analizi değişince tavsiyeler anında tazelensin. RuleEnvironment
+  // snapshot'ı (aşağıda) lab analizini one-shot `loadSoilTests` ile okur; bu
+  // stream izlenmezse yeni analiz girildiğinde provider yeniden koşmaz.
+  // Desteklenmeyen ürünlerde büyüme recompute no-op olduğundan, tazelenmenin
+  // tek garantili yolu budur (içeriği burada kullanmıyoruz; sadece bağımlılık).
+  await ref.watch(fieldSoilTestsProvider(fieldId).future);
   // Bitki durum gözlemleri (scouting → eşik onayı kaskadı) için stream
   // izlenir. İçeriği LiveDecisionContext'te kullanmıyoruz (recentActivities
   // CalendarEvents üzerinden yeterli), ama yeni gözlem eklendiğinde
