@@ -211,6 +211,22 @@ class GrowthEngine {
       plantSpacingCm: crop.plantSpacingCm,
     );
 
+    // ── Toprak analizi → başlangıç besin stresi ───────────────────────
+    // Tarlanın EN GÜNCEL laboratuvar analizinden N/K/organik madde okunur.
+    // Analiz yoksa baseline = none (0.0) → mevcut davranış birebir korunur.
+    final soilTests = await (_db.select(_db.soilTests)
+          ..where((tbl) =>
+              tbl.fieldId.equals(crop.fieldId) & tbl.deletedAt.isNull())
+          ..orderBy([(tbl) => OrderingTerm.desc(tbl.createdAt)])
+          ..limit(1))
+        .get();
+    final latestSoil = soilTests.isNotEmpty ? soilTests.first : null;
+    final soilBaseline = soilBaselineStressFrom(
+      nitrogenPct: latestSoil?.nitrogenPct,
+      potassiumKgDa: latestSoil?.potassiumKgDa,
+      organicMatterPct: latestSoil?.organicMatterPct,
+    );
+
     // ── Aktiviteleri tek seferde çek (ekim gününden bugüne) ───────────
     final activities = await (_db.select(_db.calendarEvents)
           ..where((tbl) =>
@@ -287,8 +303,11 @@ class GrowthEngine {
 
     double accGdd = 0.0;
     double waterDeficit = 0.0;
-    double nStress = 0.0;
-    double kStress = 0.0;
+    // Stres akümülatörleri toprak analizinden gelen baseline'dan başlar.
+    // Analiz yoksa baseline 0.0 → eski davranış. Gübreleme yapıldıkça döngü
+    // içindeki smoothing bu stresi düşürür (toparlanma otomatik).
+    double nStress = soilBaseline.nStress;
+    double kStress = soilBaseline.kStress;
     double disease = 0.0;
 
     // Playbook'tan günlük sulama ihtiyacı (weeklyMm / 7).
@@ -582,9 +601,94 @@ class _StageBand {
 class _DayDelta {
   double waterMmApplied = 0.0;
   double waterMmRecommended = 0.0;
-  final List<double> fertRatios = [];   // N karşılığı uygulama oranları
-  final List<double> kRatios = [];      // K karşılığı uygulama oranları
+  final List<double> fertRatios = []; // N karşılığı uygulama oranları
+  final List<double> kRatios = []; // K karşılığı uygulama oranları
   bool sprayingDone = false;
+}
+
+/// Laboratuvar toprak analizinden türetilen **başlangıç** besin stresi.
+/// GrowthEngine döngüsü stres akümülatörlerini 0 yerine bu değerlerden
+/// başlatır → azot/potasyum fakiri bir toprakta bitki, gübreleme yapılana
+/// kadar daha kısıtlı büyür/verir. Gübreleme yapıldıkça mevcut smoothing
+/// stresi düşürür (toparlanma otomatik).
+///
+/// Analiz yoksa (`SoilTest` null veya değer girilmemiş) tüm alanlar 0.0 →
+/// mevcut davranış BİREBİR korunur (CLAUDE.md: küçük güvenli değişiklik).
+class SoilBaselineStress {
+  /// Başlangıç azot stresi 0..1 (yüksek = fakir toprak).
+  final double nStress;
+
+  /// Başlangıç potasyum stresi 0..1.
+  final double kStress;
+
+  const SoilBaselineStress({this.nStress = 0.0, this.kStress = 0.0});
+
+  static const none = SoilBaselineStress();
+
+  bool get isZero => nStress == 0.0 && kStress == 0.0;
+}
+
+/// Lab analizi değerlerinden başlangıç besin stresini türetir. Saf fonksiyon
+/// (CLAUDE.md §22): aynı girdi → aynı çıktı, IO yok. Eşikler `SoilTestAdvisor`
+/// sınıflandırma tablosuyla tutarlıdır (TAGEM Toprak-Gübre-Su standartları).
+///
+/// - [nitrogenPct]: toplam azot %. <0.045 çok az, <0.09 az, <0.17 orta.
+/// - [potassiumKgDa]: K₂O kg/dekar. <20 az, <30 orta, 30-40 yeterli.
+/// - [organicMatterPct]: organik madde %. Düşükse azot mineralizasyonu zayıf →
+///   N stresine küçük ek katkı.
+///
+/// Bir değer null ise o bileşen stres üretmez (uydurma yok). Tüm girdiler
+/// null ise [SoilBaselineStress.none] döner.
+SoilBaselineStress soilBaselineStressFrom({
+  double? nitrogenPct,
+  double? potassiumKgDa,
+  double? organicMatterPct,
+}) {
+  if (nitrogenPct == null &&
+      potassiumKgDa == null &&
+      organicMatterPct == null) {
+    return SoilBaselineStress.none;
+  }
+
+  // ── Azot: toplam N % → başlangıç stresi ──────────────────────────────
+  double nStress = 0.0;
+  if (nitrogenPct != null) {
+    if (nitrogenPct < 0.045) {
+      nStress = 0.55; // çok az
+    } else if (nitrogenPct < 0.09) {
+      nStress = 0.35; // az
+    } else if (nitrogenPct < 0.17) {
+      nStress = 0.15; // orta
+    } else {
+      nStress = 0.0; // iyi/yüksek
+    }
+  }
+
+  // ── Organik madde: düşükse N stresine küçük ek (mineralizasyon zayıf) ──
+  if (organicMatterPct != null) {
+    if (organicMatterPct < 1.0) {
+      nStress = math.min(1.0, nStress + 0.15);
+    } else if (organicMatterPct < 2.0) {
+      nStress = math.min(1.0, nStress + 0.08);
+    }
+  }
+
+  // ── Potasyum: K₂O kg/da → başlangıç stresi ───────────────────────────
+  double kStress = 0.0;
+  if (potassiumKgDa != null) {
+    if (potassiumKgDa < 20) {
+      kStress = 0.45; // az
+    } else if (potassiumKgDa < 30) {
+      kStress = 0.20; // orta
+    } else {
+      kStress = 0.0; // yeterli/yüksek
+    }
+  }
+
+  return SoilBaselineStress(
+    nStress: nStress.clamp(0.0, 1.0),
+    kStress: kStress.clamp(0.0, 1.0),
+  );
 }
 
 /// Gübre tipinden K oranı (0..1). 0 = K içermez (üre/DAP), 1 = tam K (potas/kompoze).
@@ -596,6 +700,8 @@ double _kFactorFromFertilizerType(String type) {
   if (t.contains('amonyum sülfat') || t.contains('amonyum nitrat')) return 0.0;
   if (t.contains('dap')) return 0.0;
   if (t.contains('tsp') || t.contains('triple')) return 0.0;
-  if (t.contains('kcl') || t.contains('potas') || t.contains('0-0-')) return 1.0;
+  if (t.contains('kcl') || t.contains('potas') || t.contains('0-0-')) {
+    return 1.0;
+  }
   return 1.0; // kompoze / NPK / bilinmeyen
 }

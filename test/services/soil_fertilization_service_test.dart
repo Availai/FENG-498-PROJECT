@@ -108,6 +108,110 @@ void main() {
       contains('bitki'),
     );
   });
+
+  group('focusOf — gubre adindan besin odagi', () {
+    test('azot kaynaklari', () {
+      expect(SoilFertilizationService.focusOf('Üre'), FertilizerFocus.nitrogen);
+      expect(SoilFertilizationService.focusOf('CAN (%26 N)'),
+          FertilizerFocus.nitrogen);
+      expect(SoilFertilizationService.focusOf('Amonyum Sülfat'),
+          FertilizerFocus.nitrogen);
+    });
+    test('fosfor kaynaklari', () {
+      expect(
+          SoilFertilizationService.focusOf('DAP'), FertilizerFocus.phosphorus);
+      expect(SoilFertilizationService.focusOf('20-20-0 (DAP veya kompoze)'),
+          FertilizerFocus.phosphorus);
+    });
+    test('potasyum kaynaklari', () {
+      expect(SoilFertilizationService.focusOf('Potasyum Sülfat'),
+          FertilizerFocus.potassium);
+      expect(SoilFertilizationService.focusOf('Mono Potasyum Fosfat (MKP)'),
+          FertilizerFocus.potassium);
+    });
+    test('kompoze NPK dengeli; ciftlik gubresi organik', () {
+      expect(SoilFertilizationService.focusOf('15-15-15 NPK'),
+          FertilizerFocus.balanced);
+      expect(SoilFertilizationService.focusOf('Yanmış Çiftlik Gübresi'),
+          FertilizerFocus.organic);
+    });
+  });
+
+  group('adjustPlanForSoil — analize duyarli doz', () {
+    final plan = SoilFertilizationService.fertilizationPlan('misir');
+
+    test('analiz yoksa plan AYNEN doner (CLAUDE.md §16)', () {
+      final out = SoilFertilizationService.adjustPlanForSoil(plan);
+      expect(out.length, plan.length);
+      for (var i = 0; i < plan.length; i++) {
+        expect(out[i].doseKgDekar, plan[i].doseKgDekar);
+        expect(out[i].adjustedBySoil, isFalse);
+        expect(out[i].adjustmentNote, isNull);
+      }
+    });
+
+    test('dusuk azot → azot adimi dozu artar + not eklenir', () {
+      final out = SoilFertilizationService.adjustPlanForSoil(
+        plan,
+        nitrogenPct: 0.03, // düşük
+      );
+      // Mısır planında üre adımları azot odaklı.
+      final ureaSteps = <int>[];
+      for (var i = 0; i < plan.length; i++) {
+        if (SoilFertilizationService.focusOf(plan[i].fertilizer) ==
+            FertilizerFocus.nitrogen) {
+          ureaSteps.add(i);
+        }
+      }
+      expect(ureaSteps, isNotEmpty);
+      for (final i in ureaSteps) {
+        expect(out[i].doseKgDekar, greaterThan(plan[i].doseKgDekar));
+        expect(out[i].adjustedBySoil, isTrue);
+        expect(out[i].adjustmentNote, contains('azot'));
+      }
+    });
+
+    test('yuksek fosfor → fosfor adimi dozu azalir', () {
+      final wheat = SoilFertilizationService.fertilizationPlan('bugday');
+      final out = SoilFertilizationService.adjustPlanForSoil(
+        wheat,
+        phosphorusKgDa: 15, // yüksek
+      );
+      final pIdx = wheat.indexWhere((s) =>
+          SoilFertilizationService.focusOf(s.fertilizer) ==
+          FertilizerFocus.phosphorus);
+      expect(pIdx, greaterThanOrEqualTo(0));
+      expect(out[pIdx].doseKgDekar, lessThan(wheat[pIdx].doseKgDekar));
+      expect(out[pIdx].adjustmentNote, contains('azalt'));
+    });
+
+    test('olculmeyen besin eksenindeki adimlar degismez', () {
+      // Sadece potasyum verildi → azot/fosfor adımları ayarlanmaz.
+      final out = SoilFertilizationService.adjustPlanForSoil(
+        plan,
+        potassiumKgDa: 15,
+      );
+      for (var i = 0; i < plan.length; i++) {
+        final focus = SoilFertilizationService.focusOf(plan[i].fertilizer);
+        if (focus == FertilizerFocus.nitrogen ||
+            focus == FertilizerFocus.phosphorus) {
+          expect(out[i].doseKgDekar, plan[i].doseKgDekar);
+          expect(out[i].adjustedBySoil, isFalse);
+        }
+      }
+    });
+
+    test('determinizm: ayni girdi → ayni cikti', () {
+      final a = SoilFertilizationService.adjustPlanForSoil(plan,
+          nitrogenPct: 0.05, phosphorusKgDa: 4, potassiumKgDa: 18);
+      final b = SoilFertilizationService.adjustPlanForSoil(plan,
+          nitrogenPct: 0.05, phosphorusKgDa: 4, potassiumKgDa: 18);
+      for (var i = 0; i < a.length; i++) {
+        expect(a[i].doseKgDekar, b[i].doseKgDekar);
+        expect(a[i].adjustmentNote, b[i].adjustmentNote);
+      }
+    });
+  });
 }
 
 SoilProfile _profile({

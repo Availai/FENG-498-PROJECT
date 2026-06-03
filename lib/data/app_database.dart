@@ -339,6 +339,10 @@ class SoilTests extends Table {
   RealColumn get sampleLat => real().nullable()();
   RealColumn get sampleLng => real().nullable()();
 
+  /// Örnek alanının yarıçapı (metre). Haritadan alan seçilince yazılır;
+  /// null → yarıçap belirtilmemiş (eski kayıt veya yalnızca nokta).
+  RealColumn get sampleRadius => real().nullable()();
+
   TextColumn get notes => text().nullable()();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
@@ -388,7 +392,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 13;
+  int get schemaVersion => 14;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -482,6 +486,14 @@ class AppDatabase extends _$AppDatabase {
               try {
                 await customStatement(
                     'ALTER TABLE soil_tests ADD COLUMN sample_lng REAL;');
+              } catch (_) {}
+            }
+            if (from < 14) {
+              // v14: toprak analizi örnek ALANININ yarıçapı (metre). Haritadan
+              // tek nokta yerine bir alan (daire) seçilince yazılır.
+              try {
+                await customStatement(
+                    'ALTER TABLE soil_tests ADD COLUMN sample_radius REAL;');
               } catch (_) {}
             }
           } catch (e, st) {

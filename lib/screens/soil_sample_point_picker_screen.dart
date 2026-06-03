@@ -13,15 +13,30 @@ class SoilSamplePastPoint {
   const SoilSamplePastPoint({required this.point, required this.label});
 }
 
-/// Toprak örneğinin alındığı noktayı tarla haritası üzerinde seçtirir.
+/// Bir alan seçiminin sonucu — merkez nokta + temsil ettiği yarıçap (metre).
 ///
-/// Çiftçi tarlanın istediği kısmına dokunarak örnek noktasını işaretler.
-/// Sonuç: `Navigator.pop(LatLng)` — iptalde `null`.
+/// Geriye dönük uyumluluk: çağıranlar yalnızca [center]'ı (LatLng) kullanabilir;
+/// [radiusMeters] alanı temsil eden dairenin yarıçapıdır.
+class SoilSampleArea {
+  final LatLng center;
+  final double radiusMeters;
+  const SoilSampleArea({required this.center, required this.radiusMeters});
+}
+
+/// Toprak örneğinin alındığı tarla kısmını harita üzerinde seçtirir.
+///
+/// Çiftçi tarlaya dokunarak örnek **alanının** merkezini işaretler; alt çubuktaki
+/// kaydırıcıyla alanı (daire) büyütüp küçültür. Tek bir nokta yerine bir alanı
+/// temsil eder. Sonuç [SoilSampleArea] (merkez + yarıçap) olarak döner
+/// (`Navigator.pop(SoilSampleArea)` — iptalde `null`).
 class SoilSamplePointPickerScreen extends StatefulWidget {
   final List<LatLng> fieldPolygon;
   final String fieldName;
   final LatLng? initialPoint;
   final List<SoilSamplePastPoint> pastPoints;
+
+  /// Başlangıç alan yarıçapı (metre). Varsayılan 25 m.
+  final double initialRadiusMeters;
 
   const SoilSamplePointPickerScreen({
     super.key,
@@ -29,6 +44,7 @@ class SoilSamplePointPickerScreen extends StatefulWidget {
     required this.fieldName,
     this.initialPoint,
     this.pastPoints = const [],
+    this.initialRadiusMeters = 25,
   });
 
   @override
@@ -40,14 +56,19 @@ class _SoilSamplePointPickerScreenState
     extends State<SoilSamplePointPickerScreen> {
   final MapController _mapController = MapController();
   LatLng? _selected;
+  late double _radiusMeters;
 
   static const double _minZoom = 14.0;
   static const double _maxZoom = 21.0;
+  static const double _minRadius = 5.0;
+  static const double _maxRadius = 200.0;
 
   @override
   void initState() {
     super.initState();
     _selected = widget.initialPoint;
+    _radiusMeters =
+        widget.initialRadiusMeters.clamp(_minRadius, _maxRadius).toDouble();
   }
 
   LatLng get _fieldCenter {
@@ -95,7 +116,9 @@ class _SoilSamplePointPickerScreenState
 
   void _complete() {
     if (_selected == null) return;
-    Navigator.of(context).pop(_selected);
+    Navigator.of(context).pop(
+      SoilSampleArea(center: _selected!, radiusMeters: _radiusMeters),
+    );
   }
 
   void _zoomIn() {
@@ -142,7 +165,7 @@ class _SoilSamplePointPickerScreenState
                   fontWeight: FontWeight.w700,
                   color: Colors.white),
             ),
-            const Text('örnek noktasını seç',
+            const Text('örnek alanını seç',
                 style: TextStyle(fontSize: 11, color: Colors.white70)),
           ],
         ),
@@ -200,6 +223,20 @@ class _SoilSamplePointPickerScreenState
                       ),
                   ],
                 ),
+              // Seçilen alan (yeşil daire)
+              if (_selected != null)
+                CircleLayer(
+                  circles: [
+                    CircleMarker(
+                      point: _selected!,
+                      radius: _radiusMeters,
+                      useRadiusInMeter: true,
+                      color: AppColors.emerald.withValues(alpha: 0.18),
+                      borderColor: AppColors.emerald.withValues(alpha: 0.9),
+                      borderStrokeWidth: 2,
+                    ),
+                  ],
+                ),
               // Seçilen nokta (yeşil pin)
               if (_selected != null)
                 MarkerLayer(
@@ -239,7 +276,7 @@ class _SoilSamplePointPickerScreenState
                     child: Text(
                       _selected == null
                           ? 'Örneği aldığınız tarla kısmına dokunun.'
-                          : 'Nokta seçildi: ${_selected!.latitude.toStringAsFixed(5)}, ${_selected!.longitude.toStringAsFixed(5)}',
+                          : 'Alan seçildi: ${_selected!.latitude.toStringAsFixed(5)}, ${_selected!.longitude.toStringAsFixed(5)} • yarıçap ${_radiusMeters.toStringAsFixed(0)} m',
                       style:
                           const TextStyle(color: Colors.white, fontSize: 12.5),
                     ),
@@ -266,46 +303,105 @@ class _SoilSamplePointPickerScreenState
             ),
           ),
 
-          // Alt aksiyon çubuğu
+          // Alt panel: yarıçap kaydırıcısı + aksiyon çubuğu
           Positioned(
             left: 16,
             right: 16,
             bottom: MediaQuery.of(context).padding.bottom + 16,
-            child: Row(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.white,
-                      side: BorderSide(
-                          color: Colors.white.withValues(alpha: 0.5)),
-                      minimumSize: const Size.fromHeight(50),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14)),
+                if (_selected != null) _radiusPanel(),
+                if (_selected != null) const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.white,
+                          side: BorderSide(
+                              color: Colors.white.withValues(alpha: 0.5)),
+                          minimumSize: const Size.fromHeight(50),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14)),
+                        ),
+                        child: const Text('İptal'),
+                      ),
                     ),
-                    child: const Text('İptal'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  flex: 2,
-                  child: FilledButton.icon(
-                    onPressed: _selected == null ? null : _complete,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.emerald,
-                      foregroundColor: Colors.white,
-                      minimumSize: const Size.fromHeight(50),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14)),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      flex: 2,
+                      child: FilledButton.icon(
+                        onPressed: _selected == null ? null : _complete,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.emerald,
+                          foregroundColor: Colors.white,
+                          minimumSize: const Size.fromHeight(50),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14)),
+                        ),
+                        icon: const Icon(Icons.check_rounded),
+                        label: Text('Alanı kullan',
+                            style: GoogleFonts.outfit(
+                                fontWeight: FontWeight.w700, fontSize: 15)),
+                      ),
                     ),
-                    icon: const Icon(Icons.check_rounded),
-                    label: Text('Noktayı kullan',
-                        style: GoogleFonts.outfit(
-                            fontWeight: FontWeight.w700, fontSize: 15)),
-                  ),
+                  ],
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _radiusPanel() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.8),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.emerald.withValues(alpha: 0.5)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.adjust_rounded,
+                  color: AppColors.emeraldLight, size: 18),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'Örnek alanı (yarıçap)',
+                  style: TextStyle(color: Colors.white, fontSize: 12.5),
+                ),
+              ),
+              Text(
+                '${_radiusMeters.toStringAsFixed(0)} m',
+                style: const TextStyle(
+                    color: AppColors.emeraldLight,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700),
+              ),
+            ],
+          ),
+          SliderTheme(
+            data: SliderThemeData(
+              trackHeight: 3,
+              overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
+            ),
+            child: Slider(
+              value: _radiusMeters,
+              min: _minRadius,
+              max: _maxRadius,
+              divisions: 39,
+              label: '${_radiusMeters.toStringAsFixed(0)} m',
+              activeColor: AppColors.emerald,
+              inactiveColor: Colors.white24,
+              onChanged: (v) => setState(() => _radiusMeters = v),
             ),
           ),
         ],

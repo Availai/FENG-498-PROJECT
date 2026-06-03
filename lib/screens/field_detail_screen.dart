@@ -13,6 +13,7 @@ import '../services/crop_placement.dart';
 import '../services/crop_protocol_service.dart';
 import '../services/crop_schedule_seeder.dart';
 import '../services/crop_state_service.dart';
+import '../services/field_setup_defaults.dart';
 import '../services/notification_service.dart';
 import '../services/task_directive_service.dart';
 import '../data/activity_types.dart';
@@ -39,6 +40,7 @@ import '../data/disease_types.dart';
 import 'cost_ledger_screen.dart';
 import 'disease_capture_screen.dart';
 import 'farm_journal_screen.dart';
+import 'field_dossier_screen.dart';
 import 'field_tracking_screen.dart';
 import 'soil_test_entry_screen.dart';
 import 'plant_zone_drawing_screen.dart';
@@ -431,6 +433,11 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
         ),
         centerTitle: false,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.folder_open_rounded, color: Colors.white70),
+            tooltip: 'Tarla Dosyası',
+            onPressed: _openFieldDossier,
+          ),
           IconButton(
             icon: const Icon(Icons.science_outlined, color: Colors.white70),
             tooltip: 'Toprak Analizi',
@@ -1410,6 +1417,20 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
     );
   }
 
+  void _openFieldDossier() {
+    final id = widget.fieldData['id']?.toString();
+    if (id == null || id.isEmpty) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => FieldDossierScreen(
+          fieldId: id,
+          fieldData: widget.fieldData,
+        ),
+      ),
+    );
+  }
+
   void _openSoilTest() {
     final d = widget.fieldData;
     final id = d['id']?.toString();
@@ -1566,6 +1587,26 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
       selectedConfig = existingConfig;
       final fieldArea =
           (widget.fieldData['area_dekar'] as num?)?.toDouble() ?? 1.0;
+
+      // Toprak türü ve sulama yöntemini tarladan türet — çiftçi tekrar
+      // girmek zorunda kalmasın (CLAUDE.md: mevcut veriyi yeniden kullan).
+      // Toprak analizinden doku, son sulama kaydından yöntem alınır; bulunamazsa
+      // form varsayılanına düşer. Türetilen değer ön-seçili gelir, gizlenmez.
+      FieldSetupDefaults? fieldDefaults;
+      try {
+        final repo = ref.read(localDataRepositoryProvider);
+        final soilTests = await repo.loadSoilTests(fieldId);
+        final activityLog =
+            await repo.watchActivityLog(fieldId: fieldId, limit: 200).first;
+        fieldDefaults = FieldSetupDefaultsBuilder.build(
+          soilTests: soilTests,
+          activityLog: activityLog,
+        );
+      } catch (_) {
+        fieldDefaults = null;
+      }
+      if (!mounted) return;
+
       final config = await showModalBottomSheet<CropConfig>(
         context: context,
         backgroundColor: Colors.transparent,
@@ -1575,6 +1616,7 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
           cropName: plant.nameTr,
           fieldAreaDekar: fieldArea,
           initialConfig: existingConfig,
+          fieldDefaults: existingConfig == null ? fieldDefaults : null,
           defaultRowSpacingCm: guide?.rowSpacingCm ?? 70,
           defaultPlantSpacingCm: guide?.plantSpacingCm ?? 30,
         ),
@@ -6037,6 +6079,7 @@ class _CropSetupSheet extends StatefulWidget {
     required this.cropName,
     required this.fieldAreaDekar,
     this.initialConfig,
+    this.fieldDefaults,
     this.defaultRowSpacingCm = 70,
     this.defaultPlantSpacingCm = 30,
   });
@@ -6045,6 +6088,11 @@ class _CropSetupSheet extends StatefulWidget {
   final CropProtocol? protocol;
   final String cropName;
   final CropConfig? initialConfig;
+
+  /// Tarladan türetilen ön-seçim önerileri (toprak türü + sulama yöntemi).
+  /// Yalnız önceden kayıtlı config yokken geçilir; alanlar gizlenmez,
+  /// kullanıcı değiştirebilir. Türetilemeyen alanlar form varsayılanına düşer.
+  final FieldSetupDefaults? fieldDefaults;
   final double defaultRowSpacingCm;
   final double defaultPlantSpacingCm;
 
@@ -6081,14 +6129,29 @@ class _CropSetupSheetState extends State<_CropSetupSheet> {
   void initState() {
     super.initState();
     final cfg = widget.initialConfig;
-    _soil = cfg?.soilType ?? SoilType.loamy;
-    _irrigation = cfg?.irrigationMethod ?? IrrigationMethod.furrow;
+    final d = widget.fieldDefaults;
+    // Öncelik: kayıtlı config > tarladan türetilen öneri > form varsayılanı.
+    _soil = cfg?.soilType ?? d?.soilType ?? SoilType.loamy;
+    _irrigation =
+        cfg?.irrigationMethod ?? d?.irrigationMethod ?? IrrigationMethod.furrow;
     _productionSystem = cfg?.productionSystem ?? ProductionSystem.openField;
     _rowCtrl = TextEditingController(
         text: (cfg?.rowSpacingCm ?? _defRow).toStringAsFixed(0));
     _plantCtrl = TextEditingController(
         text: (cfg?.plantSpacingCm ?? _defPlant).toStringAsFixed(0));
   }
+
+  /// Toprak türü tarladaki analizden ön-seçildiyse kaynak notu metni; yoksa null.
+  String? get _soilSourceNote =>
+      widget.fieldDefaults?.soilSource == FieldDefaultSource.soilTest
+          ? 'Tarlanın toprak analizinden alındı — gerekirse değiştirin.'
+          : null;
+
+  /// Sulama yöntemi tarladaki son kayıttan ön-seçildiyse kaynak notu; yoksa null.
+  String? get _irrigationSourceNote =>
+      widget.fieldDefaults?.irrigationSource == FieldDefaultSource.activity
+          ? 'Tarlanın son sulama kaydından alındı — gerekirse değiştirin.'
+          : null;
 
   @override
   void dispose() {
@@ -6227,6 +6290,7 @@ class _CropSetupSheetState extends State<_CropSetupSheet> {
                     color: _textTertiary, fontSize: 11, height: 1.4),
               ),
             ),
+            if (_soilSourceNote != null) _sourceNote(_soilSourceNote!),
             const SizedBox(height: 20),
 
             // ── Sulama Yöntemi ──
@@ -6237,6 +6301,8 @@ class _CropSetupSheetState extends State<_CropSetupSheet> {
               style:
                   TextStyle(color: _textTertiary, fontSize: 11, height: 1.35),
             ),
+            if (_irrigationSourceNote != null)
+              _sourceNote(_irrigationSourceNote!),
             const SizedBox(height: 8),
             ...IrrigationMethod.values.map((m) {
               final selected = _irrigation == m;
@@ -6488,6 +6554,29 @@ class _CropSetupSheetState extends State<_CropSetupSheet> {
           color: _textPrimary,
           fontSize: 14,
           fontWeight: FontWeight.w700,
+        ),
+      );
+
+  /// Tarladan türetilen ön-seçim için "şu kaynaktan alındı" bilgi notu.
+  Widget _sourceNote(String text) => Padding(
+        padding: const EdgeInsets.only(top: 8),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Icon(Icons.auto_awesome_rounded, size: 14, color: _accent),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                text,
+                style: const TextStyle(
+                  color: _accent,
+                  fontSize: 11,
+                  height: 1.35,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
         ),
       );
 

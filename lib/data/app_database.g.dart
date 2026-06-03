@@ -6663,6 +6663,12 @@ class $SoilTestsTable extends SoilTests
   late final GeneratedColumn<double> sampleLng = GeneratedColumn<double>(
       'sample_lng', aliasedName, true,
       type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _sampleRadiusMeta =
+      const VerificationMeta('sampleRadius');
+  @override
+  late final GeneratedColumn<double> sampleRadius = GeneratedColumn<double>(
+      'sample_radius', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
   static const VerificationMeta _notesMeta = const VerificationMeta('notes');
   @override
   late final GeneratedColumn<String> notes = GeneratedColumn<String>(
@@ -6706,6 +6712,7 @@ class $SoilTestsTable extends SoilTests
         textureClass,
         sampleLat,
         sampleLng,
+        sampleRadius,
         notes,
         createdAt,
         updatedAt,
@@ -6809,6 +6816,12 @@ class $SoilTestsTable extends SoilTests
       context.handle(_sampleLngMeta,
           sampleLng.isAcceptableOrUnknown(data['sample_lng']!, _sampleLngMeta));
     }
+    if (data.containsKey('sample_radius')) {
+      context.handle(
+          _sampleRadiusMeta,
+          sampleRadius.isAcceptableOrUnknown(
+              data['sample_radius']!, _sampleRadiusMeta));
+    }
     if (data.containsKey('notes')) {
       context.handle(
           _notesMeta, notes.isAcceptableOrUnknown(data['notes']!, _notesMeta));
@@ -6874,6 +6887,8 @@ class $SoilTestsTable extends SoilTests
           .read(DriftSqlType.double, data['${effectivePrefix}sample_lat']),
       sampleLng: attachedDatabase.typeMapping
           .read(DriftSqlType.double, data['${effectivePrefix}sample_lng']),
+      sampleRadius: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}sample_radius']),
       notes: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}notes']),
       createdAt: attachedDatabase.typeMapping
@@ -6936,6 +6951,10 @@ class SoilTest extends DataClass implements Insertable<SoilTest> {
   /// Örneğin haritadan seçilen noktası (tarla içi). null → harita seçimi yok.
   final double? sampleLat;
   final double? sampleLng;
+
+  /// Örnek alanının yarıçapı (metre). Haritadan alan seçilince yazılır;
+  /// null → yarıçap belirtilmemiş (eski kayıt veya yalnızca nokta).
+  final double? sampleRadius;
   final String? notes;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -6959,6 +6978,7 @@ class SoilTest extends DataClass implements Insertable<SoilTest> {
       this.textureClass,
       this.sampleLat,
       this.sampleLng,
+      this.sampleRadius,
       this.notes,
       required this.createdAt,
       required this.updatedAt,
@@ -7015,6 +7035,9 @@ class SoilTest extends DataClass implements Insertable<SoilTest> {
     }
     if (!nullToAbsent || sampleLng != null) {
       map['sample_lng'] = Variable<double>(sampleLng);
+    }
+    if (!nullToAbsent || sampleRadius != null) {
+      map['sample_radius'] = Variable<double>(sampleRadius);
     }
     if (!nullToAbsent || notes != null) {
       map['notes'] = Variable<String>(notes);
@@ -7076,6 +7099,9 @@ class SoilTest extends DataClass implements Insertable<SoilTest> {
       sampleLng: sampleLng == null && nullToAbsent
           ? const Value.absent()
           : Value(sampleLng),
+      sampleRadius: sampleRadius == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sampleRadius),
       notes:
           notes == null && nullToAbsent ? const Value.absent() : Value(notes),
       createdAt: Value(createdAt),
@@ -7108,6 +7134,7 @@ class SoilTest extends DataClass implements Insertable<SoilTest> {
       textureClass: serializer.fromJson<String?>(json['textureClass']),
       sampleLat: serializer.fromJson<double?>(json['sampleLat']),
       sampleLng: serializer.fromJson<double?>(json['sampleLng']),
+      sampleRadius: serializer.fromJson<double?>(json['sampleRadius']),
       notes: serializer.fromJson<String?>(json['notes']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
@@ -7136,6 +7163,7 @@ class SoilTest extends DataClass implements Insertable<SoilTest> {
       'textureClass': serializer.toJson<String?>(textureClass),
       'sampleLat': serializer.toJson<double?>(sampleLat),
       'sampleLng': serializer.toJson<double?>(sampleLng),
+      'sampleRadius': serializer.toJson<double?>(sampleRadius),
       'notes': serializer.toJson<String?>(notes),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
@@ -7162,6 +7190,7 @@ class SoilTest extends DataClass implements Insertable<SoilTest> {
           Value<String?> textureClass = const Value.absent(),
           Value<double?> sampleLat = const Value.absent(),
           Value<double?> sampleLng = const Value.absent(),
+          Value<double?> sampleRadius = const Value.absent(),
           Value<String?> notes = const Value.absent(),
           DateTime? createdAt,
           DateTime? updatedAt,
@@ -7191,6 +7220,8 @@ class SoilTest extends DataClass implements Insertable<SoilTest> {
             textureClass.present ? textureClass.value : this.textureClass,
         sampleLat: sampleLat.present ? sampleLat.value : this.sampleLat,
         sampleLng: sampleLng.present ? sampleLng.value : this.sampleLng,
+        sampleRadius:
+            sampleRadius.present ? sampleRadius.value : this.sampleRadius,
         notes: notes.present ? notes.value : this.notes,
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
@@ -7228,6 +7259,9 @@ class SoilTest extends DataClass implements Insertable<SoilTest> {
           : this.textureClass,
       sampleLat: data.sampleLat.present ? data.sampleLat.value : this.sampleLat,
       sampleLng: data.sampleLng.present ? data.sampleLng.value : this.sampleLng,
+      sampleRadius: data.sampleRadius.present
+          ? data.sampleRadius.value
+          : this.sampleRadius,
       notes: data.notes.present ? data.notes.value : this.notes,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
@@ -7256,6 +7290,7 @@ class SoilTest extends DataClass implements Insertable<SoilTest> {
           ..write('textureClass: $textureClass, ')
           ..write('sampleLat: $sampleLat, ')
           ..write('sampleLng: $sampleLng, ')
+          ..write('sampleRadius: $sampleRadius, ')
           ..write('notes: $notes, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -7284,6 +7319,7 @@ class SoilTest extends DataClass implements Insertable<SoilTest> {
         textureClass,
         sampleLat,
         sampleLng,
+        sampleRadius,
         notes,
         createdAt,
         updatedAt,
@@ -7311,6 +7347,7 @@ class SoilTest extends DataClass implements Insertable<SoilTest> {
           other.textureClass == this.textureClass &&
           other.sampleLat == this.sampleLat &&
           other.sampleLng == this.sampleLng &&
+          other.sampleRadius == this.sampleRadius &&
           other.notes == this.notes &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
@@ -7336,6 +7373,7 @@ class SoilTestsCompanion extends UpdateCompanion<SoilTest> {
   final Value<String?> textureClass;
   final Value<double?> sampleLat;
   final Value<double?> sampleLng;
+  final Value<double?> sampleRadius;
   final Value<String?> notes;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
@@ -7360,6 +7398,7 @@ class SoilTestsCompanion extends UpdateCompanion<SoilTest> {
     this.textureClass = const Value.absent(),
     this.sampleLat = const Value.absent(),
     this.sampleLng = const Value.absent(),
+    this.sampleRadius = const Value.absent(),
     this.notes = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -7385,6 +7424,7 @@ class SoilTestsCompanion extends UpdateCompanion<SoilTest> {
     this.textureClass = const Value.absent(),
     this.sampleLat = const Value.absent(),
     this.sampleLng = const Value.absent(),
+    this.sampleRadius = const Value.absent(),
     this.notes = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
@@ -7413,6 +7453,7 @@ class SoilTestsCompanion extends UpdateCompanion<SoilTest> {
     Expression<String>? textureClass,
     Expression<double>? sampleLat,
     Expression<double>? sampleLng,
+    Expression<double>? sampleRadius,
     Expression<String>? notes,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
@@ -7438,6 +7479,7 @@ class SoilTestsCompanion extends UpdateCompanion<SoilTest> {
       if (textureClass != null) 'texture_class': textureClass,
       if (sampleLat != null) 'sample_lat': sampleLat,
       if (sampleLng != null) 'sample_lng': sampleLng,
+      if (sampleRadius != null) 'sample_radius': sampleRadius,
       if (notes != null) 'notes': notes,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -7465,6 +7507,7 @@ class SoilTestsCompanion extends UpdateCompanion<SoilTest> {
       Value<String?>? textureClass,
       Value<double?>? sampleLat,
       Value<double?>? sampleLng,
+      Value<double?>? sampleRadius,
       Value<String?>? notes,
       Value<DateTime>? createdAt,
       Value<DateTime>? updatedAt,
@@ -7489,6 +7532,7 @@ class SoilTestsCompanion extends UpdateCompanion<SoilTest> {
       textureClass: textureClass ?? this.textureClass,
       sampleLat: sampleLat ?? this.sampleLat,
       sampleLng: sampleLng ?? this.sampleLng,
+      sampleRadius: sampleRadius ?? this.sampleRadius,
       notes: notes ?? this.notes,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -7554,6 +7598,9 @@ class SoilTestsCompanion extends UpdateCompanion<SoilTest> {
     if (sampleLng.present) {
       map['sample_lng'] = Variable<double>(sampleLng.value);
     }
+    if (sampleRadius.present) {
+      map['sample_radius'] = Variable<double>(sampleRadius.value);
+    }
     if (notes.present) {
       map['notes'] = Variable<String>(notes.value);
     }
@@ -7593,6 +7640,7 @@ class SoilTestsCompanion extends UpdateCompanion<SoilTest> {
           ..write('textureClass: $textureClass, ')
           ..write('sampleLat: $sampleLat, ')
           ..write('sampleLng: $sampleLng, ')
+          ..write('sampleRadius: $sampleRadius, ')
           ..write('notes: $notes, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -12054,6 +12102,7 @@ typedef $$SoilTestsTableCreateCompanionBuilder = SoilTestsCompanion Function({
   Value<String?> textureClass,
   Value<double?> sampleLat,
   Value<double?> sampleLng,
+  Value<double?> sampleRadius,
   Value<String?> notes,
   required DateTime createdAt,
   required DateTime updatedAt,
@@ -12079,6 +12128,7 @@ typedef $$SoilTestsTableUpdateCompanionBuilder = SoilTestsCompanion Function({
   Value<String?> textureClass,
   Value<double?> sampleLat,
   Value<double?> sampleLng,
+  Value<double?> sampleRadius,
   Value<String?> notes,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
@@ -12166,6 +12216,9 @@ class $$SoilTestsTableFilterComposer
 
   ColumnFilters<double> get sampleLng => $composableBuilder(
       column: $table.sampleLng, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get sampleRadius => $composableBuilder(
+      column: $table.sampleRadius, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get notes => $composableBuilder(
       column: $table.notes, builder: (column) => ColumnFilters(column));
@@ -12265,6 +12318,10 @@ class $$SoilTestsTableOrderingComposer
   ColumnOrderings<double> get sampleLng => $composableBuilder(
       column: $table.sampleLng, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<double> get sampleRadius => $composableBuilder(
+      column: $table.sampleRadius,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<String> get notes => $composableBuilder(
       column: $table.notes, builder: (column) => ColumnOrderings(column));
 
@@ -12358,6 +12415,9 @@ class $$SoilTestsTableAnnotationComposer
   GeneratedColumn<double> get sampleLng =>
       $composableBuilder(column: $table.sampleLng, builder: (column) => column);
 
+  GeneratedColumn<double> get sampleRadius => $composableBuilder(
+      column: $table.sampleRadius, builder: (column) => column);
+
   GeneratedColumn<String> get notes =>
       $composableBuilder(column: $table.notes, builder: (column) => column);
 
@@ -12432,6 +12492,7 @@ class $$SoilTestsTableTableManager extends RootTableManager<
             Value<String?> textureClass = const Value.absent(),
             Value<double?> sampleLat = const Value.absent(),
             Value<double?> sampleLng = const Value.absent(),
+            Value<double?> sampleRadius = const Value.absent(),
             Value<String?> notes = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
@@ -12457,6 +12518,7 @@ class $$SoilTestsTableTableManager extends RootTableManager<
             textureClass: textureClass,
             sampleLat: sampleLat,
             sampleLng: sampleLng,
+            sampleRadius: sampleRadius,
             notes: notes,
             createdAt: createdAt,
             updatedAt: updatedAt,
@@ -12482,6 +12544,7 @@ class $$SoilTestsTableTableManager extends RootTableManager<
             Value<String?> textureClass = const Value.absent(),
             Value<double?> sampleLat = const Value.absent(),
             Value<double?> sampleLng = const Value.absent(),
+            Value<double?> sampleRadius = const Value.absent(),
             Value<String?> notes = const Value.absent(),
             required DateTime createdAt,
             required DateTime updatedAt,
@@ -12507,6 +12570,7 @@ class $$SoilTestsTableTableManager extends RootTableManager<
             textureClass: textureClass,
             sampleLat: sampleLat,
             sampleLng: sampleLng,
+            sampleRadius: sampleRadius,
             notes: notes,
             createdAt: createdAt,
             updatedAt: updatedAt,

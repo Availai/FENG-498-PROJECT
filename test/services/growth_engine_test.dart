@@ -88,6 +88,119 @@ void main() {
         );
   }
 
+  Future<void> seedSoilTest(
+    String cropId, {
+    double? nitrogenPct,
+    double? potassiumKgDa,
+    double? organicMatterPct,
+  }) async {
+    final now = DateTime.utc(2026, 4, 24);
+    await database.into(database.soilTests).insert(
+          SoilTestsCompanion.insert(
+            id: 'soil-$cropId',
+            fieldId: 'field-$cropId',
+            nitrogenPct: Value(nitrogenPct),
+            potassiumKgDa: Value(potassiumKgDa),
+            organicMatterPct: Value(organicMatterPct),
+            createdAt: now,
+            updatedAt: now,
+          ),
+        );
+  }
+
+  group('soilBaselineStressFrom (saf)', () {
+    test('analiz yoksa (tüm null) → none / 0', () {
+      final b = soilBaselineStressFrom();
+      expect(b.isZero, isTrue);
+      expect(b.nStress, 0.0);
+      expect(b.kStress, 0.0);
+    });
+
+    test('çok düşük azot → yüksek başlangıç N stresi', () {
+      final poor = soilBaselineStressFrom(nitrogenPct: 0.03);
+      final good = soilBaselineStressFrom(nitrogenPct: 0.20);
+      expect(poor.nStress, greaterThan(good.nStress));
+      expect(good.nStress, 0.0);
+    });
+
+    test('düşük organik madde azot stresine ek katkı yapar', () {
+      final base = soilBaselineStressFrom(nitrogenPct: 0.10); // orta
+      final withLowOm =
+          soilBaselineStressFrom(nitrogenPct: 0.10, organicMatterPct: 0.8);
+      expect(withLowOm.nStress, greaterThan(base.nStress));
+    });
+
+    test('düşük potasyum → yüksek başlangıç K stresi', () {
+      final poor = soilBaselineStressFrom(potassiumKgDa: 12);
+      final good = soilBaselineStressFrom(potassiumKgDa: 35);
+      expect(poor.kStress, greaterThan(good.kStress));
+      expect(good.kStress, 0.0);
+    });
+
+    test('determinizm: aynı girdi → aynı çıktı', () {
+      final a = soilBaselineStressFrom(
+          nitrogenPct: 0.04, potassiumKgDa: 18, organicMatterPct: 1.5);
+      final b = soilBaselineStressFrom(
+          nitrogenPct: 0.04, potassiumKgDa: 18, organicMatterPct: 1.5);
+      expect(a.nStress, b.nStress);
+      expect(a.kStress, b.kStress);
+    });
+  });
+
+  test('fakir toprak analizi başlangıç stresini ve verim kaybını artırır',
+      () async {
+    // Aynı gübreleme + aynı koşullar; tek fark toprak analizi.
+    await seedCrop('poor', fertilizerKg: 10);
+    await seedCrop('rich', fertilizerKg: 10);
+    await seedSoilTest('poor',
+        nitrogenPct: 0.03, potassiumKgDa: 12, organicMatterPct: 0.8);
+    await seedSoilTest('rich',
+        nitrogenPct: 0.20, potassiumKgDa: 40, organicMatterPct: 3.5);
+
+    final engine = GrowthEngine(database);
+    final poor = await engine.recompute(
+      cropId: 'poor',
+      now: DateTime(2026, 4, 24),
+    );
+    final rich = await engine.recompute(
+      cropId: 'rich',
+      now: DateTime(2026, 4, 24),
+    );
+
+    expect(poor, isNotNull);
+    expect(rich, isNotNull);
+    expect(poor!.nStressIdx, greaterThan(rich!.nStressIdx));
+    expect(poor.kStressIdx, greaterThan(rich.kStressIdx));
+    expect(poor.yieldMultiplier, lessThan(rich.yieldMultiplier));
+  });
+
+  test('toprak analizi yokken davranış değişmez (geriye dönük güvenli)',
+      () async {
+    // Analiz olmayan tarla = eski davranış; baseline 0 olmalı.
+    await seedCrop('noanalysis', fertilizerKg: 10);
+    await seedCrop('zeroanalysis', fertilizerKg: 10);
+    // İkincisine besin değerleri "iyi" analiz → yine 0 baseline beklenir.
+    await seedSoilTest('zeroanalysis',
+        nitrogenPct: 0.25, potassiumKgDa: 45, organicMatterPct: 4.0);
+
+    final engine = GrowthEngine(database);
+    final noAnalysis = await engine.recompute(
+      cropId: 'noanalysis',
+      now: DateTime(2026, 4, 24),
+    );
+    final zeroAnalysis = await engine.recompute(
+      cropId: 'zeroanalysis',
+      now: DateTime(2026, 4, 24),
+    );
+
+    expect(noAnalysis, isNotNull);
+    expect(zeroAnalysis, isNotNull);
+    // İyi analiz baseline'ı 0 üretir → analizsizle aynı sonuç.
+    expect(zeroAnalysis!.nStressIdx, closeTo(noAnalysis!.nStressIdx, 0.001));
+    expect(zeroAnalysis.yieldMultiplier,
+        closeTo(noAnalysis.yieldMultiplier, 0.001));
+  });
+
   test('eksik gubreleme azot stresini ve verim carpani etkisini artirir',
       () async {
     await seedCrop('low', fertilizerKg: 2);

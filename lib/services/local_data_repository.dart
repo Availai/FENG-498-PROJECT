@@ -1443,6 +1443,7 @@ class LocalDataRepository {
     String? textureClass,
     double? sampleLat,
     double? sampleLng,
+    double? sampleRadius,
     String? notes,
   }) async {
     final now = DateTime.now().toUtc();
@@ -1467,6 +1468,7 @@ class LocalDataRepository {
             textureClass: Value(textureClass),
             sampleLat: Value(sampleLat),
             sampleLng: Value(sampleLng),
+            sampleRadius: Value(sampleRadius),
             notes: Value(notes),
             createdAt: now,
             updatedAt: now,
@@ -1495,6 +1497,7 @@ class LocalDataRepository {
         'texture_class': textureClass,
         'sample_lat': sampleLat,
         'sample_lng': sampleLng,
+        'sample_radius': sampleRadius,
         'notes': notes,
         'updated_at': now.toIso8601String(),
       },
