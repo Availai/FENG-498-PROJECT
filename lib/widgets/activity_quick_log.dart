@@ -6,6 +6,9 @@ import '../data/crop_ipm_rules.dart';
 import '../data/crop_playbooks.dart';
 import '../data/supported_crops.dart';
 import '../services/app_providers.dart';
+import '../services/guardrails/field_snapshot.dart';
+import '../services/guardrails/guardrail_checker.dart';
+import '../services/guardrails/guardrail_limit.dart';
 import '../services/haptic_service.dart';
 import '../services/ipm_decision_service.dart';
 import '../services/rules/timing_window.dart';
@@ -47,6 +50,34 @@ Future<bool> showActivityQuickLogSheet({
   );
   if (detail == null) return false;
 
+  // ── Aşırı girdi seti (guardrail) ──────────────────────────────────────
+  // Kayıttan ÖNCE: su/gübre/ilaç tipinde mevsimlik birikim + bu girdi
+  // önerilen üst sınırı aşıyor mu? warn → bilgilendirme; block → onay
+  // diyaloğu (kullanıcı "Yine de kaydet" demeden geçemez). Karar
+  // deterministik motordan (GuardrailChecker) gelir (CLAUDE.md §22, §29).
+  final verdict = await _evaluateGuardrail(
+    ref: ref,
+    fieldId: fieldId,
+    type: type,
+    cropId: detail.cropId ?? cropId,
+    fieldCrops: fieldCrops,
+    fieldAreaDekar: fieldAreaDekar,
+    detail: detail,
+  );
+  // İzlenebilirlik: kullanıcı block'u bilerek aşarsa override işareti eklenir.
+  // detail.metadata mutasyona uğratılmaz — kopya üzerinde çalışılır.
+  var metadata = detail.metadata;
+  if (verdict != null && verdict.requiresConfirm) {
+    if (!context.mounted) return false;
+    final proceed = await _showGuardrailConfirm(context, verdict);
+    if (proceed != true) return false;
+    metadata = {
+      ...detail.metadata,
+      'guardrail_override': true,
+      'guardrail_axis': verdict.axis.name,
+    };
+  }
+
   // ActivityLogger wrapper: logActivity + recompute zincirini garantili
   // tek noktadan yapar — eskiden burada manuel recompute çağrılıyordu.
   final logger = ref.read(activityLoggerProvider);
@@ -64,8 +95,18 @@ Future<bool> showActivityQuickLogSheet({
               quantityUnit ??
               ActivityType.quantityUnit(type),
       recommendedQuantity: detail.recommendedQuantity,
-      metadata: detail.metadata,
+      metadata: metadata,
     );
+    if (context.mounted &&
+        verdict != null &&
+        verdict.level == GuardrailLevel.warn) {
+      // warn: kayıt yapıldı ama çiftçiyi nazikçe uyar.
+      AppToast.show(
+        context,
+        message: verdict.reasonTr,
+        type: ToastType.warning,
+      );
+    }
     if (context.mounted) {
       HapticService.instance.success();
       AppToast.show(
@@ -96,6 +137,143 @@ Future<bool> showActivityQuickLogSheet({
     }
     return false;
   }
+}
+
+/// Kayıttan önce aşırı girdi setini değerlendirir. İlgisiz aktivite tipinde
+/// veya veri okunamazsa `null` döner (mevcut akış hiç bozulmaz — set sessiz
+/// geçer). Repository'den anlık aktivite + toprak analizini okuyup snapshot
+/// kurar, sonra `GuardrailChecker` ile yargı üretir.
+Future<GuardrailVerdict?> _evaluateGuardrail({
+  required WidgetRef ref,
+  required String fieldId,
+  required String type,
+  String? cropId,
+  required List<Map<String, dynamic>> fieldCrops,
+  required double fieldAreaDekar,
+  required _QuickLogDetail detail,
+}) async {
+  // Yalnız su/gübre/ilaç eksenlerinde anlamlı.
+  if (type != ActivityType.watering &&
+      type != ActivityType.fertilizing &&
+      type != ActivityType.spraying) {
+    return null;
+  }
+
+  final cropName = (detail.metadata['crop_name'] as String?) ??
+      SupportedCrops.canonicalName(
+        fieldCrops
+            .firstWhere(
+              (c) => c['id']?.toString() == (detail.cropId ?? cropId),
+              orElse: () => const {},
+            )['name']
+            ?.toString(),
+      );
+  if (cropName == null) return null;
+
+  try {
+    final repo = ref.read(localDataRepositoryProvider);
+    final activities =
+        await repo.watchActivityLog(fieldId: fieldId, limit: 200).first;
+
+    // En güncel toprak analizi (varsa) → EC + analiz varlığı.
+    final soilTests = await repo.loadSoilTests(fieldId);
+    Map<String, dynamic>? soilTest;
+    if (soilTests.isNotEmpty) {
+      final t = soilTests.first;
+      soilTest = {'ec_ds_m': t.ecDsM};
+    }
+
+    // Haftalık su birikimi — mevcut FieldStateService ile aynı kaynak.
+    double weeklyWaterMm = 0;
+    double? weeklyTargetMm;
+    final states = ref.read(fieldStateServiceProvider).compute(
+      field: {'area_dekar': fieldAreaDekar},
+      fieldCrops: fieldCrops,
+      activities: activities,
+    );
+    for (final s in states) {
+      if (SupportedCrops.canonicalName(s.cropName) == cropName) {
+        weeklyWaterMm = s.weeklyWaterMm;
+        weeklyTargetMm = s.weeklyWaterTargetMm;
+        break;
+      }
+    }
+
+    final snapshot = FieldSnapshotBuilder.build(
+      cropName: cropName,
+      areaDekar: fieldAreaDekar,
+      activities: activities,
+      weeklyWaterMm: weeklyWaterMm,
+      soilTest: soilTest,
+    );
+
+    final meta = detail.metadata;
+    return GuardrailChecker.checkForActivity(
+      activityType: type,
+      snapshot: snapshot,
+      attemptMm: (meta['effective_water_mm'] as num?)?.toDouble() ?? 0,
+      weeklyTargetMm: weeklyTargetMm,
+      fertilizerName: meta['fertilizer_name'] as String?,
+      rawKg: (meta['fertilizer_kg'] as num?)?.toDouble(),
+      pesticideName: meta['pesticide_name'] as String?,
+    );
+  } catch (_) {
+    // Set değerlendirilemezse kaydı engelleme — offline-first, akış bozulmaz.
+    return null;
+  }
+}
+
+/// block seviyesinde iki kademeli onay diyaloğu. Türkçe, sade; yaşlı çiftçi
+/// için tek başlık + gerekçe + öneri + iki net buton.
+Future<bool?> _showGuardrailConfirm(
+  BuildContext context,
+  GuardrailVerdict verdict,
+) {
+  return showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      icon: const Icon(Icons.report_problem_rounded,
+          color: AppColors.warning, size: 32),
+      title: const Text('Bu miktar fazla olabilir'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            verdict.reasonTr,
+            style: const TextStyle(
+              fontSize: 14,
+              color: AppColors.textPrimary,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            verdict.recommendationTr,
+            style: const TextStyle(
+              fontSize: 13,
+              color: AppColors.textSecondary,
+              height: 1.4,
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(ctx).pop(false),
+          child: const Text('Vazgeç'),
+        ),
+        ElevatedButton(
+          onPressed: () => Navigator.of(ctx).pop(true),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.warning,
+            foregroundColor: Colors.white,
+          ),
+          child: const Text('Yine de kaydet'),
+        ),
+      ],
+    ),
+  );
 }
 
 /// Aktivite kaydından sonra `IrrigationImpactSheet`'i besleyen veri kurucu.
