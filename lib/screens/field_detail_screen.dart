@@ -26,6 +26,7 @@ import '../data/verified_agri_database.dart';
 import '../data/turkish_crops_repository.dart';
 import '../widgets/activity_quick_log.dart';
 import '../widgets/contextual_tip.dart';
+import '../widgets/field_status_badge.dart';
 import '../widgets/floating_toast.dart';
 import '../widgets/glass_panel.dart';
 import '../widgets/last_irrigation_card.dart';
@@ -38,6 +39,10 @@ import '../widgets/crop_render_factory.dart';
 import '../widgets/disease_picker_sheet.dart';
 import '../widgets/disease_advice_sheet.dart';
 import '../data/disease_types.dart';
+import '../services/field_state_service.dart';
+import '../services/guardrails/field_snapshot.dart';
+import '../services/guardrails/guardrail_checker.dart';
+import '../services/guardrails/guardrail_limit.dart';
 import 'cost_ledger_screen.dart';
 import 'disease_capture_screen.dart';
 import 'farm_journal_screen.dart';
@@ -70,6 +75,43 @@ Future<SoilIrrigationProfile?> _loadSoilIrrigationProfile(
   } catch (_) {
     return null;
   }
+}
+
+/// Anlık tarla durum rozetini kurar. `CropFieldState` + aktivitelerden
+/// guardrail snapshot'ı türetip "şu an aşılmış mı?" yargısını üretir
+/// (attempt=0 → mevcut birikimin set seviyesi). EC için lab analizi bu
+/// senkron blokta okunmadığından null geçilir (§16: analiz yoksa sessiz);
+/// su + gübre eksenleri yine de değerlendirilir.
+Widget buildFieldStatusBadge({
+  required CropFieldState state,
+  required List<Map<String, dynamic>> activities,
+  required double fieldAreaDekar,
+}) {
+  final snapshot = FieldSnapshotBuilder.build(
+    cropName: state.cropName,
+    areaDekar: state.areaDekar > 0 ? state.areaDekar : fieldAreaDekar,
+    activities: activities,
+    weeklyWaterMm: state.weeklyWaterMm,
+    soilTest: null,
+  );
+
+  // Mevcut durumun set seviyesi: yeni girdi yok (attempt=0).
+  final verdicts = <GuardrailVerdict>[];
+  final water = GuardrailChecker.checkWatering(
+    snapshot: snapshot,
+    attemptMm: 0,
+    weeklyTargetMm: state.weeklyWaterTargetMm,
+  );
+  if (water.level != GuardrailLevel.ok) verdicts.add(water);
+
+  final nitrogen = GuardrailChecker.checkFertilizing(
+    snapshot: snapshot,
+    fertilizerName: null,
+    rawKg: 0,
+  );
+  if (nitrogen.level != GuardrailLevel.ok) verdicts.add(nitrogen);
+
+  return FieldStatusBadge(state: state, activeVerdicts: verdicts);
 }
 
 class FieldDetailScreen extends ConsumerStatefulWidget {
@@ -4782,6 +4824,18 @@ class _DirectivesModalContent extends ConsumerWidget {
                     cropId: cropId,
                     since: planted,
                   );
+                  // Anlık durum rozeti — su/gübre/tuzluluk setini "şu an aşılmış
+                  // mı?" olarak gösterir. Eylem yapılınca (ActivityLogger →
+                  // recompute → stream) bu kart anında güncellenir.
+                  final cropState =
+                      cropId == null ? null : fieldStateMap[cropId];
+                  if (cropState != null) {
+                    summaryCards.add(buildFieldStatusBadge(
+                      state: cropState,
+                      activities: activities,
+                      fieldAreaDekar: fieldAreaDekar,
+                    ));
+                  }
                   summaryCards.add(SeasonSummaryCard(
                     cropName: crop['name']?.toString() ?? 'Bitki',
                     plantedDate: planted,
