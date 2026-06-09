@@ -14,6 +14,7 @@ import '../services/crop_protocol_service.dart';
 import '../services/crop_schedule_seeder.dart';
 import '../services/crop_state_service.dart';
 import '../services/field_setup_defaults.dart';
+import '../services/haptic_service.dart';
 import '../services/notification_service.dart';
 import '../services/soil_irrigation_advisor.dart';
 import '../services/task_directive_service.dart';
@@ -464,6 +465,167 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
     );
   }
 
+  /// Üst bardaki araç ikonlarını (Tarla Dosyası, Toprak Analizi, ÇKS Cüzdanı,
+  /// Yardım) tek bir yukarıdan açılan modal menüde toplar. Alt navigasyondaki
+  /// "Daha" menüsünün üstten açılan karşılığı: panel yukarıdan aşağı kayar,
+  /// arka plan kararır, dışına dokununca veya geri tuşuyla kapanır.
+  void _openFieldToolsMenu() {
+    HapticService.instance.light();
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'Kapat',
+      barrierColor: Colors.black.withValues(alpha: 0.45),
+      transitionDuration: const Duration(milliseconds: 260),
+      pageBuilder: (ctx, anim, secondaryAnim) => _buildFieldToolsSheet(ctx),
+      transitionBuilder: (ctx, anim, secondaryAnim, child) {
+        final curved =
+            CurvedAnimation(parent: anim, curve: Curves.easeOutCubic);
+        return SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(0, -1),
+            end: Offset.zero,
+          ).animate(curved),
+          child: FadeTransition(opacity: curved, child: child),
+        );
+      },
+    );
+  }
+
+  /// Yukarıdan açılan araç menüsünün gövdesi. Bu ekranın koyu temasına uyumlu;
+  /// her öğe kompakt (ikon + başlık) ve dokunulunca önce menüyü kapatıp ilgili
+  /// ekranı açar.
+  Widget _buildFieldToolsSheet(BuildContext sheetContext) {
+    Widget item({
+      required IconData icon,
+      required String label,
+      required VoidCallback onTap,
+    }) {
+      return InkWell(
+        onTap: () {
+          Navigator.of(sheetContext).pop();
+          onTap();
+        },
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(9),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF00E676).withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: const Color(0xFF00E676), size: 22),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Text(
+                  label,
+                  style: GoogleFonts.outfit(
+                    fontSize: 15.5,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded, color: Colors.white38),
+            ],
+          ),
+        ),
+      );
+    }
+
+    const divider = Divider(
+      height: 1,
+      thickness: 1,
+      color: Colors.white10,
+      indent: 16,
+      endIndent: 16,
+    );
+
+    return Align(
+      alignment: Alignment.topCenter,
+      child: Material(
+        color: Colors.transparent,
+        child: Container(
+          margin: EdgeInsets.only(
+            top: MediaQuery.of(context).padding.top + 56,
+            left: 8,
+            right: 8,
+          ),
+          decoration: BoxDecoration(
+            color: const Color(0xFF0D1811),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: const Color(0xFF00E676).withValues(alpha: 0.35),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.4),
+                blurRadius: 24,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 8, 6),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Tarla Araçları',
+                        style: GoogleFonts.outfit(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded,
+                          color: Colors.white54),
+                      tooltip: 'Kapat',
+                      onPressed: () => Navigator.of(sheetContext).pop(),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1, thickness: 1, color: Colors.white12),
+              item(
+                icon: Icons.folder_open_rounded,
+                label: 'Tarla Dosyası',
+                onTap: _openFieldDossier,
+              ),
+              divider,
+              item(
+                icon: Icons.science_outlined,
+                label: 'Toprak Analizi',
+                onTap: _openSoilTest,
+              ),
+              divider,
+              item(
+                icon: Icons.account_balance_wallet_outlined,
+                label: 'ÇKS Cüzdanı',
+                onTap: _openCostLedger,
+              ),
+              divider,
+              item(
+                icon: Icons.help_outline_rounded,
+                label: 'Yardım',
+                onTap: () => HelpPanel.show(context, HelpContent.fieldDetail),
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final d = widget.fieldData;
@@ -531,25 +693,12 @@ class _FieldDetailScreenState extends ConsumerState<FieldDetailScreen>
         ),
         centerTitle: false,
         actions: [
+          // 4 araç ikonu (Tarla Dosyası, Toprak Analizi, ÇKS Cüzdanı, Yardım)
+          // tek düğmede toplandı; düğme yukarıdan açılan modal menüyü gösterir.
           _topBarAction(
-            icon: Icons.folder_open_rounded,
-            label: 'Tarla Dosyası',
-            onPressed: _openFieldDossier,
-          ),
-          _topBarAction(
-            icon: Icons.science_outlined,
-            label: 'Toprak Analizi',
-            onPressed: _openSoilTest,
-          ),
-          _topBarAction(
-            icon: Icons.account_balance_wallet_outlined,
-            label: 'ÇKS Cüzdanı',
-            onPressed: _openCostLedger,
-          ),
-          _topBarAction(
-            icon: Icons.help_outline_rounded,
-            label: 'Yardım',
-            onPressed: () => HelpPanel.show(context, HelpContent.fieldDetail),
+            icon: Icons.more_vert,
+            label: 'Araçlar',
+            onPressed: _openFieldToolsMenu,
           ),
           const SizedBox(width: 8),
         ],
